@@ -83,6 +83,35 @@ interface MatrixClient {
     suspend fun getJoinedRoomIds(): Result<Set<RoomId>>
     suspend fun ignoreUser(userId: UserId): Result<Unit>
     suspend fun unignoreUser(userId: UserId): Result<Unit>
+
+    /**
+     * Читает глобальные account data пользователя сырым JSON.
+     *
+     * Нужно для стикер-паков (MSC2545): SDK типизирует только те события, про которые знает
+     * сам, а `im.ponies.*` в их число не входят.
+     *
+     * @return содержимое события или null, если пользователь такого события не заводил.
+     */
+    suspend fun getAccountData(eventType: String): Result<String?>
+
+    /**
+     * Пишет глобальные account data пользователя сырым JSON.
+     *
+     * @param content сериализованный JSON-объект.
+     */
+    suspend fun setAccountData(eventType: String, content: String): Result<Unit>
+
+    /**
+     * Access token текущей сессии, для запросов к CS API мимо SDK.
+     *
+     * Нужен потому, что SDK не умеет читать произвольные события состояния комнаты, а
+     * стикер-паки комнат (MSC2545) лежат именно там. `getUrl` для этого не годится:
+     * он ходит без авторизации.
+     *
+     * Токен живёт недолго и обновляется самим SDK, поэтому запрашивать его нужно перед
+     * каждым запросом, а не держать у себя.
+     */
+    suspend fun getAccessToken(): Result<String>
     suspend fun createRoom(createRoomParams: CreateRoomParameters): Result<RoomId>
     suspend fun createDM(userId: UserId, isEncrypted: Boolean): Result<RoomId>
     suspend fun getProfile(userId: UserId): Result<MatrixUser>

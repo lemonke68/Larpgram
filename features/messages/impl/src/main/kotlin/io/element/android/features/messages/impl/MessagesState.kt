@@ -10,6 +10,8 @@ package io.element.android.features.messages.impl
 
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.gifs.impl.GifPickerState
+import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -61,7 +63,11 @@ data class MessagesState(
     val successorRoom: SuccessorRoom?,
     val threads: Threads,
     val showLiveLocationShareBanner: Boolean,
-    val eventSink: (MessagesEvent) -> Unit
+    val eventSink: (MessagesEvent) -> Unit,
+    // Правка форка: состояние пикера стикеров. Дефолт null, чтобы не трогать три
+    // десятка мест, где апстрим собирает MessagesState (в основном превью и тесты).
+    val stickerPickerState: StickerPickerState? = null,
+    val gifPickerState: GifPickerState? = null,
 ) {
     val isTombstoned = successorRoom != null
 

@@ -25,15 +25,23 @@ class DefaultEnterpriseServiceTest {
     }
 
     @Test
-    fun `defaultHomeserverList should return empty list`() {
+    fun `defaultHomeserverList contains only our homeserver`() {
         val defaultEnterpriseService = DefaultEnterpriseService()
-        assertThat(defaultEnterpriseService.defaultHomeserverList()).isEmpty()
+        assertThat(defaultEnterpriseService.defaultHomeserverList())
+            .containsExactly(DefaultEnterpriseService.HOMESERVER_URL)
     }
 
     @Test
-    fun `isAllowedToConnectToHomeserver is true for all homeserver urls`() = runTest {
+    fun `isAllowedToConnectToHomeserver is true only for our homeserver and its subdomains`() = runTest {
         val defaultEnterpriseService = DefaultEnterpriseService()
-        assertThat(defaultEnterpriseService.isAllowedToConnectToHomeserver(A_HOMESERVER_URL)).isTrue()
+        assertThat(defaultEnterpriseService.isAllowedToConnectToHomeserver(DefaultEnterpriseService.HOMESERVER_URL)).isTrue()
+        // Synapse отвечает на поддомене, туда уводит well-known.
+        assertThat(defaultEnterpriseService.isAllowedToConnectToHomeserver("https://matrix.mango-kokos.ru")).isTrue()
+        // Порт и путь не должны сбивать разбор.
+        assertThat(defaultEnterpriseService.isAllowedToConnectToHomeserver("https://matrix.mango-kokos.ru:8448/_matrix")).isTrue()
+        assertThat(defaultEnterpriseService.isAllowedToConnectToHomeserver(A_HOMESERVER_URL)).isFalse()
+        // Чужой домен, который лишь заканчивается похоже, пролезать не должен.
+        assertThat(defaultEnterpriseService.isAllowedToConnectToHomeserver("https://evilmango-kokos.ru")).isFalse()
     }
 
     @Test
@@ -79,15 +87,18 @@ class DefaultEnterpriseServiceTest {
     }
 
     @Test
-    fun `firebasePushGateway returns null`() = runTest {
+    fun `firebasePushGateway points at our own Sygnal`() = runTest {
         val defaultEnterpriseService = DefaultEnterpriseService()
-        assertThat(defaultEnterpriseService.firebasePushGateway()).isNull()
+        // Апстрим по умолчанию шлёт пуши через matrix.org, нам нужен свой шлюз.
+        assertThat(defaultEnterpriseService.firebasePushGateway())
+            .isEqualTo(DefaultEnterpriseService.PUSH_GATEWAY_URL)
     }
 
     @Test
-    fun `unifiedPushDefaultPushGateway returns null`() = runTest {
+    fun `unifiedPushDefaultPushGateway points at our own Sygnal`() = runTest {
         val defaultEnterpriseService = DefaultEnterpriseService()
-        assertThat(defaultEnterpriseService.unifiedPushDefaultPushGateway()).isNull()
+        assertThat(defaultEnterpriseService.unifiedPushDefaultPushGateway())
+            .isEqualTo(DefaultEnterpriseService.PUSH_GATEWAY_URL)
     }
 
     @Test

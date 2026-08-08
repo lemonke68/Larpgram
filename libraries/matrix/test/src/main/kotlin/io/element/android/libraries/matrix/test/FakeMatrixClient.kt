@@ -112,6 +112,9 @@ class FakeMatrixClient(
     private val createLinkMobileHandlerResult: () -> Result<LinkMobileHandler> = { lambdaError() },
     private val createLinkDesktopHandlerResult: () -> Result<LinkDesktopHandler> = { lambdaError() },
     private var unIgnoreUserResult: (UserId) -> Result<Unit> = { Result.success(Unit) },
+    private val getAccountDataResult: (String) -> Result<String?> = { Result.success(null) },
+    private val setAccountDataResult: (String, String) -> Result<Unit> = { _, _ -> Result.success(Unit) },
+    private val getAccessTokenResult: () -> Result<String> = { Result.success("aToken") },
     private val canReportRoomLambda: () -> Boolean = { false },
     private val isLivekitRtcSupportedLambda: () -> Boolean = { false },
     override val ignoredUsersFlow: StateFlow<ImmutableList<UserId>> = MutableStateFlow(persistentListOf()),
@@ -190,6 +193,18 @@ class FakeMatrixClient(
 
     override suspend fun unignoreUser(userId: UserId): Result<Unit> = simulateLongTask {
         return unIgnoreUserResult(userId)
+    }
+
+    override suspend fun getAccountData(eventType: String): Result<String?> = simulateLongTask {
+        return getAccountDataResult(eventType)
+    }
+
+    override suspend fun setAccountData(eventType: String, content: String): Result<Unit> = simulateLongTask {
+        return setAccountDataResult(eventType, content)
+    }
+
+    override suspend fun getAccessToken(): Result<String> = simulateLongTask {
+        return getAccessTokenResult()
     }
 
     override suspend fun createRoom(createRoomParams: CreateRoomParameters): Result<RoomId> = simulateLongTask {

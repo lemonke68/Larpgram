@@ -85,6 +85,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
+import io.element.android.features.messages.impl.timeline.model.event.isLarpgramCircle
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
@@ -517,7 +518,12 @@ private fun TimelineItemEventRowContent(
             interactionSource = interactionSource,
             onClick = onContentClick,
             onLongClick = onLongClick,
-            customBackgroundColor = dangerousContentBubbleColor,
+            // Правка форка: кружочку пузырь не нужен, он и так круглый.
+            customBackgroundColor = if ((event.content as? TimelineItemVideoContent)?.isLarpgramCircle == true) {
+                Color.Transparent
+            } else {
+                dangerousContentBubbleColor
+            },
             borderColor = borderColor,
         ) {
             MessageEventBubbleContent(

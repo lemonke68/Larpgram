@@ -134,7 +134,10 @@ class OnBoardingPresenter(
             defaultAccountProvider = defaultAccountProvider,
             mustChooseAccountProvider = mustChooseAccountProvider,
             canLoginWithQrCode = canLoginWithQrCode,
-            canCreateAccount = defaultAccountProvider == null && canConnectToAnyHomeserver && OnBoardingConfig.CAN_CREATE_ACCOUNT,
+            // Апстрим показывал регистрацию только когда сервер не выбран, потому что у него
+            // она начинается с выбора провайдера. У нас сервер один и заранее известный, но
+            // регистрироваться на нём надо: иначе новым людям неоткуда взяться.
+            canCreateAccount = OnBoardingConfig.CAN_CREATE_ACCOUNT,
             canReportBug = canReportBug && showReportBug,
             loginModeState = loginModeState,
             version = buildMeta.versionName,

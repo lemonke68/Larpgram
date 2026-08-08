@@ -13,7 +13,10 @@ object UnifiedPushConfig {
      * It is the push gateway for UnifiedPush.
      * Note: default_push_gateway_http_url should have path '/_matrix/push/v1/notify'
      */
-    const val DEFAULT_PUSH_GATEWAY_HTTP_URL: String = "https://matrix.gateway.unifiedpush.org/_matrix/push/v1/notify"
+    // Правка форка: свой шлюз вместо публичного matrix.gateway.unifiedpush.org. Через
+    // него идут уведомления всех наших людей, гонять их через чужой сервер незачем.
+    // Это запасной вариант: обычно шлюз определяется по адресу самого ntfy.
+    const val DEFAULT_PUSH_GATEWAY_HTTP_URL: String = "https://push.mango-kokos.ru/_matrix/push/v1/notify"
 
     const val UNIFIED_PUSH_DISTRIBUTORS_URL = "https://unifiedpush.org/users/distributors/"
 

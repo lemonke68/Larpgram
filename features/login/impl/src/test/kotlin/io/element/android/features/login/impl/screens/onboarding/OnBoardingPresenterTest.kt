@@ -190,7 +190,9 @@ class OnBoardingPresenterTest {
             awaitItem().also {
                 assertThat(it.defaultAccountProvider).isEqualTo(ACCOUNT_PROVIDER_FROM_LINK)
                 assertThat(it.canLoginWithQrCode).isFalse()
-                assertThat(it.canCreateAccount).isFalse()
+                // В форке регистрация доступна всегда: сервер один и известен заранее,
+                // выбирать провайдера не нужно, а новым людям нужен способ завести аккаунт.
+                assertThat(it.canCreateAccount).isTrue()
             }
         }
     }
@@ -213,7 +215,9 @@ class OnBoardingPresenterTest {
             awaitItem().also {
                 assertThat(it.defaultAccountProvider).isNull()
                 assertThat(it.canLoginWithQrCode).isTrue()
-                assertThat(it.canCreateAccount).isFalse()
+                // В форке регистрация доступна всегда: сервер один и известен заранее,
+                // выбирать провайдера не нужно, а новым людям нужен способ завести аккаунт.
+                assertThat(it.canCreateAccount).isTrue()
             }
         }
     }
@@ -235,7 +239,9 @@ class OnBoardingPresenterTest {
             awaitItem().also {
                 assertThat(it.defaultAccountProvider).isEqualTo(ACCOUNT_PROVIDER_FROM_CONFIG)
                 assertThat(it.canLoginWithQrCode).isTrue()
-                assertThat(it.canCreateAccount).isFalse()
+                // В форке регистрация доступна всегда: сервер один и известен заранее,
+                // выбирать провайдера не нужно, а новым людям нужен способ завести аккаунт.
+                assertThat(it.canCreateAccount).isTrue()
             }
         }
     }

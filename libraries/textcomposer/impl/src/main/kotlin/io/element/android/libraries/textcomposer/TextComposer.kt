@@ -131,6 +131,9 @@ fun TextComposer(
     resolveAtRoomMentionDisplay: () -> TextDisplay,
     modifier: Modifier = Modifier,
     showTextFormatting: Boolean = false,
+    // Правка форка: кнопка стикеров. null означает «не показывать», чтобы превью и
+    // прочие места апстрима продолжали работать без изменений.
+    onStickerClick: (() -> Unit)? = null,
 ) {
     val markdown = when (state) {
         is TextEditorState.Markdown -> state.state.text.value()
@@ -405,6 +408,7 @@ fun TextComposer(
             textInput = textInput,
             endButtonParams = endButtonParams,
             voiceRecording = voiceRecording,
+            onStickerClick = onStickerClick,
             onAddAttachment = onAddAttachment,
             onDeleteVoiceMessage = onDeleteVoiceMessage,
             onVoiceRecorderEvent = onVoiceRecorderEvent,
@@ -456,6 +460,8 @@ private fun StandardLayout(
     voiceRecording: @Composable () -> Unit,
     endButtonParams: EndButtonParams,
     onAddAttachment: () -> Unit,
+    // Правка форка: см. TextComposer.onStickerClick.
+    onStickerClick: (() -> Unit)? = null,
     onDeleteVoiceMessage: () -> Unit,
     onVoiceRecorderEvent: (VoiceMessageRecorderEvent) -> Unit,
     onResetComposerMode: () -> Unit,
@@ -536,6 +542,23 @@ private fun StandardLayout(
                     }
                 } else {
                     movableVoiceRecording()
+                }
+            }
+            // Правка форка: кнопка стикеров. Прячем во время записи голосового, там
+            // своя раскладка кнопок и места нет.
+            if (onStickerClick != null && voiceMessageState is VoiceMessageState.Idle) {
+                IconButton(
+                    modifier = Modifier
+                        .padding(bottom = 5.dp, top = 5.dp)
+                        .size(48.dp),
+                    onClick = onStickerClick,
+                ) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = CompoundIcons.Reaction(),
+                        contentDescription = "Стикеры",
+                        tint = ElementTheme.colors.iconSecondary,
+                    )
                 }
             }
             // To avoid loosing keyboard focus, the IconButton has to be defined here and has to be always enabled.

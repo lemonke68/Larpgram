@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Строки форка. Перекрывают одноимённые из модулей: ресурсы приложения имеют
+  приоритет над библиотечными, поэтому файлы переводов апстрима не трогаем и
+  ребейз их спокойно перезапишет.
+-->
+<resources>
+    <!--
+      Пустые строки прячут заголовок и подзаголовок онбординга: апстримовские
+      "Be in your element" и "fastest Element ever" это каламбуры про Element,
+      а свой слоган ещё не придуман. Впиши текст сюда, и он появится обратно.
+    -->
+    <string name="screen_onboarding_welcome_title"></string>
+    <string name="screen_onboarding_welcome_message"></string>
+</resources>

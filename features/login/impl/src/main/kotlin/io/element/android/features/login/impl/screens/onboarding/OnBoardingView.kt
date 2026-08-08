@@ -228,19 +228,30 @@ private fun OnBoardingContent(state: OnBoardingState) {
                     .fillMaxWidth(),
                 horizontalAlignment = CenterHorizontally,
             ) {
-                Text(
-                    text = stringResource(id = R.string.screen_onboarding_welcome_title),
-                    color = ElementTheme.colors.textPrimary,
-                    style = ElementTheme.typography.fontHeadingLgBold,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(id = R.string.screen_onboarding_welcome_message, state.productionApplicationName),
-                    color = ElementTheme.colors.textPrimary,
-                    style = ElementTheme.typography.fontBodyLgRegular,
-                    textAlign = TextAlign.Center,
-                )
+                // Пустая строка означает «не показывать»: слоган ещё не придуман, а пока
+                // его нет, лучше чистый экран, чем текст ни о чём. Чтобы вернуть заголовок,
+                // достаточно вписать строки в app/src/main/res/values{,-ru}/strings.xml.
+                val welcomeTitle = stringResource(id = R.string.screen_onboarding_welcome_title)
+                val welcomeMessage = stringResource(id = R.string.screen_onboarding_welcome_message, state.productionApplicationName)
+                if (welcomeTitle.isNotBlank()) {
+                    Text(
+                        text = welcomeTitle,
+                        color = ElementTheme.colors.textPrimary,
+                        style = ElementTheme.typography.fontHeadingLgBold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                if (welcomeTitle.isNotBlank() && welcomeMessage.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                if (welcomeMessage.isNotBlank()) {
+                    Text(
+                        text = welcomeMessage,
+                        color = ElementTheme.colors.textPrimary,
+                        style = ElementTheme.typography.fontBodyLgRegular,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }

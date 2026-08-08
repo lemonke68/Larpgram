@@ -219,4 +219,24 @@ interface JoinedRoom : BaseRoom {
      * the user's display name across all of their rooms.
      */
     suspend fun setOwnMemberDisplayName(displayName: String): Result<Unit>
+
+    /**
+     * Отправляет стикер, событие `m.sticker`.
+     *
+     * В Rust SDK своего метода для этого нет: `Timeline` умеет `sendImage`, `sendVideo` и
+     * прочее, но стикер это отдельный тип события, а не `m.room.message`. Поэтому шлём
+     * сырое событие мимо таймлайна, из-за чего **локального эха не будет**: свой стикер
+     * появится в чате после ответа сервера.
+     *
+     * @param url mxc-ссылка на картинку.
+     * @param body описание для клиентов без картинок и для доступности.
+     */
+    suspend fun sendSticker(
+        url: String,
+        body: String,
+        mimeType: String?,
+        width: Long?,
+        height: Long?,
+        size: Long?,
+    ): Result<Unit>
 }

@@ -32,6 +32,8 @@ import io.element.android.features.location.api.live.isCurrentlySharing
 import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.gifs.impl.GifPickerState
+import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
@@ -117,6 +119,9 @@ class MessagesPresenter(
     private val pinnedMessagesBannerPresenter: Presenter<PinnedMessagesBannerState>,
     private val roomCallStatePresenter: Presenter<RoomCallState>,
     private val roomMemberModerationPresenter: Presenter<RoomMemberModerationState>,
+    // Правка форка: пикеры стикеров и гифок.
+    private val stickerPickerPresenter: Presenter<StickerPickerState>,
+    private val gifPickerPresenter: Presenter<GifPickerState>,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val dispatchers: CoroutineDispatchers,
     private val clipboardHelper: ClipboardHelper,
@@ -296,6 +301,9 @@ class MessagesPresenter(
             }
         }
 
+        val stickerPickerState = stickerPickerPresenter.present()
+        val gifPickerState = gifPickerPresenter.present()
+
         return MessagesState(
             roomId = room.roomId,
             roomName = roomInfo.name,
@@ -330,6 +338,8 @@ class MessagesPresenter(
                 hasUnreadThreads = false,
             ),
             showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom && timelineState.timelineMode !is Timeline.Mode.Thread,
+            stickerPickerState = stickerPickerState,
+            gifPickerState = gifPickerState,
             eventSink = ::handleEvent,
         )
     }

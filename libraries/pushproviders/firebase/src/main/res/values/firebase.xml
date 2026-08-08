@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Правка форка: параметры нашего проекта Firebase (larpgram-206b7).
+  Раньше здесь лежал проект Element (vector-alpha), с ним пуши уходили бы не нам.
+  Значения взяты из google-services.json; секретного тут ничего нет, всё это и так
+  попадает в APK. Секретен только ключ сервисного аккаунта, он живёт на сервере у Sygnal.
+-->
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="default_web_client_id" translatable="false">912726360885-e87n3jva9uoj4vbidvijq78ebg02asv2.apps.googleusercontent.com</string>
-    <string name="firebase_database_url" translatable="false">https://vector-alpha.firebaseio.com</string>
-    <string name="gcm_defaultSenderId" translatable="false">912726360885</string>
-    <string name="google_api_key" translatable="false">AIzaSyAFZX8IhIfgzdOZvxDP_ISO5WYoU7jmQ5c</string>
-    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyAFZX8IhIfgzdOZvxDP_ISO5WYoU7jmQ5c</string>
-    <string name="google_storage_bucket" translatable="false">vector-alpha.appspot.com</string>
-    <string name="project_id" translatable="false" tools:ignore="UnusedResources">vector-alpha</string>
+    <string name="gcm_defaultSenderId" translatable="false">302452978088</string>
+    <string name="google_api_key" translatable="false">AIzaSyAe18b3ZaAp1kLU-sXQs6E2sVpW_zsBq9Q</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyAe18b3ZaAp1kLU-sXQs6E2sVpW_zsBq9Q</string>
+    <string name="google_storage_bucket" translatable="false">larpgram-206b7.firebasestorage.app</string>
+    <string name="project_id" translatable="false" tools:ignore="UnusedResources">larpgram-206b7</string>
 </resources>

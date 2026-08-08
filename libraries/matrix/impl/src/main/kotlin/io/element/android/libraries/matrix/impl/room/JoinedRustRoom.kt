@@ -71,6 +71,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.matrix.rustcomponents.sdk.DateDividerMode
 import org.matrix.rustcomponents.sdk.IdentityStatusChangeListener
 import org.matrix.rustcomponents.sdk.KnockRequestsListener
@@ -556,6 +558,32 @@ class JoinedRustRoom(
         }
     }
 
+    override suspend fun sendSticker(
+        url: String,
+        body: String,
+        mimeType: String?,
+        width: Long?,
+        height: Long?,
+        size: Long?,
+    ): Result<Unit> = withContext(roomDispatcher) {
+        runCatchingExceptions {
+            val info = buildJsonObject {
+                mimeType?.let { put("mimetype", it) }
+                width?.let { put("w", it) }
+                height?.let { put("h", it) }
+                size?.let { put("size", it) }
+            }
+            val content = buildJsonObject {
+                put("body", body)
+                put("url", url)
+                put("info", info)
+            }
+            // Стикер уходит сырым событием: своего метода в SDK нет, см. JoinedRoom.sendSticker.
+            innerRoom.sendRaw(STICKER_EVENT_TYPE, content.toString())
+            Unit
+        }
+    }
+
     override suspend fun setOwnMemberDisplayName(displayName: String): Result<Unit> = withContext(roomDispatcher) {
         runCatchingExceptions {
             innerRoom.setOwnMemberDisplayName(displayName)
@@ -584,5 +612,9 @@ class JoinedRustRoom(
             dispatcher = roomDispatcher,
             roomContentForwarder = roomContentForwarder,
         )
+    }
+
+    private companion object {
+        const val STICKER_EVENT_TYPE = "m.sticker"
     }
 }

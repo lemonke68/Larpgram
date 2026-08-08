@@ -12,5 +12,8 @@ object PushConfig {
     /**
      * Note: pusher_app_id cannot exceed 64 chars.
      */
-    const val PUSHER_APP_ID: String = "im.vector.app.android"
+    // Правка форка: идентификатор приложения для push-шлюза. Должен совпадать с ключом
+    // в конфиге Sygnal, иначе он не найдёт приложение и уведомление молча пропадёт.
+    // В апстриме тут im.vector.app.android, то есть Element.
+    const val PUSHER_APP_ID: String = "ru.mangokokos.larpgram"
 }

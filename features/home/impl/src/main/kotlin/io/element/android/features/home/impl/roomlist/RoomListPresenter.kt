@@ -47,6 +47,7 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
+import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
@@ -68,6 +69,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Inject
 class RoomListPresenter(
@@ -86,6 +88,8 @@ class RoomListPresenter(
     private val coldStartWatcher: AnalyticsColdStartWatcher,
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
     private val featureFlagService: FeatureFlagService,
+    // ВРЕМЕННО: для проверки чтения стикер-паков, убрать вместе с логом ниже.
+    private val imagePackSource: ImagePackSource,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -100,6 +104,34 @@ class RoomListPresenter(
 
         LaunchedEffect(Unit) {
             roomListDataSource.launchIn(this)
+        }
+
+        // ВРЕМЕННО: проверка чтения стикер-паков, пока нет пикера. Удалить вместе с
+        // появлением UI выбора стикеров. Тег для logcat: LarpgramPacks.
+        LaunchedEffect(Unit) {
+            val rooms = imagePackSource.getEmoteRooms()
+            Timber.tag("LarpgramPacks").i("подключённых комнат с паками: %d %s", rooms.size, rooms)
+            val packs = imagePackSource.getAllPacks()
+            Timber.tag("LarpgramPacks").i("паков: %d", packs.size)
+            packs.forEach { pack ->
+                Timber.tag("LarpgramPacks").i(
+                    "пак '%s' (%s), картинок %d, стикеров %d, эмодзи %d",
+                    pack.displayName,
+                    pack.id,
+                    pack.images.size,
+                    pack.stickers.size,
+                    pack.emoticons.size,
+                )
+                pack.images.forEach { image ->
+                    Timber.tag("LarpgramPacks").i(
+                        "  %s -> %s [%s] %s",
+                        image.shortcode,
+                        image.url,
+                        image.usages.joinToString(),
+                        image.bestDescription,
+                    )
+                }
+            }
         }
 
         var securityBannerDismissed by rememberSaveable { mutableStateOf(false) }
