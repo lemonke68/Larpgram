@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- См. комментарий в values/strings.xml. -->
+<resources>
+    <string name="screen_onboarding_welcome_title"></string>
+    <string name="screen_onboarding_welcome_message"></string>
+</resources>

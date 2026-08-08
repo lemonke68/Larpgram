@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
+import io.element.android.features.messages.impl.timeline.model.event.isLarpgramCircle
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContentProvider
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.protection.ProtectedView
@@ -66,6 +67,19 @@ fun TimelineItemVideoView(
     contentValidationState: ContentValidationState,
     modifier: Modifier = Modifier,
 ) {
+    // Правка форка: кружочки рисуются иначе, круглыми и без пузыря.
+    if (content.isLarpgramCircle) {
+        LarpgramCircleVideoView(
+            content = content,
+            hideMediaContent = hideMediaContent,
+            onContentClick = onContentClick,
+            onLongClick = onLongClick,
+            onShowContentClick = onShowContentClick,
+            modifier = modifier,
+        )
+        return
+    }
+
     val isTalkbackActive = isTalkbackActive()
     val a11yLabel = stringResource(CommonStrings.common_video)
     val description = content.caption?.let { "$a11yLabel: $it" } ?: a11yLabel

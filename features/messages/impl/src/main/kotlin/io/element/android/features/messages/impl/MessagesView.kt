@@ -34,12 +34,17 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,6 +103,10 @@ import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
 import io.element.android.features.roomcall.api.RoomCallState
+import io.element.android.features.gifs.impl.GifPickerEvents
+import io.element.android.features.gifs.impl.GifPickerView
+import io.element.android.features.stickers.impl.StickerPickerEvents
+import io.element.android.features.stickers.impl.StickerPickerView
 import io.element.android.libraries.androidutils.ui.hideKeyboard
 import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertMolecule
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
@@ -111,6 +120,7 @@ import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.theme.components.BottomSheetDragHandle
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.HideKeyboardWhenDisposed
 import io.element.android.libraries.designsystem.utils.KeepScreenOn
@@ -580,6 +590,7 @@ private fun MessagesViewContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessagesViewComposerBottomSheetContents(
     state: MessagesState,
@@ -587,6 +598,71 @@ private fun MessagesViewComposerBottomSheetContents(
     onLinkClick: (String, Boolean) -> Unit,
 ) {
     val contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
+
+    // Правка форка: пикер стикеров. Показывается только если состояние доехало из
+    // презентера, иначе (превью, тесты) экран ведёт себя как в апстриме.
+    var showStickerPicker by rememberSaveable { mutableStateOf(false) }
+    var showGifTab by rememberSaveable { mutableStateOf(false) }
+    val stickerPickerState = state.stickerPickerState
+    val gifPickerState = state.gifPickerState
+    // Правка форка: пикер живёт дольше шторки, поэтому при открытии просим перечитать
+    // данные. Иначе список недавних гифок остаётся таким, каким был при первом показе.
+    LaunchedEffect(showStickerPicker, showGifTab) {
+        if (showStickerPicker && showGifTab) {
+            gifPickerState?.eventSink(GifPickerEvents.Retry)
+        }
+    }
+
+    if (stickerPickerState != null && showStickerPicker) {
+        ModalBottomSheet(
+            onDismissRequest = { showStickerPicker = false },
+            // Сетки внутри скроллятся сами, шторке скролл не нужен.
+            scrollable = false,
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (gifPickerState != null) {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                    ) {
+                        SegmentedButton(
+                            selected = !showGifTab,
+                            onClick = { showGifTab = false },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) {
+                            Text("Стикеры")
+                        }
+                        SegmentedButton(
+                            selected = showGifTab,
+                            onClick = { showGifTab = true },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) {
+                            Text("GIF")
+                        }
+                    }
+                }
+                if (showGifTab && gifPickerState != null) {
+                    GifPickerView(
+                        state = gifPickerState,
+                        onGifClick = { gif ->
+                            gifPickerState.eventSink(GifPickerEvents.SendGif(gif))
+                            showStickerPicker = false
+                        },
+                    )
+                } else {
+                    StickerPickerView(
+                        state = stickerPickerState,
+                        onStickerClick = { image ->
+                            stickerPickerState.eventSink(StickerPickerEvents.SendSticker(image))
+                            showStickerPicker = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+
     when {
         state.successorRoom != null -> {
             SuccessorRoomBanner(
@@ -615,6 +691,12 @@ private fun MessagesViewComposerBottomSheetContents(
                         state = state.composerState,
                         voiceMessageState = state.voiceMessageComposerState,
                         modifier = Modifier.fillMaxWidth(),
+                        // Правка форка: открываем пикер стикеров.
+                        onStickerClick = if (stickerPickerState != null) {
+                            { showStickerPicker = true }
+                        } else {
+                            null
+                        },
                     )
                 }
             }

@@ -382,6 +382,24 @@ class RustMatrixClient(
         }
     }
 
+    override suspend fun getAccountData(eventType: String): Result<String?> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            innerClient.accountData(eventType)
+        }
+    }
+
+    override suspend fun setAccountData(eventType: String, content: String): Result<Unit> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            innerClient.setAccountData(eventType, content)
+        }
+    }
+
+    override suspend fun getAccessToken(): Result<String> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            innerClient.session().accessToken
+        }
+    }
+
     override suspend fun unignoreUser(userId: UserId): Result<Unit> = withContext(sessionDispatcher) {
         runCatchingExceptions {
             innerClient.unignoreUser(userId.value)

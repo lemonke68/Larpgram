@@ -32,6 +32,8 @@ dependencies {
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.featureflag.api)
+    // ВРЕМЕННО: для проверки чтения стикер-паков в RoomListPresenter.
+    implementation(projects.libraries.imagepacks.api)
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.matrixui)
     implementation(projects.libraries.designsystem)
