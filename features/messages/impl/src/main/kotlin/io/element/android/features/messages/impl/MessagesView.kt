@@ -103,10 +103,13 @@ import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
 import io.element.android.features.roomcall.api.RoomCallState
+import io.element.android.features.circles.impl.CircleRecorderEvents
+import io.element.android.features.circles.impl.CircleRecorderView
 import io.element.android.features.gifs.impl.GifPickerEvents
 import io.element.android.features.gifs.impl.GifPickerView
 import io.element.android.features.stickers.impl.StickerPickerEvents
 import io.element.android.features.stickers.impl.StickerPickerView
+import io.element.android.features.stickers.impl.StickerSendErrorDialog
 import io.element.android.libraries.androidutils.ui.hideKeyboard
 import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertMolecule
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
@@ -663,6 +666,17 @@ private fun MessagesViewComposerBottomSheetContents(
         }
     }
 
+    // Правка форка: сообщение о неудачной отправке стикера живёт СНАРУЖИ шторки. Внутри
+    // его бы никто не увидел: шторка закрывается в тот же момент, когда стикер уходит.
+    if (stickerPickerState != null) {
+        StickerSendErrorDialog(state = stickerPickerState)
+    }
+
+    // Правка форка: запись кружочка занимает весь экран поверх чата.
+    state.circleRecorderState?.let { circleState ->
+        CircleRecorderView(state = circleState)
+    }
+
     when {
         state.successorRoom != null -> {
             SuccessorRoomBanner(
@@ -696,6 +710,10 @@ private fun MessagesViewComposerBottomSheetContents(
                             { showStickerPicker = true }
                         } else {
                             null
+                        },
+                        // Правка форка: открываем запись кружочка.
+                        onCircleClick = state.circleRecorderState?.let { circleState ->
+                            { circleState.eventSink(CircleRecorderEvents.Open) }
                         },
                     )
                 }

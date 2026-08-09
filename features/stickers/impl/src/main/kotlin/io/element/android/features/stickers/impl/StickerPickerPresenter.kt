@@ -27,6 +27,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Inject
 @ContributesBinding(RoomScope::class)
@@ -42,6 +43,7 @@ class StickerPickerPresenter(
         var selectedPackIndex by remember { mutableIntStateOf(0) }
         var isLoading by remember { mutableStateOf(true) }
         var importState by remember { mutableStateOf<ImportState>(ImportState.Hidden) }
+        var sendError by remember { mutableStateOf<StickerSendError?>(null) }
 
         suspend fun load() {
             isLoading = true
@@ -74,7 +76,13 @@ class StickerPickerPresenter(
                         width = image.width,
                         height = image.height,
                         size = image.size,
-                    )
+                    ).onFailure { error ->
+                        // Молча ронять отправку нельзя: именно из-за этого неотправка
+                        // стикеров в шифрованных комнатах не оставляла ни следа ни в
+                        // логе, ни на экране.
+                        Timber.e(error, "не удалось отправить стикер")
+                        sendError = error.toStickerSendError()
+                    }
                 }
                 StickerPickerEvents.ShowImport -> importState = ImportState.Asking
                 StickerPickerEvents.DismissImport -> importState = ImportState.Hidden
@@ -90,13 +98,14 @@ class StickerPickerPresenter(
                             )
                         }
                         ImportResult.NotFound -> ImportState.Error("Такого пака нет. Проверь название.")
-                        is ImportResult.NoStaticStickers -> ImportState.Error(
-                            "В этом паке только анимированные стикеры, их пока не умеем."
+                        is ImportResult.EmptyPack -> ImportState.Error(
+                            "В этом паке нет стикеров."
                         )
                         ImportResult.Failed -> ImportState.Error("Не получилось. Попробуй ещё раз.")
                     }
                 }
                 StickerPickerEvents.Refresh -> coroutineScope.launch { load() }
+                StickerPickerEvents.DismissSendError -> sendError = null
             }
         }
 
@@ -105,7 +114,29 @@ class StickerPickerPresenter(
             selectedPackIndex = selectedPackIndex,
             isLoading = isLoading,
             importState = importState,
+            sendError = sendError,
             eventSink = ::handleEvent,
         )
+    }
+}
+
+/**
+ * Опознаём отказ шифрования из-за неподписанной сессии.
+ *
+ * Типа исключения под это в SDK нет, наружу приходит `ClientException.Generic`, поэтому
+ * смотрим на текст в `details`. Хрупко: строка живёт в Rust SDK и может поменяться при
+ * обновлении. Если поменяется, человек увидит общее сообщение вместо точного, но ничего
+ * не сломается, поэтому так и оставлено.
+ */
+private fun Throwable.toStickerSendError(): StickerSendError {
+    val details = generateSequence(this) { it.cause }
+        .mapNotNull { it.message }
+        .joinToString(" ")
+    return if (details.contains("VerifiedUserHasUnsignedDevice") ||
+        details.contains("SessionRecipientCollectionError")
+    ) {
+        StickerSendError.UnverifiedSession
+    } else {
+        StickerSendError.Other
     }
 }

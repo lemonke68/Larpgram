@@ -32,6 +32,7 @@ import io.element.android.features.location.api.live.isCurrentlySharing
 import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
@@ -122,6 +123,7 @@ class MessagesPresenter(
     // Правка форка: пикеры стикеров и гифок.
     private val stickerPickerPresenter: Presenter<StickerPickerState>,
     private val gifPickerPresenter: Presenter<GifPickerState>,
+    private val circleRecorderPresenter: Presenter<CircleRecorderState>,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val dispatchers: CoroutineDispatchers,
     private val clipboardHelper: ClipboardHelper,
@@ -303,6 +305,7 @@ class MessagesPresenter(
 
         val stickerPickerState = stickerPickerPresenter.present()
         val gifPickerState = gifPickerPresenter.present()
+        val circleRecorderState = circleRecorderPresenter.present()
 
         return MessagesState(
             roomId = room.roomId,
@@ -340,6 +343,7 @@ class MessagesPresenter(
             showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom && timelineState.timelineMode !is Timeline.Mode.Thread,
             stickerPickerState = stickerPickerState,
             gifPickerState = gifPickerState,
+            circleRecorderState = circleRecorderState,
             eventSink = ::handleEvent,
         )
     }

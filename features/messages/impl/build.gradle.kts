@@ -38,6 +38,7 @@ dependencies {
     implementation(projects.libraries.core)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
+    implementation(projects.features.circles.impl)
     implementation(projects.features.gifs.impl)
     implementation(projects.features.stickers.impl)
     implementation(projects.libraries.matrixui)
