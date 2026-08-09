@@ -14,12 +14,14 @@ import kotlinx.collections.immutable.ImmutableList
  * @param packs паки, в которых есть хотя бы один стикер.
  * @param selectedPackIndex какая вкладка открыта, всегда в границах [packs].
  * @param isLoading true пока паки грузятся в первый раз.
+ * @param sendError чем закончилась последняя неудачная отправка, null если всё хорошо.
  */
 data class StickerPickerState(
     val packs: ImmutableList<ImagePack>,
     val selectedPackIndex: Int,
     val isLoading: Boolean,
     val importState: ImportState,
+    val sendError: StickerSendError?,
     val eventSink: (StickerPickerEvents) -> Unit,
 ) {
     /** Стикеры выбранного пака, пустой список если паков нет. */
@@ -48,6 +50,26 @@ sealed interface ImportState {
     data class Error(val message: String) : ImportState
 }
 
+/**
+ * Почему стикер не ушёл.
+ *
+ * Зачем вообще отдельный тип: стикер отправляется через `Room.sendRaw`, а такое событие
+ * не попадает в таймлайн. Значит апстримовский интерфейс с красным знаком и повтором к
+ * нему не прицепится, и без своего сообщения неудача выглядит так, будто человек просто
+ * промахнулся мимо стикера.
+ */
+sealed interface StickerSendError {
+    /**
+     * На аккаунте есть сессия без подписи кросс-ключом, и SDK отказывается шифровать.
+     * Ломается не только стикер, а вся отправка в шифрованные комнаты; чинится в
+     * апстримовском диалоге у обычного сообщения.
+     */
+    data object UnverifiedSession : StickerSendError
+
+    /** Всё остальное: сеть, сервер, что угодно. */
+    data object Other : StickerSendError
+}
+
 sealed interface StickerPickerEvents {
     /** Открыть окно добавления пака. */
     data object ShowImport : StickerPickerEvents
@@ -66,4 +88,7 @@ sealed interface StickerPickerEvents {
 
     /** Перечитать паки: например, после импорта нового. */
     data object Refresh : StickerPickerEvents
+
+    /** Закрыть сообщение о неудачной отправке. */
+    data object DismissSendError : StickerPickerEvents
 }

@@ -38,6 +38,7 @@ internal fun MessageComposerView(
     modifier: Modifier = Modifier,
     // Правка форка: открытие пикера стикеров.
     onStickerClick: (() -> Unit)? = null,
+    onCircleClick: (() -> Unit)? = null,
 ) {
     val view = LocalView.current
     fun sendMessage() {
@@ -100,6 +101,7 @@ internal fun MessageComposerView(
     TextComposer(
         modifier = modifier,
         onStickerClick = onStickerClick,
+        onCircleClick = onCircleClick,
         state = state.textEditorState,
         voiceMessageState = voiceMessageState.voiceMessageState,
         onRequestFocus = ::onRequestFocus,

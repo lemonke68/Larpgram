@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import io.element.android.libraries.designsystem.theme.components.TextField
 import io.element.android.libraries.designsystem.theme.components.TextButton
+import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
 import io.element.android.libraries.designsystem.components.dialogs.ListDialog
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -109,6 +110,41 @@ private fun EmptyContent(onAddClick: () -> Unit) {
     }
 }
 
+/**
+ * Сообщение о том, что стикер не ушёл.
+ *
+ * Нужно потому, что стикер отправляется сырым событием мимо таймлайна: апстримовский
+ * красный знак с повтором к нему не прицепится, и без этого окна неудача выглядит так,
+ * будто человек просто промахнулся мимо картинки.
+ *
+ * Вызывается СНАРУЖИ шторки с пикером, а не внутри: шторка закрывается сразу по нажатию
+ * на стикер, и диалог внутри неё никто бы не успел увидеть.
+ */
+@Composable
+fun StickerSendErrorDialog(state: StickerPickerState) {
+    val error = state.sendError ?: return
+    val dismiss = { state.eventSink(StickerPickerEvents.DismissSendError) }
+
+    // ErrorDialog, а не ListDialog: у последнего всегда есть кнопка отмены, а отменять
+    // тут нечего, сообщение чисто информационное.
+    ErrorDialog(
+        title = "Стикер не отправился",
+        content = when (error) {
+            // Ведём к уборке сессий, а не к кнопке «отправить всё равно». Она бы тоже
+            // разблокировала отправку, но означает «шли ключи на устройство, которое я
+            // не проверял», то есть обход предупреждения, а не его устранение.
+            StickerSendError.UnverifiedSession ->
+                "В аккаунт заходили с устройства, которое не подтверждено, и пока оно есть, " +
+                    "ничего не уходит в зашифрованные чаты. Открой настройки, раздел с " +
+                    "сессиями, и выйди из тех, которыми больше не пользуешься."
+            StickerSendError.Other ->
+                "Что-то пошло не так. Проверь связь и попробуй ещё раз."
+        },
+        submitText = "Понятно",
+        onSubmit = dismiss,
+    )
+}
+
 /** Окно добавления пака: ввод имени, ход импорта и результат. */
 @Composable
 private fun ImportDialog(state: StickerPickerState) {
@@ -120,8 +156,8 @@ private fun ImportDialog(state: StickerPickerState) {
     val subtitle = when (importState) {
         is ImportState.InProgress -> "Забираем стикеры, это займёт несколько секунд."
         is ImportState.Done -> if (importState.skipped > 0) {
-            // Честно говорим про анимированные, иначе человек решит, что пак приехал битым.
-            "Готово: «${importState.packName}». Анимированных пропущено: ${importState.skipped}."
+            // Говорим прямо, иначе человек решит, что пак приехал битым.
+            "Готово: «${importState.packName}». Не получилось забрать: ${importState.skipped}."
         } else {
             "Готово: «${importState.packName}»."
         }

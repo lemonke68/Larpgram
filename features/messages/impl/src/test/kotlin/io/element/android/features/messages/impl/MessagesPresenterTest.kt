@@ -110,6 +110,11 @@ import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import io.element.android.tests.testutils.testWithLifecycleOwner
+import io.element.android.features.circles.impl.CircleRecorderMode
+import io.element.android.features.circles.impl.CircleRecorderState
+import io.element.android.features.gifs.impl.GifPickerState
+import io.element.android.features.stickers.impl.ImportState
+import io.element.android.features.stickers.impl.StickerPickerState
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -1414,6 +1419,38 @@ class MessagesPresenterTest {
             markAsFullyRead = markAsFullyRead,
             liveLocationShareManager = liveLocationShareManager,
             sessionCoroutineScope = backgroundScope,
+            // Правка форка: пикеры стикеров и гифок. Тестам они не интересны, поэтому
+            // отдаём пустое состояние, лишь бы граф собрался.
+            stickerPickerPresenter = {
+                StickerPickerState(
+                    packs = persistentListOf(),
+                    selectedPackIndex = 0,
+                    isLoading = false,
+                    importState = ImportState.Hidden,
+                    sendError = null,
+                    eventSink = {},
+                )
+            },
+            circleRecorderPresenter = {
+                CircleRecorderState(
+                    mode = CircleRecorderMode.Hidden,
+                    elapsedMillis = 0L,
+                    isFrontCamera = true,
+                    needsPermission = false,
+                    recorder = null,
+                    eventSink = {},
+                )
+            },
+            gifPickerPresenter = {
+                GifPickerState(
+                    query = "",
+                    gifs = persistentListOf(),
+                    isLoading = false,
+                    hasFailed = false,
+                    isShowingRecent = true,
+                    eventSink = {},
+                )
+            },
         )
     }
 }

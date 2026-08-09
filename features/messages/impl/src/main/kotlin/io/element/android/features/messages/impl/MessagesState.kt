@@ -10,6 +10,7 @@ package io.element.android.features.messages.impl
 
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
@@ -68,6 +69,7 @@ data class MessagesState(
     // десятка мест, где апстрим собирает MessagesState (в основном превью и тесты).
     val stickerPickerState: StickerPickerState? = null,
     val gifPickerState: GifPickerState? = null,
+    val circleRecorderState: CircleRecorderState? = null,
 ) {
     val isTombstoned = successorRoom != null
 

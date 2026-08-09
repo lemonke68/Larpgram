@@ -134,6 +134,7 @@ fun TextComposer(
     // Правка форка: кнопка стикеров. null означает «не показывать», чтобы превью и
     // прочие места апстрима продолжали работать без изменений.
     onStickerClick: (() -> Unit)? = null,
+    onCircleClick: (() -> Unit)? = null,
 ) {
     val markdown = when (state) {
         is TextEditorState.Markdown -> state.state.text.value()
@@ -409,6 +410,7 @@ fun TextComposer(
             endButtonParams = endButtonParams,
             voiceRecording = voiceRecording,
             onStickerClick = onStickerClick,
+            onCircleClick = onCircleClick,
             onAddAttachment = onAddAttachment,
             onDeleteVoiceMessage = onDeleteVoiceMessage,
             onVoiceRecorderEvent = onVoiceRecorderEvent,
@@ -462,6 +464,7 @@ private fun StandardLayout(
     onAddAttachment: () -> Unit,
     // Правка форка: см. TextComposer.onStickerClick.
     onStickerClick: (() -> Unit)? = null,
+    onCircleClick: (() -> Unit)? = null,
     onDeleteVoiceMessage: () -> Unit,
     onVoiceRecorderEvent: (VoiceMessageRecorderEvent) -> Unit,
     onResetComposerMode: () -> Unit,
@@ -557,6 +560,22 @@ private fun StandardLayout(
                         modifier = Modifier.size(24.dp),
                         imageVector = CompoundIcons.Reaction(),
                         contentDescription = "Стикеры",
+                        tint = ElementTheme.colors.iconSecondary,
+                    )
+                }
+            }
+            // Правка форка: кнопка записи кружочка, прячется по тем же правилам.
+            if (onCircleClick != null && voiceMessageState is VoiceMessageState.Idle) {
+                IconButton(
+                    modifier = Modifier
+                        .padding(bottom = 5.dp, top = 5.dp)
+                        .size(48.dp),
+                    onClick = onCircleClick,
+                ) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = CompoundIcons.VideoCall(),
+                        contentDescription = "Кружочек",
                         tint = ElementTheme.colors.iconSecondary,
                     )
                 }
