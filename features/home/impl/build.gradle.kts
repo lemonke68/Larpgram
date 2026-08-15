@@ -32,6 +32,8 @@ dependencies {
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.featureflag.api)
+    // Правка форка: баннер с напоминанием привязать почту.
+    implementation(projects.libraries.accountemail.api)
     // ВРЕМЕННО: для проверки чтения стикер-паков в RoomListPresenter.
     implementation(projects.libraries.imagepacks.api)
     implementation(projects.libraries.matrix.api)

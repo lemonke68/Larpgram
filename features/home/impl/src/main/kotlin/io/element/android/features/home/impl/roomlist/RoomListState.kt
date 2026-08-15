@@ -57,6 +57,9 @@ enum class SecurityBannerState {
     None,
     SetUpRecovery,
     RecoveryKeyConfirmation,
+
+    /** Правка форка: у аккаунта нет почты, а значит нечем восстановить доступ. */
+    ConnectEmail,
 }
 
 @Immutable
@@ -64,10 +67,15 @@ sealed interface RoomListContentState {
     data class Skeleton(val count: Int) : RoomListContentState
     data class Empty(
         val securityBannerState: SecurityBannerState,
+        // Правка форка: адрес страницы аккаунта в MAS, туда ведёт баннер про почту.
+        // null значит, что сервер её не отдал, и тогда баннер не показываем.
+        val accountManagementUrl: String? = null,
     ) : RoomListContentState
 
     data class Rooms(
         val securityBannerState: SecurityBannerState,
+        // Правка форка: см. коммент у Empty выше.
+        val accountManagementUrl: String? = null,
         val fullScreenIntentPermissionsState: FullScreenIntentPermissionsState,
         val batteryOptimizationState: BatteryOptimizationState,
         val showNewNotificationSoundBanner: Boolean,
