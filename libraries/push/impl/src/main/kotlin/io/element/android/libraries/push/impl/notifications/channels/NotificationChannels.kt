@@ -44,7 +44,11 @@ import timber.log.Timber
  * IDs for channels
  * ========================================================================================== */
 internal const val SILENT_NOTIFICATION_CHANNEL_ID = "DEFAULT_SILENT_NOTIFICATION_CHANNEL_ID_V2"
-internal const val NOISY_NOTIFICATION_CHANNEL_ID_BASE = "DEFAULT_NOISY_NOTIFICATION_CHANNEL_ID_V2"
+// Правка форка: V2 -> V3. Android не меняет настройки уже созданного канала, поэтому смена
+// важности на HIGH (см. buildNoisyChannel) доедет до людей только под новым идентификатором.
+// Старые V2-каналы удаляются миграцией ниже, чтобы в настройках телефона не осталось двух.
+internal const val NOISY_NOTIFICATION_CHANNEL_ID_BASE = "DEFAULT_NOISY_NOTIFICATION_CHANNEL_ID_V3"
+private const val LEGACY_NOISY_NOTIFICATION_CHANNEL_ID_BASE_V2 = "DEFAULT_NOISY_NOTIFICATION_CHANNEL_ID_V2"
 internal const val CALL_NOTIFICATION_CHANNEL_ID = "CALL_NOTIFICATION_CHANNEL_ID_V3"
 internal const val RINGING_CALL_NOTIFICATION_CHANNEL_ID_BASE = "RINGING_CALL_NOTIFICATION_CHANNEL_ID"
 
@@ -144,7 +148,8 @@ class DefaultNotificationChannels(
         for (channel in notificationManager.notificationChannels) {
             val channelId = channel.id
             val legacyBaseName = "DEFAULT_NOISY_NOTIFICATION_CHANNEL_ID_BASE"
-            if (channelId.startsWith(legacyBaseName)) {
+            // Правка форка: сюда же V2-каналы, они остались с важности DEFAULT.
+            if (channelId.startsWith(legacyBaseName) || channelId.startsWith(LEGACY_NOISY_NOTIFICATION_CHANNEL_ID_BASE_V2)) {
                 notificationManager.deleteNotificationChannel(channelId)
             }
         }
@@ -216,7 +221,11 @@ class DefaultNotificationChannels(
     }
 
     private fun buildNoisyChannel(channelId: String, soundUri: Uri?, accentColor: Int): NotificationChannelCompat {
-        val builder = NotificationChannelCompat.Builder(channelId, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+        // Правка форка: HIGH вместо DEFAULT. Разница ровно в одном: при DEFAULT (важность 3)
+        // уведомление о сообщении звучит, но молча ложится в шторку, а всплывающей плашки
+        // поверх экрана нет — проверено на живом телефоне 2026-08-14. В Telegram плашка есть,
+        // и люди ждут именно её. Звонки у апстрима и так на HIGH.
+        val builder = NotificationChannelCompat.Builder(channelId, NotificationManagerCompat.IMPORTANCE_HIGH)
             .setName(stringProvider.getString(R.string.notification_channel_noisy).ifEmpty { "Noisy notifications" })
             .setDescription(stringProvider.getString(R.string.notification_channel_noisy))
             .setVibrationEnabled(true)
