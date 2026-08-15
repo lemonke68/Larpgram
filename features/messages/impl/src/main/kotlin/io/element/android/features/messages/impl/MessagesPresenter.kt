@@ -75,6 +75,7 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.emoji.api.recentemojis.AddRecentEmoji
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.toThreadId
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
@@ -138,6 +139,8 @@ class MessagesPresenter(
     private val markAsFullyRead: MarkAsFullyRead,
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
+    // Правка форка: загрузчик медиа для проигрывания кружочков прямо в таймлайне.
+    private val matrixClient: MatrixClient,
 ) : Presenter<MessagesState> {
     @AssistedFactory
     interface Factory {
@@ -344,6 +347,7 @@ class MessagesPresenter(
             stickerPickerState = stickerPickerState,
             gifPickerState = gifPickerState,
             circleRecorderState = circleRecorderState,
+            circleMediaLoader = matrixClient.matrixMediaLoader,
             eventSink = ::handleEvent,
         )
     }
