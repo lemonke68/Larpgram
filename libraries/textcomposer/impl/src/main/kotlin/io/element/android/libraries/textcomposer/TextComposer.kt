@@ -109,6 +109,9 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * https://www.figma.com/design/G1xy0HDZKJf5TCRFmKb5d5/Compound-Android-Components?node-id=2012-39036
  */
+// Правка форка: размер иконок полосы ввода, замер по макету редизайна 2023.
+private val COMPOSER_ICON_SIZE = 28.dp
+
 @Composable
 fun TextComposer(
     state: TextEditorState,
@@ -134,7 +137,7 @@ fun TextComposer(
     // Правка форка: кнопка стикеров. null означает «не показывать», чтобы превью и
     // прочие места апстрима продолжали работать без изменений.
     onStickerClick: (() -> Unit)? = null,
-    onCircleClick: (() -> Unit)? = null,
+    circleRecordGestures: CircleRecordGestures? = null,
 ) {
     val markdown = when (state) {
         is TextEditorState.Markdown -> state.state.text.value()
@@ -235,6 +238,19 @@ fun TextComposer(
     }
 
     val hapticFeedback = LocalHapticFeedback.current
+
+    // Правка форка: отпустил кнопку — голосовое улетело, как в Telegram. Апстрим после
+    // остановки показывает предпросмотр с кнопкой отправки, поэтому ждём, пока запись
+    // дойдёт до предпросмотра, и отправляем сами. Ждать обязательно: сразу после Stop
+    // файла ещё нет.
+    var autoSendVoiceMessage by remember { mutableStateOf(false) }
+    LaunchedEffect(voiceMessageState, autoSendVoiceMessage) {
+        if (!autoSendVoiceMessage) return@LaunchedEffect
+        val preview = voiceMessageState as? VoiceMessageState.Preview ?: return@LaunchedEffect
+        if (preview.isSending) return@LaunchedEffect
+        autoSendVoiceMessage = false
+        onSendVoiceMessage()
+    }
 
     fun performHapticFeedback() {
         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -410,7 +426,22 @@ fun TextComposer(
             endButtonParams = endButtonParams,
             voiceRecording = voiceRecording,
             onStickerClick = onStickerClick,
-            onCircleClick = onCircleClick,
+            circleRecordGestures = circleRecordGestures,
+            // Кнопка остаётся и во время записи голосового: она обрабатывает жест, и если
+            // убрать её из композиции на старте записи, вместе с ней умрёт обработчик, а
+            // отпускание пальца ловить будет некому — голосовое просто не записывалось
+            // (телефон, 2026-08-15).
+            showRecordModeButton = circleRecordGestures != null &&
+                !canSendTextMessage &&
+                (voiceMessageState is VoiceMessageState.Idle || voiceMessageState is VoiceMessageState.Recording),
+            onVoiceHoldStop = {
+                autoSendVoiceMessage = true
+                onVoiceRecorderEvent(VoiceMessageRecorderEvent.Stop)
+            },
+            onVoiceHoldCancel = {
+                autoSendVoiceMessage = false
+                onVoiceRecorderEvent(VoiceMessageRecorderEvent.Cancel)
+            },
             onAddAttachment = onAddAttachment,
             onDeleteVoiceMessage = onDeleteVoiceMessage,
             onVoiceRecorderEvent = onVoiceRecorderEvent,
@@ -464,12 +495,18 @@ private fun StandardLayout(
     onAddAttachment: () -> Unit,
     // Правка форка: см. TextComposer.onStickerClick.
     onStickerClick: (() -> Unit)? = null,
-    onCircleClick: (() -> Unit)? = null,
+    circleRecordGestures: CircleRecordGestures? = null,
+    // Правка форка: показывать ли единую кнопку записи вместо апстримовской, и что
+    // делать с голосовым по отпусканию и по отмене (флаг автоотправки живёт выше).
+    showRecordModeButton: Boolean = false,
+    onVoiceHoldStop: () -> Unit = {},
+    onVoiceHoldCancel: () -> Unit = {},
     onDeleteVoiceMessage: () -> Unit,
     onVoiceRecorderEvent: (VoiceMessageRecorderEvent) -> Unit,
     onResetComposerMode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
     Column(modifier = modifier) {
         if (isRoomEncrypted == false) {
             Spacer(Modifier.height(16.dp))
@@ -506,15 +543,13 @@ private fun StandardLayout(
                         },
                     ) {
                         if (voiceMessageState is VoiceMessageState.Idle) {
+                            // Правка форка: скрепка вместо чёрного круга с плюсом. В макете все
+                            // кнопки полосы одинаковые, плоские и 28dp; залитый круг выбивался.
                             Icon(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .size(30.dp)
-                                    .background(ElementTheme.colors.iconPrimary)
-                                    .padding(3.dp),
-                                imageVector = CompoundIcons.Plus(),
+                                modifier = Modifier.size(COMPOSER_ICON_SIZE),
+                                imageVector = CompoundIcons.Attachment(),
                                 contentDescription = stringResource(R.string.rich_text_editor_a11y_add_attachment),
-                                tint = ElementTheme.colors.iconOnSolidPrimary
+                                tint = ElementTheme.colors.iconSecondary,
                             )
                         } else {
                             when (voiceMessageState) {
@@ -564,35 +599,35 @@ private fun StandardLayout(
                     )
                 }
             }
-            // Правка форка: кнопка записи кружочка, прячется по тем же правилам.
-            if (onCircleClick != null && voiceMessageState is VoiceMessageState.Idle) {
+            // Правка форка: пока поле пустое и ничего не записывается, справа стоит одна
+            // кнопка на голосовое и кружочек — удержание пишет, тап меняет режим. Во всех
+            // остальных состояниях (есть текст, идёт запись голосового, предпросмотр)
+            // кнопка апстримовская, потому что там она отправляет и останавливает.
+            if (showRecordModeButton && circleRecordGestures != null) {
+                LarpgramRecordModeButton(
+                    circleGestures = circleRecordGestures,
+                    onVoiceStart = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onVoiceRecorderEvent(VoiceMessageRecorderEvent.Start)
+                    },
+                    onVoiceStop = onVoiceHoldStop,
+                    onVoiceCancel = onVoiceHoldCancel,
+                )
+            } else {
+                // To avoid loosing keyboard focus, the IconButton has to be defined here and has to be always enabled.
+                val endButtonContentDescription = stringResource(endButtonParams.endButtonContentDescriptionResId)
                 IconButton(
                     modifier = Modifier
-                        .padding(bottom = 5.dp, top = 5.dp)
-                        .size(48.dp),
-                    onClick = onCircleClick,
-                ) {
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        imageVector = CompoundIcons.VideoCall(),
-                        contentDescription = "Кружочек",
-                        tint = ElementTheme.colors.iconSecondary,
-                    )
-                }
+                        .padding(bottom = 5.dp, top = 5.dp, end = 6.dp, start = 6.dp)
+                        .size(48.dp)
+                        .clearAndSetSemantics {
+                            contentDescription = endButtonContentDescription
+                            onClick(null, null)
+                        },
+                    onClick = endButtonParams.endButtonClick,
+                    content = endButtonParams.endButtonContent,
+                )
             }
-            // To avoid loosing keyboard focus, the IconButton has to be defined here and has to be always enabled.
-            val endButtonContentDescription = stringResource(endButtonParams.endButtonContentDescriptionResId)
-            IconButton(
-                modifier = Modifier
-                    .padding(bottom = 5.dp, top = 5.dp, end = 6.dp, start = 6.dp)
-                    .size(48.dp)
-                    .clearAndSetSemantics {
-                        contentDescription = endButtonContentDescription
-                        onClick(null, null)
-                    },
-                onClick = endButtonParams.endButtonClick,
-                content = endButtonParams.endButtonContent,
-            )
         }
     }
 }
@@ -684,15 +719,14 @@ private fun TextInputBox(
     modifier: Modifier = Modifier,
     textInput: @Composable () -> Unit,
 ) {
-    val bgColor = ElementTheme.colors.bgSubtleSecondary
-    val borderColor = ElementTheme.colors.borderDisabled
+    // Правка форка: поле ввода без подложки и без рамки. В макете текст лежит прямо на полосе,
+    // «пилюля» вокруг него — элементовская. Скругление оставлено: оно нужно спецрежимам
+    // (ответ, редактирование), где внутри поля появляется цитата.
     val roundedCorners = textInputRoundedCornerShape(composerMode = composerMode)
 
     Column(
         modifier = Modifier
             .clip(roundedCorners)
-            .border(0.5.dp, borderColor, roundedCorners)
-            .background(color = bgColor)
             .requiredHeightIn(min = 42.dp)
             .fillMaxSize()
             .then(modifier),

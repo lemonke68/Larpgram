@@ -22,6 +22,13 @@ data class CircleRecorderState(
     val isFrontCamera: Boolean,
     val needsPermission: Boolean,
     val recorder: CircleRecorder?,
+    /**
+     * Зафиксирована ли запись свайпом вверх.
+     *
+     * Пока не зафиксирована, запись идёт «пока держишь палец»: отпустил — отправилось.
+     * После фиксации палец не нужен, и на экране появляются кнопки «отправить» и «отмена».
+     */
+    val isLocked: Boolean,
     val eventSink: (CircleRecorderEvents) -> Unit,
 ) {
     val isVisible: Boolean get() = mode != CircleRecorderMode.Hidden
@@ -60,6 +67,9 @@ sealed interface CircleRecorderEvents {
 
     /** Остановить и выбросить. */
     data object CancelRecording : CircleRecorderEvents
+
+    /** Зафиксировать запись: свайп вверх, дальше можно отпустить палец. */
+    data object LockRecording : CircleRecorderEvents
 
     /** Переключить фронтальную и основную камеру. */
     data object FlipCamera : CircleRecorderEvents

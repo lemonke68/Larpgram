@@ -9,6 +9,9 @@ package io.element.android.features.circles.impl
 import android.annotation.SuppressLint
 import android.content.Context
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.camera.core.MirrorMode
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCaseGroup
 import androidx.camera.core.ViewPort
@@ -63,16 +66,40 @@ class CircleRecorder(
      */
     suspend fun bind(lifecycleOwner: LifecycleOwner, frontCamera: Boolean): Preview {
         val provider = cameraProvider ?: context.awaitCameraProvider().also { cameraProvider = it }
-        val preview = previewUseCase ?: Preview.Builder().build().also { previewUseCase = it }
-        val capture = videoCapture ?: VideoCapture.withOutput(
+        // Превью маленькое: на экране это круг ~300 dp, а полное разрешение камеры на
+        // слабом железе долго стартует и лагает при записи (Kirin 710, 2026-08-15).
+        val preview = previewUseCase ?: Preview.Builder()
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            android.util.Size(720, 720),
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+                        )
+                    )
+                    .build()
+            )
+            .build()
+            .also { previewUseCase = it }
+        val capture = videoCapture ?: VideoCapture.Builder(
             Recorder.Builder()
                 // SD хватает: кружочек рисуется 200 dp, гнаться за качеством незачем, а
                 // вес и время загрузки растут быстро.
                 .setQualitySelector(
-                    QualitySelector.from(Quality.SD, FallbackStrategy.higherQualityOrLowerThan(Quality.SD))
+                    // Откат ВНИЗ, а не вверх: с higherQualityOrLowerThan устройство без
+                    // ровного SD выдавало 720p, и запись начинала лагать. Кружочек
+                    // рисуется 200 dp, лишние пиксели там не видит никто.
+                    QualitySelector.from(Quality.SD, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))
                 )
                 .build()
-        ).also { videoCapture = it }
+        )
+            // Зеркалим запись с фронталки, как это делает Telegram. По умолчанию CameraX
+            // пишет «как видят другие», а превью при записи зеркальное, и человек получает
+            // кружок, не совпадающий с тем, что он видел, — юзер заметил это сразу
+            // (2026-08-14). Задняя камера не зеркалится, поэтому ON_FRONT_ONLY.
+            .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
+            .build()
+            .also { videoCapture = it }
 
         val useCaseGroup = UseCaseGroup.Builder()
             .addUseCase(preview)

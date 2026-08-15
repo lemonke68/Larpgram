@@ -25,6 +25,7 @@ import io.element.android.features.messages.api.timeline.voicemessages.composer.
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.textcomposer.CircleRecordGestures
 import io.element.android.libraries.textcomposer.TextComposer
 import io.element.android.libraries.textcomposer.model.Suggestion
 import io.element.android.libraries.textcomposer.model.VoiceMessagePlayerEvent
@@ -38,7 +39,7 @@ internal fun MessageComposerView(
     modifier: Modifier = Modifier,
     // Правка форка: открытие пикера стикеров.
     onStickerClick: (() -> Unit)? = null,
-    onCircleClick: (() -> Unit)? = null,
+    circleRecordGestures: CircleRecordGestures? = null,
 ) {
     val view = LocalView.current
     fun sendMessage() {
@@ -101,7 +102,7 @@ internal fun MessageComposerView(
     TextComposer(
         modifier = modifier,
         onStickerClick = onStickerClick,
-        onCircleClick = onCircleClick,
+        circleRecordGestures = circleRecordGestures,
         state = state.textEditorState,
         voiceMessageState = voiceMessageState.voiceMessageState,
         onRequestFocus = ::onRequestFocus,

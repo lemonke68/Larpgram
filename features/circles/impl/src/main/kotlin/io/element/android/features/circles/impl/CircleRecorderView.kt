@@ -41,17 +41,32 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
 
 /** Разрешения, без которых записывать нечего. */
 private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
 
 /**
- * Экран записи кружочка: круглое превью камеры, счётчик и кнопка.
+ * Экран записи кружочка: круглое превью камеры, кольцо прогресса, время и кнопки.
  *
- * Пока тап начинает и тап заканчивает. Телеграмное удержание со свайпами добавится после
- * проверки на живом телефоне: на эмуляторе жесты мышью не отражают того, как это
- * ощущается пальцем, и настраивать их вслепую бессмысленно.
+ * Свёрстан по макетам «10. Circle Recording» и «11. Circle Recording Free Hand» из
+ * Telegram-кита (рендеры в `design/tg-ref/circle-recording/`). Запись ведётся жестами,
+ * см. `LarpgramCircleRecordButton` в композере.
  */
 @Composable
 fun CircleRecorderView(
@@ -61,6 +76,12 @@ fun CircleRecorderView(
     if (!state.isVisible) return
 
     val context = LocalContext.current
+
+    // Размытия чата под записью нет: на Android 10 системного блюра не существует
+    // (Modifier.blur и BLUR_BEHIND — с API 31), а обходной путь со снимком экрана в
+    // уменьшенный bitmap на живом телефоне картинки не дал. Юзер решил забить, поэтому
+    // просто тёмный фон. Если вернёмся: проверять, что decorView вообще рисуется в
+    // software Canvas.
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -84,87 +105,204 @@ fun CircleRecorderView(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                // Затемняем чат: во время записи он не нужен, а контраст с круглым превью
-                // получается телеграмный.
-                .background(Color.Black.copy(alpha = 0.92f)),
-            contentAlignment = Alignment.Center,
+                .background(SCRIM_COLOR),
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+            // Квадратное превью по центру. Круг из него делает маска ниже, а не обрезка:
+            // PreviewView рисует в SurfaceView, который живёт в отдельном слое окна и не
+            // обрезается ни маской Compose, ни даже границами родителя — картинка,
+            // растянутая под квадрат, торчала полосами сверху и снизу (2026-08-15).
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(CIRCLE_WIDTH_FRACTION)
+                    .aspectRatio(1f)
+                    .padding(RING_GAP),
+                contentAlignment = Alignment.Center,
             ) {
+                val recorder = state.recorder
+                if (LocalInspectionMode.current || recorder == null) {
+                    Text(text = "камера", color = Color.White)
+                } else {
+                    CameraPreview(
+                        recorder = recorder,
+                        isFrontCamera = state.isFrontCamera,
+                    )
+                }
+            }
+
+            // Маска и кольцо на весь экран: маска закрывает всё, кроме круга, тем же
+            // цветом, что и фон, поэтому любой вылет превью прячется под ней.
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val radius = (size.width * CIRCLE_WIDTH_FRACTION) / 2 - RING_GAP.toPx()
+                val middle = Offset(size.width / 2, size.height / 2)
+
+                val mask = Path().apply {
+                    addRect(Rect(Offset.Zero, size))
+                    addOval(Rect(center = middle, radius = radius))
+                    fillType = PathFillType.EvenOdd
+                }
+                // Всё, кроме круга, закрываем тем же размытым фоном: превью на SurfaceView
+                // вылезает за свои границы, и без этого его края торчали бы поверх.
+                drawPath(mask, SCRIM_COLOR)
+
+                // Кольцо прогресса по краю круга, растёт по часовой от верха.
+                val stroke = RING_STROKE.toPx()
+                val ringRadius = radius + RING_GAP.toPx() / 2
+                drawArc(
+                    color = Color.White.copy(alpha = 0.9f),
+                    startAngle = -90f,
+                    sweepAngle = 360f * state.progress,
+                    useCenter = false,
+                    topLeft = Offset(middle.x - ringRadius, middle.y - ringRadius),
+                    size = Size(ringRadius * 2, ringRadius * 2),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+
+            // Маленькая кнопка над кнопкой записи: замок, пока держишь палец, и стоп
+            // после фиксации. Ровно как в макете «Circle Recording Free Hand».
+            if (state.mode == CircleRecorderMode.Recording) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.78f)
-                        // Квадрат на экране, круг после обрезки: сама запись тоже квадратная.
-                        .aspectRatio(1f)
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 20.dp, bottom = RECORD_BUTTON_SIZE + 32.dp)
+                        .size(LOCK_BUTTON_SIZE)
                         .clip(CircleShape)
-                        .background(Color.Black),
+                        .background(Color.White)
+                        .then(
+                            if (state.isLocked) {
+                                Modifier.clickable { state.eventSink(CircleRecorderEvents.StopAndSend) }
+                            } else {
+                                Modifier
+                            }
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val recorder = state.recorder
-                    if (LocalInspectionMode.current || recorder == null) {
-                        Text(text = "камера")
+                    if (state.isLocked) {
+                        // Синий квадрат «стоп» на белом круге, как в макете.
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(ElementTheme.colors.bgAccentRest)
+                        )
                     } else {
-                        CameraPreview(
-                            recorder = recorder,
-                            isFrontCamera = state.isFrontCamera,
+                        Icon(
+                            modifier = Modifier.size(20.dp),
+                            imageVector = CompoundIcons.LockSolid(),
+                            contentDescription = "Закрепить запись",
+                            tint = ElementTheme.colors.iconAccentPrimary,
                         )
                     }
                 }
+            }
 
-                Text(
-                    text = formatElapsed(state.elapsedMillis),
-                    // Фон здесь всегда тёмный, тема приложения на него не влияет.
-                    color = Color.White,
-                )
+            // Нижний ряд: смена камеры, «таблетка» со временем и кнопка записи.
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                IconButton(onClick = { state.eventSink(CircleRecorderEvents.FlipCamera) }) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = CompoundIcons.SwitchCameraSolid(),
+                        contentDescription = "Сменить камеру",
+                        tint = Color.White,
+                    )
+                }
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(PILL_HEIGHT)
+                        .clip(CircleShape)
+                        .background(if (ElementTheme.isLightTheme) Color.White else Color(0xFF2C2C2E))
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    when (state.mode) {
-                        CircleRecorderMode.Ready -> {
-                            OverlayButton(
-                                text = "Отмена",
-                                onClick = { state.eventSink(CircleRecorderEvents.Close) },
+                    // Красная точка и время — левый край таблетки.
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE5484D))
+                    )
+                    Text(
+                        modifier = Modifier.padding(start = 8.dp),
+                        text = formatElapsed(state.elapsedMillis),
+                        color = if (ElementTheme.isLightTheme) Color.Black else Color.White,
+                    )
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (state.isLocked) {
+                            Text(
+                                modifier = Modifier.clickable {
+                                    state.eventSink(CircleRecorderEvents.CancelRecording)
+                                },
+                                text = "ОТМЕНА",
+                                color = ElementTheme.colors.textActionAccent,
                             )
-                            OverlayButton(
-                                text = "Записать",
-                                onClick = { state.eventSink(CircleRecorderEvents.StartRecording) },
-                            )
-                            OverlayButton(
-                                text = if (state.isFrontCamera) "Задняя" else "Фронтальная",
-                                onClick = { state.eventSink(CircleRecorderEvents.FlipCamera) },
+                        } else {
+                            Text(
+                                text = "‹ Свайп для отмены",
+                                color = if (ElementTheme.isLightTheme) {
+                                    Color.Black.copy(alpha = 0.5f)
+                                } else {
+                                    Color.White.copy(alpha = 0.6f)
+                                },
                             )
                         }
-                        CircleRecorderMode.Recording -> {
-                            OverlayButton(
-                                text = "Отменить",
-                                onClick = { state.eventSink(CircleRecorderEvents.CancelRecording) },
-                            )
-                            OverlayButton(
-                                text = "Отправить",
-                                onClick = { state.eventSink(CircleRecorderEvents.StopAndSend) },
-                            )
-                            // Камеру можно менять и на ходу: запись это переживает,
-                            // потому что помечена как постоянная.
-                            OverlayButton(
-                                text = if (state.isFrontCamera) "Задняя" else "Фронтальная",
-                                onClick = { state.eventSink(CircleRecorderEvents.FlipCamera) },
-                            )
-                        }
-                        CircleRecorderMode.Sending -> CircularProgressIndicator(
+                    }
+                }
+
+                // Кнопка записи стоит там же, где кнопка кружочка в композере: палец во
+                // время записи лежит именно здесь.
+                Box(
+                    modifier = Modifier
+                        .size(RECORD_BUTTON_SIZE)
+                        .clip(CircleShape)
+                        .background(ElementTheme.colors.bgAccentRest),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (state.mode == CircleRecorderMode.Sending) {
+                        CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             color = Color.White,
                         )
-                        CircleRecorderMode.Hidden -> Unit
+                    } else {
+                        Icon(
+                            modifier = Modifier.size(28.dp),
+                            imageVector = CompoundIcons.VideoCallSolid(),
+                            contentDescription = null,
+                            tint = Color.White,
+                        )
                     }
                 }
             }
         }
     }
 }
+
+/** Запасной фон, если снять кадр чата не удалось. */
+private val SCRIM_COLOR = Color(0xFF0E0E10)
+
+
+
+
+
+/** Доля ширины экрана под круг: в макете круг занимает почти всю ширину. */
+private const val CIRCLE_WIDTH_FRACTION = 0.78f
+private val RING_STROKE = 3.dp
+private val RING_GAP = 10.dp
+private val PILL_HEIGHT = 48.dp
+private val LOCK_BUTTON_SIZE = 44.dp
+private val RECORD_BUTTON_SIZE = 68.dp
 
 @Composable
 private fun CameraPreview(
@@ -186,6 +324,10 @@ private fun CameraPreview(
         factory = { context ->
             PreviewView(context).also {
                 it.scaleType = PreviewView.ScaleType.FILL_CENTER
+                // Оставляем режим по умолчанию (SurfaceView): TextureView здесь давал
+                // долгий старт превью и заметные лаги при записи на слабом железе
+                // (Kirin 710, проверено 2026-08-15). Круг делаем маской поверх, а не
+                // обрезкой, потому что SurfaceView обрезку Compose игнорирует.
                 previewView = it
             }
         },

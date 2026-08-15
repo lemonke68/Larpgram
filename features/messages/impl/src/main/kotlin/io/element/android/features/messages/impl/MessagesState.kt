@@ -29,6 +29,7 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
+import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
 import kotlinx.collections.immutable.ImmutableList
@@ -70,6 +71,9 @@ data class MessagesState(
     val stickerPickerState: StickerPickerState? = null,
     val gifPickerState: GifPickerState? = null,
     val circleRecorderState: CircleRecorderState? = null,
+    // Загрузчик медиа для проигрывания кружочков в таймлайне. Дефолт null по той же
+    // причине: превью и тесты собирают состояние сами, и медиа им не нужно.
+    val circleMediaLoader: MatrixMediaLoader? = null,
 ) {
     val isTombstoned = successorRoom != null
 

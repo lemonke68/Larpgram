@@ -55,6 +55,8 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatch
 import io.element.android.libraries.emoji.api.recentemojis.AddRecentEmoji
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
+import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
@@ -1388,6 +1390,8 @@ class MessagesPresenterTest {
         addRecentEmoji: AddRecentEmoji = AddRecentEmoji { _ -> lambdaError() },
         markAsFullyRead: MarkAsFullyRead = FakeMarkAsFullyRead(),
         liveLocationShareManager: FakeActiveLiveLocationShareManager = FakeActiveLiveLocationShareManager(),
+        // Правка форка: нужен только ради загрузчика медиа для кружочков.
+        matrixClient: MatrixClient = FakeMatrixClient(),
     ): MessagesPresenter {
         return MessagesPresenter(
             navigator = navigator,
@@ -1438,6 +1442,7 @@ class MessagesPresenterTest {
                     isFrontCamera = true,
                     needsPermission = false,
                     recorder = null,
+                    isLocked = false,
                     eventSink = {},
                 )
             },
@@ -1451,6 +1456,8 @@ class MessagesPresenterTest {
                     eventSink = {},
                 )
             },
+            // Правка форка: клиент нужен только ради загрузчика медиа для кружочков.
+            matrixClient = matrixClient,
         )
     }
 }

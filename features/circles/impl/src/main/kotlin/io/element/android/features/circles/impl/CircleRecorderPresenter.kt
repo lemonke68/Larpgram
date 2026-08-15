@@ -22,16 +22,17 @@ import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.io.File
 
 /**
  * Экран записи кружочка.
  *
- * Пока это тап для старта и тап для остановки. Телеграмное удержание кнопки со свайпом
- * вверх для фиксации и вбок для отмены будет позже: у апстрима такой механики нет даже
- * для голосовых (там тоже тап), а на эмуляторе жесты мышью врут, поэтому их всё равно
- * пришлось бы переделывать после проверки на живом телефоне.
+ * Жесты телеграмные (сделаны 2026-08-14 на живом телефоне): держишь кнопку — пишется,
+ * отпустил — отправилось, свайп вверх фиксирует запись, свайп влево отменяет. Сама
+ * обработка жеста живёт в кнопке композера (`LarpgramCircleRecordButton`), сюда приходят
+ * уже готовые события.
  */
 @Inject
 @ContributesBinding(RoomScope::class)
@@ -50,6 +51,8 @@ class CircleRecorderPresenter(
         // Отмена доходит до колбэка записи не мгновенно, а файл дописывается в любом
         // случае. Флаг говорит обработчику результата, что этот файл никому не нужен.
         var discardResult by remember { mutableStateOf(false) }
+        // Зафиксирована ли запись свайпом вверх (см. CircleRecorderState.isLocked).
+        var isLocked by remember { mutableStateOf(false) }
 
         // Счётчик времени и жёсткая остановка на максимуме.
         LaunchedEffect(mode) {
@@ -100,13 +103,42 @@ class CircleRecorderPresenter(
                 }
                 CircleRecorderEvents.StartRecording -> {
                     discardResult = false
-                    if (recorder.start(::handleResult)) {
-                        mode = CircleRecorderMode.Recording
-                    } else {
-                        Timber.e("камера не готова, запись не началась")
+                    isLocked = false
+                    // Камера привязывается не мгновенно, а запись по жесту начинается в
+                    // момент касания кнопки, когда экран записи только открылся. Поэтому
+                    // ждём готовности, а не отказываемся с первой попытки: иначе первое
+                    // нажатие всегда уходило бы впустую.
+                    coroutineScope.launch {
+                        val started = withTimeoutOrNull(START_TIMEOUT_MS) {
+                            while (!recorder.start(::handleResult)) {
+                                delay(START_RETRY_MS)
+                            }
+                            true
+                        }
+                        if (started == true) {
+                            // Палец могли отпустить, пока камера просыпалась: тогда запись
+                            // уже не нужна, и её надо сразу свернуть.
+                            if (mode == CircleRecorderMode.Hidden) {
+                                discardResult = true
+                                recorder.cancel()
+                            } else {
+                                mode = CircleRecorderMode.Recording
+                            }
+                        } else {
+                            Timber.e("камера не готова, запись не началась")
+                            mode = CircleRecorderMode.Hidden
+                        }
                     }
                 }
+                CircleRecorderEvents.LockRecording -> isLocked = true
                 CircleRecorderEvents.StopAndSend -> {
+                    // Палец подняли раньше, чем камера успела начать писать: отправлять
+                    // нечего, просто закрываем экран. Запуск, если он ещё в пути, увидит
+                    // Hidden и свернётся сам.
+                    if (mode != CircleRecorderMode.Recording) {
+                        mode = CircleRecorderMode.Hidden
+                        return
+                    }
                     recorder.stop()
                     mode = CircleRecorderMode.Sending
                 }
@@ -129,11 +161,16 @@ class CircleRecorderPresenter(
             isFrontCamera = isFrontCamera,
             needsPermission = needsPermission,
             recorder = recorder,
+            isLocked = isLocked,
             eventSink = ::handleEvent,
         )
     }
 
     private companion object {
         const val TICK_MS = 100L
+
+        /** Сколько ждём готовности камеры после касания кнопки. */
+        const val START_TIMEOUT_MS = 3000L
+        const val START_RETRY_MS = 50L
     }
 }
