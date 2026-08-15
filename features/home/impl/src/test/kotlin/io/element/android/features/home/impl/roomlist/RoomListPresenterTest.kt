@@ -37,6 +37,7 @@ import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.test.FakeDateFormatter
 import io.element.android.libraries.eventformatter.api.RoomLatestEventFormatter
 import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventFormatter
+import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
@@ -205,6 +206,110 @@ class RoomListPresenterTest {
             nextState.eventSink(RoomListEvent.DismissBanner)
             val finalState = awaitItem()
             assertThat(finalState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+        }
+    }
+
+    // Правка форка: баннер с напоминанием привязать почту.
+    private suspend fun clientWithRoomsAndRecoveryEnabled(
+        accountManagementUrl: Result<String?> = Result.success("https://matrix.mango-kokos.ru/auth/account/"),
+    ) = FakeMatrixClient(
+        roomListService = FakeRoomListService(
+            createRoomListLambda = { FakeDynamicRoomList(loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))) }
+        ),
+        // Иначе выиграл бы баннер про ключи, он показывается первым.
+        encryptionService = FakeEncryptionService().apply { emitRecoveryState(RecoveryState.ENABLED) },
+        syncService = FakeSyncService(initialSyncState = SyncState.Running),
+        accountManagementUrlResult = { accountManagementUrl },
+    )
+
+    @Test
+    fun `present - no email on the account shows the connect email banner`() = runTest {
+        val presenter = createRoomListPresenter(
+            client = clientWithRoomsAndRecoveryEnabled(),
+            accountEmailStatus = FakeAccountEmailStatus(hasEmailResult = { false }),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate {
+                it.contentState is RoomListContentState.Rooms &&
+                    it.contentAsRooms().securityBannerState == SecurityBannerState.ConnectEmail
+            }.last()
+            assertThat(state.contentAsRooms().accountManagementUrl).isEqualTo("https://matrix.mango-kokos.ru/auth/account/")
+        }
+    }
+
+    @Test
+    fun `present - an email on the account means no banner`() = runTest {
+        val presenter = createRoomListPresenter(
+            client = clientWithRoomsAndRecoveryEnabled(),
+            accountEmailStatus = FakeAccountEmailStatus(hasEmailResult = { true }),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
+            assertThat(state.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+        }
+    }
+
+    @Test
+    fun `present - an unreachable server does not show the banner`() = runTest {
+        val presenter = createRoomListPresenter(
+            client = clientWithRoomsAndRecoveryEnabled(),
+            // null значит «не выяснили», а не «почты нет».
+            accountEmailStatus = FakeAccountEmailStatus(hasEmailResult = { null }),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
+            assertThat(state.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+        }
+    }
+
+    @Test
+    fun `present - a previously hidden banner stays hidden`() = runTest {
+        val presenter = createRoomListPresenter(
+            client = clientWithRoomsAndRecoveryEnabled(),
+            accountEmailStatus = FakeAccountEmailStatus(
+                hasEmailResult = { false },
+                isBannerHiddenResult = { true },
+            ),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
+            assertThat(state.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+        }
+    }
+
+    @Test
+    fun `present - handle DismissConnectEmailBanner`() = runTest {
+        var hideBannerCalls = 0
+        val presenter = createRoomListPresenter(
+            client = clientWithRoomsAndRecoveryEnabled(),
+            accountEmailStatus = FakeAccountEmailStatus(
+                hasEmailResult = { false },
+                onHideBanner = { hideBannerCalls++ },
+            ),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate {
+                it.contentState is RoomListContentState.Rooms &&
+                    it.contentAsRooms().securityBannerState == SecurityBannerState.ConnectEmail
+            }.last()
+            state.eventSink(RoomListEvent.DismissConnectEmailBanner)
+            val finalState = consumeItemsUntilPredicate {
+                it.contentAsRooms().securityBannerState == SecurityBannerState.None
+            }.last()
+            assertThat(finalState.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+            assertThat(hideBannerCalls).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun `present - without an account management url there is nowhere to send the person`() = runTest {
+        val presenter = createRoomListPresenter(
+            client = clientWithRoomsAndRecoveryEnabled(accountManagementUrl = Result.success(null)),
+            accountEmailStatus = FakeAccountEmailStatus(hasEmailResult = { false }),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
+            assertThat(state.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
         }
     }
 
@@ -664,6 +769,7 @@ class RoomListPresenterTest {
         announcementService: AnnouncementService = FakeAnnouncementService(),
         featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
         markRoomAsRead: MarkRoomAsRead? = null,
+        accountEmailStatus: AccountEmailStatus = FakeAccountEmailStatus(),
     ) = RoomListPresenter(
         client = client,
         leaveRoomPresenter = { leaveRoomState },
@@ -695,5 +801,8 @@ class RoomListPresenterTest {
         announcementService = announcementService,
         coldStartWatcher = FakeAnalyticsColdStartWatcher(),
         featureFlagService = featureFlagService,
+        // Зависимости форка: почта для баннера и паки для временного лога.
+        accountEmailStatus = accountEmailStatus,
+        imagePackSource = FakeImagePackSource(),
     )
 }

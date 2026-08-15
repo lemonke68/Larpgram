@@ -42,6 +42,7 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteS
 import io.element.android.features.leaveroom.api.LeaveRoomEvent
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
+import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -51,6 +52,7 @@ import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
+import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
@@ -88,6 +90,8 @@ class RoomListPresenter(
     private val coldStartWatcher: AnalyticsColdStartWatcher,
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
     private val featureFlagService: FeatureFlagService,
+    // Правка форка: баннер с напоминанием привязать почту.
+    private val accountEmailStatus: AccountEmailStatus,
     // ВРЕМЕННО: для проверки чтения стикер-паков, убрать вместе с логом ниже.
     private val imagePackSource: ImagePackSource,
 ) : Presenter<RoomListState> {
@@ -135,6 +139,29 @@ class RoomListPresenter(
         }
 
         var securityBannerDismissed by rememberSaveable { mutableStateOf(false) }
+
+        // Правка форка: баннер про почту.
+        //
+        // Спрашиваем один раз за показ экрана, а не подпиской: адрес сам собой не
+        // появляется и не исчезает, а привязка происходит в браузере, после чего человек
+        // всё равно возвращается в приложение заново.
+        //
+        // hasEmail() == false, а не != true: null означает «не дозвонились до сервера», и
+        // на нём баннер показывать нельзя, иначе он выскочит в самолётном режиме у того,
+        // у кого почта давно привязана.
+        var connectEmailBannerDismissed by rememberSaveable { mutableStateOf(false) }
+        val accountNeedsEmail by produceState(false) {
+            value = !accountEmailStatus.isBannerHidden() && accountEmailStatus.hasEmail() == false
+        }
+        // Адрес спрашиваем только когда баннер и правда нужен: у тех, кто почту уже
+        // привязал, это лишний поход в сеть на каждом открытии списка чатов.
+        val accountManagementUrl by produceState<String?>(null, accountNeedsEmail) {
+            value = if (accountNeedsEmail) {
+                client.getAccountManagementUrl(AccountManagementAction.Profile).getOrNull()
+            } else {
+                null
+            }
+        }
         val showNewNotificationSoundBanner by remember {
             announcementService.announcementsToShowFlow().map { announcements ->
                 announcements.contains(Announcement.NewNotificationSound)
@@ -156,6 +183,10 @@ class RoomListPresenter(
                 RoomListEvent.DismissBanner -> securityBannerDismissed = true
                 RoomListEvent.DismissNewNotificationSoundBanner -> coroutineScope.launch {
                     announcementService.onAnnouncementDismissed(Announcement.NewNotificationSound)
+                }
+                RoomListEvent.DismissConnectEmailBanner -> {
+                    connectEmailBannerDismissed = true
+                    coroutineScope.launch { accountEmailStatus.hideBanner() }
                 }
                 RoomListEvent.ToggleSearchResults -> searchState.eventSink(RoomListSearchEvent.ToggleSearchVisibility)
                 is RoomListEvent.ShowContextMenu -> {
@@ -199,6 +230,9 @@ class RoomListPresenter(
 
         val contentState = roomListContentState(
             securityBannerDismissed,
+            // Баннер про почту показываем, только если знаем, куда вести человека.
+            showConnectEmailBanner = accountNeedsEmail && !connectEmailBannerDismissed && accountManagementUrl != null,
+            accountManagementUrl = accountManagementUrl,
             showNewNotificationSoundBanner,
             showUnreadCount,
         )
@@ -221,13 +255,16 @@ class RoomListPresenter(
     @Composable
     private fun rememberSecurityBannerState(
         securityBannerDismissed: Boolean,
+        showConnectEmailBanner: Boolean,
     ): State<SecurityBannerState> {
         val currentSecurityBannerDismissed by rememberUpdatedState(securityBannerDismissed)
+        val currentShowConnectEmailBanner by rememberUpdatedState(showConnectEmailBanner)
         val recoveryState by encryptionService.recoveryStateStateFlow.collectAsState()
         return remember {
             derivedStateOf {
                 calculateBannerState(
                     securityBannerDismissed = currentSecurityBannerDismissed,
+                    showConnectEmailBanner = currentShowConnectEmailBanner,
                     recoveryState = recoveryState,
                 )
             }
@@ -236,18 +273,24 @@ class RoomListPresenter(
 
     private fun calculateBannerState(
         securityBannerDismissed: Boolean,
+        showConnectEmailBanner: Boolean,
         recoveryState: RecoveryState,
     ): SecurityBannerState {
-        if (securityBannerDismissed) {
-            return SecurityBannerState.None
+        if (!securityBannerDismissed) {
+            when (recoveryState) {
+                RecoveryState.DISABLED -> return SecurityBannerState.SetUpRecovery
+                RecoveryState.INCOMPLETE -> return SecurityBannerState.RecoveryKeyConfirmation
+                RecoveryState.UNKNOWN,
+                RecoveryState.WAITING_FOR_SYNC,
+                RecoveryState.ENABLED -> Unit
+            }
         }
 
-        when (recoveryState) {
-            RecoveryState.DISABLED -> return SecurityBannerState.SetUpRecovery
-            RecoveryState.INCOMPLETE -> return SecurityBannerState.RecoveryKeyConfirmation
-            RecoveryState.UNKNOWN,
-            RecoveryState.WAITING_FOR_SYNC,
-            RecoveryState.ENABLED -> Unit
+        // Правка форка: почта живёт своей жизнью и своим «скрыть». Закрытый баннер про
+        // ключи не должен заодно прятать напоминание про почту, это разные проблемы.
+        // Показываем вторым: ключи важнее, а два баннера разом это уже свалка.
+        if (showConnectEmailBanner) {
+            return SecurityBannerState.ConnectEmail
         }
 
         return SecurityBannerState.None
@@ -256,6 +299,8 @@ class RoomListPresenter(
     @Composable
     private fun roomListContentState(
         securityBannerDismissed: Boolean,
+        showConnectEmailBanner: Boolean,
+        accountManagementUrl: String?,
         showNewNotificationSoundBanner: Boolean,
         showUnreadCount: Boolean,
     ): RoomListContentState {
@@ -274,10 +319,11 @@ class RoomListPresenter(
             }
         }
         val seenRoomInvites by remember { seenInvitesStore.seenRoomIds() }.collectAsState(emptySet())
-        val securityBannerState by rememberSecurityBannerState(securityBannerDismissed)
+        val securityBannerState by rememberSecurityBannerState(securityBannerDismissed, showConnectEmailBanner)
         return when {
             showEmpty -> RoomListContentState.Empty(
                 securityBannerState = securityBannerState,
+                accountManagementUrl = accountManagementUrl,
             )
             showSkeleton -> RoomListContentState.Skeleton(count = 16)
             else -> {
@@ -285,6 +331,7 @@ class RoomListPresenter(
 
                 RoomListContentState.Rooms(
                     securityBannerState = securityBannerState,
+                    accountManagementUrl = accountManagementUrl,
                     showNewNotificationSoundBanner = showNewNotificationSoundBanner,
                     showUnreadCount = showUnreadCount,
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),

@@ -165,6 +165,13 @@ private fun EmptyView(
                         onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
                     )
                 }
+                // Правка форка: напоминание про почту.
+                SecurityBannerState.ConnectEmail -> {
+                    ConnectEmailBanner(
+                        accountManagementUrl = state.accountManagementUrl,
+                        onDismissClick = { eventSink(RoomListEvent.DismissConnectEmailBanner) },
+                    )
+                }
                 SecurityBannerState.None -> Unit
             }
         }
@@ -242,6 +249,15 @@ private fun RoomsViewList(
                     ConfirmRecoveryKeyBanner(
                         onContinueClick = onConfirmRecoveryKeyClick,
                         onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
+                    )
+                }
+            }
+            // Правка форка: напоминание про почту.
+            SecurityBannerState.ConnectEmail -> {
+                item {
+                    ConnectEmailBanner(
+                        accountManagementUrl = state.accountManagementUrl,
+                        onDismissClick = { eventSink(RoomListEvent.DismissConnectEmailBanner) },
                     )
                 }
             }
