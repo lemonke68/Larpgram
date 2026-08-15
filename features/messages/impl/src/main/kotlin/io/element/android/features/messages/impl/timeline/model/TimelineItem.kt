@@ -108,6 +108,9 @@ sealed interface TimelineItem {
     ) : TimelineItem {
         val showSenderInformation = groupPosition.isNew() && !isMine
 
+        /** Правка форка: аватар у последнего сообщения группы, имя — у первого, внутри пузыря. */
+        val showSenderAvatar = groupPosition.isLast() && !isMine
+
         val safeSenderName: String = senderProfile.getDisambiguatedDisplayName(senderId)
 
         val failedToSend: Boolean = localSendState is LocalEventSendState.Failed

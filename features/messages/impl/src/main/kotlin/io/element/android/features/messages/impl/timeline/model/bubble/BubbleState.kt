@@ -16,6 +16,11 @@ data class BubbleState(
     val isMine: Boolean,
     val timelineRoomInfo: TimelineRoomInfo,
 ) {
-    /** True to cut out the top start corner of the bubble, to give margin for the sender avatar. */
-    val cutTopStart: Boolean = groupPosition.isNew() && !isMine && !timelineRoomInfo.isDm
+    /**
+     * True to cut out the top start corner of the bubble, to give margin for the sender avatar.
+     *
+     * Правка форка: всегда false. Аватар больше не наезжает на угол пузыря сверху, он стоит
+     * слева от него, поэтому вырезать под него нечего.
+     */
+    val cutTopStart: Boolean = false
 }

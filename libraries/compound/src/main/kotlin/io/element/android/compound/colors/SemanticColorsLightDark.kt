@@ -9,17 +9,25 @@
 package io.element.android.compound.colors
 
 import io.element.android.compound.tokens.generated.SemanticColors
-import io.element.android.compound.tokens.generated.compoundColorsDark
-import io.element.android.compound.tokens.generated.compoundColorsLight
+import io.element.android.compound.tokens.larpgramColorsDark
+import io.element.android.compound.tokens.larpgramColorsLight
 
 data class SemanticColorsLightDark(
     val light: SemanticColors,
     val dark: SemanticColors,
 ) {
     companion object {
+        /**
+         * Правка форка: наша палитра, а не сырые токены Compound.
+         *
+         * Это второй вход для цветов, и именно он работает в живом приложении: MainActivity
+         * берёт палитру отсюда через `EnterpriseService.semanticColorsFlow` и передаёт её в
+         * `ElementTheme` явным параметром, перебивая значения по умолчанию. Правка одних
+         * дефолтов в `ElementTheme` меняет только Compose-превью.
+         */
         val default = SemanticColorsLightDark(
-            light = compoundColorsLight,
-            dark = compoundColorsDark,
+            light = larpgramColorsLight,
+            dark = larpgramColorsDark,
         )
     }
 }

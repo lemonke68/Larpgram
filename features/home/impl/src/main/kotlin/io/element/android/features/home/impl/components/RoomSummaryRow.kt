@@ -70,7 +70,15 @@ import io.element.android.libraries.matrix.ui.model.InviteSender
 import io.element.android.libraries.ui.strings.CommonStrings
 import timber.log.Timber
 
-internal val minHeight = 84.dp
+// Правка форка, замеры по макету редизайна 2023: строка 76dp, аватар 56dp в 20dp от края,
+// текст начинается с 92dp. У Element было 84dp и отступ 16dp — заметно рыхлее.
+internal val minHeight = 76.dp
+private val ROW_HORIZONTAL_PADDING = 20.dp
+private val AVATAR_TO_TEXT_GAP = 16.dp
+
+// Правка форка: превью последнего сообщения в одну строку. Element держал ровно две
+// (minLines = maxLines = 2), из-за чего строка списка не могла быть ниже ~84dp.
+private const val PREVIEW_MAX_LINES = 1
 
 @Composable
 internal fun RoomSummaryRow(
@@ -194,7 +202,7 @@ private fun RoomSummaryScaffoldRow(
             .fillMaxWidth()
             .heightIn(min = minHeight)
             .then(clickModifier)
-            .padding(horizontal = 16.dp, vertical = 11.dp)
+            .padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = 10.dp)
             .height(IntrinsicSize.Min),
     ) {
         Avatar(
@@ -209,7 +217,7 @@ private fun RoomSummaryScaffoldRow(
             },
             hideImage = hideAvatarImage,
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(AVATAR_TO_TEXT_GAP))
         Column(
             modifier = Modifier.fillMaxWidth(),
             content = content,
@@ -289,8 +297,7 @@ private fun MessagePreviewAndIndicatorRow(
                 text = stringResource(R.string.screen_roomlist_tombstoned_room_description),
                 color = ElementTheme.colors.roomListRoomMessage,
                 style = ElementTheme.typography.fontBodyMdRegular,
-                minLines = 2,
-                maxLines = 2,
+                maxLines = PREVIEW_MAX_LINES,
                 overflow = TextOverflow.Ellipsis,
             )
         } else {
@@ -310,8 +317,7 @@ private fun MessagePreviewAndIndicatorRow(
                     text = stringResource(CommonStrings.common_message_failed_to_send),
                     color = ElementTheme.colors.textCriticalPrimary,
                     style = ElementTheme.typography.fontBodyMdRegular,
-                    minLines = 2,
-                    maxLines = 2,
+                    maxLines = PREVIEW_MAX_LINES,
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
@@ -335,8 +341,7 @@ private fun MessagePreviewAndIndicatorRow(
                     text = annotatedMessagePreview,
                     color = ElementTheme.colors.roomListRoomMessage,
                     style = ElementTheme.typography.fontBodyMdRegular,
-                    minLines = 2,
-                    maxLines = 2,
+                    maxLines = PREVIEW_MAX_LINES,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

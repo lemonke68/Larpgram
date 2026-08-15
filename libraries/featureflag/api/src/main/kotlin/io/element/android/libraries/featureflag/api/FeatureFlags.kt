@@ -142,7 +142,9 @@ enum class FeatureFlags(
         key = "feature.unread_indicator_count",
         title = "Unread indicator count",
         description = "Show the number of unread messages on the unread indicator in the room list.",
-        defaultValue = { false },
+        // Правка форка: включено по умолчанию. В Telegram непрочитанные — это всегда число в
+        // кружке, а не безликая точка.
+        defaultValue = { true },
         isFinished = false,
     ),
     SendGalleryMessages(

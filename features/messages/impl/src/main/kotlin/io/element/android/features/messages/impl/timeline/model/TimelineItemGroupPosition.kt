@@ -56,4 +56,13 @@ sealed interface TimelineItemGroupPosition {
         First, None -> true
         else -> false
     }
+
+    /**
+     * Правка форка: аватар рисуется у последнего сообщения группы, а не у первого. Так его ставит
+     * Telegram: он прижат к низу и «подписывает» всю пачку снизу.
+     */
+    fun isLast(): Boolean = when (this) {
+        Last, None -> true
+        else -> false
+    }
 }
