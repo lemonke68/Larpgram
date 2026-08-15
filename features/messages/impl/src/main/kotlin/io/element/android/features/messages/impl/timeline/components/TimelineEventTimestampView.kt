@@ -107,6 +107,20 @@ fun TimelineEventTimestampView(
             style = ElementTheme.typography.fontBodyXsRegular,
             color = tint,
         )
+        // Telegram's delivery ticks, on our own messages only. One tick means the server took it,
+        // two mean somebody has read it: Matrix spells those as the local send state and read
+        // receipts respectively.
+        if (event.isMine && !hasError && !isMessageRedacted) {
+            Spacer(modifier = Modifier.width(3.dp))
+            MessageDeliveryTicks(
+                state = when {
+                    event.localSendState is LocalEventSendState.Sending -> MessageDeliveryState.Sending
+                    event.readReceiptState.receipts.isNotEmpty() -> MessageDeliveryState.Read
+                    event.isRemote -> MessageDeliveryState.Sent
+                    else -> MessageDeliveryState.Sending
+                }
+            )
+        }
         if (hasError) {
             Spacer(modifier = Modifier.width(2.dp))
             Icon(

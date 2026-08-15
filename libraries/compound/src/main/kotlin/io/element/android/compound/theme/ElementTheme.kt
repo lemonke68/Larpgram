@@ -37,9 +37,9 @@ import io.element.android.compound.annotations.CoreColorToken
 import io.element.android.compound.tokens.compoundTypography
 import io.element.android.compound.tokens.generated.SemanticColors
 import io.element.android.compound.tokens.generated.TypographyTokens
-import io.element.android.compound.tokens.generated.compoundColorsDark
-import io.element.android.compound.tokens.generated.compoundColorsLight
 import io.element.android.compound.tokens.generated.internal.DarkColorTokens
+import io.element.android.compound.tokens.larpgramColorsDark
+import io.element.android.compound.tokens.larpgramColorsLight
 
 /**
  * Inspired from https://medium.com/@lucasyujideveloper/54cbcbde1ace
@@ -79,7 +79,7 @@ object ElementTheme {
 }
 
 // Global variables (application level)
-internal val LocalCompoundColors = staticCompositionLocalOf { compoundColorsLight }
+internal val LocalCompoundColors = staticCompositionLocalOf { larpgramColorsLight }
 
 /**
  * Sets up the theme for the application, or a part of it.
@@ -104,8 +104,8 @@ fun ElementTheme(
     lightStatusBar: Boolean = !theme.isDark(),
     // true to enable MaterialYou
     dynamicColor: Boolean = false,
-    compoundLight: SemanticColors = compoundColorsLight,
-    compoundDark: SemanticColors = compoundColorsDark,
+    compoundLight: SemanticColors = larpgramColorsLight,
+    compoundDark: SemanticColors = larpgramColorsDark,
     materialColorsLight: ColorScheme = compoundLight.toMaterialColorScheme(),
     materialColorsDark: ColorScheme = compoundDark.toMaterialColorScheme(),
     typography: Typography = compoundTypography,

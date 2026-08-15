@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -54,7 +55,7 @@ import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
 import io.element.android.libraries.ui.utils.graphics.drawInLayer
 
-private val BUBBLE_RADIUS = 12.dp
+private val BUBBLE_RADIUS = TelegramBubbleShape.BUBBLE_RADIUS
 private val avatarRadius = AvatarSize.TimelineSender.dp / 2
 
 private val MIN_BUBBLE_WIDTH = 80.dp
@@ -68,6 +69,9 @@ fun MessageEventBubble(
     modifier: Modifier = Modifier,
     customBackgroundColor: Color? = null,
     borderColor: Color? = null,
+    // Правка форка: стикеры, гифки и кружочки рисуются прямо на обоях. Тогда ни подложки,
+    // ни хвостика, ни отступа под него быть не должно.
+    showBubble: Boolean = true,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     val clickableModifier = if (isTalkbackActive()) {
@@ -83,10 +87,21 @@ fun MessageEventBubble(
             .onKeyboardContextMenuAction(onLongClick)
     }
 
-    val cutTopStart = state.cutTopStart
+    val cutTopStart = state.cutTopStart && showBubble
     // Ignore state.isHighlighted for now, we need a design decision on it.
-    val backgroundBubbleColor by rememberUpdatedState(customBackgroundColor ?: MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine))
-    val bubbleShape = remember(state) { MessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine) }
+    val backgroundBubbleColor by rememberUpdatedState(
+        when {
+            !showBubble -> Color.Transparent
+            else -> customBackgroundColor ?: MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine)
+        }
+    )
+    val bubbleShape = remember(state, showBubble) {
+        if (showBubble) {
+            MessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine)
+        } else {
+            RectangleShape
+        }
+    }
     val radiusPx = (avatarRadius + SENDER_AVATAR_BORDER_WIDTH).toPx()
     val yOffsetPx = -(NEGATIVE_MARGIN_FOR_BUBBLE + avatarRadius).toPx()
 
@@ -142,6 +157,11 @@ fun MessageEventBubble(
                         .toInt()
                         .toDp()
                 )
+                // The tail is drawn inside the bubble bounds, so keep the content off it.
+                .padding(
+                    start = if (state.isMine || !showBubble) 0.dp else TelegramBubbleShape.TAIL_WIDTH,
+                    end = if (state.isMine && showBubble) TelegramBubbleShape.TAIL_WIDTH else 0.dp,
+                )
                 .then(clickableModifier),
             content = content,
         )
@@ -149,32 +169,21 @@ fun MessageEventBubble(
 }
 
 object MessageEventBubbleDefaults {
+    /**
+     * Every bubble is the same shape: uniformly rounded, with a nub on the sender's side. The kit
+     * gives grouped messages no special treatment, so the group position no longer changes the
+     * corners — the only thing that still does is [cutTopStart], which makes room for the avatar.
+     */
+    @Suppress("UNUSED_PARAMETER")
     fun shape(cutTopStart: Boolean, groupPosition: TimelineItemGroupPosition, isMine: Boolean): Shape {
-        val topLeftCorner = if (cutTopStart) 0.dp else BUBBLE_RADIUS
-        return when (groupPosition) {
-            TimelineItemGroupPosition.First -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp, BUBBLE_RADIUS)
-            } else {
-                RoundedCornerShape(topLeftCorner, BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp)
-            }
-            TimelineItemGroupPosition.Middle -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, 0.dp, 0.dp, BUBBLE_RADIUS)
-            } else {
-                RoundedCornerShape(0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp)
-            }
-            TimelineItemGroupPosition.Last -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, 0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS)
-            } else {
-                RoundedCornerShape(0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS)
-            }
-            TimelineItemGroupPosition.None ->
-                RoundedCornerShape(
-                    topLeftCorner,
-                    BUBBLE_RADIUS,
-                    BUBBLE_RADIUS,
-                    BUBBLE_RADIUS
-                )
-        }
+        return TelegramBubbleShape(
+            topStart = if (cutTopStart) 0.dp else BUBBLE_RADIUS,
+            topEnd = BUBBLE_RADIUS,
+            bottomEnd = BUBBLE_RADIUS,
+            bottomStart = BUBBLE_RADIUS,
+            tailSide = if (isMine) BubbleTailSide.End else BubbleTailSide.Start,
+            hasTail = true,
+        )
     }
 
     @Composable

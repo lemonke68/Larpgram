@@ -72,8 +72,6 @@ import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.components.event.TimelineItemEventContentView
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayout
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayoutData
-import io.element.android.features.messages.impl.timeline.components.receipt.ReadReceiptViewState
-import io.element.android.features.messages.impl.timeline.components.receipt.TimelineItemReadReceiptView
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
 import io.element.android.features.messages.impl.timeline.model.TimelineItemReactions
@@ -85,6 +83,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
+import io.element.android.features.messages.impl.timeline.model.event.isBubbleless
 import io.element.android.features.messages.impl.timeline.model.event.isLarpgramCircle
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
@@ -154,7 +153,13 @@ val NEGATIVE_MARGIN_FOR_BUBBLE = (-8).dp
 // Width of the transparent border around the sender avatar
 val SENDER_AVATAR_BORDER_WIDTH = 3.dp
 
-private val BUBBLE_INCOMING_OFFSET = 16.dp
+// Правка форка, замеры по макету редизайна 2023: аватар 44dp стоит в 16dp от края, пузырь
+// начинается через 9dp после него. Отступ держится и без аватара, чтобы группа не гуляла.
+private val AVATAR_START_MARGIN = 16.dp
+private val BUBBLE_INCOMING_OFFSET = AVATAR_START_MARGIN + 44.dp + 9.dp
+
+// Правка форка: ободок пузыря вокруг медиа без подписи. Замер по макету редизайна 2023.
+private val MEDIA_BUBBLE_INSET = 4.dp
 
 @Composable
 fun TimelineItemEventRow(
@@ -310,16 +315,9 @@ fun TimelineItemEventRow(
             )
         }
 
-        // Read receipts / Send state
-        TimelineItemReadReceiptView(
-            state = ReadReceiptViewState(
-                sendState = event.localSendState,
-                isLastOutgoingMessage = isLastOutgoingMessage,
-                receipts = event.readReceiptState.receipts,
-            ),
-            onReadReceiptsClick = { onReadReceiptClick(event) },
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        // Правка форка: аватарки прочтения убраны. Те же два факта, отправлено и прочитано,
+        // теперь показывают галочки внутри пузыря (MessageDeliveryTicks), а два индикатора
+        // одного и того же — лишний шум. Telegram аватарки под сообщением не рисует.
     }
 }
 
@@ -457,20 +455,18 @@ private fun TimelineItemEventRowContent(
             pinIcon,
         ) = createRefs()
 
-        // Sender
-        if (event.showSenderInformation && !timelineRoomInfo.isDm) {
-            MessageSenderInformation(
-                event.senderId,
-                event.senderProfile,
+        // Правка форка: аватар больше не наезжает на угол пузыря сверху, а стоит слева от него
+        // и прижат к низу группы, как в макете. Имя отправителя переехало внутрь пузыря, см.
+        // MessageEventBubbleContent.
+        if (event.showSenderAvatar && !timelineRoomInfo.isDm) {
+            MessageSenderAvatar(
                 event.senderAvatar,
                 onUserDataClick,
                 Modifier
                     .constrainAs(sender) {
-                        top.linkTo(parent.top)
-                        // Required for correct RTL layout
-                        start.linkTo(parent.start)
+                        bottom.linkTo(message.bottom)
+                        start.linkTo(parent.start, margin = AVATAR_START_MARGIN)
                     }
-                    .padding(horizontal = 16.dp)
                     .zIndex(1f),
             )
         }
@@ -501,16 +497,13 @@ private fun TimelineItemEventRowContent(
         MessageEventBubble(
             modifier = Modifier
                 .constrainAs(message) {
-                    val topMargin = if (bubbleState.cutTopStart) {
-                        NEGATIVE_MARGIN_FOR_BUBBLE
-                    } else {
-                        0.dp
-                    }
-                    top.linkTo(sender.bottom, margin = topMargin)
+                    // Правка форка: пузырь больше не привязан к низу блока отправителя, аватар
+                    // теперь стоит сбоку. Место под аватар держится отступом слева.
+                    top.linkTo(parent.top)
                     if (event.isMine) {
                         end.linkTo(parent.end, margin = 16.dp)
                     } else {
-                        val startMargin = if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
+                        val startMargin = if (timelineRoomInfo.isDm) 16.dp else BUBBLE_INCOMING_OFFSET
                         start.linkTo(parent.start, margin = startMargin)
                     }
                 },
@@ -518,13 +511,10 @@ private fun TimelineItemEventRowContent(
             interactionSource = interactionSource,
             onClick = onContentClick,
             onLongClick = onLongClick,
-            // Правка форка: кружочку пузырь не нужен, он и так круглый.
-            customBackgroundColor = if ((event.content as? TimelineItemVideoContent)?.isLarpgramCircle == true) {
-                Color.Transparent
-            } else {
-                dangerousContentBubbleColor
-            },
+            customBackgroundColor = dangerousContentBubbleColor,
             borderColor = borderColor,
+            // Правка форка: стикеры, гифки и кружочки рисуются прямо на обоях, без подложки.
+            showBubble = !event.content.isBubbleless,
         ) {
             MessageEventBubbleContent(
                 event = event,
@@ -533,6 +523,10 @@ private fun TimelineItemEventRowContent(
                 onMessageLongClick = onLongClick,
                 inReplyToClick = inReplyToClick,
                 eventSink = eventSink,
+                showSenderName = event.showSenderInformation &&
+                    !timelineRoomInfo.isDm &&
+                    !event.content.isBubbleless,
+                onSenderNameClick = onUserDataClick,
                 eventContentView = eventContentView,
             )
         }
@@ -589,41 +583,43 @@ private fun TimelineItemEventRowContent(
 }
 
 @Composable
-private fun MessageSenderInformation(
-    senderId: UserId,
-    senderProfile: ProfileDetails,
+private fun MessageSenderAvatar(
     senderAvatar: AvatarData,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val avatarColors = AvatarColorsProvider.provide(senderAvatar.id)
-    Row(
+    Avatar(
         modifier = modifier
-            // Add external clickable modifier with no indicator so the touch target is larger than just the display name
-            .clickable(onClick = onClick, enabled = true, interactionSource = remember { MutableInteractionSource() }, indication = null)
+            .testTag(TestTags.timelineItemSenderAvatar)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
             .clearAndSetSemantics {
                 hideFromAccessibility()
-            }
-    ) {
-        Avatar(
-            modifier = Modifier
-                .testTag(TestTags.timelineItemSenderAvatar)
-                .clip(CircleShape)
-                .clickable(onClick = onClick),
-            avatarData = senderAvatar,
-            avatarType = AvatarType.User,
-        )
-        SenderName(
-            modifier = Modifier
-                .testTag(TestTags.timelineItemSenderName)
-                .clip(RoundedCornerShape(6.dp))
-                .clickable(onClick = onClick)
-                .padding(horizontal = 4.dp),
-            senderId = senderId,
-            senderProfile = senderProfile,
-            senderNameMode = SenderNameMode.Timeline(avatarColors.foreground),
-        )
-    }
+            },
+        avatarData = senderAvatar,
+        avatarType = AvatarType.User,
+    )
+}
+
+/** Правка форка: имя отправителя рисуется первой строкой внутри пузыря, цветом его аватара. */
+@Composable
+private fun BubbleSenderName(
+    senderId: UserId,
+    senderProfile: ProfileDetails,
+    senderAvatar: AvatarData,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val avatarColors = AvatarColorsProvider.provide(senderAvatar.id)
+    SenderName(
+        modifier = modifier
+            .testTag(TestTags.timelineItemSenderName)
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick),
+        senderId = senderId,
+        senderProfile = senderProfile,
+        senderNameMode = SenderNameMode.Timeline(avatarColors.foreground),
+    )
 }
 
 @Suppress("MultipleEmitters") // False positive
@@ -635,6 +631,9 @@ private fun MessageEventBubbleContent(
     onMessageLongClick: () -> Unit,
     inReplyToClick: () -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
+    // Правка форка: имя отправителя рисуется внутри пузыря, первой строкой.
+    showSenderName: Boolean,
+    onSenderNameClick: () -> Unit,
     @SuppressLint("ModifierParameter")
     // need to rename this modifier to prevent linter false positives
     @Suppress("ModifierNaming")
@@ -765,17 +764,18 @@ private fun MessageEventBubbleContent(
                 Modifier
             }
 
-        val topPadding = if (inReplyToDetails != null) 0.dp else 8.dp
+        // Имя внутри пузыря уже даёт верхний отступ, второй раз он не нужен.
+        val topPadding = if (inReplyToDetails != null || showSenderName) 0.dp else 8.dp
         val contentModifier = when (paddingBehaviour) {
             ContentPadding.Textual ->
                 Modifier.padding(start = 12.dp, end = 12.dp, top = topPadding, bottom = 8.dp)
-            ContentPadding.Media -> {
-                if (inReplyToDetails == null) {
-                    Modifier
-                } else {
-                    Modifier.clip(RoundedCornerShape(10.dp))
-                }
-            }
+            // Правка форка: картинка не должна доходить до краёв пузыря. В Telegram вокруг неё
+            // остаётся ободок в 4dp, и хвостик читается как продолжение пузыря, а не как кусок
+            // другого цвета рядом с картинкой. Радиус картинки на эти же 4dp меньше, чтобы
+            // ободок был одинаковой толщины и на углах.
+            ContentPadding.Media -> Modifier
+                .padding(MEDIA_BUBBLE_INSET)
+                .clip(RoundedCornerShape(TelegramBubbleShape.BUBBLE_RADIUS - MEDIA_BUBBLE_INSET))
             ContentPadding.CaptionedMedia ->
                 Modifier.padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = 8.dp)
             ContentPadding.InvalidContent -> Modifier.padding(top = topPadding, bottom = 8.dp)
@@ -840,9 +840,22 @@ private fun MessageEventBubbleContent(
                 )
             }
         }
+        // Правка форка: имя отправителя первой строкой в пузыре, выше цитаты и содержимого.
+        val senderName = @Composable {
+            if (showSenderName) {
+                BubbleSenderName(
+                    senderId = event.senderId,
+                    senderProfile = event.senderProfile,
+                    senderAvatar = event.senderAvatar,
+                    onClick = onSenderNameClick,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp),
+                )
+            }
+        }
         if (inReplyToDetails != null) {
             // Use SubComposeLayout only if necessary as it can have consequences on the performance.
             EqualWidthColumn(spacing = 8.dp) {
+                senderName()
                 threadDecoration()
                 inReplyTo(inReplyToDetails)
                 contentWithTimestamp()
@@ -850,7 +863,11 @@ private fun MessageEventBubbleContent(
         } else {
             Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 threadDecoration()
-                contentWithTimestamp()
+                // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    senderName()
+                    contentWithTimestamp()
+                }
             }
         }
     }

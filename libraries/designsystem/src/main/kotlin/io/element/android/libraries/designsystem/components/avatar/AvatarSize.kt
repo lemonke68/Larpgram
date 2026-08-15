@@ -17,7 +17,8 @@ enum class AvatarSize(val dp: Dp) {
 
     IncomingCall(140.dp),
     RoomDetailsHeader(96.dp),
-    RoomListItem(52.dp),
+    // Правка форка: 56dp вместо 52dp, замер по макету редизайна 2023.
+    RoomListItem(56.dp),
     ThreadsListItem(52.dp),
 
     SpaceListItem(52.dp),
@@ -35,7 +36,9 @@ enum class AvatarSize(val dp: Dp) {
     DmCluster(75.dp),
 
     TimelineRoom(32.dp),
-    TimelineSender(32.dp),
+    // Правка форка: 44dp вместо 32dp, по макету редизайна 2023. Аватар стоит сбоку от пузыря,
+    // а не наезжает на его угол, и при 32dp выглядит потерянным в отведённой ему колонке.
+    TimelineSender(44.dp),
     TimelineReadReceipt(16.dp),
     TimelineThreadLatestEventSender(24.dp),
 

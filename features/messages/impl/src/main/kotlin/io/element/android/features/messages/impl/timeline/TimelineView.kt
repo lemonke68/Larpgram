@@ -81,6 +81,8 @@ import androidx.compose.ui.window.PopupProperties
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureView
+import io.element.android.features.messages.impl.timeline.components.chatWallpaper
+import io.element.android.features.messages.impl.timeline.components.defaultChatWallpaper
 import io.element.android.features.messages.impl.timeline.components.FloatingDateBadgeOverlay
 import io.element.android.features.messages.impl.timeline.components.TimelineItemRow
 import io.element.android.features.messages.impl.timeline.components.toText
@@ -191,7 +193,8 @@ fun TimelineView(
 
     // Animate alpha when timeline is first displayed, to avoid flashes or glitching when viewing rooms
     AnimatedVisibility(visible = true, enter = fadeIn()) {
-        Box(modifier) {
+        // Правка форка: обои переписки. Источник подменяемый, см. ChatWallpaper.
+        Box(modifier.chatWallpaper(defaultChatWallpaper())) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()

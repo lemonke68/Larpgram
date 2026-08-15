@@ -14,6 +14,7 @@ import io.element.android.compound.annotations.CoreColorToken
 import io.element.android.compound.previews.ColorListPreview
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.SemanticColors
+import io.element.android.compound.tokens.LarpgramPalette
 import io.element.android.compound.tokens.generated.internal.DarkColorTokens
 import io.element.android.compound.tokens.generated.internal.LightColorTokens
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -38,15 +39,23 @@ val SemanticColors.unreadIndicator
 val SemanticColors.placeholderBackground
     get() = bgSubtleSecondary
 
-// This color is not present in Semantic color, so put hard-coded value for now
-@OptIn(CoreColorToken::class)
 val SemanticColors.messageFromMeBackground
-    get() = if (isLight) LightColorTokens.colorGray400 else DarkColorTokens.colorGray500
+    get() = if (isLight) LarpgramPalette.bubbleFromMeLight else LarpgramPalette.bubbleFromMeDark
 
-// This color is not present in Semantic color, so put hard-coded value for now
-@OptIn(CoreColorToken::class)
 val SemanticColors.messageFromOtherBackground
-    get() = if (isLight) LightColorTokens.colorGray300 else DarkColorTokens.colorGray400
+    get() = if (isLight) LarpgramPalette.bubbleFromOtherLight else LarpgramPalette.bubbleFromOtherDark
+
+/**
+ * Flat base color of the chat wallpaper. The Telegram doodle pattern is drawn on top of it.
+ */
+val SemanticColors.chatWallpaperBackground
+    get() = if (isLight) LarpgramPalette.chatWallpaperLight else LarpgramPalette.chatWallpaperDark
+
+/**
+ * Delivery ticks. Green in both themes, the way Telegram draws them.
+ */
+val SemanticColors.messageDeliveredIcon
+    get() = if (isLight) LarpgramPalette.deliveredLight else LarpgramPalette.deliveredDark
 
 // This color is not present in Semantic color, so put hard-coded value for now
 @OptIn(CoreColorToken::class)
