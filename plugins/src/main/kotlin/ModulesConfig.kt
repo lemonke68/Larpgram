@@ -33,10 +33,16 @@ object ModulesConfig {
             AnalyticsConfig.Disabled
         }
     } else {
-        println("Analytics enabled with Posthog and Sentry")
-        AnalyticsConfig.Enabled(
-            withPosthog = true,
-            withSentry = true,
-        )
+        // Правка форка: аналитики у нас нет вообще. Апстрим здесь включал PostHog и
+        // Sentry принудительно, хотя ключи пустые (проверено в собранном BuildConfig:
+        // POSTHOG_APIKEY, POSTHOG_HOST и SENTRY_DSN — пустые строки). Толку от этого
+        // ноль, а цена есть: при входе показывается экран согласия на сбор данных, и
+        // ссылка на политику в нём ведёт на element.io — чужой документ, который к
+        // нашему приложению отношения не имеет.
+        //
+        // Disabled подставляет noop-сервис, у которого `didAskUserConsentFlow` всегда
+        // true, поэтому шаг с согласием сам выпадает из онбординга.
+        println("Analytics disabled (Larpgram)")
+        AnalyticsConfig.Disabled
     }
 }
