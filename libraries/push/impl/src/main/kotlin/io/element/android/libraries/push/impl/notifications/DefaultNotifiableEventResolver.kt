@@ -50,6 +50,9 @@ import io.element.android.libraries.matrix.api.timeline.item.event.StickerMessag
 import io.element.android.libraries.matrix.api.timeline.item.event.TextMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.VideoMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.VoiceMessageType
+import io.element.android.libraries.matrix.api.timeline.item.event.isGif
+import io.element.android.libraries.matrix.api.timeline.item.event.isLarpgramCircle
+import io.element.android.libraries.matrix.api.timeline.item.event.larpgramStickerEmojiOrNull
 import io.element.android.libraries.matrix.ui.messages.toPlainText
 import io.element.android.libraries.push.impl.R
 import io.element.android.libraries.push.impl.db.PushRequest
@@ -295,9 +298,26 @@ class DefaultNotifiableEventResolver(
                     )
                 }
             }
-            NotificationContent.MessageLike.Sticker -> {
-                Timber.tag(loggerTag.value).d("Ignoring notification for sticker")
-                throw NotificationResolverException.EventFilteredOut
+            is NotificationContent.MessageLike.Sticker -> {
+                // Правка форка: апстрим уведомления о стикерах выбрасывал. У нас стикеры это
+                // обычный способ ответить, и молчать о них нельзя. Текст только словом:
+                // в событии SDK ни body, ни url стикера нет, эмодзи взять неоткуда.
+                val notifiableMessageEvent = buildNotifiableMessageEvent(
+                    sessionId = userId,
+                    senderId = content.senderId,
+                    roomId = roomId,
+                    eventId = eventId,
+                    noisy = isNoisy,
+                    timestamp = this.timestamp,
+                    senderDisambiguatedDisplayName = getDisambiguatedDisplayName(content.senderId),
+                    body = stringProvider.getString(CommonStrings.common_sticker),
+                    imageUriString = null,
+                    roomName = roomDisplayName,
+                    roomIsDm = isDm,
+                    roomAvatarPath = roomAvatarUrl,
+                    senderAvatarPath = senderAvatarUrl,
+                )
+                ResolvedPushEvent.Event(notifiableMessageEvent)
             }
             NotificationContent.MessageLike.Beacon -> {
                 Timber.tag(loggerTag.value).d("Ignoring notification for beacon")
@@ -340,19 +360,36 @@ class DefaultNotifiableEventResolver(
             is VoiceMessageType -> stringProvider.getString(CommonStrings.common_voice_message)
             is EmoteMessageType -> "* $senderDisambiguatedDisplayName ${messageType.body}"
             is FileMessageType -> messageType.bestDescription
+            // Правка форка: тип медиа словом, как в списке чатов. Имя файла в уведомление
+            // пускать нельзя — у кружочка оно служебное.
             is ImageMessageType -> if (hasImageUri) {
                 messageType.caption
             } else {
-                messageType.bestDescription
+                messageType.caption ?: if (messageType.isGif) {
+                    stringProvider.getString(CommonStrings.common_gif)
+                } else {
+                    stringProvider.getString(CommonStrings.common_image)
+                }
             }
-            is StickerMessageType -> messageType.bestDescription
+            is StickerMessageType -> messageType.caption ?: stickerDescription(messageType.filename)
             is NoticeMessageType -> messageType.body
             is TextMessageType -> messageType.toPlainText(permalinkParser = permalinkParser)
-            is VideoMessageType -> messageType.bestDescription
+            is VideoMessageType -> messageType.caption ?: if (messageType.isLarpgramCircle) {
+                stringProvider.getString(CommonStrings.larpgram_video_message)
+            } else {
+                stringProvider.getString(CommonStrings.common_video)
+            }
             is LocationMessageType -> messageType.body
             is GalleryMessageType -> messageType.body
             is OtherMessageType -> messageType.body
         }
+    }
+
+    /** «😂 Стикер», как в Telegram; без эмодзи в описании — просто «Стикер». */
+    private fun stickerDescription(description: String): String {
+        val word = stringProvider.getString(CommonStrings.common_sticker)
+        val emoji = description.larpgramStickerEmojiOrNull()
+        return if (emoji != null) "$emoji $word" else word
     }
 
     private fun descriptionFromRoomMembershipInvite(

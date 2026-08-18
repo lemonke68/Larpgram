@@ -11,17 +11,20 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,31 +35,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
 
 /** Разрешения, без которых записывать нечего. */
 private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
@@ -77,11 +80,10 @@ fun CircleRecorderView(
 
     val context = LocalContext.current
 
-    // Размытия чата под записью нет: на Android 10 системного блюра не существует
-    // (Modifier.blur и BLUR_BEHIND — с API 31), а обходной путь со снимком экрана в
-    // уменьшенный bitmap на живом телефоне картинки не дал. Юзер решил забить, поэтому
-    // просто тёмный фон. Если вернёмся: проверять, что decorView вообще рисуется в
-    // software Canvas.
+    // Чат под записью размывается, как в Telegram. Штатного блюра тут нет: Modifier.blur и
+    // BLUR_BEHIND появились в API 31, а телефон на Android 10. Поэтому снимок окна через
+    // PixelCopy и свой box-фильтр, подробности в BackdropBlur.kt.
+    val backdrop = rememberBlurredBackdrop(enabled = state.isVisible)
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -141,9 +143,23 @@ fun CircleRecorderView(
                     addOval(Rect(center = middle, radius = radius))
                     fillType = PathFillType.EvenOdd
                 }
-                // Всё, кроме круга, закрываем тем же размытым фоном: превью на SurfaceView
-                // вылезает за свои границы, и без этого его края торчали бы поверх.
-                drawPath(mask, SCRIM_COLOR)
+                // Всё, кроме круга, закрываем размытым чатом: превью на SurfaceView вылезает
+                // за свои границы, и без этой маски его края торчали бы поверх.
+                if (backdrop != null) {
+                    clipPath(mask) {
+                        drawImage(
+                            image = backdrop,
+                            dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+                            filterQuality = FilterQuality.Low,
+                        )
+                        // Притемнение поверх: на светлом чате белые подписи иначе не читаются,
+                        // и в Telegram фон под записью тоже уходит в тень.
+                        drawRect(SCRIM_COLOR.copy(alpha = 0.45f))
+                    }
+                } else {
+                    // Снимок не получился (или API ниже 26) — остаётся обычная тёмная подложка.
+                    drawPath(mask, SCRIM_COLOR)
+                }
 
                 // Кольцо прогресса по краю круга, растёт по часовой от верха.
                 val stroke = RING_STROKE.toPx()
@@ -291,10 +307,6 @@ fun CircleRecorderView(
 
 /** Запасной фон, если снять кадр чата не удалось. */
 private val SCRIM_COLOR = Color(0xFF0E0E10)
-
-
-
-
 
 /** Доля ширины экрана под круг: в макете круг занимает почти всю ширину. */
 private const val CIRCLE_WIDTH_FRACTION = 0.78f

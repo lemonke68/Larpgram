@@ -6,6 +6,7 @@
 
 package io.element.android.features.stickers.impl.import
 
+import android.graphics.BitmapFactory
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.imagepacks.api.ImagePack
 import io.element.android.libraries.imagepacks.api.ImagePackId
@@ -104,6 +105,10 @@ class StickerPackImporter(
                             ?: return@withPermit null
                         val mxcUrl = matrixClient.uploadMedia(sticker.mimeType, bytes).getOrNull()
                             ?: return@withPermit null
+                        // Размеры берём из самого файла, а не из метаданных пака: Telegram
+                        // сообщает у видео-стикеров квадрат (512x512), хотя кадр бывает
+                        // 512x288, и стикер в чате выезжал в квадратную коробку с полями.
+                        val realSize = measure(bytes)
                         ImagePackImage(
                             // file_unique_id не меняется и уникален внутри пака, годится как shortcode.
                             shortcode = sticker.fileUniqueId.ifBlank { sticker.fileId.take(16) },
@@ -111,8 +116,8 @@ class StickerPackImporter(
                             body = sticker.emoji,
                             usages = setOf(ImagePackUsage.STICKER),
                             mimeType = sticker.mimeType,
-                            width = sticker.width,
-                            height = sticker.height,
+                            width = realSize?.first ?: sticker.width,
+                            height = realSize?.second ?: sticker.height,
                             size = sticker.size ?: bytes.size.toLong(),
                         )
                     }
@@ -167,6 +172,20 @@ class StickerPackImporter(
             Timber.e(it, "не удалось получить состав пака")
             FetchResult.Error
         }
+    }
+
+    /**
+     * Настоящий размер картинки из её же байтов.
+     *
+     * `inJustDecodeBounds` читает только заголовок, не разворачивая пиксели, поэтому это
+     * дёшево даже для анимированного webp: у него берётся первый кадр.
+     */
+    private fun measure(bytes: ByteArray): Pair<Long, Long>? {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        val width = options.outWidth
+        val height = options.outHeight
+        return if (width > 0 && height > 0) width.toLong() to height.toLong() else null
     }
 
     private fun downloadSticker(fileId: String, uniqueId: String): ByteArray? {

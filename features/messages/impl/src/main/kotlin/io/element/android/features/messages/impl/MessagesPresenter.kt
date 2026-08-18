@@ -27,14 +27,13 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import im.vector.app.features.analytics.plan.PinUnpinAction
 import io.element.android.appconfig.MessageComposerConfig
+import io.element.android.features.circles.impl.CircleRecorderState
+import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.location.api.live.ActiveLiveLocationShareManager
 import io.element.android.features.location.api.live.isCurrentlySharing
 import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
-import io.element.android.features.circles.impl.CircleRecorderState
-import io.element.android.features.gifs.impl.GifPickerState
-import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
@@ -59,6 +58,7 @@ import io.element.android.features.messages.impl.voicemessages.composer.DefaultV
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationEvents
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
+import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter

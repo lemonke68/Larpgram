@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
@@ -66,6 +68,7 @@ import androidx.constraintlayout.compose.ConstrainScope
 import androidx.constraintlayout.compose.ConstraintLayout
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
@@ -83,14 +86,15 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
-import io.element.android.features.messages.impl.timeline.model.event.isBubbleless
-import io.element.android.features.messages.impl.timeline.model.event.isLarpgramCircle
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.ensureActiveLiveLocation
+import io.element.android.features.messages.impl.timeline.model.event.isBubbleless
+import io.element.android.features.messages.impl.timeline.model.event.isEmojiOnly
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.messages.impl.timeline.protection.mustBeProtected
 import io.element.android.libraries.architecture.AsyncData
@@ -437,6 +441,15 @@ private fun TimelineItemEventRowContent(
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
+    // Правка форка: пузырь регистрирует свои координаты по id сообщения, чтобы меню долгого
+    // нажатия встало вокруг него. Регистрация, а не обёртка колбэка: у долгого нажатия
+    // несколько точек входа (пузырь, содержимое, время), и в группах оно уходило мимо обёртки.
+    val messageActionsAnchor = LocalMessageActionsAnchor.current
+    val eventKey = event.id.value
+    DisposableEffect(messageActionsAnchor, eventKey) {
+        onDispose { messageActionsAnchor?.unregister(eventKey) }
+    }
+
     fun ConstrainScope.linkStartOrEnd(event: TimelineItem.Event) = if (event.isMine) {
         end.linkTo(parent.end)
     } else {
@@ -496,6 +509,7 @@ private fun TimelineItemEventRowContent(
         )
         MessageEventBubble(
             modifier = Modifier
+                .onGloballyPositioned { messageActionsAnchor?.register(eventKey, it) }
                 .constrainAs(message) {
                     // Правка форка: пузырь больше не привязан к низу блока отправителя, аватар
                     // теперь стоит сбоку. Место под аватар держится отступом слева.
@@ -889,6 +903,14 @@ private fun MessageEventBubbleContent(
             is TimelineItemGalleryContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
             is TimelineItemAttachmentsContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
             is TimelineItemStickerContent -> TimestampPosition.Overlay
+            // Правка форка: сообщение из одних эмодзи рисуется без пузыря, поэтому время
+            // берёт ту же плашку, что у стикеров и кружочков. Без неё оно повисло бы прямо
+            // на обоях и не читалось.
+            is TimelineItemTextBasedContent -> if (content.isEmojiOnly) {
+                TimestampPosition.Overlay
+            } else {
+                TimestampPosition.Default
+            }
             is TimelineItemLocationContent -> {
                 val content = content.ensureActiveLiveLocation()
                 val shouldHide = content.mode is TimelineItemLocationContent.Mode.Live &&

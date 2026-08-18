@@ -70,24 +70,26 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `an image message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = aMessageContent(
-                    messageType = ImageMessageType(
-                        filename = "filename",
-                        caption = null,
-                        formattedCaption = null,
-                        source = aMediaSource(),
-                        info = anImageInfo(),
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = aMessageContent(
+                        messageType = ImageMessageType(
+                            filename = "filename",
+                            caption = null,
+                            formattedCaption = null,
+                            source = aMediaSource(),
+                            info = anImageInfo(),
+                        )
                     )
-                )
-            ).metadata(hideImage = false)
+                ).metadata(hideImage = false)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = aMediaSource(),
-                            textContent = "body",
+                            textContent = "Image",
                             type = AttachmentThumbnailType.Image,
                             blurHash = A_BLUR_HASH,
                         )
@@ -100,24 +102,26 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `an image message content, no thumbnail`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = aMessageContent(
-                    messageType = ImageMessageType(
-                        filename = "filename",
-                        caption = "caption",
-                        formattedCaption = null,
-                        source = aMediaSource(),
-                        info = anImageInfo(),
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = aMessageContent(
+                        messageType = ImageMessageType(
+                            filename = "filename",
+                            caption = "caption",
+                            formattedCaption = null,
+                            source = aMediaSource(),
+                            info = anImageInfo(),
+                        )
                     )
-                )
-            ).metadata(hideImage = true)
+                ).metadata(hideImage = true)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = null,
-                            textContent = "body",
+                            textContent = "caption",
                             type = AttachmentThumbnailType.Image,
                             blurHash = A_BLUR_HASH,
                         )
@@ -130,22 +134,24 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `a sticker message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = StickerContent(
-                    filename = "filename",
-                    body = "body",
-                    info = anImageInfo(),
-                    source = aMediaSource(url = "url"),
-                    threadInfo = null,
-                )
-            ).metadata(hideImage = false)
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = StickerContent(
+                        filename = "filename",
+                        body = "body",
+                        info = anImageInfo(),
+                        source = aMediaSource(url = "url"),
+                        threadInfo = null,
+                    )
+                ).metadata(hideImage = false)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = aMediaSource(url = "url"),
-                            textContent = "body",
+                            textContent = "Sticker",
                             type = AttachmentThumbnailType.Image,
                             blurHash = A_BLUR_HASH,
                         )
@@ -158,22 +164,24 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `a sticker message content, no thumbnail`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = StickerContent(
-                    filename = "filename",
-                    body = "body",
-                    info = anImageInfo(),
-                    source = aMediaSource(url = "url"),
-                    threadInfo = null,
-                )
-            ).metadata(hideImage = true)
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = StickerContent(
+                        filename = "filename",
+                        body = "body",
+                        info = anImageInfo(),
+                        source = aMediaSource(url = "url"),
+                        threadInfo = null,
+                    )
+                ).metadata(hideImage = true)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = null,
-                            textContent = "body",
+                            textContent = "Sticker",
                             type = AttachmentThumbnailType.Image,
                             blurHash = A_BLUR_HASH,
                         )
@@ -186,24 +194,26 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `a video message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = aMessageContent(
-                    messageType = VideoMessageType(
-                        filename = "filename",
-                        caption = null,
-                        formattedCaption = null,
-                        source = aMediaSource(),
-                        info = aVideoInfo(),
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = aMessageContent(
+                        messageType = VideoMessageType(
+                            filename = "filename",
+                            caption = null,
+                            formattedCaption = null,
+                            source = aMediaSource(),
+                            info = aVideoInfo(),
+                        )
                     )
-                )
-            ).metadata(hideImage = false)
+                ).metadata(hideImage = false)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = aMediaSource(),
-                            textContent = "body",
+                            textContent = "Video",
                             type = AttachmentThumbnailType.Video,
                             blurHash = A_BLUR_HASH,
                         )
@@ -216,24 +226,26 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `a video message content, no thumbnail`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = aMessageContent(
-                    messageType = VideoMessageType(
-                        filename = "filename",
-                        caption = "caption",
-                        formattedCaption = null,
-                        source = aMediaSource(),
-                        info = aVideoInfo(),
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = aMessageContent(
+                        messageType = VideoMessageType(
+                            filename = "filename",
+                            caption = "caption",
+                            formattedCaption = null,
+                            source = aMediaSource(),
+                            info = aVideoInfo(),
+                        )
                     )
-                )
-            ).metadata(hideImage = true)
+                ).metadata(hideImage = true)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = null,
-                            textContent = "body",
+                            textContent = "caption",
                             type = AttachmentThumbnailType.Video,
                             blurHash = A_BLUR_HASH,
                         )
@@ -246,29 +258,31 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `a file message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = aMessageContent(
-                    messageType = FileMessageType(
-                        filename = "filename",
-                        caption = "caption",
-                        formattedCaption = null,
-                        source = aMediaSource(),
-                        info = FileInfo(
-                            mimetype = null,
-                            size = null,
-                            thumbnailInfo = null,
-                            thumbnailSource = aMediaSource(),
-                        ),
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = aMessageContent(
+                        messageType = FileMessageType(
+                            filename = "filename",
+                            caption = "caption",
+                            formattedCaption = null,
+                            source = aMediaSource(),
+                            info = FileInfo(
+                                mimetype = null,
+                                size = null,
+                                thumbnailInfo = null,
+                                thumbnailSource = aMediaSource(),
+                            ),
+                        )
                     )
-                )
-            ).metadata(hideImage = false)
+                ).metadata(hideImage = false)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = aMediaSource(),
-                            textContent = "body",
+                            textContent = "caption",
                             type = AttachmentThumbnailType.File,
                             blurHash = null,
                         )
@@ -281,29 +295,31 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `a file message content, no thumbnail`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = aMessageContent(
-                    messageType = FileMessageType(
-                        filename = "filename",
-                        caption = "caption",
-                        formattedCaption = null,
-                        source = aMediaSource(),
-                        info = FileInfo(
-                            mimetype = null,
-                            size = null,
-                            thumbnailInfo = null,
-                            thumbnailSource = aMediaSource(),
-                        ),
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = aMessageContent(
+                        messageType = FileMessageType(
+                            filename = "filename",
+                            caption = "caption",
+                            formattedCaption = null,
+                            source = aMediaSource(),
+                            info = FileInfo(
+                                mimetype = null,
+                                size = null,
+                                thumbnailInfo = null,
+                                thumbnailSource = aMediaSource(),
+                            ),
+                        )
                     )
-                )
-            ).metadata(hideImage = true)
+                ).metadata(hideImage = true)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
                             thumbnailSource = null,
-                            textContent = "body",
+                            textContent = "caption",
                             type = AttachmentThumbnailType.File,
                             blurHash = null,
                         )
@@ -316,27 +332,29 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     @Test
     fun `a audio message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(
-                eventContent = aMessageContent(
-                    messageType = AudioMessageType(
-                        filename = "filename",
-                        caption = "caption",
-                        formattedCaption = null,
-                        source = aMediaSource(),
-                        info = AudioInfo(
-                            duration = null,
-                            size = null,
-                            mimetype = null
-                        ),
+            withConfigurationAndContext {
+                anInReplyToDetailsReady(
+                    eventContent = aMessageContent(
+                        messageType = AudioMessageType(
+                            filename = "filename",
+                            caption = "caption",
+                            formattedCaption = null,
+                            source = aMediaSource(),
+                            info = AudioInfo(
+                                duration = null,
+                                size = null,
+                                mimetype = null
+                            ),
+                        )
                     )
-                )
-            ).metadata(hideImage = false)
+                ).metadata(hideImage = false)
+            }
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
                     InReplyToMetadata.Thumbnail(
                         attachmentThumbnailInfo = AttachmentThumbnailInfo(
-                            textContent = "body",
+                            textContent = "caption",
                             type = AttachmentThumbnailType.Audio,
                             blurHash = null,
                         )

@@ -172,6 +172,19 @@ private fun EmptyView(
                         onDismissClick = { eventSink(RoomListEvent.DismissConnectEmailBanner) },
                     )
                 }
+                // Правка форка: предложение почистить старые сессии.
+                SecurityBannerState.CleanUpSessions -> {
+                    CleanUpSessionsBanner(
+                        manageSessionsUrl = state.manageSessionsUrl,
+                        onDismissClick = { eventSink(RoomListEvent.DismissCleanUpSessionsBanner) },
+                    )
+                }
+                // Правка форка: предложение обновиться.
+                SecurityBannerState.UpdateAvailable -> {
+                    UpdateBanner(
+                        onDismissClick = { eventSink(RoomListEvent.DismissUpdateBanner) },
+                    )
+                }
                 SecurityBannerState.None -> Unit
             }
         }
@@ -258,6 +271,23 @@ private fun RoomsViewList(
                     ConnectEmailBanner(
                         accountManagementUrl = state.accountManagementUrl,
                         onDismissClick = { eventSink(RoomListEvent.DismissConnectEmailBanner) },
+                    )
+                }
+            }
+            // Правка форка: предложение почистить старые сессии.
+            SecurityBannerState.CleanUpSessions -> {
+                item {
+                    CleanUpSessionsBanner(
+                        manageSessionsUrl = state.manageSessionsUrl,
+                        onDismissClick = { eventSink(RoomListEvent.DismissCleanUpSessionsBanner) },
+                    )
+                }
+            }
+            // Правка форка: предложение обновиться.
+            SecurityBannerState.UpdateAvailable -> {
+                item {
+                    UpdateBanner(
+                        onDismissClick = { eventSink(RoomListEvent.DismissUpdateBanner) },
                     )
                 }
             }

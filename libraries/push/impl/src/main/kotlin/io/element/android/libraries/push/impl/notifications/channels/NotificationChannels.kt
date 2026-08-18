@@ -44,6 +44,7 @@ import timber.log.Timber
  * IDs for channels
  * ========================================================================================== */
 internal const val SILENT_NOTIFICATION_CHANNEL_ID = "DEFAULT_SILENT_NOTIFICATION_CHANNEL_ID_V2"
+
 // Правка форка: V2 -> V3. Android не меняет настройки уже созданного канала, поэтому смена
 // важности на HIGH (см. buildNoisyChannel) доедет до людей только под новым идентификатором.
 // Старые V2-каналы удаляются миграцией ниже, чтобы в настройках телефона не осталось двух.

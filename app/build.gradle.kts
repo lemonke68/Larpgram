@@ -26,6 +26,24 @@ import extension.setupDependencyInjection
 import extension.testCommonDependencies
 import org.sonarqube.gradle.SonarResolverTask
 import java.util.Locale
+import java.util.Properties
+
+// Правка форка: релизная подпись Larpgram. Секреты и сам keystore в git не лежат —
+// keystore.properties и app/signature/larpgram.keystore добавлены в .gitignore. Юзер
+// создаёт keystore сам (keytool), пароль знает только он. Значения ищем в keystore.properties
+// в корне, с откатом на переменные окружения (для CI). Если ничего нет — релиз подпишется
+// debug-ключом, как у апстрима, чтобы обычные сборки и чужие чекауты не падали.
+val larpgramKeystoreProps = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun larpgramSigning(key: String, env: String): String? =
+    larpgramKeystoreProps.getProperty(key) ?: System.getenv(env)
+val larpgramStoreFile = larpgramSigning("storeFile", "LARPGRAM_STORE_FILE")
+    ?.let { rootProject.file(it) }
+    ?: file("./signature/larpgram.keystore")
+val larpgramSigningAvailable = larpgramStoreFile.exists() &&
+    larpgramSigning("storePassword", "LARPGRAM_STORE_PASSWORD") != null
 
 plugins {
     id("io.element.android-compose-application")
@@ -96,6 +114,16 @@ android {
             storePassword = System.getenv("ELEMENT_ANDROID_NIGHTLY_STOREPASSWORD")
                 ?: project.property("signing.element.nightly.storePassword") as? String?
         }
+        // Правка форка: релизная подпись Larpgram, см. larpgramSigning выше.
+        if (larpgramSigningAvailable) {
+            register("larpgram") {
+                storeFile = larpgramStoreFile
+                storePassword = larpgramSigning("storePassword", "LARPGRAM_STORE_PASSWORD")
+                keyAlias = larpgramSigning("keyAlias", "LARPGRAM_KEY_ALIAS") ?: "larpgram"
+                keyPassword = larpgramSigning("keyPassword", "LARPGRAM_KEY_PASSWORD")
+                    ?: larpgramSigning("storePassword", "LARPGRAM_STORE_PASSWORD")
+            }
+        }
     }
 
     val baseAppName = BuildTimeConfig.APPLICATION_NAME
@@ -122,7 +150,15 @@ android {
                 "login_redirect_scheme",
                 oAuthRedirectSchemeBase,
             )
-            signingConfig = signingConfigs.getByName("debug")
+            // Правка форка: релиз подписываем своим ключом, если он есть; иначе откат на
+            // debug, как у апстрима (чтобы сборка не падала без keystore). Раздаваемый людям
+            // APK ОБЯЗАН собираться с доступным larpgram-ключом — проверять по факту подписи.
+            signingConfig = if (larpgramSigningAvailable) {
+                signingConfigs.getByName("larpgram")
+            } else {
+                logger.warn("Larpgram release keystore не найден — релиз подписан DEBUG-ключом, для раздачи не годится")
+                signingConfigs.getByName("debug")
+            }
 
             optimization {
                 enable = true

@@ -107,7 +107,7 @@ private fun MessageLikeEventContent.toContent(senderId: UserId): NotificationCon
                 redactedEventId = redactedEventId?.let(::EventId),
                 reason = reason,
             )
-            MessageLikeEventContent.Sticker -> NotificationContent.MessageLike.Sticker
+            MessageLikeEventContent.Sticker -> NotificationContent.MessageLike.Sticker(senderId)
             is MessageLikeEventContent.Poll -> NotificationContent.MessageLike.Poll(senderId, question)
             MessageLikeEventContent.Beacon -> NotificationContent.MessageLike.Beacon
         }

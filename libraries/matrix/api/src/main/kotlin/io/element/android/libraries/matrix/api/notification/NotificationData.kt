@@ -84,7 +84,17 @@ sealed interface NotificationContent {
             val reason: String?,
         ) : MessageLike
 
-        data object Sticker : MessageLike
+        /**
+         * Правка форка: у стикера теперь есть отправитель.
+         *
+         * Апстрим уведомления о стикерах выбрасывал, и знать, кто прислал, было незачем.
+         * Мы их показываем, а для уведомления нужен автор. Самого стикера в событии SDK
+         * нет: `MessageLikeEventContent.Sticker` приезжает пустым, без body и url.
+         */
+        data class Sticker(
+            val senderId: UserId,
+        ) : MessageLike
+
         data class Poll(
             val senderId: UserId,
             val question: String,

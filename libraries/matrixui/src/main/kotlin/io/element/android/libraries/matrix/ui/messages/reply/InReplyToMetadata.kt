@@ -24,6 +24,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.LegacyCallInv
 import io.element.android.libraries.matrix.api.timeline.item.event.LiveLocationContent
 import io.element.android.libraries.matrix.api.timeline.item.event.LocationMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageContent
+import io.element.android.libraries.matrix.api.timeline.item.event.MessageTypeWithAttachment
 import io.element.android.libraries.matrix.api.timeline.item.event.PollContent
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileChangeContent
 import io.element.android.libraries.matrix.api.timeline.item.event.RedactedContent
@@ -34,6 +35,9 @@ import io.element.android.libraries.matrix.api.timeline.item.event.UnableToDecry
 import io.element.android.libraries.matrix.api.timeline.item.event.UnknownContent
 import io.element.android.libraries.matrix.api.timeline.item.event.VideoMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.VoiceMessageType
+import io.element.android.libraries.matrix.api.timeline.item.event.isGif
+import io.element.android.libraries.matrix.api.timeline.item.event.isLarpgramCircle
+import io.element.android.libraries.matrix.api.timeline.item.event.larpgramStickerEmojiOrNull
 import io.element.android.libraries.matrix.ui.components.AttachmentThumbnailInfo
 import io.element.android.libraries.matrix.ui.components.AttachmentThumbnailType
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToMetadata.Text
@@ -67,10 +71,14 @@ internal sealed interface InReplyToMetadata {
 @Composable
 internal fun InReplyToDetails.Ready.metadata(hideImage: Boolean): InReplyToMetadata? = when (eventContent) {
     is MessageContent -> when (val type = eventContent.type) {
+        // Правка форка: в ответе у медиа показывается тип словом, а не имя файла. То же
+        // правило, что и в списке чатов: подпись, если она есть, иначе одно слово.
         is ImageMessageType -> Thumbnail(
             AttachmentThumbnailInfo(
                 thumbnailSource = (type.info?.thumbnailSource ?: type.source).takeUnless { hideImage },
-                textContent = eventContent.body,
+                textContent = type.captionOr(
+                    stringResource(if (type.isGif) CommonStrings.common_gif else CommonStrings.common_image)
+                ),
                 type = AttachmentThumbnailType.Image,
                 blurHash = type.info?.blurhash,
             )
@@ -78,15 +86,20 @@ internal fun InReplyToDetails.Ready.metadata(hideImage: Boolean): InReplyToMetad
         is VideoMessageType -> Thumbnail(
             AttachmentThumbnailInfo(
                 thumbnailSource = type.info?.thumbnailSource?.takeUnless { hideImage },
-                textContent = eventContent.body,
+                textContent = type.captionOr(
+                    stringResource(
+                        if (type.isLarpgramCircle) CommonStrings.larpgram_video_message else CommonStrings.common_video
+                    )
+                ),
                 type = AttachmentThumbnailType.Video,
                 blurHash = type.info?.blurhash,
             )
         )
+        // У документа имя файла и есть название, его и оставляем.
         is FileMessageType -> Thumbnail(
             AttachmentThumbnailInfo(
                 thumbnailSource = type.info?.thumbnailSource?.takeUnless { hideImage },
-                textContent = eventContent.body,
+                textContent = type.captionOr(type.filename),
                 type = AttachmentThumbnailType.File,
             )
         )
@@ -98,7 +111,7 @@ internal fun InReplyToDetails.Ready.metadata(hideImage: Boolean): InReplyToMetad
         )
         is AudioMessageType -> Thumbnail(
             AttachmentThumbnailInfo(
-                textContent = eventContent.body,
+                textContent = type.captionOr(type.filename.ifBlank { stringResource(CommonStrings.common_audio) }),
                 type = AttachmentThumbnailType.Audio,
             )
         )
@@ -159,7 +172,8 @@ internal fun InReplyToDetails.Ready.metadata(hideImage: Boolean): InReplyToMetad
     is StickerContent -> Thumbnail(
         AttachmentThumbnailInfo(
             thumbnailSource = eventContent.source.takeUnless { hideImage },
-            textContent = eventContent.body,
+            // Правка форка: «😂 Стикер», как в списке чатов.
+            textContent = stickerText(eventContent.bestDescription),
             type = AttachmentThumbnailType.Image,
             blurHash = eventContent.info.blurhash,
         )
@@ -182,4 +196,21 @@ internal fun InReplyToDetails.Ready.metadata(hideImage: Boolean): InReplyToMetad
     is CallNotifyContent,
     is LiveLocationContent,
     null -> null
+}
+
+/**
+ * Правка форка: подпись, если она есть, иначе слово с типом сообщения.
+ *
+ * Имя файла в ответе показывать нельзя: у кружочка оно служебное, а у гифки и фото
+ * ничего не говорит человеку.
+ */
+private fun MessageTypeWithAttachment.captionOr(typeWord: String): String =
+    caption?.takeIf { it.isNotBlank() } ?: typeWord
+
+/** «😂 Стикер», как в Telegram; без эмодзи в описании — просто «Стикер». */
+@Composable
+private fun stickerText(description: String): String {
+    val word = stringResource(CommonStrings.common_sticker)
+    val emoji = description.larpgramStickerEmojiOrNull()
+    return if (emoji != null) "$emoji $word" else word
 }

@@ -8,11 +8,10 @@
 
 package io.element.android.features.messages.impl
 
-import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
-import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
-import io.element.android.features.stickers.impl.StickerPickerState
+import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
+import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -24,6 +23,7 @@ import io.element.android.features.messages.impl.timeline.components.receipt.bot
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
+import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage

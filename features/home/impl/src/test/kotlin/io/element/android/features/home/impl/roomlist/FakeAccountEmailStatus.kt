@@ -7,6 +7,8 @@
 package io.element.android.features.home.impl.roomlist
 
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
+import io.element.android.libraries.appupdate.api.UpdateChecker
+import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.imagepacks.api.ImagePack
 import io.element.android.libraries.imagepacks.api.ImagePackSource
 
@@ -23,6 +25,18 @@ class FakeAccountEmailStatus(
     override suspend fun isBannerHidden(): Boolean = isBannerHiddenResult()
 
     override suspend fun hideBanner() = onHideBanner()
+}
+
+/**
+ * По умолчанию обновлений нет: в тестах про другое баннер только мешал бы.
+ */
+class FakeUpdateChecker(
+    private val checkResult: () -> UpdateStatus = { UpdateStatus.UpToDate },
+    private val onDismiss: (Long) -> Unit = {},
+) : UpdateChecker {
+    override suspend fun check(): UpdateStatus = checkResult()
+
+    override suspend fun dismiss(versionCode: Long) = onDismiss(versionCode)
 }
 
 /**
