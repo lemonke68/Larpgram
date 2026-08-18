@@ -179,7 +179,19 @@ class RustMatrixClientFactory(
                 strategy = if (featureFlagService.isFeatureEnabled(FeatureFlags.OnlySignedDeviceIsolationMode)) {
                     CollectStrategy.IDENTITY_BASED_STRATEGY
                 } else {
-                    CollectStrategy.ERROR_ON_VERIFIED_USER_PROBLEM
+                    // Правка форка (решение юзера 2026-08-18): ONLY_TRUSTED_DEVICES вместо
+                    // апстримовского ERROR_ON_VERIFIED_USER_PROBLEM. Тот жёстко блокировал
+                    // отправку во ВСЕ шифрованные комнаты, если у своего же аккаунта осталось
+                    // устройство без кросс-подписи (типичный случай: переустановил приложение,
+                    // не разлогинившись). Человек этого не понимал — мессенджер просто «не
+                    // отправляет». Наша аудитория контакты не верифицирует, поэтому «защита»
+                    // ERROR для чужих и так не работала, а самоблок бил по своим.
+                    //
+                    // ONLY_TRUSTED_DEVICES не блокирует и не течёт на неподписанные устройства:
+                    // шлёт на все кросс-подписанные (autoEnableCrossSigning=true, т.е. все
+                    // нормальные устройства), а брошенную старую сессию молча пропускает. Её же
+                    // предлагаем разлогинить баннером, чтобы она не висела без новых сообщений.
+                    CollectStrategy.ONLY_TRUSTED_DEVICES
                 }
             )
             .decryptionSettings(

@@ -6,8 +6,8 @@
 
 package io.element.android.features.stickers.impl.import
 
-import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.BindingContainer
+import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.SessionScope

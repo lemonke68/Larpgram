@@ -19,6 +19,12 @@ sealed interface RoomListEvent {
 
     /** Правка форка: «потом» на баннере про почту, молчим две недели. */
     data object DismissConnectEmailBanner : RoomListEvent
+
+    /** Правка форка: скрыть баннер про очистку старых сессий. */
+    data object DismissCleanUpSessionsBanner : RoomListEvent
+
+    /** Правка форка: «потом» на баннере обновления, молчим до следующей версии. */
+    data object DismissUpdateBanner : RoomListEvent
     data object ToggleSearchResults : RoomListEvent
     data class ShowContextMenu(val roomSummary: RoomListRoomSummary) : RoomListEvent
 

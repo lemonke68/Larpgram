@@ -18,26 +18,35 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
@@ -52,6 +61,8 @@ import io.element.android.libraries.designsystem.atomic.atoms.UnreadIndicatorAto
 import io.element.android.libraries.designsystem.atomic.molecules.InviteButtonsRowMolecule
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
+import io.element.android.libraries.designsystem.components.messages.MessageDeliveryState
+import io.element.android.libraries.designsystem.components.messages.MessageDeliveryTicks
 import io.element.android.libraries.designsystem.modifiers.onKeyboardContextMenuAction
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -61,24 +72,38 @@ import io.element.android.libraries.designsystem.theme.roomListRoomMessage
 import io.element.android.libraries.designsystem.theme.roomListRoomMessageDate
 import io.element.android.libraries.designsystem.theme.roomListRoomName
 import io.element.android.libraries.designsystem.theme.unreadIndicator
+import io.element.android.libraries.eventformatter.api.LATEST_EVENT_THUMBNAIL_ID
+import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
 import io.element.android.libraries.matrix.ui.components.DisplayNameWithStatus
 import io.element.android.libraries.matrix.ui.components.InviteSenderView
+import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.matrix.ui.model.InviteSender
 import io.element.android.libraries.ui.strings.CommonStrings
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentMapOf
 import timber.log.Timber
 
-// Правка форка, замеры по макету редизайна 2023: строка 76dp, аватар 56dp в 20dp от края,
-// текст начинается с 92dp. У Element было 84dp и отступ 16dp — заметно рыхлее.
+// Правка форка. Замеры сперва брались с концепта 2023 года, а 2026-08-16 переснялись по
+// живому клиенту (design/tg-ref/current/chats_list_dark.png): высоту строки концепт угадал,
+// а аватар на деле крупнее и придвинут к краю. Текст в итоге начинается с 86dp.
 internal val minHeight = 76.dp
-private val ROW_HORIZONTAL_PADDING = 20.dp
-private val AVATAR_TO_TEXT_GAP = 16.dp
+private val ROW_HORIZONTAL_PADDING = 16.dp
+private val AVATAR_TO_TEXT_GAP = 10.dp
 
 // Правка форка: превью последнего сообщения в одну строку. Element держал ровно две
 // (minLines = maxLines = 2), из-за чего строка списка не могла быть ниже ~84dp.
 private const val PREVIEW_MAX_LINES = 1
+
+// Правка форка: мини-превью медиа, замер по design/tg-ref/current/chats_list_dark.png.
+private val PREVIEW_THUMBNAIL_SIZE = 18.dp
+private val PREVIEW_THUMBNAIL_CORNER = 4.dp
+
+// Просить у сервера ровно 18dp бессмысленно: на экране 3x это 54px, а миниатюры кэшируются
+// по размеру запроса. Берём один размер с запасом на все плотности.
+private const val PREVIEW_THUMBNAIL_REQUEST_PX = 64L
 
 @Composable
 internal fun RoomSummaryRow(
@@ -138,6 +163,8 @@ internal fun RoomSummaryRow(
                         timestamp = room.timestamp,
                         isHighlighted = room.isHighlighted,
                         dmUserStatus = room.dmUserStatus,
+                        deliveryState = room.latestEvent.deliveryState(),
+                        isMuted = room.userDefinedNotificationMode == RoomNotificationMode.MUTE,
                     )
                     MessagePreviewAndIndicatorRow(room = room, showUnreadCount = showUnreadCount)
                 }
@@ -231,31 +258,54 @@ private fun NameAndTimestampRow(
     timestamp: String?,
     isHighlighted: Boolean,
     dmUserStatus: DisplayedStatus?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    deliveryState: MessageDeliveryState? = null,
+    isMuted: Boolean = false,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = spacedBy(16.dp)
     ) {
         val displayName = name?.toSafeLength(ellipsize = true) ?: stringResource(id = CommonStrings.common_no_room_name)
-        DisplayNameWithStatus(
-            name = displayName,
-            status = dmUserStatus,
+        Row(
             modifier = Modifier.weight(1f),
-            style = ElementTheme.typography.fontBodyLgMedium,
-            nameColor = ElementTheme.colors.roomListRoomName,
-            nameFontStyle = FontStyle.Italic.takeIf { name == null },
-        )
-        // Timestamp
-        Text(
-            text = timestamp ?: "",
-            style = ElementTheme.typography.fontBodySmMedium,
-            color = if (isHighlighted) {
-                ElementTheme.colors.unreadIndicator
-            } else {
-                ElementTheme.colors.roomListRoomMessageDate
-            },
-        )
+            horizontalArrangement = spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DisplayNameWithStatus(
+                name = displayName,
+                status = dmUserStatus,
+                modifier = Modifier.weight(1f, fill = false),
+                style = ElementTheme.typography.fontBodyLgMedium,
+                nameColor = ElementTheme.colors.roomListRoomName,
+                nameFontStyle = FontStyle.Italic.takeIf { name == null },
+            )
+            // Правка форка: значок «без звука» стоит сразу после имени, а не справа у бейджа.
+            // Проверено по живому клиенту, у Element он был в правом блоке.
+            if (isMuted) {
+                NotificationOffIndicatorAtom()
+            }
+        }
+        Row(
+            horizontalArrangement = spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Правка форка: галочки перед временем, как в Telegram. В личном чате префикса
+            // «Вы:» нет, и своё сообщение отличается только ими.
+            if (deliveryState != null) {
+                MessageDeliveryTicks(state = deliveryState)
+            }
+            // Timestamp
+            Text(
+                text = timestamp ?: "",
+                style = ElementTheme.typography.fontBodySmMedium,
+                color = if (isHighlighted) {
+                    ElementTheme.colors.unreadIndicator
+                } else {
+                    ElementTheme.colors.roomListRoomMessageDate
+                },
+            )
+        }
     }
 }
 
@@ -321,17 +371,8 @@ private fun MessagePreviewAndIndicatorRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
-                if (room.latestEvent is LatestEvent.Sending) {
-                    Icon(
-                        modifier = Modifier
-                            .padding(top = 2.dp)
-                            .size(16.dp),
-                        imageVector = CompoundIcons.Time(),
-                        contentDescription = stringResource(CommonStrings.common_sending),
-                        tint = ElementTheme.colors.iconTertiary,
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                }
+                // Правка форка: часиков перед текстом больше нет, отправку показывают галочки
+                // рядом со временем, а два индикатора одного и того же это шум.
                 val messagePreview = room.latestEvent.content()
                 val annotatedMessagePreview = messagePreview as? AnnotatedString ?: AnnotatedString(text = messagePreview.orEmpty().toString())
                 Text(
@@ -343,6 +384,7 @@ private fun MessagePreviewAndIndicatorRow(
                     style = ElementTheme.typography.fontBodyMdRegular,
                     maxLines = PREVIEW_MAX_LINES,
                     overflow = TextOverflow.Ellipsis,
+                    inlineContent = latestEventThumbnailContent(room.latestEvent.thumbnail()),
                 )
             }
         }
@@ -363,9 +405,8 @@ private fun MessagePreviewAndIndicatorRow(
                     isAudio = room.activeCallIntent == CallIntent.AUDIO
                 )
             }
-            if (room.userDefinedNotificationMode == RoomNotificationMode.MUTE) {
-                NotificationOffIndicatorAtom()
-            } else if (room.numberOfUnreadMentions > 0) {
+            // Правка форка: значок «без звука» переехал к имени, см. NameAndTimestampRow.
+            if (room.numberOfUnreadMentions > 0) {
                 MentionIndicatorAtom()
             }
             if (room.hasNewContent) {
@@ -387,6 +428,43 @@ private fun MessagePreviewAndIndicatorRow(
             }
         }
     }
+}
+
+/**
+ * Правка форка: мини-превью медиа внутри текста последнего сообщения.
+ *
+ * Замер по живому клиенту: квадрат 18dp со скруглением 4. Место под него оставляет
+ * форматтер (`withThumbnailSlot`), поэтому картинка встаёт после имени отправителя и не
+ * ломает многоточие. Нет картинки — нет и слота, `inlineContent` тогда пустой.
+ *
+ * Размер задаётся в sp, а не в dp: это метка внутри текста, и при увеличенном системном
+ * шрифте она должна расти вместе со строкой, иначе поедет базовая линия.
+ */
+@Composable
+private fun latestEventThumbnailContent(thumbnail: MediaSource?): ImmutableMap<String, InlineTextContent> {
+    if (thumbnail == null) return persistentMapOf()
+    val size = with(LocalDensity.current) { PREVIEW_THUMBNAIL_SIZE.toSp() }
+    return persistentMapOf(
+        LATEST_EVENT_THUMBNAIL_ID to InlineTextContent(
+            placeholder = Placeholder(
+                width = size,
+                height = size,
+                placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
+            ),
+        ) {
+            AsyncImage(
+                model = MediaRequestData(
+                    source = thumbnail,
+                    kind = MediaRequestData.Kind.Thumbnail(PREVIEW_THUMBNAIL_REQUEST_PX),
+                ),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(PREVIEW_THUMBNAIL_CORNER)),
+            )
+        }
+    )
 }
 
 @Composable

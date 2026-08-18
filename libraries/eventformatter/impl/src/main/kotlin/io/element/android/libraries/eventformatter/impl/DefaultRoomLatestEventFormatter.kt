@@ -30,6 +30,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.LiveLocationC
 import io.element.android.libraries.matrix.api.timeline.item.event.LocationMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageContent
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageType
+import io.element.android.libraries.matrix.api.timeline.item.event.MessageTypeWithAttachment
 import io.element.android.libraries.matrix.api.timeline.item.event.NoticeMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.OtherMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.PollContent
@@ -45,6 +46,10 @@ import io.element.android.libraries.matrix.api.timeline.item.event.UnknownConten
 import io.element.android.libraries.matrix.api.timeline.item.event.VideoMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.VoiceMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.getDisambiguatedDisplayName
+import io.element.android.libraries.matrix.api.timeline.item.event.isGif
+import io.element.android.libraries.matrix.api.timeline.item.event.isLarpgramCircle
+import io.element.android.libraries.matrix.api.timeline.item.event.larpgramPreviewThumbnail
+import io.element.android.libraries.matrix.api.timeline.item.event.larpgramStickerEmojiOrNull
 import io.element.android.libraries.matrix.ui.messages.toPlainText
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.toolbox.api.strings.StringProvider
@@ -94,7 +99,8 @@ class DefaultRoomLatestEventFormatter(
                 message.prefixIfNeeded(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
             }
             is StickerContent -> {
-                content.bestDescription.prefixWith(sp.getString(CommonStrings.common_sticker))
+                stickerSummary(content.bestDescription)
+                    .withThumbnailSlotIfAny(content)
                     .prefixIfNeeded(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
             }
             is UnableToDecryptContent -> {
@@ -132,6 +138,7 @@ class DefaultRoomLatestEventFormatter(
         isDmRoom: Boolean,
         isOutgoing: Boolean
     ): CharSequence {
+        val content = this
         val message = when (val messageType: MessageType = type) {
             // Doesn't need a prefix
             is EmoteMessageType -> {
@@ -141,22 +148,35 @@ class DefaultRoomLatestEventFormatter(
                 messageType.toPlainText(permalinkParser)
             }
             is VideoMessageType -> {
-                messageType.toPlainText(permalinkParser).prefixWith(sp.getString(CommonStrings.common_video))
+                messageType.captionOr(
+                    if (messageType.isLarpgramCircle) {
+                        sp.getString(CommonStrings.larpgram_video_message)
+                    } else {
+                        sp.getString(CommonStrings.common_video)
+                    }
+                )
             }
             is ImageMessageType -> {
-                messageType.toPlainText(permalinkParser).prefixWith(sp.getString(CommonStrings.common_image))
+                messageType.captionOr(
+                    if (messageType.isGif) {
+                        sp.getString(CommonStrings.common_gif)
+                    } else {
+                        sp.getString(CommonStrings.common_image)
+                    }
+                )
             }
             is StickerMessageType -> {
-                messageType.toPlainText(permalinkParser).prefixWith(sp.getString(CommonStrings.common_sticker))
+                messageType.captionOr(stickerSummary(messageType.filename))
             }
             is LocationMessageType -> {
                 sp.getString(CommonStrings.common_shared_location)
             }
             is FileMessageType -> {
-                messageType.toPlainText(permalinkParser).prefixWith(sp.getString(CommonStrings.common_file))
+                // У документа Telegram показывает имя файла, а не слово «Файл».
+                messageType.captionOr(messageType.filename)
             }
             is AudioMessageType -> {
-                messageType.toPlainText(permalinkParser).prefixWith(sp.getString(CommonStrings.common_audio))
+                messageType.captionOr(messageType.filename.ifBlank { sp.getString(CommonStrings.common_audio) })
             }
             is VoiceMessageType -> {
                 messageType
@@ -169,13 +189,46 @@ class DefaultRoomLatestEventFormatter(
                 messageType.body
             }
             is GalleryMessageType -> {
-                messageType.body.prefixWith(sp.getString(CommonStrings.common_gallery))
+                messageType.body.ifBlank { sp.getString(CommonStrings.common_gallery) }
             }
             is NoticeMessageType -> {
                 messageType.body
             }
         }
-        return message.prefixIfNeeded(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
+        return message
+            .withThumbnailSlotIfAny(content)
+            .prefixIfNeeded(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
+    }
+
+    /**
+     * Правка форка: тип сообщения это слово, а не префикс через двоеточие.
+     *
+     * В Telegram тип показывается иконкой, а словом становится только когда текста нет:
+     * «Фото» без подписи, но сама подпись, если она есть. У апстрима тип вешался вторым
+     * префиксом поверх имени отправителя, и получалась цепочка вида `Вы: Стикер: 😂`.
+     *
+     * Имя файла наружу не пускаем никогда: у кружочка оно служебное
+     * (`larpgram-circle-b73db9d6…`), и в списке чатов выглядело поломкой.
+     */
+    private fun MessageTypeWithAttachment.captionOr(typeWord: String): CharSequence =
+        toPlainText(permalinkParser, default = "")
+            .takeIf { it.isNotBlank() }
+            ?: typeWord
+
+    /**
+     * Оставляет в тексте место под мини-превью, если у события есть картинка.
+     *
+     * Условие ровно то же, что у списка чатов (`larpgramPreviewThumbnail`), и это важно:
+     * разъедутся — в строке появится пустая дырка либо картинка не влезет вовсе.
+     */
+    private fun CharSequence.withThumbnailSlotIfAny(content: EventContent): CharSequence =
+        if (content.larpgramPreviewThumbnail != null) withThumbnailSlot() else this
+
+    /** «😂 Стикер», как в Telegram; без эмодзи в описании — просто «Стикер». */
+    private fun stickerSummary(description: String): String {
+        val word = sp.getString(CommonStrings.common_sticker)
+        val emoji = description.larpgramStickerEmojiOrNull()
+        return if (emoji != null) "$emoji $word" else word
     }
 
     private fun CharSequence.prefixIfNeeded(

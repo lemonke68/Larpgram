@@ -96,22 +96,88 @@ class DefaultRoomLatestEventFormatterTest : RobolectricTest() {
         }
     }
 
+    // Правка форка: у медиа с картинкой в тексте остаётся место под мини-превью, и в
+    // обычной строке это символ-заполнитель. Рисует его список чатов, см. LATEST_EVENT_THUMBNAIL_ID.
+    private val thumb = "\uFFFD "
+
     @Test
     @Config(qualifiers = "en")
     fun `Sticker content`() {
+        // Правка форка: описание стикера показываем только если это эмодзи, иначе одно слово.
         val body = "a sticker body"
         val info = ImageInfo(null, null, null, null, null, null, null)
         val message = createLatestEvent(false, null, aStickerContent(body, info, aMediaSource(url = "url")))
         val result = formatter.format(message, false)
-        val expectedBody = someoneElseId.value + ": Sticker: a sticker body"
+        val expectedBody = someoneElseId.value + ": " + thumb + "Sticker"
         // Check we have formatting
         assertThat(result is AnnotatedString).isTrue()
-        // And there is a bold span for the 'Sticker' part
+        // Жирный остался только у отправителя: тип сообщения больше не второй префикс.
         val boldSpanStyle = (result as AnnotatedString).spanStyles.lastOrNull { it.item.fontWeight == FontWeight.Bold }
         assertThat(boldSpanStyle).isNotNull()
-        val spanStart = someoneElseId.value.length + 2
-        assertThat(boldSpanStyle!!.start..boldSpanStyle.end).isEqualTo(spanStart..spanStart + 7)
+        assertThat(boldSpanStyle!!.start..boldSpanStyle.end).isEqualTo(0..someoneElseId.value.length)
         assertThat(result.toString()).isEqualTo(expectedBody)
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun `Sticker content with emoji`() {
+        // Правка форка: «😂 Стикер», как в Telegram. У импортированных паков в body лежит эмодзи.
+        val info = ImageInfo(null, null, null, null, null, null, null)
+        val message = createLatestEvent(false, null, aStickerContent("😂", info, aMediaSource(url = "url")))
+        val result = formatter.format(message, true)
+        assertThat(result.toString()).isEqualTo(thumb + "😂 Sticker")
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun `Circle video is named, its filename never leaks`() {
+        // Правка форка: имя файла кружочка служебное, наружу его пускать нельзя.
+        val content = MessageContent(
+            body = "",
+            inReplyTo = null,
+            isEdited = false,
+            threadInfo = null,
+            type = VideoMessageType("larpgram-circle-b73db9d6-a46f.mp4", null, null, MediaSource("url"), null),
+        )
+        val message = createLatestEvent(sentByYou = false, senderDisplayName = "Alice", content = content)
+        assertThat(formatter.format(message, isDmRoom = true).toString()).isEqualTo("Video message")
+        assertThat(formatter.format(message, isDmRoom = false).toString()).isEqualTo("Alice: Video message")
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun `Gif is named GIF`() {
+        // Правка форка: гифки узнаём по mime, у чужих клиентов — по расширению.
+        val byMimeType = ImageMessageType(
+            filename = "whatever",
+            caption = null,
+            formattedCaption = null,
+            source = MediaSource("url"),
+            info = ImageInfo(null, null, "image/gif", null, null, null, null),
+        )
+        val byExtension = ImageMessageType("larpgram-gif-42.GIF", null, null, MediaSource("url"), null)
+        sequenceOf(byMimeType, byExtension).forEach { type ->
+            val content = MessageContent("", null, false, null, type)
+            val message = createLatestEvent(sentByYou = true, senderDisplayName = null, content = content)
+            assertWithMessage("$type is not recognised as a gif")
+                .that(formatter.format(message, isDmRoom = true).toString())
+                .isEqualTo(thumb + "GIF")
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun `Media caption replaces the type word`() {
+        // Правка форка: слово появляется только когда подписи нет, как в Telegram.
+        val content = MessageContent(
+            body = "",
+            inReplyTo = null,
+            isEdited = false,
+            threadInfo = null,
+            type = ImageMessageType("photo.jpg", "look at this", null, MediaSource("url"), null),
+        )
+        val message = createLatestEvent(sentByYou = false, senderDisplayName = "Alice", content = content)
+        assertThat(formatter.format(message, isDmRoom = false).toString()).isEqualTo("Alice: " + thumb + "look at this")
     }
 
     @Test
@@ -224,38 +290,28 @@ class DefaultRoomLatestEventFormatterTest : RobolectricTest() {
         // Verify results of DM mode
         for ((type, result) in resultsInDm) {
             val string = result.toString()
+            // Правка форка: тип сообщения это слово без двоеточия, а имя файла показывается
+            // только у документов и аудио, где оно и есть название.
             val expectedResult = when (type) {
-                is VideoMessageType -> "Video: Shared body"
-                is AudioMessageType -> "Audio: Shared body"
+                is VideoMessageType -> "Video"
+                is AudioMessageType -> "Shared body"
                 is VoiceMessageType -> "Voice message"
-                is ImageMessageType -> "Image: Shared body"
-                is GalleryMessageType -> "Gallery: Shared body"
-                is StickerMessageType -> "Sticker: Shared body"
-                is FileMessageType -> "File: Shared body"
+                is ImageMessageType -> thumb + "Image"
+                is GalleryMessageType -> "Shared body"
+                is StickerMessageType -> "Sticker"
+                is FileMessageType -> "Shared body"
                 is LocationMessageType -> "Shared location"
                 is EmoteMessageType -> "* $senderName ${type.body}"
                 is TextMessageType,
                 is NoticeMessageType,
                 is OtherMessageType -> body
             }
-            val shouldCreateAnnotatedString = when (type) {
-                is VideoMessageType -> true
-                is AudioMessageType -> true
-                is VoiceMessageType -> false
-                is ImageMessageType -> true
-                is StickerMessageType -> true
-                is FileMessageType -> true
-                is LocationMessageType -> false
-                is EmoteMessageType -> false
-                is TextMessageType -> false
-                is NoticeMessageType -> false
-                is OtherMessageType -> false
-                is GalleryMessageType -> true
-            }
-            if (shouldCreateAnnotatedString) {
-                assertWithMessage("$type doesn't produce an AnnotatedString")
+            // В личке префикса отправителя нет, а тип больше не префикс, поэтому и разметки нет.
+            // Исключение — картинка: у неё в тексте живёт место под мини-превью.
+            if (type !is ImageMessageType) {
+                assertWithMessage("$type unexpectedly produces an AnnotatedString")
                     .that(result)
-                    .isInstanceOf(AnnotatedString::class.java)
+                    .isNotInstanceOf(AnnotatedString::class.java)
             }
             assertWithMessage("$type was not properly handled for DM").that(string).isEqualTo(expectedResult)
         }
@@ -264,13 +320,13 @@ class DefaultRoomLatestEventFormatterTest : RobolectricTest() {
         for ((type, result) in resultsInRoom) {
             val string = result.toString()
             val expectedResult = when (type) {
-                is VideoMessageType -> "$expectedPrefix: Video: Shared body"
-                is AudioMessageType -> "$expectedPrefix: Audio: Shared body"
+                is VideoMessageType -> "$expectedPrefix: Video"
+                is AudioMessageType -> "$expectedPrefix: Shared body"
                 is VoiceMessageType -> "$expectedPrefix: Voice message"
-                is ImageMessageType -> "$expectedPrefix: Image: Shared body"
-                is GalleryMessageType -> "$expectedPrefix: Gallery: Shared body"
-                is StickerMessageType -> "$expectedPrefix: Sticker: Shared body"
-                is FileMessageType -> "$expectedPrefix: File: Shared body"
+                is ImageMessageType -> "$expectedPrefix: " + thumb + "Image"
+                is GalleryMessageType -> "$expectedPrefix: Shared body"
+                is StickerMessageType -> "$expectedPrefix: Sticker"
+                is FileMessageType -> "$expectedPrefix: Shared body"
                 is LocationMessageType -> "$expectedPrefix: Shared location"
                 is TextMessageType,
                 is NoticeMessageType,

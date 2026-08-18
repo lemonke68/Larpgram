@@ -31,6 +31,8 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.isEdited
 import io.element.android.features.messages.impl.timeline.model.event.isRedacted
 import io.element.android.libraries.core.bool.orFalse
+import io.element.android.libraries.designsystem.components.messages.MessageDeliveryState
+import io.element.android.libraries.designsystem.components.messages.MessageDeliveryTicks
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon

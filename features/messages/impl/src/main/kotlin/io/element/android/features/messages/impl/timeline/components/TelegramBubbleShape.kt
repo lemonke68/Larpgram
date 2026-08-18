@@ -118,9 +118,12 @@ data class TelegramBubbleShape(
             val tail = Path().apply {
                 moveTo(x(0f), bottom - tailH)
                 cubicTo(
-                    x(tailW * 0.03f), bottom - tailH * 0.87f,
-                    x(tailW), bottom - tailH * 0.12f,
-                    x(tailW), bottom - tipRound,
+                    x(tailW * 0.03f),
+                    bottom - tailH * 0.87f,
+                    x(tailW),
+                    bottom - tailH * 0.12f,
+                    x(tailW),
+                    bottom - tipRound,
                 )
                 // Round the very tip instead of leaving a needle point.
                 quadraticTo(x(tailW), bottom, x(tailW - tipRound), bottom)

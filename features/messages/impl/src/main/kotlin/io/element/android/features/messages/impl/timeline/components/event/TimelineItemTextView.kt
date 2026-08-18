@@ -26,7 +26,7 @@ import io.element.android.features.messages.impl.timeline.components.layout.Cont
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContentProvider
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
-import io.element.android.features.messages.impl.utils.containsOnlyEmojis
+import io.element.android.features.messages.impl.timeline.model.event.isEmojiOnly
 import io.element.android.libraries.androidutils.text.LinkifyHelper
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -47,10 +47,9 @@ fun TimelineItemTextView(
     // The View <-> Compose interop is not working well with Compose UI tests (it loops indefinitely), so we skip it in the UI test mode.
     if (LocalUiTestMode.current) return
 
-    val emojiOnly = content.formattedBody.toString() == content.body &&
-        content.body.replace(" ", "").containsOnlyEmojis()
+    // Правка форка: признак переехал в LarpgramBubbleless.kt, по нему же решается пузырь.
     val textStyle = when {
-        emojiOnly -> ElementTheme.typography.fontHeadingXlRegular
+        content.isEmojiOnly -> ElementTheme.typography.fontHeadingXlRegular
         else -> ElementTheme.typography.fontBodyLgRegular
     }
     CompositionLocalProvider(

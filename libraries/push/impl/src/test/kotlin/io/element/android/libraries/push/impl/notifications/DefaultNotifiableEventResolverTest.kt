@@ -241,6 +241,26 @@ class DefaultNotifiableEventResolverTest : RobolectricTest() {
     }
 
     @Test
+    fun `resolve event sticker`() = runTest {
+        // Правка форка: апстрим стикеры выбрасывал, у нас о них приходит уведомление.
+        val sut = createDefaultNotifiableEventResolver(
+            notificationResult = Result.success(
+                mapOf(
+                    AN_EVENT_ID to Result.success(aNotificationData(
+                        content = NotificationContent.MessageLike.Sticker(senderId = A_USER_ID_2),
+                    ))
+                )
+            )
+        )
+        val request = aPushRequest(A_SESSION_ID, A_ROOM_ID, AN_EVENT_ID, "firebase")
+        val result = sut.resolveEvents(A_SESSION_ID, listOf(request))
+        val expectedResult = ResolvedPushEvent.Event(
+            aNotifiableMessageEvent(body = "Sticker")
+        )
+        assertThat(result.getEvent(request)).isEqualTo(Result.success(expectedResult))
+    }
+
+    @Test
     fun `resolve event message voice`() = runTest {
         val sut = createDefaultNotifiableEventResolver(
             notificationResult = Result.success(
@@ -828,7 +848,6 @@ class DefaultNotifiableEventResolverTest : RobolectricTest() {
         testNoResults(NotificationContent.MessageLike.KeyVerificationMac)
         testNoResults(NotificationContent.MessageLike.KeyVerificationDone)
         testNoResults(NotificationContent.MessageLike.ReactionContent(relatedEventId = AN_EVENT_ID_2.value))
-        testNoResults(NotificationContent.MessageLike.Sticker)
         testNoResults(NotificationContent.StateEvent.PolicyRuleRoom)
         testNoResults(NotificationContent.StateEvent.PolicyRuleServer)
         testNoResults(NotificationContent.StateEvent.PolicyRuleUser)

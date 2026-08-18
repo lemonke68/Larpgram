@@ -43,6 +43,8 @@ import io.element.android.features.leaveroom.api.LeaveRoomEvent
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
+import io.element.android.libraries.appupdate.api.UpdateChecker
+import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -92,6 +94,8 @@ class RoomListPresenter(
     private val featureFlagService: FeatureFlagService,
     // Правка форка: баннер с напоминанием привязать почту.
     private val accountEmailStatus: AccountEmailStatus,
+    // Правка форка: баннер с предложением обновиться.
+    private val updateChecker: UpdateChecker,
     // ВРЕМЕННО: для проверки чтения стикер-паков, убрать вместе с логом ниже.
     private val imagePackSource: ImagePackSource,
 ) : Presenter<RoomListState> {
@@ -162,6 +166,30 @@ class RoomListPresenter(
                 null
             }
         }
+        // Правка форка: баннер про очистку старых сессий. isLastDevice == false означает, что
+        // у аккаунта есть другие сессии — обычно брошенная старая после переустановки без
+        // разлогина. Дважды не спорим с флагом: реальное значение приходит быстрее сетевого
+        // запроса URL ниже, поэтому ложного мелькания на одном устройстве нет.
+        var cleanUpSessionsBannerDismissed by rememberSaveable { mutableStateOf(false) }
+        val isLastDevice by encryptionService.isLastDevice.collectAsState()
+        val hasOtherSessions = !isLastDevice
+        val manageSessionsUrl by produceState<String?>(null, hasOtherSessions, cleanUpSessionsBannerDismissed) {
+            value = if (hasOtherSessions && !cleanUpSessionsBannerDismissed) {
+                client.getAccountManagementUrl(AccountManagementAction.DevicesList).getOrNull()
+            } else {
+                null
+            }
+        }
+
+        // Правка форка: баннер обновления. Спрашиваем манифест один раз за показ экрана,
+        // как и почту: версия сама собой не меняется, а обновление всё равно уводит человека
+        // в браузер и назад. check() уже отсекает старые и отклонённые версии, поэтому здесь
+        // достаточно проверить, что вернулось Available.
+        var updateBannerDismissed by rememberSaveable { mutableStateOf(false) }
+        val updateStatus by produceState<UpdateStatus>(UpdateStatus.Unknown) {
+            value = updateChecker.check()
+        }
+
         val showNewNotificationSoundBanner by remember {
             announcementService.announcementsToShowFlow().map { announcements ->
                 announcements.contains(Announcement.NewNotificationSound)
@@ -187,6 +215,17 @@ class RoomListPresenter(
                 RoomListEvent.DismissConnectEmailBanner -> {
                     connectEmailBannerDismissed = true
                     coroutineScope.launch { accountEmailStatus.hideBanner() }
+                }
+                RoomListEvent.DismissCleanUpSessionsBanner -> {
+                    cleanUpSessionsBannerDismissed = true
+                }
+                RoomListEvent.DismissUpdateBanner -> {
+                    updateBannerDismissed = true
+                    // Запоминаем именно эту версию, чтобы следующая, ещё более свежая, снова
+                    // показала баннер. Если статус ещё не подъехал — прячем только на сессию.
+                    (updateStatus as? UpdateStatus.Available)?.let { available ->
+                        coroutineScope.launch { updateChecker.dismiss(available.versionCode) }
+                    }
                 }
                 RoomListEvent.ToggleSearchResults -> searchState.eventSink(RoomListSearchEvent.ToggleSearchVisibility)
                 is RoomListEvent.ShowContextMenu -> {
@@ -233,6 +272,10 @@ class RoomListPresenter(
             // Баннер про почту показываем, только если знаем, куда вести человека.
             showConnectEmailBanner = accountNeedsEmail && !connectEmailBannerDismissed && accountManagementUrl != null,
             accountManagementUrl = accountManagementUrl,
+            // То же и с сессиями: без адреса страницы управления вести некуда.
+            showCleanUpSessionsBanner = hasOtherSessions && !cleanUpSessionsBannerDismissed && manageSessionsUrl != null,
+            manageSessionsUrl = manageSessionsUrl,
+            showUpdateBanner = updateStatus is UpdateStatus.Available && !updateBannerDismissed,
             showNewNotificationSoundBanner,
             showUnreadCount,
         )
@@ -256,15 +299,21 @@ class RoomListPresenter(
     private fun rememberSecurityBannerState(
         securityBannerDismissed: Boolean,
         showConnectEmailBanner: Boolean,
+        showCleanUpSessionsBanner: Boolean,
+        showUpdateBanner: Boolean,
     ): State<SecurityBannerState> {
         val currentSecurityBannerDismissed by rememberUpdatedState(securityBannerDismissed)
         val currentShowConnectEmailBanner by rememberUpdatedState(showConnectEmailBanner)
+        val currentShowCleanUpSessionsBanner by rememberUpdatedState(showCleanUpSessionsBanner)
+        val currentShowUpdateBanner by rememberUpdatedState(showUpdateBanner)
         val recoveryState by encryptionService.recoveryStateStateFlow.collectAsState()
         return remember {
             derivedStateOf {
                 calculateBannerState(
                     securityBannerDismissed = currentSecurityBannerDismissed,
                     showConnectEmailBanner = currentShowConnectEmailBanner,
+                    showCleanUpSessionsBanner = currentShowCleanUpSessionsBanner,
+                    showUpdateBanner = currentShowUpdateBanner,
                     recoveryState = recoveryState,
                 )
             }
@@ -274,6 +323,8 @@ class RoomListPresenter(
     private fun calculateBannerState(
         securityBannerDismissed: Boolean,
         showConnectEmailBanner: Boolean,
+        showCleanUpSessionsBanner: Boolean,
+        showUpdateBanner: Boolean,
         recoveryState: RecoveryState,
     ): SecurityBannerState {
         if (!securityBannerDismissed) {
@@ -293,6 +344,16 @@ class RoomListPresenter(
             return SecurityBannerState.ConnectEmail
         }
 
+        if (showCleanUpSessionsBanner) {
+            return SecurityBannerState.CleanUpSessions
+        }
+
+        // Правка форка: обновление — самый низкий приоритет. Безопасность аккаунта важнее,
+        // а обновиться человек успеет и после того, как разберётся с ключами и сессиями.
+        if (showUpdateBanner) {
+            return SecurityBannerState.UpdateAvailable
+        }
+
         return SecurityBannerState.None
     }
 
@@ -301,6 +362,9 @@ class RoomListPresenter(
         securityBannerDismissed: Boolean,
         showConnectEmailBanner: Boolean,
         accountManagementUrl: String?,
+        showCleanUpSessionsBanner: Boolean,
+        manageSessionsUrl: String?,
+        showUpdateBanner: Boolean,
         showNewNotificationSoundBanner: Boolean,
         showUnreadCount: Boolean,
     ): RoomListContentState {
@@ -319,11 +383,12 @@ class RoomListPresenter(
             }
         }
         val seenRoomInvites by remember { seenInvitesStore.seenRoomIds() }.collectAsState(emptySet())
-        val securityBannerState by rememberSecurityBannerState(securityBannerDismissed, showConnectEmailBanner)
+        val securityBannerState by rememberSecurityBannerState(securityBannerDismissed, showConnectEmailBanner, showCleanUpSessionsBanner, showUpdateBanner)
         return when {
             showEmpty -> RoomListContentState.Empty(
                 securityBannerState = securityBannerState,
                 accountManagementUrl = accountManagementUrl,
+                manageSessionsUrl = manageSessionsUrl,
             )
             showSkeleton -> RoomListContentState.Skeleton(count = 16)
             else -> {
@@ -332,6 +397,7 @@ class RoomListPresenter(
                 RoomListContentState.Rooms(
                     securityBannerState = securityBannerState,
                     accountManagementUrl = accountManagementUrl,
+                    manageSessionsUrl = manageSessionsUrl,
                     showNewNotificationSoundBanner = showNewNotificationSoundBanner,
                     showUnreadCount = showUnreadCount,
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),

@@ -21,6 +21,7 @@ import io.element.android.libraries.matrix.api.room.CallIntentConsensus
 import io.element.android.libraries.matrix.api.room.CurrentUserMembership
 import io.element.android.libraries.matrix.api.roomlist.LatestEventValue
 import io.element.android.libraries.matrix.api.roomlist.RoomSummary
+import io.element.android.libraries.matrix.api.timeline.item.event.larpgramPreviewThumbnail
 import io.element.android.libraries.matrix.ui.model.dmUserStatus
 import io.element.android.libraries.matrix.ui.model.getAvatarData
 import io.element.android.libraries.matrix.ui.model.toInviteSender
@@ -91,6 +92,7 @@ class RoomListRoomSummaryFactory(
                     val content = roomLatestEventFormatter.format(latestEvent, dm).orEmpty()
                     LatestEvent.Sending(
                         content = content,
+                        thumbnail = latestEvent.content.larpgramPreviewThumbnail,
                     )
                 } else {
                     LatestEvent.Error
@@ -100,6 +102,9 @@ class RoomListRoomSummaryFactory(
                 val content = roomLatestEventFormatter.format(latestEvent, dm).orEmpty()
                 LatestEvent.Synced(
                     content = content,
+                    // Правка форка: по этому признаку строка рисует галочки.
+                    isOwn = latestEvent.isOwn,
+                    thumbnail = latestEvent.content.larpgramPreviewThumbnail,
                 )
             }
             is LatestEventValue.RoomInvite -> LatestEvent.None

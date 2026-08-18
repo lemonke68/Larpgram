@@ -8,11 +8,32 @@
 
 package io.element.android.libraries.eventformatter.impl
 
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import io.element.android.libraries.eventformatter.api.LATEST_EVENT_THUMBNAIL_ID
+
+/** Символ-заполнитель под inline-картинку, его же ждёт Compose. */
+private const val THUMBNAIL_PLACEHOLDER = "�"
+
+/**
+ * Правка форка: оставляет в тексте место под мини-превью медиа.
+ *
+ * Обоснование и сама метка лежат в
+ * [io.element.android.libraries.eventformatter.api.LATEST_EVENT_THUMBNAIL_ID].
+ */
+internal fun CharSequence.withThumbnailSlot(): AnnotatedString = buildAnnotatedString {
+    appendInlineContent(LATEST_EVENT_THUMBNAIL_ID, THUMBNAIL_PLACEHOLDER)
+    append(" ")
+    if (this@withThumbnailSlot is AnnotatedString) {
+        append(this@withThumbnailSlot)
+    } else {
+        append(this@withThumbnailSlot.toString())
+    }
+}
 
 internal fun CharSequence.prefixWith(prefix: String): AnnotatedString {
     return buildAnnotatedString {

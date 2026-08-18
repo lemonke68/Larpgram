@@ -8,19 +8,14 @@
 
 package io.element.android.features.messages.impl.timeline.components.event
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -72,12 +67,9 @@ fun TimelineItemStickerView(
                 hideContent = hideMediaContent,
                 onShowClick = onShowClick,
             ) {
-                var isThumbnailLoaded by remember { mutableStateOf(false) }
-
                 AsyncImage(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(if (isThumbnailLoaded) Modifier.background(Color.White) else Modifier)
                         .then(
                             if (onContentClick != null) {
                                 Modifier
@@ -98,7 +90,11 @@ fun TimelineItemStickerView(
                             mimeType = content.mimeType,
                         ),
                     ),
-                    contentScale = ContentScale.Crop,
+                    // Правка форка: Fit вместо Crop и без белой подложки. Апстрим клал стикер
+                    // на белый прямоугольник и обрезал его до коробки; в Telegram стикер лежит
+                    // прямо на обоях и целиком. Неквадратный стикер при этом не режется, а
+                    // свободное место остаётся прозрачным.
+                    contentScale = ContentScale.Fit,
                     alignment = Alignment.Center,
                     contentDescription = description,
                     onState = { state ->
@@ -106,7 +102,7 @@ fun TimelineItemStickerView(
                         if (url != null) {
                             handleAsyncImageStateChange(
                                 state = state,
-                                onLoaded = { isThumbnailLoaded = true },
+                                onLoaded = {},
                                 updateContentValidationState = { contentValidationState.update(url, it) },
                             )
                         }

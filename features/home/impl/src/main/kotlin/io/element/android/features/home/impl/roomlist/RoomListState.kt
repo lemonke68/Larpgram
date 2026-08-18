@@ -60,6 +60,20 @@ enum class SecurityBannerState {
 
     /** Правка форка: у аккаунта нет почты, а значит нечем восстановить доступ. */
     ConnectEmail,
+
+    /**
+     * Правка форка: у аккаунта есть другие сессии (`isLastDevice == false`). Обычно это
+     * брошенная старая сессия после переустановки без разлогина. Предлагаем её убрать: с
+     * ONLY_TRUSTED_DEVICES она молча не получает новые сообщения, а висит зря.
+     */
+    CleanUpSessions,
+
+    /**
+     * Правка форка: на сайте раздачи лежит версия свежее установленной. Larpgram раздаётся
+     * файлом, магазин за обновлениями не следит, поэтому предлагаем обновиться сами. Самый
+     * низкий приоритет: сначала ключи, почта и сессии.
+     */
+    UpdateAvailable,
 }
 
 @Immutable
@@ -70,12 +84,16 @@ sealed interface RoomListContentState {
         // Правка форка: адрес страницы аккаунта в MAS, туда ведёт баннер про почту.
         // null значит, что сервер её не отдал, и тогда баннер не показываем.
         val accountManagementUrl: String? = null,
+        // Правка форка: адрес страницы управления сессиями (MAS DevicesList), туда ведёт
+        // баннер про очистку старых сессий.
+        val manageSessionsUrl: String? = null,
     ) : RoomListContentState
 
     data class Rooms(
         val securityBannerState: SecurityBannerState,
-        // Правка форка: см. коммент у Empty выше.
+        // Правка форка: см. комменты у Empty выше.
         val accountManagementUrl: String? = null,
+        val manageSessionsUrl: String? = null,
         val fullScreenIntentPermissionsState: FullScreenIntentPermissionsState,
         val batteryOptimizationState: BatteryOptimizationState,
         val showNewNotificationSoundBanner: Boolean,

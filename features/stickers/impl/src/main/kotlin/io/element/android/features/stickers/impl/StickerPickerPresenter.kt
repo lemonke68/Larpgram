@@ -16,12 +16,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
-import io.element.android.libraries.di.RoomScope
-import io.element.android.libraries.architecture.Presenter
-import io.element.android.libraries.imagepacks.api.ImagePack
-import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.features.stickers.impl.import.ImportResult
 import io.element.android.features.stickers.impl.import.StickerPackImporter
+import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.di.RoomScope
+import io.element.android.libraries.imagepacks.api.ImagePack
+import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf

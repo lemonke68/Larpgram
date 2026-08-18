@@ -32,12 +32,13 @@ import io.element.android.features.leaveroom.api.LeaveRoomEvent
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
 import io.element.android.features.rageshake.test.logs.FakeAnnouncementService
+import io.element.android.libraries.accountemail.api.AccountEmailStatus
+import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.test.FakeDateFormatter
 import io.element.android.libraries.eventformatter.api.RoomLatestEventFormatter
 import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventFormatter
-import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
@@ -216,8 +217,12 @@ class RoomListPresenterTest {
         roomListService = FakeRoomListService(
             createRoomListLambda = { FakeDynamicRoomList(loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))) }
         ),
-        // Иначе выиграл бы баннер про ключи, он показывается первым.
-        encryptionService = FakeEncryptionService().apply { emitRecoveryState(RecoveryState.ENABLED) },
+        // Иначе выиграл бы баннер про ключи, он показывается первым. isLastDevice=true —
+        // иначе влез бы баннер про очистку сессий (у фейка по умолчанию false).
+        encryptionService = FakeEncryptionService().apply {
+            emitRecoveryState(RecoveryState.ENABLED)
+            emitIsLastDevice(true)
+        },
         syncService = FakeSyncService(initialSyncState = SyncState.Running),
         accountManagementUrlResult = { accountManagementUrl },
     )
@@ -498,6 +503,9 @@ class RoomListPresenterTest {
         )
         val matrixClient = FakeMatrixClient(
             roomListService = roomListService,
+            // Одно устройство: иначе баннер про очистку сессий дёрнет getAccountManagementUrl,
+            // который у фейка по умолчанию кидает lambdaError.
+            encryptionService = FakeEncryptionService().apply { emitIsLastDevice(true) },
         )
         val presenter = createRoomListPresenter(
             client = matrixClient,
@@ -640,6 +648,9 @@ class RoomListPresenterTest {
         )
         val matrixClient = FakeMatrixClient(
             roomListService = roomListService,
+            // Одно устройство: иначе баннер про очистку сессий дёрнет getAccountManagementUrl,
+            // который у фейка по умолчанию кидает lambdaError.
+            encryptionService = FakeEncryptionService().apply { emitIsLastDevice(true) },
         )
         val presenter = createRoomListPresenter(
             client = matrixClient,
@@ -674,6 +685,9 @@ class RoomListPresenterTest {
         )
         val matrixClient = FakeMatrixClient(
             roomListService = roomListService,
+            // Одно устройство: иначе баннер про очистку сессий дёрнет getAccountManagementUrl,
+            // который у фейка по умолчанию кидает lambdaError.
+            encryptionService = FakeEncryptionService().apply { emitIsLastDevice(true) },
         )
         val presenter = createRoomListPresenter(
             client = matrixClient,
@@ -770,6 +784,7 @@ class RoomListPresenterTest {
         featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
         markRoomAsRead: MarkRoomAsRead? = null,
         accountEmailStatus: AccountEmailStatus = FakeAccountEmailStatus(),
+        updateChecker: UpdateChecker = FakeUpdateChecker(),
     ) = RoomListPresenter(
         client = client,
         leaveRoomPresenter = { leaveRoomState },
@@ -801,8 +816,9 @@ class RoomListPresenterTest {
         announcementService = announcementService,
         coldStartWatcher = FakeAnalyticsColdStartWatcher(),
         featureFlagService = featureFlagService,
-        // Зависимости форка: почта для баннера и паки для временного лога.
+        // Зависимости форка: почта для баннера, обновления для баннера, паки для временного лога.
         accountEmailStatus = accountEmailStatus,
+        updateChecker = updateChecker,
         imagePackSource = FakeImagePackSource(),
     )
 }

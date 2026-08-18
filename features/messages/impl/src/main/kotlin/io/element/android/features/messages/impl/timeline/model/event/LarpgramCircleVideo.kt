@@ -6,17 +6,14 @@
 
 package io.element.android.features.messages.impl.timeline.model.event
 
-/**
- * Префикс имени файла, которым помечается кружочек.
- *
- * Своё поле в content добавить нечем: `Timeline.sendVideo` его не принимает, а отправлять
- * событие вручную нельзя, иначе в шифрованной комнате медиа останется незашифрованным.
- * Имя файла доезжает до клиента в целости, поэтому маркер живёт в нём.
- *
- * Чужие клиенты покажут такое сообщение обычным видео, и это нормально.
- */
-const val LARPGRAM_CIRCLE_FILENAME_PREFIX = "larpgram-circle"
+import io.element.android.libraries.matrix.api.timeline.item.event.LARPGRAM_CIRCLE_FILENAME_PREFIX
 
-/** Кружочек ли это. */
+/**
+ * Кружочек ли это.
+ *
+ * Сам маркер и его обоснование лежат в
+ * [io.element.android.libraries.matrix.api.timeline.item.event.LARPGRAM_CIRCLE_FILENAME_PREFIX]:
+ * тот же признак нужен списку чатов и уведомлениям, а туда модель таймлайна не доезжает.
+ */
 val TimelineItemVideoContent.isLarpgramCircle: Boolean
     get() = filename.startsWith(LARPGRAM_CIRCLE_FILENAME_PREFIX)

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Строки форка. Отдельный файл, а не правка localazy.xml: тот перезаписывается при
+  обновлении переводов апстрима.
+
+  SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+-->
+<resources>
+    <!-- Тип сообщения в списке чатов и в уведомлении: кружочек, круглое видеосообщение. -->
+    <string name="larpgram_video_message">"Video message"</string>
+</resources>

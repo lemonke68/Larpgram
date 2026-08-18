@@ -11,6 +11,7 @@ package io.element.android.features.messages.impl
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,11 +34,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -51,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -64,12 +66,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.circles.impl.CircleRecorderEvents
+import io.element.android.features.circles.impl.CircleRecorderView
+import io.element.android.features.gifs.impl.GifPickerEvents
+import io.element.android.features.gifs.impl.GifPickerView
 import io.element.android.features.location.api.LiveLocationSharingBanner
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerEvent
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
+import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.ActionListView
+import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
+import io.element.android.features.messages.impl.actionlist.MessageActionsAnchor
+import io.element.android.features.messages.impl.actionlist.MessageActionsOverlay
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeStateView
 import io.element.android.features.messages.impl.link.LinkEvent
@@ -85,13 +96,13 @@ import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBan
 import io.element.android.features.messages.impl.timeline.FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineView
-import io.element.android.features.messages.impl.timeline.components.event.LocalCircleMediaLoader
 import io.element.android.features.messages.impl.timeline.aGroupedEvents
 import io.element.android.features.messages.impl.timeline.aTimelineItemDaySeparator
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.aTimelineState
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionEvent
+import io.element.android.features.messages.impl.timeline.components.event.LocalCircleMediaLoader
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryEvent
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryView
 import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheet
@@ -105,10 +116,6 @@ import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
 import io.element.android.features.roomcall.api.RoomCallState
-import io.element.android.features.circles.impl.CircleRecorderEvents
-import io.element.android.features.circles.impl.CircleRecorderView
-import io.element.android.features.gifs.impl.GifPickerEvents
-import io.element.android.features.gifs.impl.GifPickerView
 import io.element.android.features.stickers.impl.StickerPickerEvents
 import io.element.android.features.stickers.impl.StickerPickerView
 import io.element.android.features.stickers.impl.StickerSendErrorDialog
@@ -124,12 +131,13 @@ import io.element.android.libraries.designsystem.text.toAnnotatedString
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.theme.components.BottomSheetDragHandle
 import io.element.android.libraries.designsystem.theme.components.Icon
-import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
+import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.HideKeyboardWhenDisposed
 import io.element.android.libraries.designsystem.utils.KeepScreenOn
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
+import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
 import io.element.android.libraries.designsystem.utils.scaffoldScrollableContentInsets
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
@@ -187,6 +195,10 @@ fun MessagesView(
     // This is needed because the composer is inside an AndroidView that can't be affected by the FocusManager in Compose
     val localView = LocalView.current
 
+    // Правка форка: якорь меню долгого нажатия. Пузыри регистрируют сюда координаты по id,
+    // onMessageLongClick читает их. Объявлен до обработчика, чтобы тот его видел.
+    val messageActionsAnchor = remember { MessageActionsAnchor() }
+
     fun hidingKeyboard(block: () -> Unit) {
         localView.hideKeyboard()
         block()
@@ -205,6 +217,9 @@ fun MessagesView(
 
     fun onMessageLongClick(event: TimelineItem.Event) {
         Timber.v("OnMessageLongClicked= ${event.id}")
+        // Правка форка: координаты пузыря для привязанного меню. Один общий обработчик на все
+        // пути открытия, поэтому спрашиваем по id, а не ловим в колбэке конкретного нажатия.
+        messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
         hidingKeyboard {
             state.actionListState.eventSink(
                 ActionListEvent.ComputeForMessage(
@@ -232,6 +247,7 @@ fun MessagesView(
         state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
     }
 
+    CompositionLocalProvider(LocalMessageActionsAnchor provides messageActionsAnchor) {
     val expandableState = rememberExpandableBottomSheetLayoutState()
     ExpandableBottomSheetLayout(
         modifier = modifier
@@ -397,6 +413,7 @@ fun MessagesView(
         },
         maxBottomSheetContentHeight = maxComposerHeightPx.toDp(),
     )
+    } // конец CompositionLocalProvider(LocalMessageActionsAnchor)
 
     var endPollConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
 
@@ -413,23 +430,66 @@ fun MessagesView(
         )
     }
 
-    ActionListView(
-        state = state.actionListState,
-        onSelectAction = { action: TimelineItemAction, event: TimelineItem.Event ->
-            if (action == TimelineItemAction.EndPoll) {
-                endPollConfirmingEvent = event
-            } else {
-                onActionSelected(action, event)
+    // Правка форка: размытый фон под меню долгого нажатия, как в Telegram — попап отделяется
+    // от чата и не сливается с ним. Штатного блюра на Android 10 нет, поэтому снимок окна через
+    // PixelCopy (rememberBlurredBackdrop). Рисуется отдельным окном (Popup) под шторкой: сама
+    // шторка живёт в своём окне выше, скрим у неё лёгкий, поэтому блюр просвечивает.
+    val actionTarget = state.actionListState.target as? ActionListState.Target.Success
+    val bubbleBounds = messageActionsAnchor.bubbleBounds
+
+    val onSelectActionCommon: (TimelineItemAction, TimelineItem.Event) -> Unit = { action, event ->
+        if (action == TimelineItemAction.EndPoll) {
+            endPollConfirmingEvent = event
+        } else {
+            onActionSelected(action, event)
+        }
+    }
+    if (actionTarget != null && bubbleBounds != null) {
+        // Правка форка (фаза 2): координаты пузыря есть — привязанное меню. Блюр рисуется
+        // внутри оверлея нижним слоем: отдельным окном он приезжал асинхронно и ложился
+        // поверх меню.
+        MessageActionsOverlay(
+            target = actionTarget,
+            bubbleLeft = bubbleBounds.left.toInt(),
+            bubbleTop = bubbleBounds.top.toInt(),
+            bubbleRight = bubbleBounds.right.toInt(),
+            bubbleBottom = bubbleBounds.bottom.toInt(),
+            onSelectAction = onSelectActionCommon,
+            onCustomReactionClick = { event ->
+                state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
+            },
+            onEmojiReactionClick = ::onEmojiReactionClick,
+            onDismiss = {
+                messageActionsAnchor.bubbleBounds = null
+                state.actionListState.eventSink(ActionListEvent.Clear)
+            },
+        )
+    } else {
+        // Откат на шторку снизу (нажали не по пузырю, координат нет). Ей блюр приходит
+        // отдельным окном — тут гонки нет, шторка появляется анимацией снизу.
+        val actionListBackdrop = rememberBlurredBackdrop(enabled = actionTarget != null)
+        if (actionTarget != null && actionListBackdrop != null) {
+            Popup {
+                Image(
+                    bitmap = actionListBackdrop,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
-        },
-        onCustomReactionClick = { event ->
-            state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
-        },
-        onEmojiReactionClick = ::onEmojiReactionClick,
-        onVerifiedUserSendFailureClick = { event ->
-            state.timelineState.eventSink(TimelineEvent.ComputeVerifiedUserSendFailure(event))
-        },
-    )
+        }
+        ActionListView(
+            state = state.actionListState,
+            onSelectAction = onSelectActionCommon,
+            onCustomReactionClick = { event ->
+                state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
+            },
+            onEmojiReactionClick = ::onEmojiReactionClick,
+            onVerifiedUserSendFailureClick = { event ->
+                state.timelineState.eventSink(TimelineEvent.ComputeVerifiedUserSendFailure(event))
+            },
+        )
+    }
 
     customReactionBottomSheet()
 

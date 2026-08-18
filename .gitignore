@@ -82,6 +82,11 @@ captures/
 #*.jks
 #*.keystore
 
+# Правка форка: релизный keystore Larpgram и его пароли в git не кладём.
+# (debug.keystore и nightly.keystore апстрима остаются в репозитории — они не секретные.)
+/keystore.properties
+/app/signature/larpgram.keystore
+
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
 .cxx/

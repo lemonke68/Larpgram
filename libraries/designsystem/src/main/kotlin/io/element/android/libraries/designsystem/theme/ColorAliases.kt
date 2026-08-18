@@ -13,8 +13,8 @@ import androidx.compose.ui.graphics.Color
 import io.element.android.compound.annotations.CoreColorToken
 import io.element.android.compound.previews.ColorListPreview
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.compound.tokens.generated.SemanticColors
 import io.element.android.compound.tokens.LarpgramPalette
+import io.element.android.compound.tokens.generated.SemanticColors
 import io.element.android.compound.tokens.generated.internal.DarkColorTokens
 import io.element.android.compound.tokens.generated.internal.LightColorTokens
 import io.element.android.libraries.designsystem.preview.ElementPreview

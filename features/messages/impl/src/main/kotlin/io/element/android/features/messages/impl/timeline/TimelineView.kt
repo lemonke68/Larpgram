@@ -81,10 +81,10 @@ import androidx.compose.ui.window.PopupProperties
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureView
-import io.element.android.features.messages.impl.timeline.components.chatWallpaper
-import io.element.android.features.messages.impl.timeline.components.defaultChatWallpaper
 import io.element.android.features.messages.impl.timeline.components.FloatingDateBadgeOverlay
 import io.element.android.features.messages.impl.timeline.components.TimelineItemRow
+import io.element.android.features.messages.impl.timeline.components.chatWallpaper
+import io.element.android.features.messages.impl.timeline.components.defaultChatWallpaper
 import io.element.android.features.messages.impl.timeline.components.toText
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.aFakeTimelineItemPresenterFactories

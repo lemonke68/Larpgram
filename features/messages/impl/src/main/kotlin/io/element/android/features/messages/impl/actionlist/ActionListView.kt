@@ -86,6 +86,8 @@ import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.list.ListItemContent
+import io.element.android.libraries.designsystem.components.messages.MessageDeliveryState
+import io.element.android.libraries.designsystem.components.messages.MessageDeliveryTicks
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toSp
@@ -97,6 +99,7 @@ import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.hide
+import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.matrix.ui.messages.sender.SenderName
 import io.element.android.libraries.matrix.ui.messages.sender.SenderNameMode
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -162,6 +165,13 @@ fun ActionListView(
             onDismissRequest = ::onDismiss,
             modifier = modifier,
             scrollable = false,
+            // Правка форка: телеграмный материал — полупрозрачный грей поверх размытого фона.
+            // Размытие рисует MessagesView отдельным слоем под шторкой (rememberBlurredBackdrop),
+            // а контейнер приглушённо-прозрачный, чтобы блюр просвечивал сквозь меню.
+            containerColor = larpgramActionSheetColor(),
+            // Скрим оставлен лёгким: сам фон уже размыт, тёмная заливка убила бы блюр, но
+            // совсем прозрачный отключил бы закрытие тапом мимо шторки.
+            scrimColor = Color.Black.copy(alpha = 0.18f),
         ) {
             ActionListViewContent(
                 state = state,
@@ -241,6 +251,19 @@ private fun ActionListViewContent(
                         HorizontalDivider()
                     }
                 }
+                // Правка форка: строка доставки, как в Telegram («✓✓ 7:23 PM»). Только у своих
+                // сообщений: у чужих читать нечего. Точного времени прочтения в состоянии нет,
+                // поэтому показываем время отправки с галочкой статуса — она уже различает
+                // отправку, доставку и прочтение.
+                if (target.event.isMine && target.event.deliveryStateForMenu() != null) {
+                    item {
+                        DeliveryStatusRow(
+                            state = target.event.deliveryStateForMenu()!!,
+                            sentTime = target.sentTimeFull,
+                        )
+                        HorizontalDivider()
+                    }
+                }
                 items(
                     items = actions,
                 ) { action ->
@@ -261,6 +284,55 @@ private fun ActionListViewContent(
             }
         }
     }
+}
+
+/**
+ * Правка форка: полупрозрачный грей телеграмного меню.
+ *
+ * Высокая, но не полная непрозрачность: сквозь меню должен угадываться размытый фон, но текст
+ * действий обязан читаться. Значения подобраны на эмуляторе поверх `rememberBlurredBackdrop`.
+ */
+@Composable
+@ReadOnlyComposable
+internal fun larpgramActionSheetColor(): Color = if (ElementTheme.isLightTheme) {
+    // Правка форка: прозрачнее по просьбе юзера — сквозь меню заметен размытый фон.
+    Color(0xFFFFFFFF).copy(alpha = 0.72f)
+} else {
+    Color(0xFF1C1C1E).copy(alpha = 0.70f)
+}
+
+/** Строка «галочка + время отправки» в шапке меню действий. */
+@Composable
+internal fun DeliveryStatusRow(
+    state: MessageDeliveryState,
+    sentTime: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        MessageDeliveryTicks(state = state)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = sentTime,
+            style = ElementTheme.typography.fontBodyMdRegular,
+            color = ElementTheme.colors.textSecondary,
+        )
+    }
+}
+
+/**
+ * Статус доставки для шапки меню, тем же переводом Matrix → Telegram, что и галочки в ленте.
+ * Null у ещё не отправленного локального события без eventId: показывать там нечего.
+ */
+internal fun TimelineItem.Event.deliveryStateForMenu(): MessageDeliveryState? = when {
+    localSendState is LocalEventSendState.Sending -> MessageDeliveryState.Sending
+    readReceiptState.receipts.isNotEmpty() -> MessageDeliveryState.Read
+    isRemote -> MessageDeliveryState.Sent
+    else -> null
 }
 
 @Suppress("MultipleEmitters") // False positive
@@ -362,7 +434,7 @@ private fun MessageSummary(
 private val emojiRippleRadius = 24.dp
 
 @Composable
-private fun EmojiReactionsRow(
+internal fun EmojiReactionsRow(
     recentEmojis: ImmutableList<String>,
     highlightedEmojis: ImmutableList<String>,
     onEmojiReactionClick: (String) -> Unit,
