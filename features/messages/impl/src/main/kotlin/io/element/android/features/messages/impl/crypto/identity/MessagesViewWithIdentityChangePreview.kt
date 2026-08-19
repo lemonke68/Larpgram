@@ -11,6 +11,7 @@ package io.element.android.features.messages.impl.crypto.identity
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import io.element.android.features.messages.impl.MessagesView
+import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.features.messages.impl.aMessagesState
 import io.element.android.features.messages.impl.messagecomposer.aMessageComposerState
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -44,6 +45,7 @@ internal fun MessagesViewWithIdentityChangePreview(
         onViewAllPinnedMessagesClick = {},
         knockRequestsBannerView = {},
         customReactionBottomSheet = {},
+        emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onThreadsListClick = {},
     )
 }

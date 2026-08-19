@@ -102,6 +102,8 @@ import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.aTimelineState
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionEvent
+import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.features.messages.impl.timeline.components.event.LocalCircleMediaLoader
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryEvent
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryView
@@ -177,6 +179,8 @@ fun MessagesView(
     modifier: Modifier = Modifier,
     forceJumpToBottomVisibility: Boolean = false,
     customReactionBottomSheet: @Composable () -> Unit,
+    // Правка форка (фаза 3): рендерер пикера эмодзи для инлайн-разворота по «+» в оверлее.
+    emojiPickerRenderer: EmojiPickerRenderer,
 ) {
     val eventContentValidationState = LocalEventContentValidationState.current
 
@@ -459,9 +463,16 @@ fun MessagesView(
                 state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
             },
             onEmojiReactionClick = ::onEmojiReactionClick,
+            // Правка форка (фаза 3): пикер эмодзи разворачивается внутри оверлея.
+            customReactionState = state.customReactionState,
+            emojiPickerRenderer = emojiPickerRenderer,
+            onSelectEmoji = { uniqueId, emoji ->
+                state.eventSink(MessagesEvent.ToggleReaction(emoji.unicode, uniqueId))
+            },
             onDismiss = {
                 messageActionsAnchor.bubbleBounds = null
                 state.actionListState.eventSink(ActionListEvent.Clear)
+                state.customReactionState.eventSink(CustomReactionEvent.DismissCustomReactionSheet)
             },
         )
     } else {
@@ -491,7 +502,11 @@ fun MessagesView(
         )
     }
 
-    customReactionBottomSheet()
+    // Привязанный оверлей рисует пикер эмодзи сам (инлайн). Шторку снизу оставляем только для
+    // фолбэка (нажали не по пузырю, координат нет), иначе пикер показался бы дважды.
+    if (actionTarget == null || bubbleBounds == null) {
+        customReactionBottomSheet()
+    }
 
     ReactionSummaryView(state = state.reactionSummaryState)
     ReadReceiptBottomSheet(
@@ -857,6 +872,7 @@ internal fun MessagesViewPreview(@PreviewParameter(MessagesStateProvider::class)
         forceJumpToBottomVisibility = true,
         knockRequestsBannerView = {},
         customReactionBottomSheet = {},
+        emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onThreadsListClick = {},
     )
 }
@@ -915,5 +931,6 @@ internal fun MessagesViewA11yPreview() = ElementPreview {
         forceJumpToBottomVisibility = true,
         knockRequestsBannerView = {},
         customReactionBottomSheet = {},
+        emojiPickerRenderer = NoOpEmojiPickerRenderer,
     )
 }

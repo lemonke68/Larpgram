@@ -9,8 +9,6 @@ package io.element.android.features.home.impl.roomlist
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.appupdate.api.UpdateStatus
-import io.element.android.libraries.imagepacks.api.ImagePack
-import io.element.android.libraries.imagepacks.api.ImagePackSource
 
 /**
  * По умолчанию почта есть и баннер не нужен: в тестах про другое он только мешал бы.
@@ -37,23 +35,4 @@ class FakeUpdateChecker(
     override suspend fun check(): UpdateStatus = checkResult()
 
     override suspend fun dismiss(versionCode: Long) = onDismiss(versionCode)
-}
-
-/**
- * Заглушка для временного вывода паков в logcat из презентера. Уедет вместе с ним.
- */
-class FakeImagePackSource : ImagePackSource {
-    override suspend fun getUserPacks(): List<ImagePack> = emptyList()
-
-    override suspend fun getEmoteRooms(): List<Pair<String, String>> = emptyList()
-
-    override suspend fun getRoomPack(roomId: String, stateKey: String): ImagePack? = null
-
-    override suspend fun getSavedPacks(): List<ImagePack> = emptyList()
-
-    override suspend fun savePack(pack: ImagePack): Boolean = true
-
-    override suspend fun removeSavedPack(slug: String): Boolean = true
-
-    override suspend fun getAllPacks(): List<ImagePack> = emptyList()
 }

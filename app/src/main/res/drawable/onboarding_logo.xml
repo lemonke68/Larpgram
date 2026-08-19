@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Логотип на экране входа. Наличие drawable с именем onboarding_logo заставляет
+  OnBoardingView показать его вместо зелёного ElementLogoAtom (см. OnBoardingLogoResIdProvider).
+  Тут маски лаунчера нет, поэтому скруглённая плитка рисуется сама, а буква в полный размер.
+  Цвета те же, что у иконки приложения (larpgram_icon_*).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="144dp"
+    android:height="144dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path android:pathData="M114,0 H398 A114,114 0 0 1 512,114 V398 A114,114 0 0 1 398,512 H114 A114,114 0 0 1 0,398 V114 A114,114 0 0 1 114,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="512"
+                android:endY="512">
+                <item android:offset="0" android:color="#FFA78BFF" />
+                <item android:offset="0.55" android:color="#FF7C4DFF" />
+                <item android:offset="1" android:color="#FF5E33E0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M176,172 L268,148 V288 H352 L392,336 L352,380 H176 Z" />
+    <path
+        android:fillColor="#5E33E0"
+        android:fillAlpha="0.13"
+        android:pathData="M176,288 H268 L176,380 Z" />
+    <path
+        android:strokeColor="#4A278F"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.35"
+        android:pathData="M268,288 L176,380" />
+</vector>

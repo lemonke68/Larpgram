@@ -47,6 +47,7 @@ import io.element.android.features.roommembermoderation.api.ModerationAction
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationEvents
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationRenderer
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
+import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.androidutils.system.openUrlInExternalApp
 import io.element.android.libraries.architecture.NodeInputs
 import io.element.android.libraries.architecture.Presenter
@@ -91,6 +92,8 @@ class ThreadedMessagesNode(
     private val permalinkParser: PermalinkParser,
     private val appNavigationStateService: AppNavigationStateService,
     private val roomMemberModerationRenderer: RoomMemberModerationRenderer,
+    // Правка форка (фаза 3): рендерер пикера эмодзи для инлайн-разворота реакций в тредах.
+    private val emojiPickerRenderer: EmojiPickerRenderer,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator {
     data class Inputs(
         val threadRootEventId: ThreadId,
@@ -323,6 +326,7 @@ class ThreadedMessagesNode(
                     modifier = modifier,
                     knockRequestsBannerView = {},
                     customReactionBottomSheet = {},
+                    emojiPickerRenderer = emojiPickerRenderer,
                     onThreadsListClick = {},
                 )
 
