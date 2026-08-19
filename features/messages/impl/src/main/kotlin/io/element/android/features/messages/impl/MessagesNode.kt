@@ -341,6 +341,8 @@ class MessagesNode(
                         emojiPickerRenderer = emojiPickerRenderer,
                     )
                 },
+                // Правка форка (фаза 3): тот же рендерер для инлайн-пикера в привязанном оверлее.
+                emojiPickerRenderer = emojiPickerRenderer,
                 onThreadsListClick = callback::navigateToThreadsList,
             )
             roomMemberModerationRenderer.Render(

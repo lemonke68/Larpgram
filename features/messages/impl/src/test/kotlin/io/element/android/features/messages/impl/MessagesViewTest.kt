@@ -695,6 +695,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setMessagesView(
                         emojiPickerRenderer = emojiPickerRenderer,
                     )
                 },
+                emojiPickerRenderer = emojiPickerRenderer,
                 onThreadsListClick = onThreadsListClicked,
             )
         }

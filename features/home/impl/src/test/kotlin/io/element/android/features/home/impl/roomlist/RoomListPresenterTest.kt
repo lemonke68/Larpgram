@@ -816,9 +816,8 @@ class RoomListPresenterTest {
         announcementService = announcementService,
         coldStartWatcher = FakeAnalyticsColdStartWatcher(),
         featureFlagService = featureFlagService,
-        // Зависимости форка: почта для баннера, обновления для баннера, паки для временного лога.
+        // Зависимости форка: почта и обновления для баннеров.
         accountEmailStatus = accountEmailStatus,
         updateChecker = updateChecker,
-        imagePackSource = FakeImagePackSource(),
     )
 }

@@ -36,7 +36,6 @@ dependencies {
     implementation(projects.libraries.accountemail.api)
     implementation(projects.libraries.appupdate.api)
     // ВРЕМЕННО: для проверки чтения стикер-паков в RoomListPresenter.
-    implementation(projects.libraries.imagepacks.api)
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.matrixui)
     // Правка форка: мини-превью медиа в строке списка чатов.

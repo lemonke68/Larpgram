@@ -55,6 +55,15 @@ import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
 import io.element.android.libraries.designsystem.utils.rememberSharpRegion
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.Dp
+import io.element.android.emojibasebindings.Emoji
+import io.element.android.features.messages.impl.timeline.a11y.a11yReactionAction
+import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
+import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
+import kotlinx.collections.immutable.ImmutableSet
 
 // Замеры по chat_menu_*.png: меню и плашка — одна скруглённая карточка, ширина меню около 250,
 // зазор от сообщения 8. Реакции сидят в такой же скруглённой плашке над сообщением.
@@ -89,6 +98,11 @@ fun MessageActionsOverlay(
     onSelectAction: (TimelineItemAction, TimelineItem.Event) -> Unit,
     onEmojiReactionClick: (String, TimelineItem.Event) -> Unit,
     onCustomReactionClick: (TimelineItem.Event) -> Unit,
+    // Правка форка (фаза 3): пикер эмодзи разворачивается прямо в оверлее по «+», а не
+    // шторкой снизу. Состояние и рендерер прокинуты из MessagesView.
+    customReactionState: CustomReactionState,
+    emojiPickerRenderer: EmojiPickerRenderer,
+    onSelectEmoji: (EventOrTransactionId, Emoji) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -137,6 +151,11 @@ fun MessageActionsOverlay(
                 desiredTopPx.coerceIn(minTopPx, maxTop)
             }
 
+            // Пикер активен, только если его состояние загружено ИМЕННО для этого сообщения:
+            // иначе стухшее состояние от прошлого «+» развернуло бы пикер сразу при открытии.
+            val pickerTarget = (customReactionState.target as? CustomReactionState.Target.Success)
+                ?.takeIf { it.event.eventOrTransactionId == event.eventOrTransactionId }
+
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -144,51 +163,61 @@ fun MessageActionsOverlay(
                     .onSizeChanged { groupHeightPx = it.height }
                     .fillMaxWidth()
                     .padding(
-                        start = if (event.isMine) SCREEN_EDGE_PADDING else bubbleLeftDp,
-                        end = if (event.isMine) bubbleRightGapDp else SCREEN_EDGE_PADDING,
+                        // Когда развёрнут пикер — симметричные отступы во всю ширину, а не
+                        // привязка к краю пузыря: пикеру нужно место под сетку эмодзи.
+                        start = when {
+                            pickerTarget != null -> SCREEN_EDGE_PADDING
+                            event.isMine -> SCREEN_EDGE_PADDING
+                            else -> bubbleLeftDp
+                        },
+                        end = when {
+                            pickerTarget != null -> SCREEN_EDGE_PADDING
+                            event.isMine -> bubbleRightGapDp
+                            else -> SCREEN_EDGE_PADDING
+                        },
                     ),
                 horizontalAlignment = if (event.isMine) Alignment.End else Alignment.Start,
             ) {
-                if (target.displayEmojiReactions) {
-                    ReactionPill(
-                        recentEmojis = target.recentEmojis,
-                        onEmojiClick = { emoji ->
-                            onEmojiReactionClick(emoji, event)
-                            onDismiss()
-                        },
-                        onCustomReactionClick = {
-                            onCustomReactionClick(event)
+                if (pickerTarget != null) {
+                    // Развёрнутый пикер эмодзи вместо плашки и меню: над сообщением, как в Telegram.
+                    EmojiPickerPanel(
+                        target = pickerTarget,
+                        selectedEmoji = customReactionState.selectedEmoji,
+                        emojiPickerRenderer = emojiPickerRenderer,
+                        onSelectEmoji = { emoji ->
+                            onSelectEmoji(pickerTarget.event.eventOrTransactionId, emoji)
                             onDismiss()
                         },
                     )
                     Spacer(modifier = Modifier.height(GAP))
-                }
-
-                // Чёткая копия пузыря на своём месте, скруглённая под форму пузыря: иначе углы
-                // прямоугольного снимка показывают обои, а на размытом фоне это читается рамкой.
-                // Пока снимок готовится (доли кадра) — отступ его размера, чтобы ничего не прыгало.
-                if (bubble != null) {
-                    Image(
-                        bitmap = bubble,
-                        contentDescription = null,
-                        contentScale = ContentScale.FillBounds,
-                        modifier = Modifier
-                            .size(bubbleWidthDp, bubbleHeightDp)
-                            .clip(RoundedCornerShape(BUBBLE_SNAPSHOT_CORNER)),
-                    )
+                    BubbleSnapshot(bubble, bubbleWidthDp, bubbleHeightDp)
                 } else {
-                    Spacer(modifier = Modifier.size(bubbleWidthDp, bubbleHeightDp))
+                    if (target.displayEmojiReactions) {
+                        ReactionPill(
+                            recentEmojis = target.recentEmojis,
+                            onEmojiClick = { emoji ->
+                                onEmojiReactionClick(emoji, event)
+                                onDismiss()
+                            },
+                            // «+» не закрывает оверлей: он грузит состояние пикера, после чего
+                            // тот разворачивается прямо здесь (ветка pickerTarget выше).
+                            onCustomReactionClick = { onCustomReactionClick(event) },
+                        )
+                        Spacer(modifier = Modifier.height(GAP))
+                    }
+
+                    BubbleSnapshot(bubble, bubbleWidthDp, bubbleHeightDp)
+
+                    Spacer(modifier = Modifier.height(GAP))
+
+                    ActionsMenu(
+                        target = target,
+                        onActionClick = { action ->
+                            onSelectAction(action, event)
+                            onDismiss()
+                        },
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(GAP))
-
-                ActionsMenu(
-                    target = target,
-                    onActionClick = { action ->
-                        onSelectAction(action, event)
-                        onDismiss()
-                    },
-                )
             }
         }
     }
@@ -228,6 +257,58 @@ private fun ReactionPill(
                 .clip(RoundedCornerShape(50))
                 .clickable { onCustomReactionClick() }
                 .padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+}
+
+// Снимок пузыря на своём месте, скруглённый под форму пузыря: иначе углы прямоугольного
+// снимка показывают обои, а на размытом фоне это читается рамкой. Пока снимок готовится
+// (доли кадра) — отступ его размера, чтобы ничего не прыгало.
+@Composable
+private fun BubbleSnapshot(
+    bubble: ImageBitmap?,
+    widthDp: Dp,
+    heightDp: Dp,
+) {
+    if (bubble != null) {
+        Image(
+            bitmap = bubble,
+            contentDescription = null,
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier
+                .size(widthDp, heightDp)
+                .clip(RoundedCornerShape(BUBBLE_SNAPSHOT_CORNER)),
+        )
+    } else {
+        Spacer(modifier = Modifier.size(widthDp, heightDp))
+    }
+}
+
+// Развёрнутый пикер эмодзи (та же сетка, что в шторке реакций, только инлайн в оверлее).
+// Высота ограничена, чтобы над сообщением осталось место; внутри сетка скроллится сама.
+@Composable
+private fun EmojiPickerPanel(
+    target: CustomReactionState.Target.Success,
+    selectedEmoji: ImmutableSet<String>,
+    emojiPickerRenderer: EmojiPickerRenderer,
+    onSelectEmoji: (Emoji) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = 360.dp)
+            .clip(RoundedCornerShape(MENU_CORNER))
+            .background(larpgramActionSheetColor()),
+    ) {
+        emojiPickerRenderer.Render(
+            state = target.emojiPickerState,
+            onSelectEmoji = onSelectEmoji,
+            selectedEmojis = selectedEmoji,
+            modifier = Modifier.fillMaxSize(),
+            contentDescription = { emoji, isSelected ->
+                a11yReactionAction(emoji = emoji.unicode, userAlreadyReacted = isSelected)
+            },
         )
     }
 }

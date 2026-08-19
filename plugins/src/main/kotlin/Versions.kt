@@ -43,9 +43,21 @@ private const val versionMonth = 8
 
 /**
  * Release number in the month. Value must be in [0,99].
- * Do not update this value. it is updated by the release script.
+ *
+ * Правка форка: versionName мы задаём своей нумерацией (larpgramVersionName ниже), а это
+ * поле теперь двигает ТОЛЬКО versionCode — его сравнивает проверка обновлений, поэтому при
+ * каждом релизе увеличивай на 1 (в пределах месяца; при смене месяца сбрасывается CalVer'ом).
  */
-private const val versionReleaseNumber = 0
+private const val versionReleaseNumber = 1
+
+/**
+ * Правка форка: у Larpgram своя человекочитаемая версия (v0.x), а не CalVer апстрима.
+ * Это то, что видит человек — в настройках, в согласии MAS, на странице раздачи. versionCode
+ * при этом остаётся монотонным по формуле ниже (его сравнивает апдейтер, человеку не виден).
+ * Меняй по мере готовности плана: 0.7 ≈ ядро готово и раздаётся, впереди кастом-эмодзи,
+ * инлайн-реакции, веб/iOS и харднинг.
+ */
+private const val larpgramVersionName = "0.7"
 
 object Versions {
     /**
@@ -55,7 +67,8 @@ object Versions {
      * See comment above for the calculation method.
      */
     const val VERSION_CODE = (2000 + versionYear) * 10_000 + versionMonth * 100 + versionReleaseNumber
-    val VERSION_NAME = "$versionYear.${versionMonth.toString().padStart(2, '0')}.$versionReleaseNumber"
+    // Правка форка: показываем человеку larpgramVersionName (v0.x), versionCode остаётся CalVer.
+    val VERSION_NAME = larpgramVersionName
 
     /**
      * Compile SDK version. Must be updated when a new Android version is released.
