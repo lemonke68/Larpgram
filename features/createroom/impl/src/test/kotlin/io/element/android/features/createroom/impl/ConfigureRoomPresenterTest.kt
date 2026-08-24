@@ -582,6 +582,7 @@ class ConfigureRoomPresenterTest : RobolectricTest() {
         sessionEnterpriseService: FakeSessionEnterpriseService = FakeSessionEnterpriseService(isEncryptionDisabledResult = { false }),
     ) = ConfigureRoomPresenter(
         isSpace = isSpace,
+        isChannel = false,
         initialParentSpaceId = initialParenSpaceId,
         dataStore = dataStore,
         matrixClient = matrixClient,

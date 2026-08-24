@@ -9,6 +9,9 @@
 package io.element.android.features.home.impl
 
 import com.bumble.appyx.core.modality.BuildContext
+import com.bumble.appyx.core.node.Node
+import io.element.android.features.preferences.api.PreferencesEntryPoint
+import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.api.HomeEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
@@ -31,6 +34,28 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 buildContext = buildContext,
                 plugins = plugins,
                 matrixClient = FakeMatrixClient(),
+                preferencesEntryPoint = object : PreferencesEntryPoint {
+                    override fun createNode(
+                        parentNode: Node,
+                        buildContext: BuildContext,
+                        params: PreferencesEntryPoint.Params,
+                        callback: PreferencesEntryPoint.Callback,
+                    ): Node = lambdaError()
+
+                    override fun createAppDeveloperSettingsNode(
+                        parentNode: Node,
+                        buildContext: BuildContext,
+                        callback: PreferencesEntryPoint.DeveloperSettingsCallback,
+                    ): Node = lambdaError()
+                },
+                userProfileEntryPoint = object : UserProfileEntryPoint {
+                    override fun createNode(
+                        parentNode: Node,
+                        buildContext: BuildContext,
+                        params: UserProfileEntryPoint.Params,
+                        callback: UserProfileEntryPoint.Callback,
+                    ): Node = lambdaError()
+                },
                 presenter = createHomePresenter(),
                 inviteFriendsUseCase = { lambdaError() },
                 analyticsService = FakeAnalyticsService(),

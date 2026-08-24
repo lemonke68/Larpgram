@@ -50,6 +50,7 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
@@ -94,6 +95,9 @@ class RoomListPresenter(
     private val accountEmailStatus: AccountEmailStatus,
     // Правка форка: баннер с предложением обновиться.
     private val updateChecker: UpdateChecker,
+    // Правка форка: молча заводим ключ восстановления + escrow свежему аккаунту, чтобы новые/
+    // сброшенные сессии восстанавливались кодом с почты и не ловили UTD.
+    private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -108,6 +112,12 @@ class RoomListPresenter(
 
         LaunchedEffect(Unit) {
             roomListDataSource.launchIn(this)
+        }
+
+        // Правка форка: молча заводим ключ восстановления + escrow, если у аккаунта его ещё нет
+        // (идемпотентно, гейт внутри по RecoveryState.DISABLED).
+        LaunchedEffect(Unit) {
+            recoveryKeyAutoProvisioner.ensureProvisioned()
         }
 
         var securityBannerDismissed by rememberSaveable { mutableStateOf(false) }

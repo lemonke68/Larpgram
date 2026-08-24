@@ -112,5 +112,6 @@ internal fun createRoomListRoomSummary(
     heroes = heroes.toImmutableList(),
     isTombstoned = isTombstoned,
     isSpace = isSpace,
+    chatType = ChatType.Group,
     dmUserStatus = dmUserStatus,
 )

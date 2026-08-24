@@ -33,6 +33,8 @@ import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
 import io.element.android.features.rageshake.test.logs.FakeAnnouncementService
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
+import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.dateformatter.api.DateFormatter
@@ -330,7 +332,11 @@ class RoomListPresenterTest {
             val summary = createRoomListRoomSummary()
             initialState.eventSink(RoomListEvent.ShowContextMenu(summary))
 
-            awaitItem().also { state ->
+            // Правка форка: контекст-меню резолвится асинхронно, а другие баннеры/фильтры дают
+            // промежуточные эмиссии — ждём, пока меню действительно станет показанным.
+            consumeItemsUntilPredicate { state ->
+                (state.contextMenu as? RoomListState.ContextMenu.Shown)?.isFavorite == false
+            }.last().also { state ->
                 assertThat(state.contextMenu)
                     .isEqualTo(
                         RoomListState.ContextMenu.Shown(
@@ -346,7 +352,9 @@ class RoomListPresenterTest {
             room.givenRoomInfo(
                 aRoomInfo(isFavorite = true)
             )
-            awaitItem().also { state ->
+            consumeItemsUntilPredicate { state ->
+                (state.contextMenu as? RoomListState.ContextMenu.Shown)?.isFavorite == true
+            }.last().also { state ->
                 assertThat(state.contextMenu)
                     .isEqualTo(
                         RoomListState.ContextMenu.Shown(
@@ -358,6 +366,7 @@ class RoomListPresenterTest {
                         )
                     )
             }
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -373,7 +382,9 @@ class RoomListPresenterTest {
             val summary = createRoomListRoomSummary()
             initialState.eventSink(RoomListEvent.ShowContextMenu(summary))
 
-            val shownState = awaitItem()
+            val shownState = consumeItemsUntilPredicate { state ->
+                state.contextMenu is RoomListState.ContextMenu.Shown
+            }.last()
             assertThat(shownState.contextMenu)
                 .isEqualTo(
                     RoomListState.ContextMenu.Shown(
@@ -387,8 +398,11 @@ class RoomListPresenterTest {
 
             shownState.eventSink(RoomListEvent.HideContextMenu)
 
-            val hiddenState = awaitItem()
+            val hiddenState = consumeItemsUntilPredicate { state ->
+                state.contextMenu is RoomListState.ContextMenu.Hidden
+            }.last()
             assertThat(hiddenState.contextMenu).isEqualTo(RoomListState.ContextMenu.Hidden)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -431,6 +445,7 @@ class RoomListPresenterTest {
                     RoomListSearchEvent.ToggleSearchVisibility
                 )
             )
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -511,7 +526,10 @@ class RoomListPresenterTest {
             client = matrixClient,
         )
         presenter.test {
-            assertThat(awaitItem().contentState).isInstanceOf(RoomListContentState.Empty::class.java)
+            // Правка форка: контент грузится через Skeleton — ждём, пока он станет Empty.
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Empty }.last()
+            assertThat(state.contentState).isInstanceOf(RoomListContentState.Empty::class.java)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -735,17 +753,29 @@ class RoomListPresenterTest {
         )
         presenter.test {
             assertThat(announcementService.announcementsToShowFlow().first()).isEmpty()
-            skipItems(1)
-            val state = awaitItem()
+            // Правка форка: контент грузится через Skeleton, а баннеры/фильтры дают лишние эмиссии —
+            // на каждом шаге ждём загруженный Rooms-контент с нужным значением баннера.
+            val state = consumeItemsUntilPredicate { state ->
+                state.contentState is RoomListContentState.Rooms && !state.contentAsRooms().showNewNotificationSoundBanner
+            }.last()
             assertThat(state.contentAsRooms().showNewNotificationSoundBanner).isFalse()
             announcementService.emitAnnouncementsToShow(listOf(Announcement.NewNotificationSound))
-            assertThat(awaitItem().contentAsRooms().showNewNotificationSoundBanner).isTrue()
+            assertThat(
+                consumeItemsUntilPredicate { st ->
+                    st.contentState is RoomListContentState.Rooms && st.contentAsRooms().showNewNotificationSoundBanner
+                }.last().contentAsRooms().showNewNotificationSoundBanner
+            ).isTrue()
             state.eventSink(RoomListEvent.DismissNewNotificationSoundBanner)
             onAnnouncementDismissedResult.assertions().isCalledOnce()
                 .with(value(Announcement.NewNotificationSound))
             // Simulate service updating the value
             announcementService.emitAnnouncementsToShow(emptyList())
-            assertThat(awaitItem().contentAsRooms().showNewNotificationSoundBanner).isFalse()
+            assertThat(
+                consumeItemsUntilPredicate { st ->
+                    st.contentState is RoomListContentState.Rooms && !st.contentAsRooms().showNewNotificationSoundBanner
+                }.last().contentAsRooms().showNewNotificationSoundBanner
+            ).isFalse()
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -785,6 +815,7 @@ class RoomListPresenterTest {
         markRoomAsRead: MarkRoomAsRead? = null,
         accountEmailStatus: AccountEmailStatus = FakeAccountEmailStatus(),
         updateChecker: UpdateChecker = FakeUpdateChecker(),
+        recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
     ) = RoomListPresenter(
         client = client,
         leaveRoomPresenter = { leaveRoomState },
@@ -819,5 +850,6 @@ class RoomListPresenterTest {
         // Зависимости форка: почта и обновления для баннеров.
         accountEmailStatus = accountEmailStatus,
         updateChecker = updateChecker,
+        recoveryKeyAutoProvisioner = recoveryKeyAutoProvisioner,
     )
 }

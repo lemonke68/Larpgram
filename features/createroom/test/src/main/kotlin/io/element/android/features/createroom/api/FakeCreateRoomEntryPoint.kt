@@ -16,6 +16,7 @@ import io.element.android.tests.testutils.lambda.lambdaError
 class FakeCreateRoomEntryPoint : CreateRoomEntryPoint {
     class Builder : CreateRoomEntryPoint.Builder {
         override fun setIsSpace(isSpace: Boolean): Builder = this
+        override fun setIsChannel(isChannel: Boolean): Builder = this
         override fun setParentSpace(parentSpaceId: RoomId): Builder = this
         override fun build(): Node = lambdaError()
     }
