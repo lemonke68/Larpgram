@@ -8,20 +8,43 @@
 
 package io.element.android.features.userprofile.shared
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import io.element.android.libraries.designsystem.components.avatar.AvatarSize
+import kotlinx.coroutines.launch
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.libraries.designsystem.components.button.MainActionButton
 import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfileState
@@ -58,8 +81,55 @@ fun UserProfileView(
     openAvatarPreview: (username: String, url: String) -> Unit,
     onVerifyClick: (UserId) -> Unit,
     modifier: Modifier = Modifier,
+    // Self-profile (TG-style) actions. Default no-op so other-user previews/callers
+    // don't have to provide them.
+    onOpenSettings: () -> Unit = {},
+    onEditProfile: () -> Unit = {},
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
+    // Pull-down-to-expand avatar (TG-style). Fraction 0 = circle, 1 = full-width square.
+    val expandFraction = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val maxDragPx = remember(density, screenWidthDp) {
+        with(density) { (screenWidthDp.dp - AvatarSize.UserHeader.dp).toPx() }.coerceAtLeast(1f)
+    }
+    val avatarNestedScroll = remember(maxDragPx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Finger moving up: collapse the avatar before the content scrolls.
+                val delta = available.y
+                if (delta < 0f && expandFraction.value > 0f) {
+                    val newFraction = (expandFraction.value + delta / maxDragPx).coerceIn(0f, 1f)
+                    val consumed = (newFraction - expandFraction.value) * maxDragPx
+                    scope.launch { expandFraction.snapTo(newFraction) }
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                // Content already at top and finger still moving down: pull the avatar open.
+                val delta = available.y
+                if (delta > 0f) {
+                    val newFraction = (expandFraction.value + delta / maxDragPx).coerceIn(0f, 1f)
+                    scope.launch { expandFraction.snapTo(newFraction) }
+                    return Offset(0f, delta)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                // Settle to the nearer end so the avatar never rests half-open.
+                if (expandFraction.value > 0f && expandFraction.value < 1f) {
+                    val target = if (expandFraction.value > 0.5f) 1f else 0f
+                    expandFraction.animateTo(target)
+                }
+                return Velocity.Zero
+            }
+        }
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -71,6 +141,7 @@ fun UserProfileView(
             modifier = Modifier
                     .padding(padding)
                     .consumeWindowInsets(padding)
+                    .nestedScroll(avatarNestedScroll)
                     .verticalScroll(rememberScrollState())
         ) {
             UserProfileHeaderSection(
@@ -79,6 +150,8 @@ fun UserProfileView(
                 userName = state.userName,
                 verificationState = state.verificationState,
                 displayedStatus = state.displayedStatus,
+                avatarExpandFraction = expandFraction.value,
+                showId = !state.isCurrentUser,
                 openAvatarPreview = { avatarUrl ->
                     openAvatarPreview(state.userName ?: state.userId.value, avatarUrl)
                 },
@@ -87,45 +160,59 @@ fun UserProfileView(
                 },
                 withdrawVerificationClick = { state.eventSink(UserProfileEvents.WithdrawVerification) },
             )
-            UserProfileMainActionsSection(
-                isCurrentUser = state.isCurrentUser,
-                canCall = state.canCall,
-                onShareUser = onShareUser,
-                onStartDM = { state.eventSink(UserProfileEvents.StartDM) },
-                onCall = { intent -> state.dmRoomId?.let { onStartCall(it, intent) } }
-            )
-            Spacer(modifier = Modifier.height(26.dp))
-            if (!state.isCurrentUser) {
+            if (state.isCurrentUser) {
+                UserProfileSelfActionsSection(
+                    onSetPhoto = onEditProfile,
+                    onEdit = onEditProfile,
+                    onSettings = onOpenSettings,
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                UserProfileSelfInfoCard(
+                    userId = state.userId,
+                    about = state.about,
+                    onHandleClick = {
+                        state.eventSink(UserProfileEvents.CopyToClipboard(state.userId.value))
+                    },
+                )
+            } else {
+                UserProfileMainActionsSection(
+                    isCurrentUser = false,
+                    canCall = state.canCall,
+                    onShareUser = onShareUser,
+                    onStartDM = { state.eventSink(UserProfileEvents.StartDM) },
+                    onCall = { intent -> state.dmRoomId?.let { onStartCall(it, intent) } }
+                )
+                Spacer(modifier = Modifier.height(26.dp))
                 VerifyUserSection(state, onVerifyClick = { onVerifyClick(state.userId) })
                 BlockUserSection(state)
                 BlockUserDialogs(state)
-            }
-            AsyncActionView(
-                async = state.startDmActionState,
-                progressDialog = {
-                    AsyncActionViewDefaults.ProgressDialog(
-                        progressText = stringResource(CommonStrings.common_starting_chat),
-                    )
-                },
-                onSuccess = onOpenDm,
-                errorMessage = { stringResource(R.string.screen_start_chat_error_starting_chat) },
-                onRetry = { state.eventSink(UserProfileEvents.StartDM) },
-                onErrorDismiss = { state.eventSink(UserProfileEvents.ClearStartDMState) },
-                confirmationDialog = { data ->
-                    if (data is ConfirmingStartDmWithMatrixUser) {
-                        CreateDmConfirmationBottomSheet(
-                            matrixUser = data.matrixUser,
-                            isUserIdentityUnknown = data.isUserIdentityUnknown,
-                            onSendInvite = {
-                                state.eventSink(UserProfileEvents.StartDM)
-                            },
-                            onDismiss = {
-                                state.eventSink(UserProfileEvents.ClearStartDMState)
-                            },
+                AsyncActionView(
+                    async = state.startDmActionState,
+                    progressDialog = {
+                        AsyncActionViewDefaults.ProgressDialog(
+                            progressText = stringResource(CommonStrings.common_starting_chat),
                         )
-                    }
-                },
-            )
+                    },
+                    onSuccess = onOpenDm,
+                    errorMessage = { stringResource(R.string.screen_start_chat_error_starting_chat) },
+                    onRetry = { state.eventSink(UserProfileEvents.StartDM) },
+                    onErrorDismiss = { state.eventSink(UserProfileEvents.ClearStartDMState) },
+                    confirmationDialog = { data ->
+                        if (data is ConfirmingStartDmWithMatrixUser) {
+                            CreateDmConfirmationBottomSheet(
+                                matrixUser = data.matrixUser,
+                                isUserIdentityUnknown = data.isUserIdentityUnknown,
+                                onSendInvite = {
+                                    state.eventSink(UserProfileEvents.StartDM)
+                                },
+                                onDismiss = {
+                                    state.eventSink(UserProfileEvents.ClearStartDMState)
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -140,6 +227,103 @@ private fun VerifyUserSection(
             headlineContent = { Text(stringResource(CommonStrings.common_verify_user)) },
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
             onClick = onVerifyClick,
+        )
+    }
+}
+
+/**
+ * TG-style row of three actions on your own profile: set photo, edit, settings.
+ * No dedicated edit-profile/avatar screens yet, so set-photo and edit both route
+ * to [onEdit] (Settings) for now.
+ */
+@Composable
+private fun UserProfileSelfActionsSection(
+    onSetPhoto: () -> Unit,
+    onEdit: () -> Unit,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        MainActionButton(
+            title = stringResource(CommonStrings.larpgram_action_set_photo),
+            imageVector = CompoundIcons.TakePhoto(),
+            onClick = onSetPhoto,
+        )
+        MainActionButton(
+            title = stringResource(CommonStrings.action_edit),
+            imageVector = CompoundIcons.Edit(),
+            onClick = onEdit,
+        )
+        MainActionButton(
+            title = stringResource(CommonStrings.common_settings),
+            imageVector = CompoundIcons.Settings(),
+            onClick = onSettings,
+        )
+    }
+}
+
+/**
+ * TG-style info card. Matrix self-profile only carries the id, so the single row
+ * shows the @handle (localpart of the Matrix id) over a "Username" label. Tapping
+ * copies the full id to the clipboard.
+ */
+@Composable
+private fun UserProfileSelfInfoCard(
+    userId: UserId,
+    about: String?,
+    onHandleClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val handle = userId.value.substringBefore(":")
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(ElementTheme.colors.bgSubtleSecondary),
+    ) {
+        // Bio row is shown only when set (private account data); TG order puts it above the handle.
+        if (!about.isNullOrBlank()) {
+            InfoCardRow(
+                value = about,
+                label = stringResource(CommonStrings.common_about),
+            )
+        }
+        InfoCardRow(
+            value = handle,
+            label = stringResource(CommonStrings.common_username),
+            onClick = onHandleClick,
+        )
+    }
+}
+
+@Composable
+private fun InfoCardRow(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = value,
+            style = ElementTheme.typography.fontBodyLgRegular,
+            color = ElementTheme.colors.textPrimary,
+        )
+        Text(
+            text = label,
+            style = ElementTheme.typography.fontBodySmRegular,
+            color = ElementTheme.colors.textSecondary,
         )
     }
 }

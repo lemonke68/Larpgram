@@ -32,6 +32,8 @@ import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.api.user.getLarpgramBio
+import io.element.android.libraries.matrix.api.user.setLarpgramBio
 import io.element.android.libraries.matrix.ui.media.AvatarAction
 import io.element.android.libraries.mediapickers.api.PickerProvider
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
@@ -70,6 +72,11 @@ class EditUserProfilePresenter(
         val cameraPermissionState = cameraPermissionPresenter.present()
         var userAvatarUri by rememberSaveable { mutableStateOf(matrixUser.avatarUrl) }
         var userDisplayName by rememberSaveable { mutableStateOf(matrixUser.displayName) }
+        // Bio is fetched async from account data. Initial value "" so a no-bio account emits no extra
+        // state (produceState skips equal values); key the editable copy on it so it re-seeds once a
+        // real bio loads, without clobbering later edits.
+        val initialBio by produceState("") { value = matrixClient.getLarpgramBio().orEmpty() }
+        var userBio by rememberSaveable(initialBio) { mutableStateOf(initialBio) }
         val cameraPhotoPicker = mediaPickerProvider.registerCameraPhotoPicker(
             onResult = { uri ->
                 if (uri != null) {
@@ -115,9 +122,10 @@ class EditUserProfilePresenter(
         val saveAction: MutableState<AsyncAction<Unit>> = remember { mutableStateOf(AsyncAction.Uninitialized) }
         val localCoroutineScope = rememberCoroutineScope()
 
-        val canSave = remember(userDisplayName, userAvatarUri) {
+        val canSave = remember(userDisplayName, userAvatarUri, userBio, initialBio) {
             val hasProfileChanged = hasDisplayNameChanged(userDisplayName, matrixUser) ||
-                hasAvatarUrlChanged(userAvatarUri, matrixUser)
+                hasAvatarUrlChanged(userAvatarUri, matrixUser) ||
+                hasBioChanged(userBio, initialBio)
             !userDisplayName.isNullOrBlank() && hasProfileChanged
         }
 
@@ -127,6 +135,8 @@ class EditUserProfilePresenter(
                     name = userDisplayName,
                     avatarUri = userAvatarUri?.toUri(),
                     currentUser = matrixUser,
+                    bio = userBio,
+                    initialBio = initialBio,
                     action = saveAction,
                 )
                 is EditUserProfileEvent.HandleAvatarAction -> {
@@ -145,6 +155,7 @@ class EditUserProfilePresenter(
                     }
                 }
                 is EditUserProfileEvent.UpdateDisplayName -> userDisplayName = event.name
+                is EditUserProfileEvent.UpdateBio -> userBio = event.bio
                 EditUserProfileEvent.Exit -> {
                     when (saveAction.value) {
                         is AsyncAction.Confirming -> {
@@ -173,6 +184,7 @@ class EditUserProfilePresenter(
         return EditUserProfileState(
             userId = matrixUser.userId,
             displayName = userDisplayName.orEmpty(),
+            bio = userBio,
             userAvatarUrl = userAvatarUri,
             avatarActions = avatarActions,
             saveButtonEnabled = canSave && saveAction.value !is AsyncAction.Loading,
@@ -190,10 +202,15 @@ class EditUserProfilePresenter(
     private fun hasAvatarUrlChanged(avatarUri: String?, currentUser: MatrixUser) =
         avatarUri?.trim() != currentUser.avatarUrl?.trim()
 
+    private fun hasBioChanged(bio: String, initialBio: String) =
+        bio.trim() != initialBio.trim()
+
     private fun CoroutineScope.saveChanges(
         name: String?,
         avatarUri: Uri?,
         currentUser: MatrixUser,
+        bio: String,
+        initialBio: String,
         action: MutableState<AsyncAction<Unit>>,
     ) = launch {
         val results = mutableListOf<Result<Unit>>()
@@ -206,6 +223,11 @@ class EditUserProfilePresenter(
             if (avatarUri?.toString()?.trim() != currentUser.avatarUrl?.trim()) {
                 results.add(updateAvatar(avatarUri).onFailure {
                     Timber.e(it, "Failed to update user's avatar")
+                })
+            }
+            if (hasBioChanged(bio, initialBio)) {
+                results.add(matrixClient.setLarpgramBio(bio).onFailure {
+                    Timber.e(it, "Failed to set user's bio")
                 })
             }
             if (results.all { it.isSuccess }) Unit else results.first { it.isFailure }.getOrThrow()

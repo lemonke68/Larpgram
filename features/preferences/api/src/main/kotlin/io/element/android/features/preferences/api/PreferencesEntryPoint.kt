@@ -31,6 +31,10 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
 
         @Parcelize
         data object DeveloperSettings : InitialTarget
+
+        // Opens the current user's edit-profile screen directly (TG-style profile actions).
+        @Parcelize
+        data object EditProfile : InitialTarget
     }
 
     data class Params(val initialElement: InitialTarget) : NodeInputs

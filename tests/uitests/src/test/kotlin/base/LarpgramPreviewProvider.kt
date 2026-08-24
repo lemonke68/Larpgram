@@ -38,6 +38,9 @@ private val DESIGN_PREVIEWS = setOf(
     "HomeViewPreview",
     "HomeTopBarPreview",
     "SpaceFolderPillsViewPreview",
+    // Self-profile TG redesign (2026-08-25): 3-button row + info card + bio.
+    "UserProfileViewPreview",
+    "EditUserProfileViewPreview",
 )
 
 object LarpgramPreviewProvider : TestParameterValuesProvider() {

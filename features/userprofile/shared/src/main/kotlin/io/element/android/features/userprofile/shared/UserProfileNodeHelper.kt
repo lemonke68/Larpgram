@@ -27,6 +27,10 @@ class UserProfileNodeHelper(
         fun navigateToRoom(roomId: RoomId)
         fun startCall(dmRoomId: RoomId, callIntent: CallIntent)
         fun startVerifyUserFlow(userId: UserId)
+
+        // Self-profile (TG-style) actions. Default no-op for other users' profiles.
+        fun navigateToSettings() = Unit
+        fun navigateToEditProfile() = Unit
     }
 
     fun onShareUser(

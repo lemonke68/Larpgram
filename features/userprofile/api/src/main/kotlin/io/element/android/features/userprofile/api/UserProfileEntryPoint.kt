@@ -21,6 +21,11 @@ interface UserProfileEntryPoint : FeatureEntryPoint {
 
     interface Callback : Plugin {
         fun navigateToRoom(roomId: RoomId)
+
+        // Self-profile (TG-style) actions. Default no-op so callers that only
+        // show other users' profiles don't need to implement them.
+        fun navigateToSettings() = Unit
+        fun navigateToEditProfile() = Unit
     }
 
     fun createNode(

@@ -138,6 +138,15 @@ fun EditUserProfileView(
                 enabled = state.canChangeDisplayName,
                 onValueChange = { state.eventSink(EditUserProfileEvent.UpdateDisplayName(it)) },
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            TextField(
+                label = stringResource(CommonStrings.common_about),
+                value = state.bio,
+                singleLine = false,
+                minLines = 2,
+                maxLines = 5,
+                onValueChange = { state.eventSink(EditUserProfileEvent.UpdateBio(it)) },
+            )
         }
 
         AvatarActionBottomSheet(

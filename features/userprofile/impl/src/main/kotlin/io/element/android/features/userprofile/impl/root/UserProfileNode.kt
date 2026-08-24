@@ -78,6 +78,8 @@ class UserProfileNode(
             onStartCall = callback::startCall,
             openAvatarPreview = callback::navigateToAvatarPreview,
             onVerifyClick = callback::startVerifyUserFlow,
+            onOpenSettings = callback::navigateToSettings,
+            onEditProfile = callback::navigateToEditProfile,
         )
     }
 }
