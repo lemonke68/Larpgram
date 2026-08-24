@@ -35,6 +35,8 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
 import io.element.android.libraries.matrix.api.createroom.RoomPreset
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import io.element.android.libraries.matrix.api.room.alias.RoomAliasHelper
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.room.join.JoinRule
@@ -64,6 +66,7 @@ import kotlin.time.Duration.Companion.seconds
 @AssistedInject
 class ConfigureRoomPresenter(
     @Assisted private val isSpace: Boolean,
+    @Assisted private val isChannel: Boolean,
     @Assisted private val initialParentSpaceId: RoomId?,
     private val dataStore: CreateRoomConfigStore,
     private val matrixClient: MatrixClient,
@@ -78,7 +81,7 @@ class ConfigureRoomPresenter(
 ) : Presenter<ConfigureRoomState> {
     @AssistedFactory
     interface Factory {
-        fun create(isSpace: Boolean, initialParentSpaceId: RoomId?): ConfigureRoomPresenter
+        fun create(isSpace: Boolean, isChannel: Boolean, initialParentSpaceId: RoomId?): ConfigureRoomPresenter
     }
 
     private val cameraPermissionPresenter: PermissionsPresenter = permissionsPresenterFactory.create(android.Manifest.permission.CAMERA)
@@ -140,6 +143,9 @@ class ConfigureRoomPresenter(
 
         val localCoroutineScope = rememberCoroutineScope()
         val createRoomAction: MutableState<AsyncAction<RoomId>> = remember { mutableStateOf(AsyncAction.Uninitialized) }
+        // Larpgram: remember the room already created by a previous attempt, so retrying a failed
+        // multi-step channel setup (power levels + discussion group) does not create a duplicate.
+        val createdRoomId: MutableState<RoomId?> = remember { mutableStateOf(null) }
 
         // Calculate available join rules based:
         // 1. If we are creating a space.
@@ -185,7 +191,7 @@ class ConfigureRoomPresenter(
 
         fun createRoom(config: CreateRoomConfig) {
             createRoomAction.value = AsyncAction.Uninitialized
-            localCoroutineScope.createRoom(config, createRoomAction)
+            localCoroutineScope.createRoom(config, createRoomAction, createdRoomId)
         }
 
         fun handleEvent(event: ConfigureRoomEvents) {
@@ -232,7 +238,8 @@ class ConfigureRoomPresenter(
 
     private fun CoroutineScope.createRoom(
         config: CreateRoomConfig,
-        createRoomAction: MutableState<AsyncAction<RoomId>>
+        createRoomAction: MutableState<AsyncAction<RoomId>>,
+        createdRoomId: MutableState<RoomId?>,
     ) = launch {
         suspend {
             val avatarUrl = config.avatarUri?.let { uploadAvatar(it.toUri()) }
@@ -272,15 +279,13 @@ class ConfigureRoomPresenter(
                     )
                 }
             }
-            val roomId = matrixClient.createRoom(params)
+            // Reuse the room from a previous failed attempt instead of creating a duplicate.
+            val roomId = createdRoomId.value ?: matrixClient.createRoom(params)
                 .onFailure { failure ->
                     Timber.e(failure, "Failed to create room")
                 }
-                .onSuccess {
-                    dataStore.clearCachedData()
-                    analyticsService.capture(CreatedRoom(isDM = false))
-                }
                 .getOrThrow()
+                .also { createdRoomId.value = it }
 
             // Add the newly created room to the parent space too
             if (config.parentSpace != null) {
@@ -294,9 +299,63 @@ class ConfigureRoomPresenter(
                 matrixClient.spaceService.addChildToSpace(spaceId = config.parentSpace.roomId, childId = roomId).getOrThrow()
             }
 
+            // Channel: raise the power level required to send messages so only admins (PL 100)
+            // can post — everyone else reads. Regular members will still be able to comment via
+            // a linked discussion room (separate feature). Done after creation as CreateRoomParameters
+            // has no power-level override.
+            if (isChannel) {
+                matrixClient.getJoinedRoom(roomId)?.use { room ->
+                    val currentValues = room.powerLevels().getOrThrow()
+                    room.updatePowerLevels(currentValues.copy(eventsDefault = CHANNEL_POST_POWER_LEVEL)).getOrThrow()
+                }
+                // Create the linked discussion group (Telegram-style comments): a normal group
+                // where members can post; channel posts get mirrored here and replies are the
+                // comments. The link is kept in account data since custom room state is unreadable
+                // via the SDK (same wall as room sticker packs).
+                createLinkedDiscussionGroup(channelId = roomId, config = config, avatarUrl = avatarUrl)
+            }
+
+            // Everything succeeded — only now clear the form and record analytics, so a retry after
+            // a mid-flow failure still has the config it needs (name, invites, avatar).
+            dataStore.clearCachedData()
+            analyticsService.capture(CreatedRoom(isDM = false))
+
             roomId
         }.runCatchingUpdatingState(createRoomAction)
             .onFailure { Timber.e(it, "Could not create room or add it to parent space ${config.parentSpace?.roomId}") }
+    }
+
+    private suspend fun createLinkedDiscussionGroup(
+        channelId: RoomId,
+        config: CreateRoomConfig,
+        avatarUrl: String?,
+    ) {
+        // Idempotent on retry: if this channel already has a linked discussion group, don't create
+        // a second one.
+        val existing = matrixClient.getAccountData(CHANNEL_DISCUSSIONS_ACCOUNT_DATA_TYPE).getOrNull()
+        val currentMap = existing
+            ?.let { runCatching { channelDiscussionsJson.decodeFromString<Map<String, String>>(it) }.getOrNull() }
+            .orEmpty()
+        if (currentMap.containsKey(channelId.value)) return
+        val discussionParams = CreateRoomParameters(
+            // TODO localise / let the user rename in the design pass.
+            name = config.roomName?.let { "$it — comments" },
+            topic = null,
+            isEncrypted = !sessionEnterpriseService.isEncryptionDisabledByHomeserver(),
+            isDirect = false,
+            visibility = RoomVisibility.Private,
+            preset = RoomPreset.PRIVATE_CHAT,
+            invite = config.invites.map { it.userId },
+            avatar = avatarUrl,
+        )
+        val discussionId = matrixClient.createRoom(discussionParams).getOrNull() ?: return
+        // Persist channel -> discussion link in account data (custom room state is unreadable via
+        // the SDK). The link is also duplicated into post content later so any member can find it.
+        val updated = currentMap + (channelId.value to discussionId.value)
+        matrixClient.setAccountData(
+            CHANNEL_DISCUSSIONS_ACCOUNT_DATA_TYPE,
+            channelDiscussionsJson.encodeToString(updated),
+        )
     }
 
     private suspend fun uploadAvatar(avatarUri: Uri): String {
@@ -310,3 +369,11 @@ class ConfigureRoomPresenter(
         return matrixClient.uploadMedia(MimeTypes.Jpeg, byteArray).getOrThrow()
     }
 }
+
+/** Power level a member needs to post in a channel: admin only. */
+private const val CHANNEL_POST_POWER_LEVEL = 100L
+
+/** Per-user account data mapping a channel roomId to its linked discussion group roomId. */
+private const val CHANNEL_DISCUSSIONS_ACCOUNT_DATA_TYPE = "ru.mangokokos.larpgram.channel_discussions"
+
+private val channelDiscussionsJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }

@@ -38,6 +38,7 @@ data class RoomListRoomSummary(
     val activeCallIntent: CallIntent?,
     val isDirect: Boolean,
     val isDm: Boolean,
+    val chatType: ChatType,
     val isFavorite: Boolean,
     val inviteSender: InviteSender?,
     val isTombstoned: Boolean,
@@ -45,6 +46,8 @@ data class RoomListRoomSummary(
     val isSpace: Boolean,
     val dmUserStatus: DisplayedStatus?,
 ) {
+    val isMuted = userDefinedNotificationMode == RoomNotificationMode.MUTE
+
     val isHighlighted = userDefinedNotificationMode != RoomNotificationMode.MUTE &&
         (numberOfUnreadNotifications > 0 || numberOfUnreadMentions > 0) ||
         isMarkedUnread

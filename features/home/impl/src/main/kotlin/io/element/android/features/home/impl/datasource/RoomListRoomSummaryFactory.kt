@@ -11,6 +11,7 @@ package io.element.android.features.home.impl.datasource
 import dev.zacsweers.metro.Inject
 import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
+import io.element.android.features.home.impl.model.chatType
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
 import io.element.android.libraries.core.extensions.orEmpty
 import io.element.android.libraries.dateformatter.api.DateFormatter
@@ -61,6 +62,7 @@ class RoomListRoomSummaryFactory(
             isFavorite = roomInfo.isFavorite,
             inviteSender = roomInfo.inviter?.toInviteSender(),
             isDm = roomInfo.isDm,
+            chatType = roomInfo.chatType(),
             canonicalAlias = roomInfo.canonicalAlias,
             displayType = when (roomInfo.currentUserMembership) {
                 CurrentUserMembership.INVITED -> {

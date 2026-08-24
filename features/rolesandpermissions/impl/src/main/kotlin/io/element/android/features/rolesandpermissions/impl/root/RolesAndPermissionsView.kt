@@ -69,14 +69,8 @@ fun RolesAndPermissionsView(
             },
             onClick = { rolesAndPermissionsNavigator.openAdminList() },
         )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.screen_room_roles_and_permissions_moderators)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChatProblem())),
-            trailingContent = state.moderatorCount?.let { moderationCount ->
-                ListItemContent.Text("$moderationCount")
-            },
-            onClick = { rolesAndPermissionsNavigator.openModeratorList() },
-        )
+        // Larpgram: no "Moderator" role. Only Member / Admin, with granular room permissions
+        // below. The moderators entry is intentionally removed.
         if (state.canSelfDemote) {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.screen_room_roles_and_permissions_change_my_role)) },

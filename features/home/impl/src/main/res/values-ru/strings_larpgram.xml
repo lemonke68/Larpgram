@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_roomlist_folder_all">Все</string>
+    <string name="screen_home_tab_settings">Настройки</string>
+    <string name="screen_home_tab_profile">Профиль</string>
+    <string name="screen_home_new_chat">Новый чат</string>
+    <string name="screen_home_new_channel">Новый канал</string>
+</resources>

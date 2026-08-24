@@ -14,6 +14,7 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyUserStory
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyViewState
+import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
 import io.element.android.libraries.matrix.api.encryption.EnableRecoveryProgress
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.test.A_RECOVERY_KEY
@@ -196,6 +197,7 @@ class SecureBackupSetupPresenterTest {
             isChangeRecoveryKeyUserStory = isChangeRecoveryKeyUserStory,
             stateMachine = SecureBackupSetupStateMachine(),
             encryptionService = encryptionService,
+            keyEscrowService = FakeKeyEscrowService(),
         )
     }
 }

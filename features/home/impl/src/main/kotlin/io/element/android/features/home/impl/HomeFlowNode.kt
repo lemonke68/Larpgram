@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.coroutineScope
+import com.bumble.appyx.core.composable.PermanentChild
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
+import com.bumble.appyx.core.navigation.model.permanent.PermanentNavModel
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.node.node
 import com.bumble.appyx.core.plugin.Plugin
@@ -34,6 +36,8 @@ import im.vector.app.features.analytics.plan.MobileScreen
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.home.api.HomeEntryPoint
 import io.element.android.features.home.impl.components.RoomListMenuAction
+import io.element.android.features.preferences.api.PreferencesEntryPoint
+import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.invite.api.InviteData
@@ -56,7 +60,9 @@ import io.element.android.libraries.designsystem.utils.DelayedVisibility
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -86,11 +92,19 @@ class HomeFlowNode(
     private val reportRoomEntryPoint: ReportRoomEntryPoint,
     private val declineInviteAndBlockUserEntryPoint: DeclineInviteAndBlockEntryPoint,
     private val changeRoomMemberRolesEntryPoint: ChangeRoomMemberRolesEntryPoint,
+    private val preferencesEntryPoint: PreferencesEntryPoint,
+    private val userProfileEntryPoint: UserProfileEntryPoint,
     private val leaveRoomRenderer: LeaveRoomRenderer,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : BaseFlowNode<HomeFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.Root,
+        savedStateMap = buildContext.savedStateMap,
+    ),
+    // Settings and Profile are hosted as always-alive permanent children so their tabs keep
+    // state; the Chats tab is the backstack Root. Rendered in-place under the persistent bar.
+    permanentNavModel = PermanentNavModel(
+        navTargets = setOf(NavTarget.TabSettings, NavTarget.TabProfile),
         savedStateMap = buildContext.savedStateMap,
     ),
     buildContext = buildContext,
@@ -125,6 +139,12 @@ class HomeFlowNode(
     sealed interface NavTarget : Parcelable {
         @Parcelize
         data object Root : NavTarget
+
+        @Parcelize
+        data object TabSettings : NavTarget
+
+        @Parcelize
+        data object TabProfile : NavTarget
 
         @Parcelize
         data class ReportRoom(val roomId: RoomId) : NavTarget
@@ -223,6 +243,7 @@ class HomeFlowNode(
                 onSettingsClick = callback::navigateToSettings,
                 onStartChatClick = callback::navigateToCreateRoom,
                 onCreateSpaceClick = callback::navigateToCreateSpace,
+                onCreateChannelClick = callback::navigateToCreateChannel,
                 onSetUpRecoveryClick = callback::navigateToSetUpRecovery,
                 onConfirmRecoveryKeyClick = callback::navigateToEnterRecoveryKey,
                 onRoomSettingsClick = callback::navigateToRoomSettings,
@@ -244,7 +265,15 @@ class HomeFlowNode(
                         onSelectNewOwners = ::navigateToSelectNewOwnersWhenLeavingRoom,
                         modifier = Modifier
                     )
-                }
+                },
+                // Real Settings/Profile screens, hosted as permanent children and rendered in
+                // the tab content area under the persistent bottom bar.
+                settingsContent = {
+                    PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.TabSettings)
+                },
+                profileContent = {
+                    PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.TabProfile)
+                },
             )
             directLogoutView.Render(state.directLogoutState)
         }
@@ -278,6 +307,35 @@ class HomeFlowNode(
                     buildContext = buildContext,
                     room = room,
                     listType = ChangeRoomMemberRolesListType.SelectNewOwnersWhenLeaving,
+                )
+            }
+            NavTarget.TabSettings -> {
+                val settingsCallback = object : PreferencesEntryPoint.Callback {
+                    override fun navigateToAddAccount() = callback.navigateToAddAccount()
+                    override fun navigateToLinkNewDevice() = callback.navigateToLinkNewDevice()
+                    override fun navigateToBugReport() = callback.navigateToBugReport()
+                    override fun navigateToSecureBackup() = callback.navigateToSecureBackup()
+                    override fun navigateToRoomNotificationSettings(roomId: RoomId) =
+                        callback.navigateToRoomNotificationSettings(roomId)
+                    override fun navigateToEvent(roomId: RoomId, eventId: EventId) =
+                        callback.navigateToEvent(roomId, eventId)
+                }
+                preferencesEntryPoint.createNode(
+                    parentNode = this,
+                    buildContext = buildContext,
+                    params = PreferencesEntryPoint.Params(PreferencesEntryPoint.InitialTarget.Root),
+                    callback = settingsCallback,
+                )
+            }
+            NavTarget.TabProfile -> {
+                val profileCallback = object : UserProfileEntryPoint.Callback {
+                    override fun navigateToRoom(roomId: RoomId) = callback.navigateToRoom(roomId, null)
+                }
+                userProfileEntryPoint.createNode(
+                    parentNode = this,
+                    buildContext = buildContext,
+                    params = UserProfileEntryPoint.Params(userId = UserId(matrixClient.sessionId.value)),
+                    callback = profileCallback,
                 )
             }
             NavTarget.Root -> rootNode(buildContext)

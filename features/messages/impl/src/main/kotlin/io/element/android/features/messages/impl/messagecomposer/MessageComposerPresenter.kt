@@ -55,7 +55,15 @@ import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
+import io.element.android.features.messages.impl.channel.ChannelDiscussion
+import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.IntentionalMention
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+import java.util.UUID
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.draft.ComposerDraft
 import io.element.android.libraries.matrix.api.room.draft.ComposerDraftType
@@ -119,6 +127,7 @@ class MessageComposerPresenter(
     @Assisted private val threadRoot: ThreadId?,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     private val mediaPickerProvider: PickerProvider,
     private val sessionPreferencesStore: SessionPreferencesStore,
     private val localMediaFactory: LocalMediaFactory,
@@ -547,13 +556,33 @@ class MessageComposerPresenter(
         // Reset composer right away
         resetComposer(markdownTextEditorState, richTextEditorState, fromEdit = capturedMode is MessageComposerMode.Edit)
         when (capturedMode) {
-            is MessageComposerMode.Attachment,
-            is MessageComposerMode.Normal -> timelineController.invokeOnCurrentTimeline {
+            is MessageComposerMode.Attachment -> timelineController.invokeOnCurrentTimeline {
                 sendMessage(
                     body = message.markdown,
                     htmlBody = message.html,
                     intentionalMentions = message.intentionalMentions
                 )
+            }
+            is MessageComposerMode.Normal -> {
+                // In a channel with a linked discussion, send the post as a raw event carrying a
+                // comment reference and mirror it into the discussion (Telegram-style comments).
+                // Otherwise send normally.
+                val discussionId = channelDiscussionRoomId()
+                if (discussionId != null) {
+                    sendChannelPostWithComments(
+                        body = message.markdown,
+                        htmlBody = message.html,
+                        discussionId = discussionId,
+                    )
+                } else {
+                    timelineController.invokeOnCurrentTimeline {
+                        sendMessage(
+                            body = message.markdown,
+                            htmlBody = message.html,
+                            intentionalMentions = message.intentionalMentions
+                        )
+                    }
+                }
             }
             is MessageComposerMode.Edit -> {
                 timelineController.invokeOnCurrentTimeline {
@@ -910,4 +939,59 @@ class MessageComposerPresenter(
             }
         }
     }
+
+    /** RoomId of the linked discussion group if this room is a channel that has one, else null. */
+    private suspend fun channelDiscussionRoomId(): RoomId? {
+        val isChannel = (room.info().roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
+        if (!isChannel) return null
+        return ChannelDiscussion.resolveDiscussionRoomId(room, matrixClient)
+    }
+
+    /**
+     * Send a channel post carrying a comment reference and mirror it into the discussion group with
+     * the same correlation id, tying the post to its comments (Ф4b). Raw events are used because
+     * Timeline.sendMessage neither returns an event id nor allows custom content — the tradeoff is
+     * that channel posts skip rich mention metadata, which is fine for broadcast.
+     */
+    private suspend fun sendChannelPostWithComments(body: String, htmlBody: String?, discussionId: RoomId) {
+        val commentId = UUID.randomUUID().toString()
+        // Channel post + a pointer to its comment thread.
+        room.sendRawEvent(
+            eventType = ROOM_MESSAGE_EVENT_TYPE,
+            content = channelMessageContent(body, htmlBody) {
+                putJsonObject(COMMENT_REF_FIELD) {
+                    put("room", discussionId.value)
+                    put("id", commentId)
+                }
+            },
+        )
+        // Mirror into the discussion group; replies to this message are the comments for the post.
+        matrixClient.getJoinedRoom(discussionId)?.use { discussion ->
+            discussion.sendRawEvent(
+                eventType = ROOM_MESSAGE_EVENT_TYPE,
+                content = channelMessageContent(body, htmlBody) {
+                    put(COMMENT_ID_FIELD, commentId)
+                },
+            )
+        }
+    }
+
+    private inline fun channelMessageContent(
+        body: String,
+        htmlBody: String?,
+        extra: JsonObjectBuilder.() -> Unit,
+    ): String = buildJsonObject {
+        put("msgtype", "m.text")
+        put("body", body)
+        if (!htmlBody.isNullOrEmpty()) {
+            put("format", "org.matrix.custom.html")
+            put("formatted_body", htmlBody)
+        }
+        extra()
+    }.toString()
 }
+
+/** Event type and custom content fields for the channel↔comments link. */
+private const val ROOM_MESSAGE_EVENT_TYPE = "m.room.message"
+private const val COMMENT_REF_FIELD = "ru.mangokokos.larpgram.comment"
+private const val COMMENT_ID_FIELD = "ru.mangokokos.larpgram.comment_id"

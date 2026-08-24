@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
+import io.element.android.features.messages.impl.channel.ChannelDiscussion
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -68,6 +69,7 @@ import androidx.constraintlayout.compose.ConstrainScope
 import androidx.constraintlayout.compose.ConstraintLayout
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
@@ -82,6 +84,8 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemThre
 import io.element.android.features.messages.impl.timeline.model.bubble.BubbleState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAttachmentsContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemGalleryContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAudioContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
@@ -112,6 +116,7 @@ import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
 import io.element.android.libraries.designsystem.swipe.SwipeableActionsState
 import io.element.android.libraries.designsystem.swipe.rememberSwipeableActionsState
 import io.element.android.libraries.designsystem.text.toPx
+import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.EventId
@@ -319,9 +324,87 @@ fun TimelineItemEventRow(
             )
         }
 
+        // Larpgram: channel posts get a Telegram-style "Comments" chip opening the post's comment
+        // thread. Text posts embed the comment link in their own content; image posts don't, but
+        // are mirrored into the discussion group, so show the chip on images too when the channel
+        // has a discussion. Other media types aren't mirrored yet and show none.
+        val hasTextComments = remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) != null } ?: false
+        }
+        val isMediaPost = event.content is TimelineItemImageContent ||
+            event.content is TimelineItemVideoContent ||
+            event.content is TimelineItemAudioContent ||
+            event.content is TimelineItemFileContent
+        val showChannelComments = timelineRoomInfo.isChannel &&
+            (hasTextComments || (isMediaPost && timelineRoomInfo.channelDiscussionRoomId != null))
+        if (showChannelComments) {
+            Row(
+                modifier = Modifier
+                    .then(
+                        if (event.isMine) {
+                            Modifier.align(Alignment.End).padding(end = 16.dp)
+                        } else {
+                            Modifier.padding(start = 16.dp)
+                        }
+                    )
+                    .padding(top = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ElementTheme.colors.bgSubtleSecondary)
+                    .clickable { eventSink(TimelineEvent.OpenChannelPostComments(event)) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = CompoundIcons.Chat(),
+                    contentDescription = null,
+                    tint = ElementTheme.colors.textActionAccent,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(id = R.string.screen_channel_comments),
+                    style = ElementTheme.typography.fontBodySmMedium,
+                    color = ElementTheme.colors.textActionAccent,
+                )
+            }
+        }
+
+        // Larpgram: in a channel comment thread the first item is the post (its mirror). Mark it as
+        // a header by separating it from the comments below with a "Комментарии" divider, like
+        // Telegram's "Discussion started". Detected: thread mode, this event is the root, and it
+        // carries our mirror marker.
+        val threadMode = timelineMode as? Timeline.Mode.Thread
+        val isChannelCommentRoot = threadMode != null &&
+            event.eventId?.value == threadMode.threadRootId.value &&
+            remember(event.id) {
+                event.debugInfo.originalJson?.let { ChannelDiscussion.commentIdFromMirror(it) != null } ?: false
+            }
+        if (isChannelCommentRoot) {
+            ChannelCommentsDivider()
+        }
+
         // Правка форка: аватарки прочтения убраны. Те же два факта, отправлено и прочитано,
         // теперь показывают галочки внутри пузыря (MessageDeliveryTicks), а два индикатора
         // одного и того же — лишний шум. Telegram аватарки под сообщением не рисует.
+    }
+}
+
+@Composable
+private fun ChannelCommentsDivider() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f))
+        Text(
+            text = stringResource(id = R.string.screen_channel_comments),
+            style = ElementTheme.typography.fontBodySmMedium,
+            color = ElementTheme.colors.textSecondary,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f))
     }
 }
 

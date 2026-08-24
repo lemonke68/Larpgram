@@ -13,6 +13,9 @@ sealed interface SpaceFiltersEvent {
     // Only valid in Unselected state
     sealed interface Unselected : SpaceFiltersEvent {
         data object ShowFilters : Unselected
+
+        // Pick a space directly from the always-visible folder pills.
+        data class SelectFilter(val spaceFilter: SpaceServiceFilter) : Unselected
     }
 
     // Only valid in Selecting state
@@ -24,5 +27,8 @@ sealed interface SpaceFiltersEvent {
     // Only valid in Selected state
     sealed interface Selected : SpaceFiltersEvent {
         data object ClearSelection : Selected
+
+        // Switch to another space straight from the folder pills.
+        data class SelectFilter(val spaceFilter: SpaceServiceFilter) : Selected
     }
 }

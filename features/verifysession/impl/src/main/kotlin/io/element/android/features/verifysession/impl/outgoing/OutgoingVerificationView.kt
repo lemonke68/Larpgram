@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.focused
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -40,7 +42,10 @@ import io.element.android.features.verifysession.impl.ui.VerificationContentVeri
 import io.element.android.libraries.designsystem.atomic.molecules.IconTitleSubtitleMolecule
 import io.element.android.libraries.designsystem.atomic.pages.HeaderFooterPage
 import io.element.android.libraries.designsystem.components.BigIcon
+import io.element.android.libraries.designsystem.components.ProgressDialog
 import io.element.android.libraries.designsystem.components.button.BackButton
+import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
+import io.element.android.libraries.designsystem.components.dialogs.TextFieldDialog
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Button
@@ -122,7 +127,79 @@ fun OutgoingVerificationView(
                 onLearnMoreClick = onLearnMoreClick,
             )
         }
+        // Правка форка: под-флоу «подтвердить по почте» рисуется диалогами поверх экрана.
+        EmailVerificationDialogs(
+            emailStep = state.emailStep,
+            eventSink = state.eventSink,
+        )
     }
+}
+
+/**
+ * Правка форка: диалоги под-флоу верификации по коду с почты (escrow).
+ */
+@Composable
+private fun EmailVerificationDialogs(
+    emailStep: EmailVerifyStep,
+    eventSink: (OutgoingVerificationViewEvents) -> Unit,
+) {
+    when (emailStep) {
+        EmailVerifyStep.Hidden -> Unit
+        EmailVerifyStep.SendingCode -> ProgressDialog(text = "Отправляем код на почту…")
+        is EmailVerifyStep.EnterCode -> {
+            if (emailStep.submitting) {
+                ProgressDialog(text = "Проверяем код…")
+            } else {
+                val subtitle = buildString {
+                    append("Код отправлен на ")
+                    append(emailStep.maskedEmail)
+                    append(". Введите 6 цифр из письма.")
+                    emailStep.error?.let {
+                        append("\n\n")
+                        append(emailVerifyErrorText(it))
+                    }
+                }
+                TextFieldDialog(
+                    title = "Вход по коду с почты",
+                    content = subtitle,
+                    value = "",
+                    placeholder = "000000",
+                    submitText = "Подтвердить",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    validation = { it != null && it.trim().length == CODE_LENGTH && it.trim().all(Char::isDigit) },
+                    onSubmit = { eventSink(OutgoingVerificationViewEvents.SubmitEmailCode(it.trim())) },
+                    onDismissRequest = { eventSink(OutgoingVerificationViewEvents.DismissEmailVerification) },
+                )
+            }
+        }
+        is EmailVerifyStep.Unavailable -> ErrorDialog(
+            content = emailVerifyUnavailableText(emailStep.reason),
+            onSubmit = { eventSink(OutgoingVerificationViewEvents.DismissEmailVerification) },
+        )
+    }
+}
+
+private const val CODE_LENGTH = 6
+
+private fun emailVerifyErrorText(error: EmailVerifyError): String = when (error) {
+    is EmailVerifyError.InvalidCode -> error.attemptsLeft?.let {
+        "Неверный код. Осталось попыток: $it."
+    } ?: "Неверный код."
+    EmailVerifyError.Expired -> "Срок кода истёк. Запросите новый: закройте и нажмите «Подтвердить по почте» снова."
+    EmailVerifyError.TooManyAttempts -> "Слишком много попыток. Запросите новый код: закройте и начните заново."
+    EmailVerifyError.RecoverFailed -> "Код верный, но восстановить ключи не удалось. Попробуйте ещё раз."
+    EmailVerifyError.Network -> "Нет связи с сервером. Проверьте интернет и попробуйте снова."
+}
+
+private fun emailVerifyUnavailableText(reason: EmailVerifyUnavailable): String = when (reason) {
+    EmailVerifyUnavailable.NoEmail ->
+        "К аккаунту не привязана почта, поэтому этот способ недоступен. Подтвердите на другом устройстве."
+    EmailVerifyUnavailable.NoStoredKey ->
+        "Для этого аккаунта на сервере нет ключа. Войдите на устройстве, где уже есть доступ, и включите резервную копию."
+    EmailVerifyUnavailable.RateLimited ->
+        "Код запрашивали слишком часто. Подождите немного и попробуйте снова."
+    EmailVerifyUnavailable.Network ->
+        "Нет связи с сервером. Проверьте интернет и попробуйте снова."
 }
 
 @Composable
@@ -263,7 +340,17 @@ private fun OutgoingVerificationBottomMenu(
                     showProgress = isWaiting,
                     onClick = { eventSink(OutgoingVerificationViewEvents.RequestVerification) },
                 )
-                InvisibleButton()
+                // Правка форка: альтернатива второму устройству — подтвердить кодом с почты.
+                // Только при верификации своей сессии и пока не ждём ответа устройства.
+                if (!isWaiting && state.request is VerificationRequest.Outgoing.CurrentSession) {
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = "Подтвердить по почте",
+                        onClick = { eventSink(OutgoingVerificationViewEvents.StartEmailVerification) },
+                    )
+                } else {
+                    InvisibleButton()
+                }
             }
         }
         is Step.Canceled -> {

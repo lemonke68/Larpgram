@@ -239,6 +239,11 @@ class ThreadedMessagesNode(
         callback.handlePermalinkClick(permalinkData)
     }
 
+    override fun navigateToRoomThread(roomId: RoomId, threadRootId: ThreadId) {
+        val permalinkData = PermalinkData.RoomLink(roomId.toRoomIdOrAlias(), eventId = null, threadId = threadRootId)
+        callback.handlePermalinkClick(permalinkData)
+    }
+
     override fun navigateToMember(userId: UserId) {
         callback.navigateToRoomMemberDetails(userId)
     }

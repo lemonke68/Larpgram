@@ -239,4 +239,15 @@ interface JoinedRoom : BaseRoom {
         height: Long?,
         size: Long?,
     ): Result<Unit>
+
+    /**
+     * Отправляет сырое событие произвольного типа с готовым JSON-контентом (мимо таймлайна,
+     * без локального эха), как и [sendSticker]. Нужно, когда в `m.room.message` требуется своё
+     * поле, которого нет в обычном `Timeline.sendMessage` — например, ссылка поста канала на его
+     * ветку комментариев (Larpgram Ф4).
+     *
+     * @param eventType тип события, напр. `m.room.message`.
+     * @param content полный JSON-контент события строкой.
+     */
+    suspend fun sendRawEvent(eventType: String, content: String): Result<Unit>
 }

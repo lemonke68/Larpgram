@@ -246,6 +246,11 @@ class MessagesNode(
         callback.navigateToThread(threadRootId, focusedEventId)
     }
 
+    override fun navigateToRoomThread(roomId: RoomId, threadRootId: ThreadId) {
+        val permalinkData = PermalinkData.RoomLink(roomId.toRoomIdOrAlias(), eventId = null, threadId = threadRootId)
+        callback.handlePermalinkClick(permalinkData)
+    }
+
     override fun navigateToDeveloperSettings() {
         callback.navigateToDeveloperSettings()
     }

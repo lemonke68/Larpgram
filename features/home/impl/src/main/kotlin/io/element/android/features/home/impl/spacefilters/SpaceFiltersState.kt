@@ -19,6 +19,7 @@ sealed interface SpaceFiltersState {
     data object Disabled : SpaceFiltersState
 
     data class Unselected(
+        val availableFilters: ImmutableList<SpaceServiceFilter>,
         val eventSink: (SpaceFiltersEvent.Unselected) -> Unit,
     ) : SpaceFiltersState
 
@@ -39,9 +40,23 @@ sealed interface SpaceFiltersState {
     }
 
     data class Selected(
+        val availableFilters: ImmutableList<SpaceServiceFilter>,
         val selectedFilter: SpaceServiceFilter,
         val eventSink: (SpaceFiltersEvent.Selected) -> Unit,
     ) : SpaceFiltersState
+}
+
+/**
+ * The full list of spaces to draw as folder pills, whatever the current selection.
+ * Empty when spaces are disabled or the picker sheet is open.
+ */
+fun SpaceFiltersState.availableFilters(): ImmutableList<SpaceServiceFilter> {
+    return when (this) {
+        is SpaceFiltersState.Unselected -> availableFilters
+        is SpaceFiltersState.Selected -> availableFilters
+        is SpaceFiltersState.Selecting -> availableFilters
+        SpaceFiltersState.Disabled -> kotlinx.collections.immutable.persistentListOf()
+    }
 }
 
 fun SpaceFiltersState.selectedFilter(): SpaceServiceFilter? {

@@ -14,6 +14,8 @@ import app.cash.turbine.ReceiveTurbine
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.verifysession.impl.outgoing.OutgoingVerificationState.Step
 import io.element.android.libraries.architecture.AsyncData
+import io.element.android.libraries.keyescrow.api.KeyEscrowService
+import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.verification.SessionVerificationData
@@ -334,6 +336,7 @@ internal fun createOutgoingVerificationPresenter(
     service: SessionVerificationService = FakeSessionVerificationService(),
     verificationRequest: VerificationRequest.Outgoing = anOutgoingSessionVerificationRequest(),
     encryptionService: EncryptionService = FakeEncryptionService(),
+    keyEscrowService: KeyEscrowService = FakeKeyEscrowService(),
     showDeviceVerifiedScreen: Boolean = false,
 ): OutgoingVerificationPresenter {
     return OutgoingVerificationPresenter(
@@ -341,5 +344,6 @@ internal fun createOutgoingVerificationPresenter(
         verificationRequest = verificationRequest,
         sessionVerificationService = service,
         encryptionService = encryptionService,
+        keyEscrowService = keyEscrowService,
     )
 }

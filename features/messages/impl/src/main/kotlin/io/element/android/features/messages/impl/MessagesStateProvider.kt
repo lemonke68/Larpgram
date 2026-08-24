@@ -130,6 +130,9 @@ fun aMessagesState(
     ),
     isCurrentlySharingLiveLocationInRoom: Boolean = false,
     dmUserStatus: DisplayedStatus? = null,
+    isChannel: Boolean = false,
+    isChannelMuted: Boolean = false,
+    channelSubscriberCount: Long? = null,
     eventSink: (MessagesEvent) -> Unit = {},
 ) = MessagesState(
     roomId = RoomId("!id:domain"),
@@ -161,6 +164,9 @@ fun aMessagesState(
     threads = threads,
     showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom,
     dmUserStatus = dmUserStatus,
+    isChannel = isChannel,
+    isChannelMuted = isChannelMuted,
+    channelSubscriberCount = channelSubscriberCount,
     eventSink = eventSink,
 )
 

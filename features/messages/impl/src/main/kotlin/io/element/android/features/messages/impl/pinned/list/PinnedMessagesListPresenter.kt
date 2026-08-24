@@ -99,6 +99,8 @@ class PinnedMessagesListPresenter(
             derivedStateOf {
                 TimelineRoomInfo(
                     isDm = roomInfo.isDm,
+                    // Pinned list is not a channel context; the comments affordance is not shown here.
+                    isChannel = false,
                     name = roomInfo.name,
                     // We don't need to compute those values
                     userHasPermissionToSendMessage = false,

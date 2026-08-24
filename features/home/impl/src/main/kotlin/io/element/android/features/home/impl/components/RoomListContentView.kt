@@ -320,15 +320,26 @@ private fun RoomsViewList(
             items = state.summaries,
             contentType = { _, room -> room.contentType() },
         ) { index, room ->
-            RoomSummaryRow(
-                room = room,
-                hideInviteAvatars = hideInvitesAvatars,
-                isInviteSeen = room.displayType == RoomSummaryDisplayType.INVITE &&
-                    state.seenRoomInvites.contains(room.roomId),
-                showUnreadCount = state.showUnreadCount,
-                onClick = onRoomClick,
-                eventSink = eventSink,
-            )
+            val summaryRow = @Composable {
+                RoomSummaryRow(
+                    room = room,
+                    hideInviteAvatars = hideInvitesAvatars,
+                    isInviteSeen = room.displayType == RoomSummaryDisplayType.INVITE &&
+                        state.seenRoomInvites.contains(room.roomId),
+                    showUnreadCount = state.showUnreadCount,
+                    onClick = onRoomClick,
+                    eventSink = eventSink,
+                )
+            }
+            // Telegram-style swipe actions, only on real chat rows (not invites/placeholders).
+            if (room.displayType == RoomSummaryDisplayType.ROOM) {
+                SwipeableRoomListRow(
+                    endActions = rememberChatSwipeEndActions(room = room, eventSink = eventSink),
+                    content = summaryRow,
+                )
+            } else {
+                summaryRow()
+            }
             if (index != state.summaries.lastIndex) {
                 HorizontalDivider()
             }

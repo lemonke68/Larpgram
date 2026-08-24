@@ -584,6 +584,13 @@ class JoinedRustRoom(
         }
     }
 
+    override suspend fun sendRawEvent(eventType: String, content: String): Result<Unit> = withContext(roomDispatcher) {
+        runCatchingExceptions {
+            innerRoom.sendRaw(eventType, content)
+            Unit
+        }
+    }
+
     override suspend fun setOwnMemberDisplayName(displayName: String): Result<Unit> = withContext(roomDispatcher) {
         runCatchingExceptions {
             innerRoom.setOwnMemberDisplayName(displayName)

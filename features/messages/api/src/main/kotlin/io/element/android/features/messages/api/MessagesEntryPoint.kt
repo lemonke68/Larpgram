@@ -30,6 +30,13 @@ interface MessagesEntryPoint : FeatureEntryPoint {
 
         @Parcelize
         data object PinnedMessages : InitialTarget
+
+        /** Larpgram: open the room straight into a thread (channel comments), no Messages screen under it. */
+        @Parcelize
+        data class Thread(
+            val threadRootId: ThreadId,
+            val focusedEventId: EventId?,
+        ) : InitialTarget
     }
 
     interface Callback : Plugin {

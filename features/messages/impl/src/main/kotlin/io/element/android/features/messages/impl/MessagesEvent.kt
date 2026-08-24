@@ -21,6 +21,9 @@ sealed interface MessagesEvent {
     data object StopLiveLocationShare : MessagesEvent
     data object ShowLiveLocationShare : MessagesEvent
     data object MarkAsFullyReadAndExit : MessagesEvent
+
+    /** Mute or unmute the current channel's notifications (Telegram-style subscriber bar). */
+    data object ToggleChannelMute : MessagesEvent
 }
 
 enum class InviteDialogAction {

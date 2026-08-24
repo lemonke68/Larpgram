@@ -276,12 +276,14 @@ internal fun aRedactedMessagesGroupedEvents(
 internal fun aTimelineRoomInfo(
     name: String = ROOM_NAME,
     isDm: Boolean = false,
+    isChannel: Boolean = false,
     userHasPermissionToSendMessage: Boolean = true,
     pinnedEventIds: List<EventId> = emptyList(),
     typingNotificationState: TypingNotificationState = aTypingNotificationState(),
     predecessorRoom: PredecessorRoom? = null,
 ) = TimelineRoomInfo(
     isDm = isDm,
+    isChannel = isChannel,
     name = name,
     userHasPermissionToSendMessage = userHasPermissionToSendMessage,
     userHasPermissionToSendReaction = true,

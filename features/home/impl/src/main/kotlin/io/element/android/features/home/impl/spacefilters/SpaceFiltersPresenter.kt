@@ -44,6 +44,9 @@ class SpaceFiltersPresenter(
                 SpaceFiltersEvent.Unselected.ShowFilters -> {
                     selectionMode = SelectionMode.Selecting
                 }
+                is SpaceFiltersEvent.Unselected.SelectFilter -> {
+                    selectionMode = SelectionMode.Selected(event.spaceFilter)
+                }
             }
         }
 
@@ -63,11 +66,15 @@ class SpaceFiltersPresenter(
                 SpaceFiltersEvent.Selected.ClearSelection -> {
                     selectionMode = SelectionMode.Unselected
                 }
+                is SpaceFiltersEvent.Selected.SelectFilter -> {
+                    selectionMode = SelectionMode.Selected(event.spaceFilter)
+                }
             }
         }
 
         return when (val mode = selectionMode) {
             SelectionMode.Unselected -> SpaceFiltersState.Unselected(
+                availableFilters = availableFilters,
                 eventSink = ::handleUnselectedEvent,
             )
             SelectionMode.Selecting -> {
@@ -91,6 +98,7 @@ class SpaceFiltersPresenter(
                     }
                 }
                 SpaceFiltersState.Selected(
+                    availableFilters = availableFilters,
                     selectedFilter = selectedFilter,
                     eventSink = ::handleSelectedEvent,
                 )

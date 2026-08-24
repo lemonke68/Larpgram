@@ -15,4 +15,14 @@ sealed interface OutgoingVerificationViewEvents {
     data object DeclineVerification : OutgoingVerificationViewEvents
     data object Cancel : OutgoingVerificationViewEvents
     data object Reset : OutgoingVerificationViewEvents
+
+    // Правка форка: под-флоу «подтвердить по почте» (escrow).
+    /** Нажали «Подтвердить по почте»: просим сервер прислать код. */
+    data object StartEmailVerification : OutgoingVerificationViewEvents
+
+    /** Ввели код и подтвердили. */
+    data class SubmitEmailCode(val code: String) : OutgoingVerificationViewEvents
+
+    /** Закрыли под-флоу почты. */
+    data object DismissEmailVerification : OutgoingVerificationViewEvents
 }

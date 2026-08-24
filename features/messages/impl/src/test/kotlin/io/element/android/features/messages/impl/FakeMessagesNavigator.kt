@@ -27,6 +27,7 @@ class FakeMessagesNavigator(
     private val navigateToMemberLambda: (userId: UserId) -> Unit = { lambdaError() },
     private val navigateToDeveloperSettingsLambda: () -> Unit = { lambdaError() },
     private val onOpenThreadLambda: (threadRootId: ThreadId, focusedEventId: EventId?) -> Unit = { _, _ -> lambdaError() },
+    private val onNavigateToRoomThreadLambda: (roomId: RoomId, threadRootId: ThreadId) -> Unit = { _, _ -> lambdaError() },
     private val closeLambda: () -> Unit = { lambdaError() },
     private val navigateToCurrentLiveLocationLambda: () -> Unit = { lambdaError() },
 ) : MessagesNavigator {
@@ -60,6 +61,10 @@ class FakeMessagesNavigator(
 
     override fun navigateToThread(threadRootId: ThreadId, focusedEventId: EventId?) {
         onOpenThreadLambda(threadRootId, focusedEventId)
+    }
+
+    override fun navigateToRoomThread(roomId: RoomId, threadRootId: ThreadId) {
+        onNavigateToRoomThreadLambda(roomId, threadRootId)
     }
 
     override fun navigateToDeveloperSettings() {

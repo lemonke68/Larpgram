@@ -30,5 +30,9 @@ object TimelineConfig {
         StateEventType.PolicyRuleRoom,
         StateEventType.PolicyRuleServer,
         StateEventType.PolicyRuleUser,
+        // Правка форка: стикер-паки комнаты (im.ponies.room_emotes) — служебное состояние
+        // MSC2545, менять пак это не «событие чата». Иначе каждое обновление пака рисует
+        // строку в ленте. Личные паки и список комнат живут в account data и в ленту не лезут.
+        StateEventType.RoomImagePack,
     )
 }

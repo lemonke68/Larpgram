@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larpgram fork strings for the home screen. Kept out of localazy.xml so the
+     translation pipeline does not overwrite them. -->
+<resources>
+    <!-- First pill of the Telegram-style folder row: shows every chat, no space filter. -->
+    <string name="screen_roomlist_folder_all">All</string>
+    <!-- Bottom navigation tabs (Telegram-style). -->
+    <string name="screen_home_tab_settings">Settings</string>
+    <string name="screen_home_tab_profile">Profile</string>
+    <!-- "New" menu in the chats top bar. -->
+    <string name="screen_home_new_chat">New chat</string>
+    <string name="screen_home_new_channel">New channel</string>
+</resources>

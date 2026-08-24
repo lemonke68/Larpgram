@@ -24,10 +24,16 @@ class DefaultCreateRoomEntryPoint : CreateRoomEntryPoint {
         private val callback: CreateRoomEntryPoint.Callback,
     ) : CreateRoomEntryPoint.Builder {
         private var isSpace = false
+        private var isChannel = false
         private var parentSpaceId: RoomId? = null
 
         override fun setIsSpace(isSpace: Boolean): Builder {
             this.isSpace = isSpace
+            return this
+        }
+
+        override fun setIsChannel(isChannel: Boolean): Builder {
+            this.isChannel = isChannel
             return this
         }
 
@@ -37,7 +43,7 @@ class DefaultCreateRoomEntryPoint : CreateRoomEntryPoint {
         }
 
         override fun build(): Node {
-            val inputs = CreateRoomFlowNode.Inputs(isSpace = isSpace, parentSpaceId = parentSpaceId)
+            val inputs = CreateRoomFlowNode.Inputs(isSpace = isSpace, isChannel = isChannel, parentSpaceId = parentSpaceId)
             return parentNode.createNode<CreateRoomFlowNode>(buildContext, listOf(inputs, callback))
         }
     }

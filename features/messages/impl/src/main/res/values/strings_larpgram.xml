@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larpgram fork strings. Kept out of localazy.xml so the translation pipeline does not overwrite them. -->
+<resources>
+    <!-- Comments button shown under each channel post; opens the linked discussion thread. -->
+    <string name="screen_channel_comments">Comments</string>
+    <!-- Channel subscriber bar (shown instead of the composer): tap to mute notifications. -->
+    <string name="screen_channel_mute">Mute</string>
+    <!-- Channel subscriber bar: tap to unmute notifications. -->
+    <string name="screen_channel_unmute">Unmute</string>
+    <!-- Subscriber count shown under a channel name in its header. -->
+    <plurals name="channel_subscriber_count">
+        <item quantity="one">%1$d subscriber</item>
+        <item quantity="other">%1$d subscribers</item>
+    </plurals>
+</resources>
