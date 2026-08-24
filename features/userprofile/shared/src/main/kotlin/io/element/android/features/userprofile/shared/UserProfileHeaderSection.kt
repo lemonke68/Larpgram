@@ -8,17 +8,14 @@
 
 package io.element.android.features.userprofile.shared
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -30,10 +27,8 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.libraries.designsystem.atomic.atoms.MatrixBadgeAtom
 import io.element.android.libraries.designsystem.atomic.molecules.MatrixBadgeRowMolecule
-import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
-import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.modifiers.niceClickable
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -59,29 +54,32 @@ fun UserProfileHeaderSection(
     onUserIdClick: () -> Unit,
     withdrawVerificationClick: () -> Unit,
     displayedStatus: DisplayedStatus?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Self-profile (TG-style) shows the @handle in the info card below instead,
+    // so the raw Matrix id is hidden from the header.
+    showId: Boolean = true,
+    // 0 = circular avatar; grows to 1 when the header is pulled down, expanding the avatar to a
+    // full-width square (TG-style).
+    avatarExpandFraction: Float = 0f,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Avatar(
+        CollapsingAvatar(
             avatarData = AvatarData(userId.value, userName, avatarUrl, AvatarSize.UserHeader),
-            avatarType = AvatarType.User,
-            contentDescription = stringResource(CommonStrings.a11y_user_avatar),
-            modifier = Modifier
-                .clip(CircleShape)
-                .clickable(
-                    enabled = avatarUrl != null,
-                    onClickLabel = stringResource(CommonStrings.action_view),
-                ) {
-                    openAvatarPreview(avatarUrl!!)
-                }
-                .testTag(TestTags.memberDetailAvatar)
+            userName = userName,
+            expandFraction = avatarExpandFraction,
+            onClick = { avatarUrl?.let(openAvatarPreview) },
+            modifier = Modifier.testTag(TestTags.memberDetailAvatar),
         )
         Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
         if (userName != null) {
             Text(
                 modifier = Modifier
@@ -104,14 +102,16 @@ fun UserProfileHeaderSection(
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
-        Text(
-            modifier = Modifier.niceClickable { onUserIdClick() },
-            text = userId.value,
-            style = ElementTheme.typography.fontBodyLgRegular,
-            color = ElementTheme.colors.textSecondary,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        if (showId) {
+            Text(
+                modifier = Modifier.niceClickable { onUserIdClick() },
+                text = userId.value,
+                style = ElementTheme.typography.fontBodyLgRegular,
+                color = ElementTheme.colors.textSecondary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
         when (verificationState) {
             UserProfileVerificationState.UNKNOWN, UserProfileVerificationState.UNVERIFIED -> Unit
             UserProfileVerificationState.VERIFIED -> {
@@ -143,6 +143,7 @@ fun UserProfileHeaderSection(
                     onClick = withdrawVerificationClick,
                 )
             }
+        }
         }
         Spacer(Modifier.height(40.dp))
     }

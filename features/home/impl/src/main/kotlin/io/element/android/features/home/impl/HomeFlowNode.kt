@@ -146,6 +146,10 @@ class HomeFlowNode(
         @Parcelize
         data object TabProfile : NavTarget
 
+        // Full-screen edit-profile opened from the profile tab (TG-style), pushed over the tabs.
+        @Parcelize
+        data object EditProfile : NavTarget
+
         @Parcelize
         data class ReportRoom(val roomId: RoomId) : NavTarget
 
@@ -330,12 +334,34 @@ class HomeFlowNode(
             NavTarget.TabProfile -> {
                 val profileCallback = object : UserProfileEntryPoint.Callback {
                     override fun navigateToRoom(roomId: RoomId) = callback.navigateToRoom(roomId, null)
+                    override fun navigateToSettings() = callback.navigateToSettings()
+                    override fun navigateToEditProfile() {
+                        backstack.push(NavTarget.EditProfile)
+                    }
                 }
                 userProfileEntryPoint.createNode(
                     parentNode = this,
                     buildContext = buildContext,
                     params = UserProfileEntryPoint.Params(userId = UserId(matrixClient.sessionId.value)),
                     callback = profileCallback,
+                )
+            }
+            NavTarget.EditProfile -> {
+                val editProfileCallback = object : PreferencesEntryPoint.Callback {
+                    override fun navigateToAddAccount() = callback.navigateToAddAccount()
+                    override fun navigateToLinkNewDevice() = callback.navigateToLinkNewDevice()
+                    override fun navigateToBugReport() = callback.navigateToBugReport()
+                    override fun navigateToSecureBackup() = callback.navigateToSecureBackup()
+                    override fun navigateToRoomNotificationSettings(roomId: RoomId) =
+                        callback.navigateToRoomNotificationSettings(roomId)
+                    override fun navigateToEvent(roomId: RoomId, eventId: EventId) =
+                        callback.navigateToEvent(roomId, eventId)
+                }
+                preferencesEntryPoint.createNode(
+                    parentNode = this,
+                    buildContext = buildContext,
+                    params = PreferencesEntryPoint.Params(PreferencesEntryPoint.InitialTarget.EditProfile),
+                    callback = editProfileCallback,
                 )
             }
             NavTarget.Root -> rootNode(buildContext)

@@ -19,6 +19,7 @@ import io.element.android.features.logout.test.FakeLogoutEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.troubleshoot.test.FakeNotificationTroubleShootEntryPoint
 import io.element.android.libraries.troubleshoot.test.FakePushHistoryEntryPoint
 import io.element.android.tests.testutils.lambda.lambdaError
@@ -46,6 +47,7 @@ class DefaultPreferencesEntryPointTest {
                 logoutEntryPoint = FakeLogoutEntryPoint(),
                 openSourceLicensesEntryPoint = FakeOpenSourceLicensesEntryPoint(),
                 accountDeactivationEntryPoint = FakeAccountDeactivationEntryPoint(),
+                matrixClient = FakeMatrixClient(),
             )
         }
         val callback = object : PreferencesEntryPoint.Callback {
@@ -78,5 +80,7 @@ class DefaultPreferencesEntryPointTest {
             .isEqualTo(PreferencesFlowNode.NavTarget.NotificationSettings)
         assertThat(PreferencesEntryPoint.InitialTarget.NotificationTroubleshoot.toNavTarget())
             .isEqualTo(PreferencesFlowNode.NavTarget.TroubleshootNotifications)
+        assertThat(PreferencesEntryPoint.InitialTarget.EditProfile.toNavTarget())
+            .isEqualTo(PreferencesFlowNode.NavTarget.EditCurrentUserProfile)
     }
 }

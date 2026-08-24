@@ -97,6 +97,14 @@ class UserProfileFlowNode(
                     override fun startVerifyUserFlow(userId: UserId) {
                         backstack.push(NavTarget.VerifyUser(userId))
                     }
+
+                    override fun navigateToSettings() {
+                        callback.navigateToSettings()
+                    }
+
+                    override fun navigateToEditProfile() {
+                        callback.navigateToEditProfile()
+                    }
                 }
                 val params = UserProfileNode.UserProfileInputs(userId = inputs.userId)
                 createNode<UserProfileNode>(buildContext, listOf(callback, params))

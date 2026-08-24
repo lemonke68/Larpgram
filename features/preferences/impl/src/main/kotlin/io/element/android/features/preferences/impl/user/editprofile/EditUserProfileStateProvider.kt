@@ -24,12 +24,14 @@ open class EditUserProfileStateProvider : PreviewParameterProvider<EditUserProfi
             aEditUserProfileState(userAvatarUrl = "example://uri"),
             aEditUserProfileState(saveAction = AsyncAction.ConfirmingCancellation),
             aEditUserProfileState(canChangeAvatarUrl = false, canChangeDisplayName = false),
+            aEditUserProfileState(bio = "//watch my skin ervpt in a cynthoni of flames//"),
         )
 }
 
 fun aEditUserProfileState(
     userId: UserId = UserId("@john.doe:matrix.org"),
     displayName: String = USER_NAME_JOHN_DOE,
+    bio: String = "",
     userAvatarUrl: String? = null,
     avatarActions: List<AvatarAction> = emptyList(),
     saveButtonEnabled: Boolean = true,
@@ -41,6 +43,7 @@ fun aEditUserProfileState(
 ) = EditUserProfileState(
     userId = userId,
     displayName = displayName,
+    bio = bio,
     userAvatarUrl = userAvatarUrl,
     avatarActions = avatarActions.toImmutableList(),
     saveButtonEnabled = saveButtonEnabled,

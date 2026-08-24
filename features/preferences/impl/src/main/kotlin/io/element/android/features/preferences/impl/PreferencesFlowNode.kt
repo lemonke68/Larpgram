@@ -41,6 +41,7 @@ import io.element.android.libraries.architecture.appyx.canPop
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.di.SessionScope
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.user.MatrixUser
@@ -59,6 +60,7 @@ class PreferencesFlowNode(
     private val logoutEntryPoint: LogoutEntryPoint,
     private val openSourceLicensesEntryPoint: OpenSourceLicensesEntryPoint,
     private val accountDeactivationEntryPoint: AccountDeactivationEntryPoint,
+    private val matrixClient: MatrixClient,
 ) : BaseFlowNode<PreferencesFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = plugins.filterIsInstance<PreferencesEntryPoint.Params>().first().initialElement.toNavTarget(),
@@ -103,6 +105,11 @@ class PreferencesFlowNode(
 
         @Parcelize
         data class UserProfile(val matrixUser: MatrixUser) : NavTarget
+
+        // Edit-profile for the current user, resolved lazily from the session (no MatrixUser
+        // to pass at construction, so it can be a parcelable initial target).
+        @Parcelize
+        data object EditCurrentUserProfile : NavTarget
 
         @Parcelize
         data object BlockedUsers : NavTarget
@@ -287,6 +294,17 @@ class PreferencesFlowNode(
                 val callback = object : EditUserProfileNode.Callback {
                     override fun onDone() {
                         backstack.pop()
+                    }
+                }
+                createNode<EditUserProfileNode>(buildContext, listOf(inputs, callback))
+            }
+            NavTarget.EditCurrentUserProfile -> {
+                val inputs = EditUserProfileNode.Inputs(matrixClient.userProfile.value)
+                val callback = object : EditUserProfileNode.Callback {
+                    override fun onDone() {
+                        // Reached as the flow root (opened directly from the profile tab): nothing
+                        // to pop, so finish the whole flow and return to the profile.
+                        if (backstack.canPop()) backstack.pop() else navigateUp()
                     }
                 }
                 createNode<EditUserProfileNode>(buildContext, listOf(inputs, callback))

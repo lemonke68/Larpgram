@@ -8,4 +8,6 @@
 <resources>
     <!-- Тип сообщения в списке чатов и в уведомлении: кружочек, круглое видеосообщение. -->
     <string name="larpgram_video_message">"Video message"</string>
+    <!-- Кнопка на своём профиле (TG-стиль): выбрать/сменить фото аватара. -->
+    <string name="larpgram_action_set_photo">"Set photo"</string>
 </resources>

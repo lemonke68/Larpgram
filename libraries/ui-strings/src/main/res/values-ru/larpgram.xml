@@ -2,4 +2,5 @@
 <!-- См. комментарий в values/larpgram.xml. -->
 <resources>
     <string name="larpgram_video_message">"Кружочек"</string>
+    <string name="larpgram_action_set_photo">"Выбрать фото"</string>
 </resources>

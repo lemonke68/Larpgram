@@ -34,6 +34,17 @@ open class UserProfileStateProvider : PreviewParameterProvider<UserProfileState>
             aUserProfileState(canCall = true),
             aUserProfileState(startDmActionState = ConfirmingStartDmWithMatrixUser(aMatrixUser(), isUserIdentityUnknown = false)),
             aUserProfileState(verificationState = UserProfileVerificationState.VERIFICATION_VIOLATION),
+            aUserProfileState(
+                userId = UserId("@lin:mango-kokos.ru"),
+                userName = "lin",
+                isCurrentUser = true,
+            ),
+            aUserProfileState(
+                userId = UserId("@lin:mango-kokos.ru"),
+                userName = "lin",
+                isCurrentUser = true,
+                about = "//watch my skin ervpt in a cynthoni of flames//",
+            ),
         )
 }
 
@@ -50,6 +61,7 @@ fun aUserProfileState(
     canCall: Boolean = false,
     snackbarMessage: SnackbarMessage? = null,
     displayedStatus: DisplayedStatus? = null,
+    about: String? = null,
     eventSink: (UserProfileEvents) -> Unit = {},
 ) = UserProfileState(
     userId = userId,
@@ -64,5 +76,6 @@ fun aUserProfileState(
     canCall = canCall,
     snackbarMessage = snackbarMessage,
     displayedStatus = displayedStatus,
+    about = about,
     eventSink = eventSink,
 )

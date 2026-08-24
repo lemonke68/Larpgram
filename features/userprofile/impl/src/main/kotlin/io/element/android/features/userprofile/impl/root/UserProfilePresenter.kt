@@ -37,6 +37,7 @@ import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.powerlevels.canCall
 import io.element.android.libraries.matrix.api.room.powerlevels.use
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.api.user.getLarpgramBio
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
@@ -100,6 +101,10 @@ class UserProfilePresenter(
                 .launchIn(this)
         }
         val userProfile by produceState<MatrixUser?>(null) { value = client.getProfile(userId).getOrNull() }
+        // Bio is private account data, so it only exists for the current user.
+        val about by produceState<String?>(null, isCurrentUser) {
+            value = if (isCurrentUser) client.getLarpgramBio() else null
+        }
 
         fun handleEvent(event: UserProfileEvents) {
             when (event) {
@@ -154,6 +159,7 @@ class UserProfilePresenter(
             dmRoomId = dmRoomId,
             canCall = canCall,
             snackbarMessage = null,
+            about = about,
             eventSink = ::handleEvent,
         )
     }

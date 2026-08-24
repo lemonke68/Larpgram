@@ -28,6 +28,8 @@ data class UserProfileState(
     val canCall: Boolean,
     val snackbarMessage: SnackbarMessage?,
     val displayedStatus: DisplayedStatus?,
+    // Bio ("О себе"), only ever populated for the current user (stored in private account data).
+    val about: String?,
     val eventSink: (UserProfileEvents) -> Unit
 ) {
     enum class ConfirmationDialog {
