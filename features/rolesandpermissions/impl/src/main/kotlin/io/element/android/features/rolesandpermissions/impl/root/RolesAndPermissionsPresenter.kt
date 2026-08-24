@@ -54,7 +54,8 @@ class RolesAndPermissionsPresenter(
             derivedStateOf {
                 val currentRole = roomInfo.roleOf(room.sessionId)
                 when (currentRole) {
-                    is RoomMember.Role.Admin -> persistentListOf(SelfDemoteAction.ToModerator, SelfDemoteAction.ToMember)
+                    // Larpgram: only demote-to-member (no Moderator role).
+                    is RoomMember.Role.Admin -> persistentListOf(SelfDemoteAction.ToMember)
                     is RoomMember.Role.Moderator -> persistentListOf(SelfDemoteAction.ToMember)
                     else -> persistentListOf()
                 }

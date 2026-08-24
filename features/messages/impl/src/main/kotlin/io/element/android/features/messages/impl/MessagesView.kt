@@ -14,6 +14,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
@@ -285,6 +287,8 @@ fun MessagesView(
                             dmUserIdentityState = state.dmUserVerificationState,
                             sharedHistoryIcon = state.topBarSharedHistoryIcon,
                             dmUserStatus = state.dmUserStatus,
+                            isChannel = state.isChannel,
+                            subscriberCount = state.channelSubscriberCount,
                             onBackClick = { hidingKeyboard { onBackClick() } },
                             onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
                             menuActions = {
@@ -813,8 +817,58 @@ private fun MessagesViewComposerBottomSheetContents(
                 }
             }
         }
+        state.isChannel -> {
+            // Telegram-style channel subscriber bar: instead of the composer, a read-only
+            // subscriber gets a mute/unmute pill. Comments live under each post; unsubscribe
+            // lives in the channel profile.
+            ChannelSubscriberBar(
+                isMuted = state.isChannelMuted,
+                onToggleMute = { state.eventSink(MessagesEvent.ToggleChannelMute) },
+                modifier = Modifier.padding(contentPadding),
+            )
+        }
         else -> {
             CantSendMessageBanner(Modifier.padding(contentPadding))
+        }
+    }
+}
+
+@Composable
+private fun ChannelSubscriberBar(
+    isMuted: Boolean,
+    onToggleMute: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgSubtleSecondary)
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Telegram's channel bottom bar is a single centred pill. Tap toggles notifications;
+        // the label and icon describe the action about to happen.
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(percent = 50))
+                .clickable(onClick = onToggleMute)
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = if (isMuted) CompoundIcons.Notifications() else CompoundIcons.NotificationsOff(),
+                contentDescription = null,
+                tint = ElementTheme.colors.iconPrimary,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(
+                    id = if (isMuted) R.string.screen_channel_unmute else R.string.screen_channel_mute
+                ),
+                color = ElementTheme.colors.textPrimary,
+                style = MaterialTheme.typography.bodyLarge,
+            )
         }
     }
 }

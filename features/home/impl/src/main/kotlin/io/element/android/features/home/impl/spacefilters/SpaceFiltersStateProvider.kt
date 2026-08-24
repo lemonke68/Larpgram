@@ -26,32 +26,36 @@ class SpaceFiltersStateProvider : PreviewParameterProvider<SpaceFiltersState> {
 fun aDisabledSpaceFiltersState() = SpaceFiltersState.Disabled
 
 fun anUnselectedSpaceFiltersState(
+    availableFilters: List<SpaceServiceFilter> = aSpaceFilterList(),
     eventSink: (SpaceFiltersEvent.Unselected) -> Unit = {},
 ) = SpaceFiltersState.Unselected(
+    availableFilters = availableFilters.toImmutableList(),
     eventSink = eventSink,
 )
 
-fun aSelectingSpaceFiltersState(
-    availableFilters: List<SpaceServiceFilter> = listOf(
-        aSpaceServiceFilter(
-            displayName = "Work",
-            canonicalAlias = RoomAlias("#work:example.com"),
-        ),
-        aSpaceServiceFilter(
-            displayName = "Personal",
-            roomId = RoomId("!personal:example.com"),
-        ),
-        aSpaceServiceFilter(
-            displayName = "Projects",
-            roomId = RoomId("!projects:example.com"),
-            canonicalAlias = RoomAlias("#projects:example.com"),
-            level = 1,
-        ),
-        aSpaceServiceFilter(
-            displayName = "Gaming",
-            roomId = RoomId("!gaming:example.com"),
-        ),
+fun aSpaceFilterList(): List<SpaceServiceFilter> = listOf(
+    aSpaceServiceFilter(
+        displayName = "Work",
+        canonicalAlias = RoomAlias("#work:example.com"),
     ),
+    aSpaceServiceFilter(
+        displayName = "Personal",
+        roomId = RoomId("!personal:example.com"),
+    ),
+    aSpaceServiceFilter(
+        displayName = "Projects",
+        roomId = RoomId("!projects:example.com"),
+        canonicalAlias = RoomAlias("#projects:example.com"),
+        level = 1,
+    ),
+    aSpaceServiceFilter(
+        displayName = "Gaming",
+        roomId = RoomId("!gaming:example.com"),
+    ),
+)
+
+fun aSelectingSpaceFiltersState(
+    availableFilters: List<SpaceServiceFilter> = aSpaceFilterList(),
     searchQuery: String = "",
     eventSink: (SpaceFiltersEvent.Selecting) -> Unit = {},
 ) = SpaceFiltersState.Selecting(
@@ -61,9 +65,11 @@ fun aSelectingSpaceFiltersState(
 )
 
 fun aSelectedSpaceFiltersState(
-    selectedFilter: SpaceServiceFilter = aSpaceServiceFilter(displayName = "Work"),
+    availableFilters: List<SpaceServiceFilter> = aSpaceFilterList(),
+    selectedFilter: SpaceServiceFilter = availableFilters.first(),
     eventSink: (SpaceFiltersEvent.Selected) -> Unit = {},
 ) = SpaceFiltersState.Selected(
+    availableFilters = availableFilters.toImmutableList(),
     selectedFilter = selectedFilter,
     eventSink = eventSink,
 )

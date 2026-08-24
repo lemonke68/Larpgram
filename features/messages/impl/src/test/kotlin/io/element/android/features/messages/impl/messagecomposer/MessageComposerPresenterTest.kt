@@ -61,6 +61,7 @@ import io.element.android.libraries.matrix.test.A_CAPTION
 import io.element.android.libraries.matrix.test.A_MESSAGE
 import io.element.android.libraries.matrix.test.A_REPLY
 import io.element.android.libraries.matrix.test.A_ROOM_ID
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.A_TRANSACTION_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
@@ -1616,6 +1617,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
         sessionCoroutineScope = this,
         threadRoot = threadRoot,
         room = room,
+        matrixClient = FakeMatrixClient(),
         mediaPickerProvider = pickerProvider,
         sessionPreferencesStore = sessionPreferencesStore,
         localMediaFactory = localMediaFactory,

@@ -27,6 +27,7 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatch
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -282,6 +283,7 @@ class MessageComposerPresenterSlashCommandTest {
         sessionCoroutineScope = this,
         threadRoot = threadRoot,
         room = room,
+        matrixClient = FakeMatrixClient(),
         mediaPickerProvider = pickerProvider,
         sessionPreferencesStore = sessionPreferencesStore,
         localMediaFactory = localMediaFactory,

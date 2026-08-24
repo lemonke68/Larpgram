@@ -17,6 +17,9 @@ import io.element.android.libraries.matrix.api.core.RoomId
 interface CreateRoomEntryPoint : FeatureEntryPoint {
     interface Builder {
         fun setIsSpace(isSpace: Boolean): Builder
+
+        /** Create a broadcast channel: a room where only admins can post (see ConfigureRoomPresenter). */
+        fun setIsChannel(isChannel: Boolean): Builder
         fun setParentSpace(parentSpaceId: RoomId): Builder
         fun build(): Node
     }

@@ -65,6 +65,12 @@ data class MessagesState(
     val successorRoom: SuccessorRoom?,
     val threads: Threads,
     val showLiveLocationShareBanner: Boolean,
+    /** True if this room is a broadcast channel (only elevated users can post). */
+    val isChannel: Boolean,
+    /** Whether the current user has muted this channel's notifications. Only meaningful for a channel. */
+    val isChannelMuted: Boolean,
+    /** Subscriber (joined member) count shown in a channel's header, or null if not a channel. */
+    val channelSubscriberCount: Long? = null,
     val eventSink: (MessagesEvent) -> Unit,
     // Правка форка: состояние пикера стикеров. Дефолт null, чтобы не трогать три
     // десятка мест, где апстрим собирает MessagesState (в основном превью и тесты).

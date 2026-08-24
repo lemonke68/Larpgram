@@ -16,6 +16,7 @@ import io.element.android.features.securebackup.impl.setup.SecureBackupSetupNode
 import io.element.android.features.securebackup.impl.setup.SecureBackupSetupPresenter
 import io.element.android.features.securebackup.impl.setup.SecureBackupSetupStateMachine
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
+import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
 import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.tests.testutils.node.TestParentNode
 import org.junit.Rule
@@ -40,6 +41,7 @@ class DefaultSecureBackupSetupEntryPointTest {
                         isChangeRecoveryKeyUserStory = isChangeRecoveryKeyUserStory,
                         stateMachine = SecureBackupSetupStateMachine(),
                         encryptionService = FakeEncryptionService(),
+                        keyEscrowService = FakeKeyEscrowService(),
                     )
                 },
                 snackbarDispatcher = SnackbarDispatcher(),

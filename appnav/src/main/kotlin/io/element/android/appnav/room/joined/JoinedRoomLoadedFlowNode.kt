@@ -268,7 +268,11 @@ class JoinedRoomLoadedFlowNode(
             }
         }
         val params = MessagesEntryPoint.Params(
-            MessagesEntryPoint.InitialTarget.Messages(navTarget.focusedEventId)
+            if (navTarget.threadRootId != null) {
+                MessagesEntryPoint.InitialTarget.Thread(navTarget.threadRootId, navTarget.focusedEventId)
+            } else {
+                MessagesEntryPoint.InitialTarget.Messages(navTarget.focusedEventId)
+            }
         )
         return messagesEntryPoint.createNode(
             parentNode = this,
@@ -285,6 +289,8 @@ class JoinedRoomLoadedFlowNode(
         @Parcelize
         data class Messages(
             val focusedEventId: EventId? = null,
+            // Larpgram: when set, the room opens straight into this thread (channel comments).
+            val threadRootId: ThreadId? = null,
         ) : NavTarget
 
         @Parcelize
@@ -328,6 +334,10 @@ private fun initialElement(plugins: List<Plugin>): JoinedRoomLoadedFlowNode.NavT
                 JoinedRoomLoadedFlowNode.NavTarget.Messages(input.initialElement.eventId)
             }
         }
+        is RoomNavigationTarget.Thread -> JoinedRoomLoadedFlowNode.NavTarget.Messages(
+            focusedEventId = input.initialElement.focusedEventId,
+            threadRootId = input.initialElement.threadRootId,
+        )
         RoomNavigationTarget.Details -> JoinedRoomLoadedFlowNode.NavTarget.RoomDetails
         RoomNavigationTarget.NotificationSettings -> JoinedRoomLoadedFlowNode.NavTarget.RoomNotificationSettings
     }

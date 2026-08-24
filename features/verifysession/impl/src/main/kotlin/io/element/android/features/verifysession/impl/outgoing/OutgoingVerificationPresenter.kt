@@ -15,13 +15,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import com.freeletics.flowredux.compose.rememberStateAndDispatch
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.keyescrow.api.KeyEscrowService
+import io.element.android.libraries.keyescrow.api.RedeemResult
+import io.element.android.libraries.keyescrow.api.RequestCodeResult
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.verification.SessionVerificationService
 import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
@@ -31,6 +37,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import io.element.android.features.verifysession.impl.outgoing.OutgoingVerificationStateMachine.Event as StateMachineEvent
 import io.element.android.features.verifysession.impl.outgoing.OutgoingVerificationStateMachine.State as StateMachineState
@@ -41,6 +48,8 @@ class OutgoingVerificationPresenter(
     @Assisted private val verificationRequest: VerificationRequest.Outgoing,
     private val sessionVerificationService: SessionVerificationService,
     private val encryptionService: EncryptionService,
+    // Правка форка: верификация сессии кодом с почты вместо второго устройства.
+    private val keyEscrowService: KeyEscrowService,
 ) : Presenter<OutgoingVerificationState> {
     @AssistedFactory
     fun interface Factory {
@@ -57,7 +66,10 @@ class OutgoingVerificationPresenter(
 
     @Composable
     override fun present(): OutgoingVerificationState {
+        val coroutineScope = rememberCoroutineScope()
         val stateAndDispatch = stateMachine.rememberStateAndDispatch()
+        // Правка форка: под-флоу «подтвердить по почте» живёт рядом с SDK-машиной.
+        var emailStep by remember { mutableStateOf<EmailVerifyStep>(EmailVerifyStep.Hidden) }
 
         val sessionVerifiedStatus by sessionVerificationService.sessionVerifiedStatus.collectAsState()
         val step by remember {
@@ -95,7 +107,7 @@ class OutgoingVerificationPresenter(
 
         fun handleEvent(event: OutgoingVerificationViewEvents) {
             Timber.d("Verification user action: ${event::class.simpleName}")
-            when (event) {
+            val stateMachineEvent = when (event) {
                 // Just relay the event to the state machine
                 OutgoingVerificationViewEvents.RequestVerification -> StateMachineEvent.RequestVerification(verificationRequest)
                 OutgoingVerificationViewEvents.StartSasVerification -> StateMachineEvent.StartSasVerification
@@ -103,15 +115,81 @@ class OutgoingVerificationPresenter(
                 OutgoingVerificationViewEvents.DeclineVerification -> StateMachineEvent.DeclineChallenge
                 OutgoingVerificationViewEvents.Cancel -> StateMachineEvent.Cancel
                 OutgoingVerificationViewEvents.Reset -> StateMachineEvent.Reset
-            }.let { stateMachineEvent ->
-                stateAndDispatch.dispatchAction(stateMachineEvent)
+                // Правка форка: под-флоу почты обрабатываем локально, в SDK-машину не отдаём.
+                OutgoingVerificationViewEvents.StartEmailVerification -> {
+                    coroutineScope.requestEmailCode { emailStep = it }
+                    null
+                }
+                is OutgoingVerificationViewEvents.SubmitEmailCode -> {
+                    coroutineScope.submitEmailCode(event.code, emailStep) { emailStep = it }
+                    null
+                }
+                OutgoingVerificationViewEvents.DismissEmailVerification -> {
+                    emailStep = EmailVerifyStep.Hidden
+                    null
+                }
             }
+            stateMachineEvent?.let { stateAndDispatch.dispatchAction(it) }
         }
         return OutgoingVerificationState(
             step = step,
             request = verificationRequest,
+            emailStep = emailStep,
             eventSink = ::handleEvent,
         )
+    }
+
+    /** Правка форка: просим сервер прислать код на почту аккаунта. */
+    private fun CoroutineScope.requestEmailCode(update: (EmailVerifyStep) -> Unit) {
+        update(EmailVerifyStep.SendingCode)
+        launch {
+            val next = when (val result = keyEscrowService.requestCode()) {
+                is RequestCodeResult.Sent -> EmailVerifyStep.EnterCode(
+                    maskedEmail = result.maskedEmail,
+                    submitting = false,
+                    error = null,
+                )
+                RequestCodeResult.NoEmail -> EmailVerifyStep.Unavailable(EmailVerifyUnavailable.NoEmail)
+                RequestCodeResult.RateLimited -> EmailVerifyStep.Unavailable(EmailVerifyUnavailable.RateLimited)
+                RequestCodeResult.NetworkError -> EmailVerifyStep.Unavailable(EmailVerifyUnavailable.Network)
+            }
+            update(next)
+        }
+    }
+
+    /**
+     * Правка форка: проверяем код и, если верный, забираем ключ и зовём recover.
+     * После успешного recover статус сессии сам станет Verified, а step уедет в
+     * Completed/Exit, поэтому под-флоу просто прячем.
+     */
+    private fun CoroutineScope.submitEmailCode(
+        code: String,
+        current: EmailVerifyStep,
+        update: (EmailVerifyStep) -> Unit,
+    ) {
+        val entering = current as? EmailVerifyStep.EnterCode ?: return
+        update(entering.copy(submitting = true, error = null))
+        launch {
+            when (val result = keyEscrowService.redeemCode(code)) {
+                is RedeemResult.Success -> encryptionService.recover(result.recoveryKey).fold(
+                    onSuccess = { update(EmailVerifyStep.Hidden) },
+                    onFailure = {
+                        Timber.w(it, "recover по ключу из escrow не удался")
+                        update(entering.copy(submitting = false, error = EmailVerifyError.RecoverFailed))
+                    },
+                )
+                is RedeemResult.InvalidCode ->
+                    update(entering.copy(submitting = false, error = EmailVerifyError.InvalidCode(result.attemptsLeft)))
+                RedeemResult.Expired ->
+                    update(entering.copy(submitting = false, error = EmailVerifyError.Expired))
+                RedeemResult.TooManyAttempts ->
+                    update(entering.copy(submitting = false, error = EmailVerifyError.TooManyAttempts))
+                RedeemResult.NoStoredKey ->
+                    update(EmailVerifyStep.Unavailable(EmailVerifyUnavailable.NoStoredKey))
+                RedeemResult.NetworkError ->
+                    update(entering.copy(submitting = false, error = EmailVerifyError.Network))
+            }
+        }
     }
 
     private fun StateMachineState?.toVerificationStep(): OutgoingVerificationState.Step =

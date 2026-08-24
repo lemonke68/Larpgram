@@ -11,6 +11,7 @@ package io.element.android.features.home.impl
 import com.bumble.appyx.core.modality.BuildContext
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.api.HomeEntryPoint
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.test.FakeMatrixClient
@@ -46,11 +47,17 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
             override fun navigateToRoom(roomId: RoomId, joinedRoom: JoinedRoom?) = lambdaError()
             override fun navigateToCreateRoom() = lambdaError()
             override fun navigateToCreateSpace() = lambdaError()
+            override fun navigateToCreateChannel() = lambdaError()
             override fun navigateToSettings() = lambdaError()
             override fun navigateToSetUpRecovery() = lambdaError()
             override fun navigateToEnterRecoveryKey() = lambdaError()
             override fun navigateToRoomSettings(roomId: RoomId) = lambdaError()
             override fun navigateToBugReport() = lambdaError()
+            override fun navigateToAddAccount() = lambdaError()
+            override fun navigateToLinkNewDevice() = lambdaError()
+            override fun navigateToSecureBackup() = lambdaError()
+            override fun navigateToRoomNotificationSettings(roomId: RoomId) = lambdaError()
+            override fun navigateToEvent(roomId: RoomId, eventId: EventId) = lambdaError()
         }
         val result = entryPoint.createNode(
             parentNode = parentNode,

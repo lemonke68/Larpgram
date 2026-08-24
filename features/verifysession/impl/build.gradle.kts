@@ -35,6 +35,8 @@ dependencies {
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.preferences.api)
     implementation(projects.libraries.uiStrings)
+    // Правка форка: верификация сессии кодом с почты (escrow).
+    implementation(projects.libraries.keyescrow.api)
     implementation(projects.features.logout.api)
     api(libs.statemachine)
     api(projects.features.verifysession.api)
@@ -43,5 +45,6 @@ dependencies {
     testImplementation(projects.features.logout.test)
     testImplementation(projects.libraries.dateformatter.test)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.libraries.keyescrow.test)
     testImplementation(projects.libraries.preferences.test)
 }

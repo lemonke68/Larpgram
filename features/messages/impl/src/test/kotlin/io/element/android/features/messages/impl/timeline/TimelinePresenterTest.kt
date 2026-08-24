@@ -53,6 +53,7 @@ import io.element.android.libraries.matrix.api.timeline.item.virtual.VirtualTime
 import io.element.android.libraries.matrix.test.AN_EVENT_ID
 import io.element.android.libraries.matrix.test.AN_EVENT_ID_2
 import io.element.android.libraries.matrix.test.A_ROOM_ID
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.A_THREAD_ID
 import io.element.android.libraries.matrix.test.A_THREAD_ID_2
 import io.element.android.libraries.matrix.test.A_UNIQUE_ID
@@ -1593,6 +1594,7 @@ class TimelinePresenterTest {
         return TimelinePresenter(
             timelineItemsFactoryCreator = aTimelineItemsFactoryCreator(),
             room = room,
+            matrixClient = FakeMatrixClient(),
             dispatchers = testCoroutineDispatchers(),
             sessionCoroutineScope = this,
             navigator = messagesNavigator,

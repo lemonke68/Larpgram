@@ -79,9 +79,11 @@ internal fun anOutgoingSessionVerificationRequest() = VerificationRequest.Outgoi
 internal fun anOutgoingVerificationState(
     step: Step = Step.Initial,
     request: VerificationRequest.Outgoing = anOutgoingSessionVerificationRequest(),
+    emailStep: EmailVerifyStep = EmailVerifyStep.Hidden,
     eventSink: (OutgoingVerificationViewEvents) -> Unit = {},
 ) = OutgoingVerificationState(
     step = step,
     request = request,
+    emailStep = emailStep,
     eventSink = eventSink,
 )

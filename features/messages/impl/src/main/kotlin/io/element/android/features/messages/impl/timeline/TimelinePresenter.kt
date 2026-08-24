@@ -25,6 +25,12 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.features.location.api.live.ActiveLiveLocationShareManager
 import io.element.android.features.messages.impl.MessagesNavigator
+import io.element.android.features.messages.impl.channel.ChannelDiscussion
+import io.element.android.features.messages.impl.timeline.groups.canBeGrouped
+import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.ThreadId
+import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import io.element.android.features.messages.impl.UserEventPermissions
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureEvent
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureState
@@ -84,6 +90,7 @@ const val FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS = 200L
 class TimelinePresenter(
     timelineItemsFactoryCreator: TimelineItemsFactory.Creator,
     private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     private val dispatchers: CoroutineDispatchers,
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
@@ -258,6 +265,9 @@ class TimelinePresenter(
                         focusedEventId = event.focusedEvent,
                     )
                 }
+                is TimelineEvent.OpenChannelPostComments -> sessionCoroutineScope.launch {
+                    openChannelPostComments(event.event)
+                }
                 is TimelineEvent.ValidateMedia -> {
                     timelineProtectionState.eventSink(TimelineProtectionEvent.ValidateContent(event.mediaSources, event.validationState))
                 }
@@ -267,8 +277,16 @@ class TimelinePresenter(
         LaunchedEffect(Unit) {
             timelineItemsFactory.timelineItems
                 .onEach { newTimelineItems ->
-                    timelineItemIndexer.process(newTimelineItems)
-                    timelineItems = newTimelineItems.toImmutableList()
+                    // Larpgram: a channel hides membership/state service messages (Telegram-style —
+                    // no "joined"/"invited"/"changed name" noise in the broadcast feed).
+                    val isChannelRoom = (room.info().roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
+                    val rendered = if (isChannelRoom) {
+                        newTimelineItems.filterNot(::isChannelServiceItem)
+                    } else {
+                        newTimelineItems
+                    }
+                    timelineItemIndexer.process(rendered)
+                    timelineItems = rendered.toImmutableList()
 
                     analyticsService.run {
                         finishLongRunningTransaction(DisplayFirstTimelineItems)
@@ -380,11 +398,20 @@ class TimelinePresenter(
         val userEventPermissions by room.permissionsAsState(UserEventPermissions.DEFAULT) { perms ->
             perms.userEventPermissions()
         }
-        val timelineRoomInfo by remember(typingNotificationState, roomCallState, roomInfo) {
+        val isChannel = (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
+        // The channel's linked discussion group, resolved once. Gates the per-post "Comments"
+        // button on image posts (whose comment link isn't in their own content, only in the mirror).
+        val channelDiscussionRoomId by produceState<RoomId?>(null, isChannel) {
+            value = if (isChannel) resolveChannelDiscussionRoomId() else null
+        }
+        val timelineRoomInfo by remember(typingNotificationState, roomCallState, roomInfo, channelDiscussionRoomId) {
             derivedStateOf {
                 TimelineRoomInfo(
                     name = roomInfo.name,
                     isDm = roomInfo.isDm,
+                    // Broadcast channel: only elevated users can post (eventsDefault raised).
+                    isChannel = isChannel,
+                    channelDiscussionRoomId = channelDiscussionRoomId,
                     userHasPermissionToSendMessage = userEventPermissions.canSendMessage,
                     userHasPermissionToSendReaction = userEventPermissions.canSendReaction,
                     roomCallState = roomCallState,
@@ -527,6 +554,65 @@ class TimelinePresenter(
             }
         }
         return null
+    }
+
+    /**
+     * Open the comments for a channel post: read the discussion room + correlation id from the
+     * post's raw content, find the mirror message with that id in the discussion group, and open
+     * its thread. Falls back to opening the discussion room if the mirror can't be located.
+     */
+    private suspend fun openChannelPostComments(post: TimelineItem.Event) {
+        // Open the post's comment thread (its mirror in the discussion group) — post at top,
+        // comments below, like Telegram. Text posts embed the discussion + a correlation id in
+        // their own content; image posts don't (SDK send), so their mirror is correlated by the
+        // post's own event id instead.
+        val textRef = post.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) }
+        val discussionId: RoomId
+        val commentId: String
+        if (textRef != null) {
+            discussionId = RoomId(textRef.first)
+            commentId = textRef.second
+        } else {
+            discussionId = resolveChannelDiscussionRoomId() ?: run {
+                Timber.tag(tag).w("No discussion group for channel post ${post.eventId}")
+                return
+            }
+            commentId = post.eventId?.value ?: return
+        }
+        // Open the post's comment thread — the mirror (post) at top, comments below — in the
+        // discussion room, like Telegram's comments screen.
+        val mirrorEventId = findMirrorEventId(discussionId, commentId = commentId)
+        if (mirrorEventId != null) {
+            navigator.navigateToRoomThread(discussionId, threadRootId = ThreadId(mirrorEventId.value))
+        } else {
+            // Mirror not in the loaded discussion window (rare) — fall back to the discussion room.
+            navigator.navigateToRoom(discussionId, eventId = null, serverNames = emptyList())
+        }
+    }
+
+    private suspend fun resolveChannelDiscussionRoomId(): RoomId? =
+        ChannelDiscussion.resolveDiscussionRoomId(room, matrixClient)
+
+    /** A membership/state/profile service item (or a group of them) hidden from a channel feed. */
+    private fun isChannelServiceItem(item: TimelineItem): Boolean = when (item) {
+        is TimelineItem.GroupedEvents -> true
+        is TimelineItem.Event -> item.canBeGrouped()
+        else -> false
+    }
+
+    private suspend fun findMirrorEventId(discussionId: RoomId, commentId: String): EventId? {
+        val discussion = matrixClient.getJoinedRoom(discussionId) ?: return null
+        return discussion.use { room ->
+            room.liveTimeline.timelineItems.first()
+                .asSequence()
+                .filterIsInstance<MatrixTimelineItem.Event>()
+                .firstOrNull { item ->
+                    val originalJson = item.event.timelineItemDebugInfoProvider().originalJson
+                    originalJson != null && ChannelDiscussion.commentIdFromMirror(originalJson) == commentId
+                }
+                ?.event
+                ?.eventId
+        }
     }
 }
 

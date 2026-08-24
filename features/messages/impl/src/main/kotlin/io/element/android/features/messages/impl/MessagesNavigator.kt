@@ -25,6 +25,12 @@ interface MessagesNavigator {
     fun navigateToRoom(roomId: RoomId, eventId: EventId?, serverNames: List<String>)
     fun navigateToMember(userId: UserId)
     fun navigateToThread(threadRootId: ThreadId, focusedEventId: EventId?)
+
+    /**
+     * Larpgram: open a thread whose root lives in another room (a channel post's comment thread,
+     * rooted on the post's mirror in the discussion group). Opens that room and its thread.
+     */
+    fun navigateToRoomThread(roomId: RoomId, threadRootId: ThreadId)
     fun navigateToDeveloperSettings()
     fun navigateToCurrentLiveLocation()
     fun close()

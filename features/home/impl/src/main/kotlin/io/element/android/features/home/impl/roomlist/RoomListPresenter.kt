@@ -206,6 +206,7 @@ class RoomListPresenter(
                     leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(event.roomId, needsConfirmation = event.needsConfirmation))
                 }
                 is RoomListEvent.SetRoomIsFavorite -> coroutineScope.setRoomIsFavorite(event.roomId, event.isFavorite)
+                is RoomListEvent.SetRoomIsMuted -> coroutineScope.setRoomIsMuted(event.roomId, event.isMuted)
                 is RoomListEvent.MarkAsRead -> coroutineScope.markAsRead(event.roomId)
                 is RoomListEvent.MarkAsUnread -> coroutineScope.markAsUnread(event.roomId)
                 is RoomListEvent.AcceptInvite -> {
@@ -413,6 +414,22 @@ class RoomListPresenter(
                 .onSuccess {
                     analyticsService.captureInteraction(name = Interaction.Name.MobileRoomListRoomContextMenuFavouriteToggle)
                 }
+        }
+    }
+
+    private fun CoroutineScope.setRoomIsMuted(roomId: RoomId, isMuted: Boolean) = launch {
+        val notificationSettings = client.notificationSettingsService
+        if (isMuted) {
+            notificationSettings.muteRoom(roomId)
+        } else {
+            client.getRoom(roomId)?.use { room ->
+                val info = room.info()
+                notificationSettings.unmuteRoom(
+                    roomId = roomId,
+                    isEncrypted = info.isEncrypted == true,
+                    isOneToOne = info.isDm,
+                )
+            }
         }
     }
 

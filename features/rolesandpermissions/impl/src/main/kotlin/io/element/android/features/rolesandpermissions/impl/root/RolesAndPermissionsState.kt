@@ -26,6 +26,6 @@ data class RolesAndPermissionsState(
 }
 
 enum class SelfDemoteAction(val role: RoomMember.Role, val titleRes: Int) {
-    ToModerator(RoomMember.Role.Moderator, R.string.screen_room_roles_and_permissions_change_role_demote_to_moderator),
+    // Larpgram: no Moderator role, so no "demote to moderator" option.
     ToMember(RoomMember.Role.User, R.string.screen_room_roles_and_permissions_change_role_demote_to_member)
 }

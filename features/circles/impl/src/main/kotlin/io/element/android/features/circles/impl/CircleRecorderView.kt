@@ -8,6 +8,8 @@ package io.element.android.features.circles.impl
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
+import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
@@ -21,10 +23,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,12 +49,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -104,6 +109,28 @@ fun CircleRecorderView(
         onDismissRequest = { state.eventSink(CircleRecorderEvents.Close) },
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Compose-диалог по умолчанию поджимается вставками системных баров, из-за чего
+        // сверху и снизу торчал настоящий чат вместо размытия, а композер оставался
+        // непокрытым и ловил тапы мимо кнопок записи (замечено на живом Android 10,
+        // 2026-08-19). Растягиваем окно на весь экран и рисуемся под статус-баром, навбаром
+        // и вырезом; системное затемнение убираем — свой скрим и размытие рисуем сами.
+        val dialogView = LocalView.current
+        LaunchedEffect(dialogView) {
+            val window = (dialogView.parent as? DialogWindowProvider)?.window ?: return@LaunchedEffect
+            window.setLayout(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+            )
+            window.setDimAmount(0f)
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                window.attributes = window.attributes.apply {
+                    layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
+        }
+
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -175,41 +202,26 @@ fun CircleRecorderView(
                 )
             }
 
-            // Маленькая кнопка над кнопкой записи: замок, пока держишь палец, и стоп
-            // после фиксации. Ровно как в макете «Circle Recording Free Hand».
-            if (state.mode == CircleRecorderMode.Recording) {
+            // Подсказка «свайп вверх — зафиксировать»: маленький замок над кнопкой записи,
+            // как в макете «Circle Recording Free Hand». Показываем только пока запись не
+            // зафиксирована — после фиксации сама кнопка записи превращается в «отправить».
+            if (state.mode == CircleRecorderMode.Recording && !state.isLocked) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
                         .padding(end = 20.dp, bottom = RECORD_BUTTON_SIZE + 32.dp)
                         .size(LOCK_BUTTON_SIZE)
                         .clip(CircleShape)
-                        .background(Color.White)
-                        .then(
-                            if (state.isLocked) {
-                                Modifier.clickable { state.eventSink(CircleRecorderEvents.StopAndSend) }
-                            } else {
-                                Modifier
-                            }
-                        ),
+                        .background(Color.White),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (state.isLocked) {
-                        // Синий квадрат «стоп» на белом круге, как в макете.
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(ElementTheme.colors.bgAccentRest)
-                        )
-                    } else {
-                        Icon(
-                            modifier = Modifier.size(20.dp),
-                            imageVector = CompoundIcons.LockSolid(),
-                            contentDescription = "Закрепить запись",
-                            tint = ElementTheme.colors.iconAccentPrimary,
-                        )
-                    }
+                    Icon(
+                        modifier = Modifier.size(20.dp),
+                        imageVector = CompoundIcons.LockSolid(),
+                        contentDescription = "Закрепить запись",
+                        tint = ElementTheme.colors.iconAccentPrimary,
+                    )
                 }
             }
 
@@ -218,6 +230,7 @@ fun CircleRecorderView(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -278,26 +291,49 @@ fun CircleRecorderView(
                 }
 
                 // Кнопка записи стоит там же, где кнопка кружочка в композере: палец во
-                // время записи лежит именно здесь.
+                // время записи лежит именно здесь. После фиксации свайпом вверх палец уже не
+                // нужен, и эта же кнопка становится «отправить» — тап по ней stop+send.
+                // Кликабельна только в зафиксированном режиме: пока держат палец, жест ведёт
+                // кнопка композера, а тап тут перехватил бы отпускание.
+                val sendReady = state.isLocked && state.mode == CircleRecorderMode.Recording
                 Box(
                     modifier = Modifier
                         .size(RECORD_BUTTON_SIZE)
                         .clip(CircleShape)
-                        .background(ElementTheme.colors.bgAccentRest),
+                        .background(ElementTheme.colors.bgAccentRest)
+                        .then(
+                            if (sendReady) {
+                                Modifier.clickable { state.eventSink(CircleRecorderEvents.StopAndSend) }
+                            } else {
+                                Modifier
+                            }
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (state.mode == CircleRecorderMode.Sending) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White,
-                        )
-                    } else {
-                        Icon(
-                            modifier = Modifier.size(28.dp),
-                            imageVector = CompoundIcons.VideoCallSolid(),
-                            contentDescription = null,
-                            tint = Color.White,
-                        )
+                    when {
+                        state.mode == CircleRecorderMode.Sending -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                            )
+                        }
+                        state.isLocked -> {
+                            // Зафиксировано: «самолётик», как кнопка отправки в композере.
+                            Icon(
+                                modifier = Modifier.size(28.dp),
+                                imageVector = CompoundIcons.SendSolid(),
+                                contentDescription = "Отправить кружочек",
+                                tint = Color.White,
+                            )
+                        }
+                        else -> {
+                            Icon(
+                                modifier = Modifier.size(28.dp),
+                                imageVector = CompoundIcons.VideoCallSolid(),
+                                contentDescription = null,
+                                tint = Color.White,
+                            )
+                        }
                     }
                 }
             }

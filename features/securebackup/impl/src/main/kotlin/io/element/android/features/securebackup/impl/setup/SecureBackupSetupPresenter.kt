@@ -26,6 +26,7 @@ import io.element.android.features.securebackup.impl.loggerTagSetup
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyUserStory
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyViewState
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.matrix.api.encryption.EnableRecoveryProgress
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,9 @@ class SecureBackupSetupPresenter(
     @Assisted private val isChangeRecoveryKeyUserStory: Boolean,
     private val stateMachine: SecureBackupSetupStateMachine,
     private val encryptionService: EncryptionService,
+    // Правка форка: как только SDK создал ключ восстановления, кладём его в escrow, чтобы
+    // потом верифицировать новую сессию кодом с почты, а не вторым устройством.
+    private val keyEscrowService: KeyEscrowService,
 ) : Presenter<SecureBackupSetupState> {
     @AssistedFactory
     interface Factory {
@@ -106,6 +110,7 @@ class SecureBackupSetupPresenter(
             encryptionService.resetRecoveryKey().fold(
                 onSuccess = {
                     stateAndDispatch.dispatchAction(SecureBackupSetupStateMachine.Event.SdkHasCreatedKey(it))
+                    uploadKeyToEscrow(it)
                 },
                 onFailure = {
                     if (it is Exception) {
@@ -136,9 +141,22 @@ class SecureBackupSetupPresenter(
                 is EnableRecoveryProgress.CreatingRecoveryKey,
                 is EnableRecoveryProgress.BackingUp,
                 is EnableRecoveryProgress.RoomKeyUploadError -> Unit
-                is EnableRecoveryProgress.Done ->
+                is EnableRecoveryProgress.Done -> {
                     stateAndDispatch.dispatchAction(SecureBackupSetupStateMachine.Event.SdkHasCreatedKey(enableRecoveryProgress.recoveryKey))
+                    uploadKeyToEscrow(enableRecoveryProgress.recoveryKey)
+                }
             }
+        }
+    }
+
+    /**
+     * Правка форка: депонируем ключ восстановления в escrow. Fire-and-forget: если сеть
+     * или сервер недоступны, настройку бэкапа это не ломает, ключ просто не попадёт в
+     * хранилище (бэкфилл при следующем запуске верифицированной сессии дозальёт).
+     */
+    private fun CoroutineScope.uploadKeyToEscrow(recoveryKey: String) = launch {
+        keyEscrowService.store(recoveryKey).onFailure {
+            Timber.tag(loggerTagSetup.value).w(it, "не удалось депонировать ключ восстановления в escrow")
         }
     }
 }

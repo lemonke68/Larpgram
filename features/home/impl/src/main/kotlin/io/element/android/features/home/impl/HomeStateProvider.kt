@@ -41,15 +41,12 @@ open class HomeStateProvider : PreviewParameterProvider<HomeState> {
                 homeSpacesState = aHomeSpacesState(),
             ),
             aHomeState(
-                currentHomeNavigationBarItem = HomeNavigationBarItem.Spaces,
+                currentHomeNavigationBarItem = HomeNavigationBarItem.Settings,
             ),
         ) + RoomListStateProvider().values.map {
             aHomeState(roomListState = it)
         } + aHomeState(
-            currentHomeNavigationBarItem = HomeNavigationBarItem.Spaces,
-            homeSpacesState = aHomeSpacesState(
-                spaceRooms = emptyList(),
-            ),
+            currentHomeNavigationBarItem = HomeNavigationBarItem.Profile,
         )
 }
 

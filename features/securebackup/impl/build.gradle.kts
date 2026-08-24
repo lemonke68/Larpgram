@@ -35,6 +35,8 @@ dependencies {
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.matrixui)
     implementation(projects.libraries.designsystem)
+    // Правка форка: депонируем ключ восстановления в escrow сразу при его создании.
+    implementation(projects.libraries.keyescrow.api)
     implementation(projects.libraries.oauth.api)
     implementation(projects.libraries.uiStrings)
     implementation(projects.libraries.testtags)
@@ -43,4 +45,5 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.libraries.keyescrow.test)
 }

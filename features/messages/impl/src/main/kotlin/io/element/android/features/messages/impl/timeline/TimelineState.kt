@@ -16,6 +16,7 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.typing.TypingNotificationState
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.room.tombstone.PredecessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
@@ -75,6 +76,9 @@ sealed interface FocusRequestState {
 
 data class TimelineRoomInfo(
     val isDm: Boolean,
+    val isChannel: Boolean,
+    /** Linked discussion group of this channel (Telegram-style comments), or null if none/not a channel. */
+    val channelDiscussionRoomId: RoomId? = null,
     val name: String?,
     val userHasPermissionToSendMessage: Boolean,
     val userHasPermissionToSendReaction: Boolean,

@@ -10,6 +10,6 @@
       "Be in your element" и "fastest Element ever" это каламбуры про Element,
       а свой слоган ещё не придуман. Впиши текст сюда, и он появится обратно.
     -->
-    <string name="screen_onboarding_welcome_title"></string>
-    <string name="screen_onboarding_welcome_message"></string>
+    <string name="screen_onboarding_welcome_title">Larpgram</string>
+    <string name="screen_onboarding_welcome_message">Not Telegram. But it tries very hard.</string>
 </resources>

@@ -29,6 +29,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -43,7 +44,6 @@ import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.components.HomeTopBar
 import io.element.android.features.home.impl.components.RoomListContentView
 import io.element.android.features.home.impl.components.RoomListMenuAction
@@ -56,22 +56,19 @@ import io.element.android.features.home.impl.search.RoomListSearchView
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersView
-import io.element.android.features.home.impl.spaces.HomeSpacesView
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.FloatingActionButton
 import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbar
 import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarItem
 import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarSeparator
-import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.lazyColumnContentPadding
 import io.element.android.libraries.designsystem.utils.scaffoldScrollableContentInsets
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.coroutines.launch
 
 @Composable
@@ -83,6 +80,7 @@ fun HomeView(
     onConfirmRecoveryKeyClick: () -> Unit,
     onStartChatClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
+    onCreateChannelClick: () -> Unit,
     onRoomSettingsClick: (roomId: RoomId) -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     onReportRoomClick: (roomId: RoomId) -> Unit,
@@ -90,6 +88,10 @@ fun HomeView(
     acceptDeclineInviteView: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     leaveRoomView: @Composable () -> Unit,
+    // Content of the Settings/Profile tabs, hosted as child nodes by HomeFlowNode. Null in
+    // previews, where a placeholder is shown instead.
+    settingsContent: (@Composable () -> Unit)? = null,
+    profileContent: (@Composable () -> Unit)? = null,
 ) {
     val state: RoomListState = homeState.roomListState
     val coroutineScope = rememberCoroutineScope()
@@ -123,7 +125,10 @@ fun HomeView(
             onOpenSettings = { if (firstThrottler.canHandle()) onSettingsClick() },
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
+            onCreateChannelClick = { if (firstThrottler.canHandle()) onCreateChannelClick() },
             onMenuActionClick = onMenuActionClick,
+            settingsContent = settingsContent,
+            profileContent = profileContent,
         )
         // This overlaid view will only be visible when state.displaySearchResults is true
         RoomListSearchView(
@@ -149,12 +154,17 @@ private fun HomeScaffold(
     onOpenSettings: () -> Unit,
     onStartChatClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
+    onCreateChannelClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     modifier: Modifier = Modifier,
+    settingsContent: (@Composable () -> Unit)? = null,
+    profileContent: (@Composable () -> Unit)? = null,
 ) {
     fun onRoomClick(room: RoomListRoomSummary) {
         onRoomClick(room.roomId)
     }
+
+    val isChatsTab = state.currentHomeNavigationBarItem == HomeNavigationBarItem.Chats
 
     val appBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(appBarState)
@@ -174,14 +184,15 @@ private fun HomeScaffold(
 
     val hazeState = rememberHazeState()
     val roomsLazyListState = rememberLazyListState()
-    val spacesLazyListState = rememberLazyListState()
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            HomeTopBar(
-                selectedNavigationItem = state.currentHomeNavigationBarItem,
-                currentUserAndNeighbors = state.currentUserAndNeighbors,
+            // Chats owns this top bar; Settings/Profile tabs host their own screens with headers.
+            if (isChatsTab) {
+                HomeTopBar(
+                    selectedNavigationItem = state.currentHomeNavigationBarItem,
+                    currentUserAndNeighbors = state.currentUserAndNeighbors,
                 showAvatarIndicator = state.showAvatarIndicator,
                 areSearchResultsDisplayed = roomListState.searchState.isSearchActive,
                 onToggleSearch = { roomListState.eventSink(RoomListEvent.ToggleSearchResults) },
@@ -190,50 +201,44 @@ private fun HomeScaffold(
                 onAccountSwitch = {
                     state.eventSink(HomeEvent.SwitchToAccount(it))
                 },
+                onCreateChat = onStartChatClick,
+                onCreateChannel = onCreateChannelClick,
                 scrollBehavior = scrollBehavior,
                 displayFilters = state.displayRoomListFilters,
                 filtersState = roomListState.filtersState,
                 spaceFiltersState = roomListState.spaceFiltersState,
                 canReportBug = state.canReportBug,
-                modifier = Modifier.hazeEffect(
-                    state = hazeState,
-                    style = HazeMaterials.thick(),
+                    modifier = Modifier.hazeEffect(
+                        state = hazeState,
+                        style = HazeMaterials.thick(),
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
             val coroutineScope = rememberCoroutineScope()
             HomeBottomBar(
                 currentHomeNavigationBarItem = state.currentHomeNavigationBarItem,
                 onItemClick = { item ->
-                    // scroll to top if selecting the same item
+                    // scroll to top if selecting the Chats tab while already on it
                     if (item == state.currentHomeNavigationBarItem) {
-                        val lazyListStateTarget = when (item) {
-                            HomeNavigationBarItem.Chats -> roomsLazyListState
-                            HomeNavigationBarItem.Spaces -> spacesLazyListState
-                        }
-                        coroutineScope.launch {
-                            if (lazyListStateTarget.firstVisibleItemIndex > 10) {
-                                lazyListStateTarget.scrollToItem(10)
+                        if (item == HomeNavigationBarItem.Chats) {
+                            coroutineScope.launch {
+                                if (roomsLazyListState.firstVisibleItemIndex > 10) {
+                                    roomsLazyListState.scrollToItem(10)
+                                }
+                                // Also reset the scrollBehavior height offset as it's not triggered by programmatic scrolls
+                                scrollBehavior.state.heightOffset = 0f
+                                roomsLazyListState.animateScrollToItem(0)
                             }
-                            // Also reset the scrollBehavior height offset as it's not triggered by programmatic scrolls
-                            scrollBehavior.state.heightOffset = 0f
-                            lazyListStateTarget.animateScrollToItem(0)
                         }
                     } else {
                         state.eventSink(HomeEvent.SelectHomeNavigationBarItem(item))
                     }
                 },
-                floatingActionButton = {
-                    when (state.currentHomeNavigationBarItem) {
-                        HomeNavigationBarItem.Chats -> {
-                            HomeFloatingActionButton(onStartChatClick, CommonStrings.action_create_room)
-                        }
-                        HomeNavigationBarItem.Spaces -> {
-                            HomeFloatingActionButton(onCreateSpaceClick, CommonStrings.action_create_space)
-                        }
-                    }
-                },
+                // No FAB in the bar: it unbalanced the panel. Creating a chat will move to the
+                // top of the screen later (⋮ / pencil); for now the bar is just the tabs, centred.
+                floatingActionButton = null,
             )
         },
         floatingActionButtonPosition = FabPosition.Center,
@@ -270,22 +275,21 @@ private fun HomeScaffold(
                     )
                     SpaceFiltersView(roomListState.spaceFiltersState)
                 }
-                HomeNavigationBarItem.Spaces -> {
-                    HomeSpacesView(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(outerPadding)
-                            .consumeWindowInsets(outerPadding)
-                            .hazeSource(state = hazeState),
-                        contentPadding = lazyColumnContentPadding + contentPadding,
-                        state = state.homeSpacesState,
-                        lazyListState = spacesLazyListState,
-                        onSpaceClick = { spaceId ->
-                            onRoomClick(spaceId)
-                        },
-                        onCreateSpaceClick = onCreateSpaceClick,
-                        // TODO use actual callbacks for this
-                        onExploreClick = {},
+                // Settings and Profile tabs render the real feature screens, hosted as child
+                // nodes by HomeFlowNode and passed in as content slots (persistent bottom bar,
+                // Telegram-style in-place switch). In previews the slots are null → placeholder.
+                HomeNavigationBarItem.Settings -> {
+                    HomeTabContent(
+                        content = settingsContent,
+                        placeholderLabel = stringResource(HomeNavigationBarItem.Settings.labelRes),
+                        outerPadding = outerPadding,
+                    )
+                }
+                HomeNavigationBarItem.Profile -> {
+                    HomeTabContent(
+                        content = profileContent,
+                        placeholderLabel = stringResource(HomeNavigationBarItem.Profile.labelRes),
+                        outerPadding = outerPadding,
                     )
                 }
             }
@@ -294,17 +298,35 @@ private fun HomeScaffold(
     )
 }
 
+/**
+ * Renders a Settings/Profile tab: the real hosted feature screen when a content slot is
+ * provided (in the running app), or a labelled placeholder otherwise (composable previews).
+ */
 @Composable
-private fun HomeFloatingActionButton(
-    onClick: () -> Unit,
-    contentDescription: Int,
+private fun HomeTabContent(
+    content: (@Composable () -> Unit)?,
+    placeholderLabel: String,
+    outerPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    FloatingActionButton(onClick = onClick, modifier = modifier) {
-        Icon(
-            imageVector = CompoundIcons.Plus(),
-            contentDescription = stringResource(id = contentDescription),
-        )
+    if (content != null) {
+        // The hosted node brings its own header and manages its own insets.
+        Box(modifier = modifier.fillMaxSize()) {
+            content()
+        }
+    } else {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(outerPadding),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = placeholderLabel,
+                style = ElementTheme.typography.fontHeadingMdBold,
+                color = ElementTheme.colors.textSecondary,
+            )
+        }
     }
 }
 
@@ -349,6 +371,7 @@ internal fun HomeViewPreview(@PreviewParameter(HomeStateProvider::class) state: 
         onConfirmRecoveryKeyClick = {},
         onStartChatClick = {},
         onCreateSpaceClick = {},
+        onCreateChannelClick = {},
         onRoomSettingsClick = {},
         onReportRoomClick = {},
         onMenuActionClick = {},
@@ -369,6 +392,7 @@ internal fun HomeViewA11yPreview() = ElementPreview {
         onConfirmRecoveryKeyClick = {},
         onStartChatClick = {},
         onCreateSpaceClick = {},
+        onCreateChannelClick = {},
         onRoomSettingsClick = {},
         onReportRoomClick = {},
         onMenuActionClick = {},

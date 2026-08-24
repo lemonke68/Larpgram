@@ -297,6 +297,9 @@ class LoggedInFlowNode(
         data object CreateSpace : NavTarget
 
         @Parcelize
+        data object CreateChannel : NavTarget
+
+        @Parcelize
         data class SecureBackup(
             val initialElement: SecureBackupEntryPoint.InitialTarget = SecureBackupEntryPoint.InitialTarget.Root
         ) : NavTarget
@@ -352,6 +355,10 @@ class LoggedInFlowNode(
                         backstack.push(NavTarget.CreateSpace)
                     }
 
+                    override fun navigateToCreateChannel() {
+                        backstack.push(NavTarget.CreateChannel)
+                    }
+
                     override fun navigateToSetUpRecovery() {
                         backstack.push(NavTarget.SecureBackup(initialElement = SecureBackupEntryPoint.InitialTarget.Root))
                     }
@@ -372,6 +379,38 @@ class LoggedInFlowNode(
 
                     override fun navigateToBugReport() {
                         callback.navigateToBugReport()
+                    }
+
+                    // Destinations that escape the Settings/Profile tabs now hosted inside Home.
+                    override fun navigateToAddAccount() {
+                        callback.navigateToAddAccount()
+                    }
+
+                    override fun navigateToLinkNewDevice() {
+                        backstack.push(NavTarget.LinkNewDevice)
+                    }
+
+                    override fun navigateToSecureBackup() {
+                        backstack.push(NavTarget.SecureBackup())
+                    }
+
+                    override fun navigateToRoomNotificationSettings(roomId: RoomId) {
+                        lifecycleScope.launch {
+                            attachRoom(
+                                roomIdOrAlias = roomId.toRoomIdOrAlias(),
+                                initialElement = RoomNavigationTarget.NotificationSettings,
+                            )
+                        }
+                    }
+
+                    override fun navigateToEvent(roomId: RoomId, eventId: EventId) {
+                        lifecycleScope.launch {
+                            attachRoom(
+                                roomIdOrAlias = roomId.toRoomIdOrAlias(),
+                                initialElement = RoomNavigationTarget.Root(eventId),
+                                clearBackstack = false
+                            )
+                        }
                     }
                 }
                 homeEntryPoint.createNode(
@@ -401,11 +440,20 @@ class LoggedInFlowNode(
                             is PermalinkData.RoomLink -> {
                                 if (pushToBackstack) {
                                     lifecycleScope.launch {
+                                        // Larpgram: if the link targets a thread (channel comments),
+                                        // open the room straight into that thread so Back returns to
+                                        // the caller in one step (no discussion-room screen between).
+                                        val threadId = data.threadId
+                                        val initialElement = if (threadId != null) {
+                                            RoomNavigationTarget.Thread(threadId, data.eventId)
+                                        } else {
+                                            RoomNavigationTarget.Root(data.eventId)
+                                        }
                                         attachRoom(
                                             roomIdOrAlias = data.roomIdOrAlias,
                                             serverNames = data.viaParameters,
                                             trigger = JoinedRoomAnalyticsEvent.Trigger.Timeline,
-                                            initialElement = RoomNavigationTarget.Root(data.eventId),
+                                            initialElement = initialElement,
                                             clearBackstack = false
                                         )
                                     }
@@ -536,6 +584,25 @@ class LoggedInFlowNode(
                 createRoomEntryPoint
                     .builder(parentNode = this, buildContext = buildContext, callback = callback)
                     .setIsSpace(true)
+                    .build()
+            }
+            is NavTarget.CreateChannel -> {
+                val callback = object : CreateRoomEntryPoint.Callback {
+                    override fun onRoomCreated(roomId: RoomId) {
+                        // Larpgram: replace the create-channel flow with the new room so Back from
+                        // the channel returns to the chat list, not to the "add members" screen
+                        // (same pattern as CreateRoom, unlike CreateSpace which keeps its flow).
+                        backstack.replace(
+                            NavTarget.Room(
+                                roomIdOrAlias = roomId.toRoomIdOrAlias(),
+                                serverNames = emptyList(),
+                            )
+                        )
+                    }
+                }
+                createRoomEntryPoint
+                    .builder(parentNode = this, buildContext = buildContext, callback = callback)
+                    .setIsChannel(true)
                     .build()
             }
             is NavTarget.SecureBackup -> {

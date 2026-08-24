@@ -27,12 +27,17 @@ private val DESIGN_PREVIEWS = setOf(
     "MessageEventBubblePreview",
     "TimelineItemEventRowPreview",
     "RoomSummaryRowPreview",
+    "SwipeableRoomListRowRevealedPreview",
     "UnreadIndicatorAtomPreview",
     "CounterAtomPreview",
     "TextComposerSimplePreview",
     "RoomListContentViewPreview",
     "TimelineItemDaySeparatorViewPreview",
     "TimelineViewPreview",
+    // Chats-list chrome redesign (2026-08-20): folder pills + bottom nav.
+    "HomeViewPreview",
+    "HomeTopBarPreview",
+    "SpaceFolderPillsViewPreview",
 )
 
 object LarpgramPreviewProvider : TestParameterValuesProvider() {

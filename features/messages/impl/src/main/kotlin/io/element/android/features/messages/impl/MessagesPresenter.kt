@@ -83,6 +83,7 @@ import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
+import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.timeline.Timeline
@@ -190,6 +191,29 @@ class MessagesPresenter(
 
         val userEventPermissions by room.permissionsAsState(UserEventPermissions.DEFAULT) { perms ->
             perms.userEventPermissions()
+        }
+
+        // Telegram-style channel: a broadcast room where only elevated users can post. A read-only
+        // subscriber gets the mute pill instead of the composer (comments live under each post).
+        val isChannel by remember {
+            derivedStateOf { (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L }
+        }
+        val isChannelMuted by produceState(initialValue = false, isChannel) {
+            if (!isChannel) {
+                value = false
+                return@produceState
+            }
+            matrixClient.notificationSettingsService.notificationSettingsChangeFlow
+                .onStart { emit(Unit) }
+                .collect {
+                    val info = room.info()
+                    val settings = matrixClient.notificationSettingsService.getRoomNotificationSettings(
+                        roomId = room.roomId,
+                        isEncrypted = info.isEncrypted == true,
+                        isOneToOne = info.isDm,
+                    ).getOrNull()
+                    value = settings?.mode == RoomNotificationMode.MUTE
+                }
         }
 
         val roomAvatar by remember {
@@ -303,6 +327,21 @@ class MessagesPresenter(
                         markingAsReadAndExiting.set(false)
                     }
                 }
+                is MessagesEvent.ToggleChannelMute -> {
+                    localCoroutineScope.launch {
+                        val service = matrixClient.notificationSettingsService
+                        if (isChannelMuted) {
+                            val info = room.info()
+                            service.unmuteRoom(
+                                roomId = room.roomId,
+                                isEncrypted = info.isEncrypted == true,
+                                isOneToOne = info.isDm,
+                            )
+                        } else {
+                            service.muteRoom(room.roomId)
+                        }
+                    }
+                }
             }
         }
 
@@ -348,6 +387,9 @@ class MessagesPresenter(
             gifPickerState = gifPickerState,
             circleRecorderState = circleRecorderState,
             circleMediaLoader = matrixClient.matrixMediaLoader,
+            isChannel = isChannel,
+            isChannelMuted = isChannelMuted,
+            channelSubscriberCount = if (isChannel) roomInfo.joinedMembersCount else null,
             eventSink = ::handleEvent,
         )
     }
