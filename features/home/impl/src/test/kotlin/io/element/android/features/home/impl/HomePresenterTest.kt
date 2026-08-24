@@ -140,9 +140,9 @@ class HomePresenterTest {
         presenter.test {
             val initialState = awaitItem()
             assertThat(initialState.currentHomeNavigationBarItem).isEqualTo(HomeNavigationBarItem.Chats)
-            initialState.eventSink(HomeEvent.SelectHomeNavigationBarItem(HomeNavigationBarItem.Spaces))
+            initialState.eventSink(HomeEvent.SelectHomeNavigationBarItem(HomeNavigationBarItem.Settings))
             val finalState = awaitItem()
-            assertThat(finalState.currentHomeNavigationBarItem).isEqualTo(HomeNavigationBarItem.Spaces)
+            assertThat(finalState.currentHomeNavigationBarItem).isEqualTo(HomeNavigationBarItem.Settings)
         }
     }
 }
