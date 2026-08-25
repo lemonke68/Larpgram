@@ -11,8 +11,8 @@ package io.element.android.features.home.impl.datasource
 import dev.zacsweers.metro.Inject
 import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
-import io.element.android.features.home.impl.model.chatType
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
+import io.element.android.features.home.impl.model.chatType
 import io.element.android.libraries.core.extensions.orEmpty
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
@@ -63,6 +63,10 @@ class RoomListRoomSummaryFactory(
             inviteSender = roomInfo.inviter?.toInviteSender(),
             isDm = roomInfo.isDm,
             chatType = roomInfo.chatType(),
+            // В ЛС собеседник — единственный герой; нужен для «Блокировать».
+            dmUserId = if (roomInfo.isDm) roomInfo.heroes.firstOrNull()?.userId else null,
+            // Пин проставляет пресентер при пересборке; фабрика про account data не знает.
+            isPinned = false,
             canonicalAlias = roomInfo.canonicalAlias,
             displayType = when (roomInfo.currentUserMembership) {
                 CurrentUserMembership.INVITED -> {

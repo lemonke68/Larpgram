@@ -71,6 +71,11 @@ data class MessagesState(
     val isChannelMuted: Boolean,
     /** Subscriber (joined member) count shown in a channel's header, or null if not a channel. */
     val channelSubscriberCount: Long? = null,
+    /**
+     * Правка форка (роумлесс, ф4 блок): собеседник в ЛС заблокирован (в ignoredUsers). Композер
+     * гасим, вместо него полоса «Разблокировать» — своя сторона TG-стены.
+     */
+    val isUserBlocked: Boolean = false,
     val eventSink: (MessagesEvent) -> Unit,
     // Правка форка: состояние пикера стикеров. Дефолт null, чтобы не трогать три
     // десятка мест, где апстрим собирает MessagesState (в основном превью и тесты).

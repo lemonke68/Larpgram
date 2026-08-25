@@ -216,6 +216,16 @@ class MessagesPresenter(
                 }
         }
 
+        // Правка форка (роумлесс, ф4 блок): собеседник ЛС в ignoredUsers → своя сторона стены.
+        // Композер гасим, показываем полосу «Разблокировать». Реактивно на ignoredUsersFlow.
+        val dmPeerUserId by remember {
+            derivedStateOf { if (roomInfo.isDm) roomInfo.heroes.firstOrNull()?.userId else null }
+        }
+        val ignoredUsers by matrixClient.ignoredUsersFlow.collectAsState()
+        val isUserBlocked by remember {
+            derivedStateOf { dmPeerUserId?.let { it in ignoredUsers } == true }
+        }
+
         val roomAvatar by remember {
             derivedStateOf { roomInfo.avatarData() }
         }
@@ -342,6 +352,11 @@ class MessagesPresenter(
                         }
                     }
                 }
+                is MessagesEvent.UnblockUser -> {
+                    dmPeerUserId?.let { peer ->
+                        localCoroutineScope.launch { matrixClient.unignoreUser(peer) }
+                    }
+                }
             }
         }
 
@@ -390,6 +405,7 @@ class MessagesPresenter(
             isChannel = isChannel,
             isChannelMuted = isChannelMuted,
             channelSubscriberCount = if (isChannel) roomInfo.joinedMembersCount else null,
+            isUserBlocked = isUserBlocked,
             eventSink = ::handleEvent,
         )
     }

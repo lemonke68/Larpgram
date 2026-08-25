@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
+import io.element.android.features.home.impl.model.ChatType
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -62,9 +63,23 @@ fun RoomListContextMenu(
                 eventSink(RoomListEvent.HideContextMenu)
                 onRoomSettingsClick(contextMenu.roomId)
             },
+            // Правка форка (роумлесс): выход зависит от типа. ЛС — «Удалить чат» (leave+forget,
+            // без диалога), группа/канал — «Выйти из группы/канала» (с подтверждением).
             onLeaveRoomClick = {
                 eventSink(RoomListEvent.HideContextMenu)
-                eventSink(RoomListEvent.LeaveRoom(contextMenu.roomId, needsConfirmation = true))
+                if (contextMenu.isDm) {
+                    eventSink(RoomListEvent.DeleteRoom(contextMenu.roomId))
+                } else {
+                    eventSink(RoomListEvent.LeaveRoom(contextMenu.roomId, needsConfirmation = true))
+                }
+            },
+            onPinChange = { isPinned ->
+                eventSink(RoomListEvent.HideContextMenu)
+                eventSink(RoomListEvent.SetRoomIsPinned(contextMenu.roomId, isPinned))
+            },
+            onBlockUserClick = {
+                eventSink(RoomListEvent.HideContextMenu)
+                eventSink(RoomListEvent.BlockUser(contextMenu.roomId, contextMenu.dmUserId))
             },
             onFavoriteChange = { isFavorite ->
                 eventSink(RoomListEvent.SetRoomIsFavorite(contextMenu.roomId, isFavorite))
@@ -83,6 +98,8 @@ private fun RoomListModalBottomSheetContent(
     canReportRoom: Boolean,
     onRoomSettingsClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
+    onPinChange: (isPinned: Boolean) -> Unit,
+    onBlockUserClick: () -> Unit,
     onFavoriteChange: (isFavorite: Boolean) -> Unit,
     onRoomMarkReadClick: () -> Unit,
     onRoomMarkUnreadClick: () -> Unit,
@@ -129,6 +146,23 @@ private fun RoomListModalBottomSheetContent(
                 ),
             )
         }
+        // Правка форка (роумлесс): пин/анпин чата (свой, через account data).
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = stringResource(
+                        id = if (contextMenu.isPinned) R.string.screen_roomlist_unpin else R.string.screen_roomlist_pin
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            onClick = { onPinChange(!contextMenu.isPinned) },
+            leadingContent = ListItemContent.Icon(
+                iconSource = IconSource.Vector(
+                    if (contextMenu.isPinned) CompoundIcons.Unpin() else CompoundIcons.Pin()
+                )
+            ),
+        )
         val (textResId, icon) = if (contextMenu.isFavorite) {
             CommonStrings.common_favourited to CompoundIcons.FavouriteSolid()
         } else {
@@ -181,14 +215,35 @@ private fun RoomListModalBottomSheetContent(
                 style = ListItemStyle.Destructive,
             )
         }
+        // Правка форка (роумлесс): блок собеседника — только в ЛС (односторонняя TG-стена).
+        if (contextMenu.isDm) {
+            ListItem(
+                headlineContent = {
+                    Text(text = stringResource(R.string.screen_roomlist_block_user))
+                },
+                modifier = Modifier.clickable { onBlockUserClick() },
+                leadingContent = ListItemContent.Icon(
+                    iconSource = IconSource.Vector(
+                        CompoundIcons.Block(),
+                    )
+                ),
+                style = ListItemStyle.Destructive,
+            )
+        }
+        // Правка форка (роумлесс): подпись выхода по типу чата.
+        val leaveTextResId = when (contextMenu.chatType) {
+            ChatType.Dm -> R.string.screen_roomlist_delete_chat
+            ChatType.Group -> R.string.screen_roomlist_leave_group
+            ChatType.Channel -> R.string.screen_roomlist_leave_channel
+        }
         ListItem(
             headlineContent = {
-                Text(text = stringResource(CommonStrings.action_leave_room))
+                Text(text = stringResource(leaveTextResId))
             },
             modifier = Modifier.clickable { onLeaveRoomClick() },
             leadingContent = ListItemContent.Icon(
                 iconSource = IconSource.Vector(
-                    CompoundIcons.Leave(),
+                    if (contextMenu.isDm) CompoundIcons.Delete() else CompoundIcons.Leave(),
                 )
             ),
             style = ListItemStyle.Destructive,

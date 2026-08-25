@@ -13,6 +13,7 @@ import io.element.android.features.invite.api.InviteData
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
@@ -39,6 +40,13 @@ data class RoomListRoomSummary(
     val isDirect: Boolean,
     val isDm: Boolean,
     val chatType: ChatType,
+    // Правка форка (роумлесс): собеседник в ЛС, нужен для «Блокировать» из списка/меню.
+    // null у групп/каналов и когда герой не приехал.
+    val dmUserId: UserId?,
+    // Правка форка (роумлесс): свой пин чата поверх списка. Нативного пина чатов в Matrix нет,
+    // держим список в account data и поднимаем помеченные наверх. Проставляется пресентером
+    // при пересборке списка, а не фабрикой (фабрика не знает про account data).
+    val isPinned: Boolean,
     val isFavorite: Boolean,
     val inviteSender: InviteSender?,
     val isTombstoned: Boolean,

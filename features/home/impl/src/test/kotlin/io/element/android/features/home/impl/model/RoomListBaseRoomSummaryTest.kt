@@ -113,5 +113,7 @@ internal fun createRoomListRoomSummary(
     isTombstoned = isTombstoned,
     isSpace = isSpace,
     chatType = ChatType.Group,
+    dmUserId = null,
+    isPinned = false,
     dmUserStatus = dmUserStatus,
 )

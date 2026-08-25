@@ -46,6 +46,7 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.roomcall.api.hasPermissionToJoin
 import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileVerificationState
+import io.element.android.features.userprofile.shared.UserProfileInfoCard
 import io.element.android.features.userprofile.shared.blockuser.BlockUserDialogs
 import io.element.android.features.userprofile.shared.blockuser.BlockUserSection
 import io.element.android.libraries.androidutils.system.copyToClipboard
@@ -192,6 +193,19 @@ fun RoomDetailsView(
             )
             Spacer(Modifier.height(12.dp))
 
+            // DM presents as the person's profile (roomless model): TG-style info card with the
+            // @handle right under the action row, before the folded room actions below.
+            (state.roomType as? RoomDetailsType.Dm)?.let { dm ->
+                UserProfileInfoCard(
+                    userId = dm.otherMember.userId,
+                    about = null,
+                    onHandleClick = {
+                        state.eventSink(RoomDetailsEvent.CopyToClipboard(dm.otherMember.userId.value))
+                    },
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
             if (state.roomTopic !is RoomTopicState.Hidden) {
                 TopicSection(
                     roomTopic = state.roomTopic,
@@ -282,14 +296,7 @@ fun RoomDetailsView(
                             InviteItem(onClick = invitePeople)
                         }
                     }
-                    state.dmOtherMemberDetailsState?.let { dmMemberDetails ->
-                        PreferenceCategory {
-                            ProfileItem(
-                                verificationState = dmMemberDetails.verificationState,
-                                onClick = { onProfileClick(dmMemberDetails.userId) }
-                            )
-                        }
-                    }
+                    // No separate "Profile" row in DMs: this screen already IS the person's profile.
                 }
             }
             PreferenceCategory {
@@ -568,14 +575,7 @@ private fun DmHeaderSection(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            modifier = Modifier.niceClickable { onSubtitleClick(otherMember.userId.value) },
-            text = otherMember.userId.value,
-            style = ElementTheme.typography.fontBodyLgRegular,
-            color = ElementTheme.colors.textSecondary,
-            textAlign = TextAlign.Center,
-        )
+        // Raw Matrix id is dropped from the header: the @handle lives in the info card below.
         Spacer(modifier = Modifier.height(12.dp))
     }
 }

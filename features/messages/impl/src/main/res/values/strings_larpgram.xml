@@ -12,4 +12,6 @@
         <item quantity="one">%1$d subscriber</item>
         <item quantity="other">%1$d subscribers</item>
     </plurals>
+    <!-- Roomless: shown instead of the composer for a blocked DM peer; tap to unblock. -->
+    <string name="screen_room_unblock_user">You blocked this user. Tap to unblock.</string>
 </resources>

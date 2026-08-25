@@ -61,18 +61,71 @@ class RoomListContextMenuTest : RobolectricTest() {
     }
 
     @Test
-    fun `clicking on Leave room generates expected Events`() = runAndroidComposeUiTest {
+    fun `clicking on Leave group generates expected Events`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<RoomListEvent>()
+        // Правка форка (роумлесс): у группы подпись выхода — «Выйти из группы», событие LeaveRoom.
         val contextMenu = aContextMenuShown(isDm = false)
         setRoomListContextMenu(
             contextMenu = contextMenu,
             eventSink = eventsRecorder,
         )
-        clickOn(CommonStrings.action_leave_room)
+        clickOn(R.string.screen_roomlist_leave_group)
         eventsRecorder.assertList(
             listOf(
                 RoomListEvent.HideContextMenu,
                 RoomListEvent.LeaveRoom(contextMenu.roomId, needsConfirmation = true),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Delete chat in a DM generates DeleteRoom`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        // Правка форка (роумлесс): в ЛС выход — «Удалить чат» = leave+forget (DeleteRoom).
+        val contextMenu = aContextMenuShown(isDm = true)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.screen_roomlist_delete_chat)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.DeleteRoom(contextMenu.roomId),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Block in a DM generates BlockUser`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isDm = true)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.screen_roomlist_block_user)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.BlockUser(contextMenu.roomId, contextMenu.dmUserId),
+            )
+        )
+    }
+
+    @Test
+    fun `clicking on Pin generates SetRoomIsPinned`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<RoomListEvent>()
+        val contextMenu = aContextMenuShown(isPinned = false)
+        setRoomListContextMenu(
+            contextMenu = contextMenu,
+            eventSink = eventsRecorder,
+        )
+        clickOn(R.string.screen_roomlist_pin)
+        eventsRecorder.assertList(
+            listOf(
+                RoomListEvent.HideContextMenu,
+                RoomListEvent.SetRoomIsPinned(contextMenu.roomId, isPinned = true),
             )
         )
     }

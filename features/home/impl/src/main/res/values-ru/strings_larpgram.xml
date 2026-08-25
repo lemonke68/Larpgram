@@ -5,4 +5,12 @@
     <string name="screen_home_tab_profile">Профиль</string>
     <string name="screen_home_new_chat">Новый чат</string>
     <string name="screen_home_new_channel">Новый канал</string>
+    <string name="screen_roomlist_mute">Без звука</string>
+    <string name="screen_roomlist_unmute">Со звуком</string>
+    <string name="screen_roomlist_pin">Закрепить</string>
+    <string name="screen_roomlist_unpin">Открепить</string>
+    <string name="screen_roomlist_delete_chat">Удалить чат</string>
+    <string name="screen_roomlist_leave_group">Выйти из группы</string>
+    <string name="screen_roomlist_leave_channel">Выйти из канала</string>
+    <string name="screen_roomlist_block_user">Заблокировать</string>
 </resources>

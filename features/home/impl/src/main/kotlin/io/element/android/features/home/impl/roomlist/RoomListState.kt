@@ -10,6 +10,7 @@ package io.element.android.features.home.impl.roomlist
 
 import androidx.compose.runtime.Immutable
 import io.element.android.features.home.impl.filters.RoomListFiltersState
+import io.element.android.features.home.impl.model.ChatType
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.search.RoomListSearchState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
@@ -17,6 +18,7 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteS
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
@@ -42,6 +44,11 @@ data class RoomListState(
             val roomId: RoomId,
             val roomName: String?,
             val isDm: Boolean,
+            // Правка форка (роумлесс): тип чата и пин задают набор и подписи действий меню.
+            val chatType: ChatType,
+            val isPinned: Boolean,
+            // Собеседник в ЛС, для «Блокировать» (null у групп/каналов).
+            val dmUserId: UserId?,
             val isFavorite: Boolean,
             val hasNewContent: Boolean,
         ) : ContextMenu

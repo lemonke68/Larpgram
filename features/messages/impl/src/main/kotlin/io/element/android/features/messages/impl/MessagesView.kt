@@ -14,7 +14,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -104,8 +104,6 @@ import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.aTimelineState
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionEvent
-import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
-import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.features.messages.impl.timeline.components.event.LocalCircleMediaLoader
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryEvent
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryView
@@ -145,6 +143,8 @@ import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
 import io.element.android.libraries.designsystem.utils.scaffoldScrollableContentInsets
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
+import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
@@ -773,6 +773,14 @@ private fun MessagesViewComposerBottomSheetContents(
                 onRoomSuccessorClick = onRoomSuccessorClick
             )
         }
+        // Правка форка (роумлесс, ф4 блок): заблокированный собеседник ЛС — вместо композера
+        // полоса «Разблокировать». Приоритет выше canSendMessage (в ЛС писать технически можно).
+        state.isUserBlocked -> {
+            BlockedUserBar(
+                onUnblock = { state.eventSink(MessagesEvent.UnblockUser) },
+                modifier = Modifier.padding(contentPadding),
+            )
+        }
         state.userEventPermissions.canSendMessage -> {
             Column(modifier = Modifier.fillMaxWidth().padding(contentPadding)) {
                 // Do not show the identity change if user is composing a Rich message or is seeing suggestion(s).
@@ -870,6 +878,29 @@ private fun ChannelSubscriberBar(
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
+    }
+}
+
+// Правка форка (роумлесс, ф4 блок): своя сторона TG-стены. Полоса вместо композера,
+// тап снимает блок (unignoreUser).
+@Composable
+private fun BlockedUserBar(
+    onUnblock: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ElementTheme.colors.bgSubtleSecondary)
+            .clickable(onClick = onUnblock)
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(id = R.string.screen_room_unblock_user),
+            color = ElementTheme.colors.textCriticalPrimary,
+            style = MaterialTheme.typography.bodyLarge,
+        )
     }
 }
 
