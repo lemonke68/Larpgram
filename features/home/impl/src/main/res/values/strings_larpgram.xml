@@ -10,4 +10,13 @@
     <!-- "New" menu in the chats top bar. -->
     <string name="screen_home_new_chat">New chat</string>
     <string name="screen_home_new_channel">New channel</string>
+    <!-- Roomless: chat-list swipe actions and context menu, differ by chat type. -->
+    <string name="screen_roomlist_mute">Mute</string>
+    <string name="screen_roomlist_unmute">Unmute</string>
+    <string name="screen_roomlist_pin">Pin</string>
+    <string name="screen_roomlist_unpin">Unpin</string>
+    <string name="screen_roomlist_delete_chat">Delete chat</string>
+    <string name="screen_roomlist_leave_group">Leave group</string>
+    <string name="screen_roomlist_leave_channel">Leave channel</string>
+    <string name="screen_roomlist_block_user">Block</string>
 </resources>

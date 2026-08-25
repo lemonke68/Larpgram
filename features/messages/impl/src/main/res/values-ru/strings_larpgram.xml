@@ -9,4 +9,5 @@
         <item quantity="many">%1$d подписчиков</item>
         <item quantity="other">%1$d подписчиков</item>
     </plurals>
+    <string name="screen_room_unblock_user">Вы заблокировали этого пользователя. Нажмите, чтобы разблокировать.</string>
 </resources>

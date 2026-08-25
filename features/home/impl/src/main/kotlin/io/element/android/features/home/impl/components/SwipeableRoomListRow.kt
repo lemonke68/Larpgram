@@ -31,11 +31,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.home.impl.R
+import io.element.android.features.home.impl.model.ChatType
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.aRoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListEvent
@@ -196,7 +199,10 @@ private fun SwipeActionPanel(
 }
 
 /**
- * Builds the Telegram-style swipe actions for a chat row. Phase 1: Mute/Unmute only (end side).
+ * Telegram-style swipe actions, роумлесс — набор зависит от типа чата.
+ *
+ * Свайп влево (end): Пин/Анпин + Мьют/Размьют — для всех типов.
+ * Свайп вправо (start): Удалить — для всех; Блокировать — только в ЛС (односторонняя стена).
  */
 @Composable
 fun rememberChatSwipeEndActions(
@@ -205,12 +211,51 @@ fun rememberChatSwipeEndActions(
 ): List<SwipeAction> {
     return listOf(
         SwipeAction(
+            icon = if (room.isPinned) CompoundIcons.Unpin() else CompoundIcons.Pin(),
+            label = stringResource(if (room.isPinned) R.string.screen_roomlist_unpin else R.string.screen_roomlist_pin),
+            background = Color(0xFF3D9BE9),
+            onClick = { eventSink(RoomListEvent.SetRoomIsPinned(room.roomId, isPinned = !room.isPinned)) },
+        ),
+        SwipeAction(
             icon = if (room.isMuted) CompoundIcons.Notifications() else CompoundIcons.NotificationsOffSolid(),
-            label = if (room.isMuted) "Unmute" else "Mute",
+            label = stringResource(if (room.isMuted) R.string.screen_roomlist_unmute else R.string.screen_roomlist_mute),
             background = Color(0xFFF0A030),
             onClick = { eventSink(RoomListEvent.SetRoomIsMuted(room.roomId, isMuted = !room.isMuted)) },
-        )
+        ),
     )
+}
+
+@Composable
+fun rememberChatSwipeStartActions(
+    room: RoomListRoomSummary,
+    eventSink: (RoomListEvent) -> Unit,
+): List<SwipeAction> {
+    return buildList {
+        add(
+            SwipeAction(
+                icon = CompoundIcons.Delete(),
+                label = stringResource(
+                    when (room.chatType) {
+                        ChatType.Dm -> R.string.screen_roomlist_delete_chat
+                        ChatType.Group -> R.string.screen_roomlist_leave_group
+                        ChatType.Channel -> R.string.screen_roomlist_leave_channel
+                    }
+                ),
+                background = Color(0xFFE0533D),
+                onClick = { eventSink(RoomListEvent.DeleteRoom(room.roomId)) },
+            )
+        )
+        if (room.isDm) {
+            add(
+                SwipeAction(
+                    icon = CompoundIcons.Block(),
+                    label = stringResource(R.string.screen_roomlist_block_user),
+                    background = Color(0xFF8E8E93),
+                    onClick = { eventSink(RoomListEvent.BlockUser(room.roomId, room.dmUserId)) },
+                )
+            )
+        }
+    }
 }
 
 @PreviewsDayNight

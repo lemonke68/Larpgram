@@ -30,6 +30,7 @@ import io.element.android.features.announcement.api.AnnouncementService
 import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.into
+import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.home.impl.search.RoomListSearchState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
@@ -53,6 +54,7 @@ import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermiss
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.roomlist.RoomList
@@ -62,11 +64,13 @@ import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsColdStartWatcher
 import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -98,6 +102,8 @@ class RoomListPresenter(
     // Правка форка: молча заводим ключ восстановления + escrow свежему аккаунту, чтобы новые/
     // сброшенные сессии восстанавливались кодом с почты и не ловили UTD.
     private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
+    // Правка форка (роумлесс): свой пин чатов поверх списка (account data).
+    private val pinnedChatsStore: PinnedChatsStore,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -217,6 +223,9 @@ class RoomListPresenter(
                 }
                 is RoomListEvent.SetRoomIsFavorite -> coroutineScope.setRoomIsFavorite(event.roomId, event.isFavorite)
                 is RoomListEvent.SetRoomIsMuted -> coroutineScope.setRoomIsMuted(event.roomId, event.isMuted)
+                is RoomListEvent.SetRoomIsPinned -> pinnedChatsStore.setPinned(event.roomId, event.isPinned)
+                is RoomListEvent.DeleteRoom -> coroutineScope.deleteRoom(event.roomId)
+                is RoomListEvent.BlockUser -> coroutineScope.blockUser(event.roomId, event.userId)
                 is RoomListEvent.MarkAsRead -> coroutineScope.markAsRead(event.roomId)
                 is RoomListEvent.MarkAsUnread -> coroutineScope.markAsUnread(event.roomId)
                 is RoomListEvent.AcceptInvite -> {
@@ -347,8 +356,12 @@ class RoomListPresenter(
         showNewNotificationSoundBanner: Boolean,
         showUnreadCount: Boolean,
     ): RoomListContentState {
+        // Правка форка (роумлесс): помеченные пином комнаты поднимаем наверх списка в порядке
+        // пина. Сортировкой SDK и diff-кэшем не рулим — переставляем уже готовый список здесь.
         val roomSummaries by produceState(initialValue = AsyncData.Loading()) {
-            roomListDataSource.roomSummariesFlow.collect { value = AsyncData.Success(it) }
+            combine(roomListDataSource.roomSummariesFlow, pinnedChatsStore.pinnedFlow) { summaries, pinnedIds ->
+                applyPins(summaries, pinnedIds)
+            }.collect { value = AsyncData.Success(it) }
         }
         val loadingState by roomListDataSource.loadingState.collectAsState()
         val showEmpty by remember {
@@ -394,6 +407,9 @@ class RoomListPresenter(
             roomId = event.roomSummary.roomId,
             roomName = event.roomSummary.name,
             isDm = event.roomSummary.isDm,
+            chatType = event.roomSummary.chatType,
+            isPinned = event.roomSummary.isPinned,
+            dmUserId = event.roomSummary.dmUserId,
             isFavorite = event.roomSummary.isFavorite,
             hasNewContent = event.roomSummary.hasNewContent,
         )
@@ -424,6 +440,42 @@ class RoomListPresenter(
                 .onSuccess {
                     analyticsService.captureInteraction(name = Interaction.Name.MobileRoomListRoomContextMenuFavouriteToggle)
                 }
+        }
+    }
+
+    // Правка форка (роумлесс), ф2 пин: закреплённые комнаты наверх, в порядке пина; помечаем
+    // isPinned для строки/меню. Пин ставится только на ROOM, поэтому инвайты не трогаются.
+    private fun applyPins(
+        summaries: ImmutableList<RoomListRoomSummary>,
+        pinnedIds: List<RoomId>,
+    ): ImmutableList<RoomListRoomSummary> {
+        if (pinnedIds.isEmpty()) return summaries
+        val pinnedSet = pinnedIds.toSet()
+        val byId = summaries.associateBy { it.roomId }
+        val pinnedRooms = pinnedIds.mapNotNull { byId[it]?.copy(isPinned = true) }
+        val rest = summaries.filterNot { it.roomId in pinnedSet }
+        return (pinnedRooms + rest).toImmutableList()
+    }
+
+    // Правка форка (роумлесс), ф3 удаление: leave + forget, чтобы комната ушла из списка.
+    // «Удалить у обоих» в Matrix невозможно — власти над чужим аккаунтом нет.
+    private fun CoroutineScope.deleteRoom(roomId: RoomId) = launch {
+        client.getRoom(roomId)?.use { room ->
+            room.leave().onSuccess { room.forget() }
+        }
+    }
+
+    // Правка форка (роумлесс), ф4 блок (только ЛС): односторонняя TG-стена — ignoreUser +
+    // выйти/забыть личку. Будущие инвайты автоотклоняет BlockedInviteAutoDecliner, композер
+    // гасит messages по ignoredUsersFlow. Собеседник берётся из строки, иначе из участников.
+    private fun CoroutineScope.blockUser(roomId: RoomId, userId: UserId?) = launch {
+        client.getRoom(roomId)?.use { room ->
+            val peer = userId ?: room.getMembers().getOrNull()
+                ?.firstOrNull { it.userId != client.sessionId }?.userId
+            if (peer != null) {
+                client.ignoreUser(peer)
+            }
+            room.leave().onSuccess { room.forget() }
         }
     }
 

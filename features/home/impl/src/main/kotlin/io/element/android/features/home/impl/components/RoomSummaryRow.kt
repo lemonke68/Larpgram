@@ -50,6 +50,7 @@ import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
+import io.element.android.features.home.impl.model.ChatType
 import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomListRoomSummaryProvider
@@ -163,6 +164,7 @@ internal fun RoomSummaryRow(
                         timestamp = room.timestamp,
                         isHighlighted = room.isHighlighted,
                         dmUserStatus = room.dmUserStatus,
+                        chatType = room.chatType,
                         deliveryState = room.latestEvent.deliveryState(),
                         isMuted = room.userDefinedNotificationMode == RoomNotificationMode.MUTE,
                     )
@@ -259,6 +261,7 @@ private fun NameAndTimestampRow(
     isHighlighted: Boolean,
     dmUserStatus: DisplayedStatus?,
     modifier: Modifier = Modifier,
+    chatType: ChatType = ChatType.Group,
     deliveryState: MessageDeliveryState? = null,
     isMuted: Boolean = false,
 ) {
@@ -272,6 +275,9 @@ private fun NameAndTimestampRow(
             horizontalArrangement = spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Правка форка (роумлесс): маленькая иконка типа перед именем. Канал — вещание
+            // (Public), группа — Group; в ЛС метки нет (аватар собеседника и так говорит сам).
+            ChatTypeIcon(chatType)
             DisplayNameWithStatus(
                 name = displayName,
                 status = dmUserStatus,
@@ -426,6 +432,10 @@ private fun MessagePreviewAndIndicatorRow(
                     contentDescription = contentDescription,
                 )
             }
+            // Правка форка (роумлесс): пин показываем, когда нет бейджа непрочитанных (как в TG).
+            if (room.isPinned && !room.hasNewContent) {
+                PinIndicatorAtom(tint = ElementTheme.colors.iconQuaternary)
+            }
         }
     }
 }
@@ -527,6 +537,33 @@ private fun MentionIndicatorAtom() {
         contentDescription = stringResource(CommonStrings.a11y_notifications_new_mentions),
         imageVector = CompoundIcons.Mention(),
         tint = ElementTheme.colors.unreadIndicator,
+    )
+}
+
+// Правка форка (роумлесс): значок типа перед именем. ЛС метки не несёт.
+@Composable
+private fun ChatTypeIcon(chatType: ChatType) {
+    val icon = when (chatType) {
+        ChatType.Channel -> CompoundIcons.Public()
+        ChatType.Group -> CompoundIcons.Group()
+        ChatType.Dm -> return
+    }
+    Icon(
+        modifier = Modifier.size(16.dp),
+        imageVector = icon,
+        contentDescription = null,
+        tint = ElementTheme.colors.iconSecondary,
+    )
+}
+
+// Правка форка (роумлесс): значок закрепления в строке (когда нет бейджа непрочитанных).
+@Composable
+private fun PinIndicatorAtom(tint: Color) {
+    Icon(
+        modifier = Modifier.size(16.dp),
+        imageVector = CompoundIcons.PinSolid(),
+        contentDescription = null,
+        tint = tint,
     )
 }
 

@@ -12,6 +12,8 @@ import extension.testCommonDependencies
 plugins {
     id("io.element.android-compose-library")
     id("kotlin-parcelize")
+    // Правка форка: пин чатов хранится в account data в виде JSON-списка.
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -29,6 +31,7 @@ setupDependencyInjection()
 dependencies {
     implementation(projects.appconfig)
     implementation(projects.libraries.core)
+    implementation(libs.serialization.json)
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.featureflag.api)

@@ -335,6 +335,7 @@ private fun RoomsViewList(
             if (room.displayType == RoomSummaryDisplayType.ROOM) {
                 SwipeableRoomListRow(
                     endActions = rememberChatSwipeEndActions(room = room, eventSink = eventSink),
+                    startActions = rememberChatSwipeStartActions(room = room, eventSink = eventSink),
                     content = summaryRow,
                 )
             } else {

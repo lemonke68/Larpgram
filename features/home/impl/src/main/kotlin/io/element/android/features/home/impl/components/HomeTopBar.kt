@@ -397,7 +397,6 @@ internal fun HomeTopBarSpaceFiltersSelectedPreview() = ElementPreview {
     )
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable

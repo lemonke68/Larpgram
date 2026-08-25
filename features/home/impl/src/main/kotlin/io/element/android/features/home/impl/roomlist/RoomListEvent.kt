@@ -10,6 +10,7 @@ package io.element.android.features.home.impl.roomlist
 
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 
 sealed interface RoomListEvent {
     data class UpdateVisibleRange(val range: IntRange) : RoomListEvent
@@ -42,4 +43,20 @@ sealed interface RoomListEvent {
 
     // Telegram-style swipe action: mute/unmute the room's notifications.
     data class SetRoomIsMuted(val roomId: RoomId, val isMuted: Boolean) : ContextMenuEvent
+
+    /**
+     * Правка форка (роумлесс), свайпы по типу.
+     * Ф2: свой пин чата поверх списка (account data), нативного пина в Matrix нет.
+     */
+    data class SetRoomIsPinned(val roomId: RoomId, val isPinned: Boolean) : ContextMenuEvent
+
+    /** Ф3: удалить чат у себя = leave + forget (уходит из списка). «У обоих» в Matrix нельзя. */
+    data class DeleteRoom(val roomId: RoomId) : ContextMenuEvent
+
+    /**
+     * Ф4: заблокировать собеседника (только ЛС) — односторонняя TG-стена:
+     * ignoreUser + выйти/забыть личку. Будущие инвайты от него автоотклоняются, композер гаснет.
+     * [userId] — собеседник, если известен из строки; иначе резолвится по участникам комнаты.
+     */
+    data class BlockUser(val roomId: RoomId, val userId: UserId?) : ContextMenuEvent
 }

@@ -11,6 +11,7 @@ package io.element.android.features.home.impl.datasource
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import io.element.android.features.home.impl.model.RoomListRoomSummary
+import io.element.android.features.home.impl.roomlist.BlockedInviteAutoDecliner
 import io.element.android.libraries.androidutils.diff.DiffCacheUpdater
 import io.element.android.libraries.androidutils.diff.MutableListDiffCache
 import io.element.android.libraries.androidutils.system.DateTimeObserver
@@ -60,10 +61,13 @@ class RoomListDataSource(
     private val sessionCoroutineScope: CoroutineScope,
     private val dateTimeObserver: DateTimeObserver,
     private val analyticsService: AnalyticsService,
+    // Правка форка (роумлесс, ф4 блок): автоотклонение инвайтов от заблокированных.
+    private val blockedInviteAutoDecliner: BlockedInviteAutoDecliner,
 ) {
     init {
         observeNotificationSettings()
         observeDateTimeChanges()
+        blockedInviteAutoDecliner.start()
     }
 
     private val roomList = roomListService.createRoomList(

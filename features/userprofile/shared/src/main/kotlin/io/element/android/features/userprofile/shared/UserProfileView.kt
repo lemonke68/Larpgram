@@ -133,7 +133,15 @@ fun UserProfileView(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(title = { }, navigationIcon = { BackButton(onClick = goBack) })
+            TopAppBar(
+                title = { },
+                // Self-profile is a bottom-nav tab (no back stack to pop), so no back arrow.
+                navigationIcon = {
+                    if (!state.isCurrentUser) {
+                        BackButton(onClick = goBack)
+                    }
+                },
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
@@ -167,7 +175,7 @@ fun UserProfileView(
                     onSettings = onOpenSettings,
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                UserProfileSelfInfoCard(
+                UserProfileInfoCard(
                     userId = state.userId,
                     about = state.about,
                     onHandleClick = {
@@ -181,6 +189,14 @@ fun UserProfileView(
                     onShareUser = onShareUser,
                     onStartDM = { state.eventSink(UserProfileEvents.StartDM) },
                     onCall = { intent -> state.dmRoomId?.let { onStartCall(it, intent) } }
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                UserProfileInfoCard(
+                    userId = state.userId,
+                    about = state.about,
+                    onHandleClick = {
+                        state.eventSink(UserProfileEvents.CopyToClipboard(state.userId.value))
+                    },
                 )
                 Spacer(modifier = Modifier.height(26.dp))
                 VerifyUserSection(state, onVerifyClick = { onVerifyClick(state.userId) })
@@ -263,67 +279,6 @@ private fun UserProfileSelfActionsSection(
             title = stringResource(CommonStrings.common_settings),
             imageVector = CompoundIcons.Settings(),
             onClick = onSettings,
-        )
-    }
-}
-
-/**
- * TG-style info card. Matrix self-profile only carries the id, so the single row
- * shows the @handle (localpart of the Matrix id) over a "Username" label. Tapping
- * copies the full id to the clipboard.
- */
-@Composable
-private fun UserProfileSelfInfoCard(
-    userId: UserId,
-    about: String?,
-    onHandleClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val handle = userId.value.substringBefore(":")
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(ElementTheme.colors.bgSubtleSecondary),
-    ) {
-        // Bio row is shown only when set (private account data); TG order puts it above the handle.
-        if (!about.isNullOrBlank()) {
-            InfoCardRow(
-                value = about,
-                label = stringResource(CommonStrings.common_about),
-            )
-        }
-        InfoCardRow(
-            value = handle,
-            label = stringResource(CommonStrings.common_username),
-            onClick = onHandleClick,
-        )
-    }
-}
-
-@Composable
-private fun InfoCardRow(
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = value,
-            style = ElementTheme.typography.fontBodyLgRegular,
-            color = ElementTheme.colors.textPrimary,
-        )
-        Text(
-            text = label,
-            style = ElementTheme.typography.fontBodySmRegular,
-            color = ElementTheme.colors.textSecondary,
         )
     }
 }

@@ -10,10 +10,10 @@ package io.element.android.features.home.impl
 
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
-import io.element.android.features.preferences.api.PreferencesEntryPoint
-import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.api.HomeEntryPoint
+import io.element.android.features.preferences.api.PreferencesEntryPoint
+import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.JoinedRoom

@@ -17,6 +17,7 @@ import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.datasource.aRoomListRoomSummaryFactory
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.aRoomListFiltersState
+import io.element.android.features.home.impl.model.ChatType
 import io.element.android.features.home.impl.model.createRoomListRoomSummary
 import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.home.impl.search.RoomListSearchState
@@ -33,8 +34,6 @@ import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
 import io.element.android.features.rageshake.test.logs.FakeAnnouncementService
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
-import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
-import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.dateformatter.api.DateFormatter
@@ -44,6 +43,8 @@ import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventForma
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
+import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
@@ -343,6 +344,9 @@ class RoomListPresenterTest {
                             roomId = summary.roomId,
                             roomName = summary.name,
                             isDm = false,
+                            chatType = ChatType.Group,
+                            isPinned = false,
+                            dmUserId = null,
                             isFavorite = false,
                             hasNewContent = false,
                         )
@@ -361,6 +365,9 @@ class RoomListPresenterTest {
                             roomId = summary.roomId,
                             roomName = summary.name,
                             isDm = false,
+                            chatType = ChatType.Group,
+                            isPinned = false,
+                            dmUserId = null,
                             isFavorite = true,
                             hasNewContent = false,
                         )
@@ -391,6 +398,9 @@ class RoomListPresenterTest {
                         roomId = summary.roomId,
                         roomName = summary.name,
                         isDm = false,
+                        chatType = ChatType.Group,
+                        isPinned = false,
+                        dmUserId = null,
                         isFavorite = false,
                         hasNewContent = false,
                     )
@@ -830,6 +840,11 @@ class RoomListPresenterTest {
             sessionCoroutineScope = backgroundScope,
             dateTimeObserver = FakeDateTimeObserver(),
             analyticsService = FakeAnalyticsService(),
+            blockedInviteAutoDecliner = BlockedInviteAutoDecliner(
+                client = client,
+                roomListService = client.roomListService,
+                sessionCoroutineScope = backgroundScope,
+            ),
         ),
         searchPresenter = searchPresenter,
         filtersPresenter = filtersPresenter,
@@ -851,5 +866,9 @@ class RoomListPresenterTest {
         accountEmailStatus = accountEmailStatus,
         updateChecker = updateChecker,
         recoveryKeyAutoProvisioner = recoveryKeyAutoProvisioner,
+        pinnedChatsStore = PinnedChatsStore(
+            client = client,
+            sessionCoroutineScope = backgroundScope,
+        ),
     )
 }

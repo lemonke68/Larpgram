@@ -36,8 +36,6 @@ import im.vector.app.features.analytics.plan.MobileScreen
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.home.api.HomeEntryPoint
 import io.element.android.features.home.impl.components.RoomListMenuAction
-import io.element.android.features.preferences.api.PreferencesEntryPoint
-import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.invite.api.InviteData
@@ -45,9 +43,11 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteV
 import io.element.android.features.invite.api.declineandblock.DeclineInviteAndBlockEntryPoint
 import io.element.android.features.leaveroom.api.LeaveRoomRenderer
 import io.element.android.features.logout.api.direct.DirectLogoutView
+import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.reportroom.api.ReportRoomEntryPoint
 import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRolesEntryPoint
 import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRolesListType
+import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode

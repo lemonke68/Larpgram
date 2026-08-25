@@ -203,25 +203,32 @@ private fun ColumnScope.ManageAppSection(
     onOpenLockScreenSettings: () -> Unit,
     onSecureBackupClick: () -> Unit,
 ) {
-    ListItem(
-        headlineContent = { Text(stringResource(id = R.string.screen_notification_settings_title)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Notifications())),
-        onClick = onOpenNotificationSettings,
-    )
-    ListItem(
-        headlineContent = { Text(stringResource(id = CommonStrings.common_screen_lock)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
-        onClick = onOpenLockScreenSettings,
-    )
-    if (state.showSecureBackup) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_encryption)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Key())),
-            trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
-            onClick = onSecureBackupClick,
+    TgSettingsGroup {
+        TgSettingsItem(
+            title = stringResource(id = R.string.screen_notification_settings_title),
+            subtitle = "Звуки, звонки, счётчик сообщений",
+            color = TgSettingsColors.Red,
+            iconVector = CompoundIcons.Notifications(),
+            onClick = onOpenNotificationSettings,
         )
+        TgSettingsItem(
+            title = stringResource(id = CommonStrings.common_screen_lock),
+            subtitle = "Код-пароль и биометрия",
+            color = TgSettingsColors.Orange,
+            iconVector = CompoundIcons.Lock(),
+            onClick = onOpenLockScreenSettings,
+        )
+        if (state.showSecureBackup) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_encryption),
+                subtitle = "Резервные ключи, безопасный бэкап",
+                color = TgSettingsColors.Green,
+                iconVector = CompoundIcons.Key(),
+                trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
+                onClick = onSecureBackupClick,
+            )
+        }
     }
-    HorizontalDivider()
 }
 
 @Composable
@@ -231,31 +238,36 @@ private fun ColumnScope.ManageAccountSection(
     onLinkNewDeviceClick: () -> Unit,
     onOpenBlockedUsers: () -> Unit,
 ) {
-    state.accountManagementUrl?.let { url ->
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.action_manage_account_and_devices)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.UserProfile())),
-            trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.PopOut())),
-            onClick = { onManageAccountClick(url) },
-        )
+    if (state.accountManagementUrl == null && !state.showLinkNewDevice && !state.showBlockedUsersItem) {
+        return
     }
-    if (state.showLinkNewDevice) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_link_new_device)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Devices())),
-            onClick = onLinkNewDeviceClick,
-        )
-    }
-    if (state.showBlockedUsersItem) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_blocked_users)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Block())),
-            onClick = onOpenBlockedUsers,
-            trailingContent = ListItemContent.Text(state.nbOfBlockedUsers.toString()),
-        )
-    }
-    if (state.accountManagementUrl != null || state.showLinkNewDevice || state.showBlockedUsersItem) {
-        HorizontalDivider()
+    TgSettingsGroup {
+        state.accountManagementUrl?.let { url ->
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.action_manage_account_and_devices),
+                color = TgSettingsColors.Blue,
+                iconVector = CompoundIcons.UserProfile(),
+                trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.PopOut())),
+                onClick = { onManageAccountClick(url) },
+            )
+        }
+        if (state.showLinkNewDevice) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_link_new_device),
+                color = TgSettingsColors.Cyan,
+                iconVector = CompoundIcons.Devices(),
+                onClick = onLinkNewDeviceClick,
+            )
+        }
+        if (state.showBlockedUsersItem) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_blocked_users),
+                color = TgSettingsColors.Gray,
+                iconVector = CompoundIcons.Block(),
+                onClick = onOpenBlockedUsers,
+                trailingContent = ListItemContent.Text(state.nbOfBlockedUsers.toString()),
+            )
+        }
     }
 }
 
@@ -271,55 +283,71 @@ private fun ColumnScope.GeneralSection(
     onSignOutClick: () -> Unit,
     onDeactivateClick: () -> Unit,
 ) {
-    ListItem(
-        headlineContent = { Text(stringResource(id = CommonStrings.common_advanced_settings)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Settings())),
-        onClick = onOpenAdvancedSettings,
-    )
-    if (state.showLabsItem) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = R.string.screen_labs_title)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Labs())),
-            onClick = onOpenLabs,
+    TgSettingsGroup {
+        TgSettingsItem(
+            title = stringResource(id = CommonStrings.common_advanced_settings),
+            color = TgSettingsColors.Gray,
+            iconVector = CompoundIcons.Settings(),
+            onClick = onOpenAdvancedSettings,
         )
-    }
-    ListItem(
-        headlineContent = { Text(stringResource(id = CommonStrings.common_about)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Info())),
-        onClick = onOpenAbout,
-    )
-    if (state.canReportBug) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_report_a_problem)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChatProblem())),
-            onClick = onOpenRageShake
+        if (state.showLabsItem) {
+            TgSettingsItem(
+                title = stringResource(id = R.string.screen_labs_title),
+                color = TgSettingsColors.Purple,
+                iconVector = CompoundIcons.Labs(),
+                onClick = onOpenLabs,
+            )
+        }
+        TgSettingsItem(
+            title = stringResource(id = CommonStrings.common_about),
+            color = TgSettingsColors.Blue,
+            iconVector = CompoundIcons.Info(),
+            onClick = onOpenAbout,
         )
+        if (state.canReportBug) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_report_a_problem),
+                color = TgSettingsColors.Orange,
+                iconVector = CompoundIcons.ChatProblem(),
+                onClick = onOpenRageShake,
+            )
+        }
+        if (state.showAnalyticsSettings) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_analytics),
+                subtitle = "Отправка обезличенных данных",
+                color = TgSettingsColors.Cyan,
+                iconVector = CompoundIcons.Chart(),
+                onClick = onOpenAnalytics,
+            )
+        }
+        // Put developer settings at the end, so nothing bad happens if the user clicks 8 times to enable the entry
+        if (state.showDeveloperSettings) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_developer_options),
+                color = TgSettingsColors.Gray,
+                iconVector = CompoundIcons.Code(),
+                onClick = onOpenDeveloperSettings,
+            )
+        }
     }
-    if (state.showAnalyticsSettings) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.common_analytics)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Chart())),
-            onClick = onOpenAnalytics,
-        )
-    }
-    HorizontalDivider()
-    ListItem(
-        headlineContent = { Text(stringResource(id = CommonStrings.action_signout)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Close())),
-        style = ListItemStyle.Destructive,
-        onClick = onSignOutClick,
-    )
-    if (state.canDeactivateAccount) {
-        ListItem(
-            headlineContent = { Text(stringResource(id = CommonStrings.action_delete_account)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
+    TgSettingsGroup {
+        TgSettingsItem(
+            title = stringResource(id = CommonStrings.action_signout),
+            color = TgSettingsColors.Red,
+            iconVector = CompoundIcons.SignOut(),
             style = ListItemStyle.Destructive,
-            onClick = onDeactivateClick,
+            onClick = onSignOutClick,
         )
-    }
-    // Put developer settings at the end, so nothing bad happens if the user clicks 8 times to enable the entry
-    if (state.showDeveloperSettings) {
-        DeveloperPreferencesView(onOpenDeveloperSettings)
+        if (state.canDeactivateAccount) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.action_delete_account),
+                color = TgSettingsColors.Red,
+                iconVector = CompoundIcons.Delete(),
+                style = ListItemStyle.Destructive,
+                onClick = onDeactivateClick,
+            )
+        }
     }
 }
 
@@ -347,15 +375,6 @@ private fun ColumnScope.Footer(
         text = text,
         style = ElementTheme.typography.fontBodySmRegular,
         color = ElementTheme.colors.textSecondary,
-    )
-}
-
-@Composable
-private fun DeveloperPreferencesView(onOpenDeveloperSettings: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(stringResource(id = CommonStrings.common_developer_options)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Code())),
-        onClick = onOpenDeveloperSettings
     )
 }
 
