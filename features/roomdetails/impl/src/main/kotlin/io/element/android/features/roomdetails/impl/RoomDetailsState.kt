@@ -31,6 +31,9 @@ data class RoomDetailsState(
     val memberCount: Long,
     val isEncrypted: Boolean,
     val roomType: RoomDetailsType,
+    // Правка форка (роумлесс): комната-канал (вещание, писать могут только повышенные). Делит
+    // терминологию/подачу Группа vs Канал внутри ветки Room (Участники/Подписчики, Выйти из…).
+    val isChannel: Boolean,
     val dmOtherMemberDetailsState: UserProfileState?,
     val canEdit: Boolean,
     val canInvite: Boolean,

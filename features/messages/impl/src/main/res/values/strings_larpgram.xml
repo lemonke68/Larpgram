@@ -14,4 +14,9 @@
     </plurals>
     <!-- Roomless: shown instead of the composer for a blocked DM peer; tap to unblock. -->
     <string name="screen_room_unblock_user">You blocked this user. Tap to unblock.</string>
+    <!-- Roomless (gap D): comment count on a channel post's Comments chip. -->
+    <plurals name="channel_comments_count">
+        <item quantity="one">%1$d comment</item>
+        <item quantity="other">%1$d comments</item>
+    </plurals>
 </resources>

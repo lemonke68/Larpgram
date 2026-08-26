@@ -71,8 +71,11 @@ import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.finishLongRunningTransaction
 import io.element.android.services.analyticsproviders.api.AnalyticsUserData
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
@@ -80,6 +83,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -404,7 +408,52 @@ class TimelinePresenter(
         val channelDiscussionRoomId by produceState<RoomId?>(null, isChannel) {
             value = if (isChannel) resolveChannelDiscussionRoomId() else null
         }
-        val timelineRoomInfo by remember(typingNotificationState, roomCallState, roomInfo, channelDiscussionRoomId) {
+        // Правка форка (роумлесс, gap D): счётчик «N комментариев» на чипе поста. Комментарии —
+        // это реплаи-тред на зеркало поста в дискуссии, поэтому число = numberOfReplies треда.
+        // Ключа `comment_id` в ThreadListItem нет, поэтому root-eventId сопоставляем с comment_id
+        // по сырому JSON зеркала в таймлайне дискуссии. Мягкий фолбэк: пусто → чип без числа.
+        val channelCommentCounts by produceState<ImmutableMap<String, Long>>(
+            persistentMapOf(),
+            isChannel,
+            channelDiscussionRoomId,
+        ) {
+            val discussionId = channelDiscussionRoomId
+            if (!isChannel || discussionId == null) {
+                value = persistentMapOf()
+                return@produceState
+            }
+            val discussion = matrixClient.getJoinedRoom(discussionId) ?: run {
+                value = persistentMapOf()
+                return@produceState
+            }
+            discussion.use { d ->
+                val threadsService = d.threadsListService
+                try {
+                    combine(
+                        threadsService.subscribeToItemUpdates().onStart { threadsService.paginate() },
+                        d.liveTimeline.timelineItems,
+                    ) { threadItems, timelineItems ->
+                        // root eventId -> comment_id, из сырого JSON зеркал в дискуссии.
+                        val commentIdByEvent = timelineItems.asSequence()
+                            .filterIsInstance<MatrixTimelineItem.Event>()
+                            .mapNotNull { item ->
+                                val raw = item.event.timelineItemDebugInfoProvider().originalJson ?: return@mapNotNull null
+                                val commentId = ChannelDiscussion.commentIdFromMirror(raw) ?: return@mapNotNull null
+                                val eventId = item.event.eventId?.value ?: return@mapNotNull null
+                                eventId to commentId
+                            }
+                            .toMap()
+                        threadItems.mapNotNull { threadItem ->
+                            val commentId = commentIdByEvent[threadItem.rootEvent.eventId.value] ?: return@mapNotNull null
+                            commentId to threadItem.numberOfReplies
+                        }.toMap().toPersistentMap()
+                    }.collect { value = it }
+                } finally {
+                    threadsService.destroy()
+                }
+            }
+        }
+        val timelineRoomInfo by remember(typingNotificationState, roomCallState, roomInfo, channelDiscussionRoomId, channelCommentCounts) {
             derivedStateOf {
                 TimelineRoomInfo(
                     name = roomInfo.name,
@@ -412,6 +461,7 @@ class TimelinePresenter(
                     // Broadcast channel: only elevated users can post (eventsDefault raised).
                     isChannel = isChannel,
                     channelDiscussionRoomId = channelDiscussionRoomId,
+                    channelCommentCounts = channelCommentCounts,
                     userHasPermissionToSendMessage = userEventPermissions.canSendMessage,
                     userHasPermissionToSendReaction = userEventPermissions.canSendReaction,
                     roomCallState = roomCallState,

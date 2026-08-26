@@ -122,6 +122,10 @@ class RoomDetailsPresenter(
         val roomType = getRoomType(dmMember)
         val roomCallState = roomCallStatePresenter.present()
         val joinedMemberCount by remember { derivedStateOf { roomInfo.joinedMembersCount } }
+        // Правка форка (роумлесс): канал = вещание (обычный участник не может слать).
+        val isChannel by remember {
+            derivedStateOf { (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L }
+        }
 
         val topicState = remember(permissions.editDetailsPermissions.canEditTopic, roomTopic, roomType) {
             val topic = roomTopic
@@ -197,6 +201,7 @@ class RoomDetailsPresenter(
             canEdit = roomType == RoomDetailsType.Room && permissions.editDetailsPermissions.hasAny,
             roomCallState = roomCallState,
             roomType = roomType,
+            isChannel = isChannel,
             dmOtherMemberDetailsState = dmOtherMemberDetailsState,
             leaveRoomState = leaveRoomState,
             roomNotificationSettings = roomNotificationSettingsState.roomNotificationSettings(),

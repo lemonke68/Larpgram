@@ -337,6 +337,14 @@ fun TimelineItemEventRow(
             event.content is TimelineItemFileContent
         val showChannelComments = timelineRoomInfo.isChannel &&
             (hasTextComments || (isMediaPost && timelineRoomInfo.channelDiscussionRoomId != null))
+        // Правка форка (роумлесс, gap D): число комментариев. Текстовый пост коррелируется по
+        // correlation-id из своего контента, медиа-пост — по своему eventId (в его зеркале
+        // comment_id = eventId поста). Нет числа (дискуссия ещё не загружена) → подпись без числа.
+        val commentKey = remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it)?.second }
+                ?: event.eventId?.value
+        }
+        val commentCount = commentKey?.let { timelineRoomInfo.channelCommentCounts[it] }
         if (showChannelComments) {
             Row(
                 modifier = Modifier
@@ -362,7 +370,11 @@ fun TimelineItemEventRow(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = stringResource(id = R.string.screen_channel_comments),
+                    text = if (commentCount != null && commentCount > 0) {
+                        pluralStringResource(id = R.plurals.channel_comments_count, count = commentCount.toInt(), commentCount.toInt())
+                    } else {
+                        stringResource(id = R.string.screen_channel_comments)
+                    },
                     style = ElementTheme.typography.fontBodySmMedium,
                     color = ElementTheme.colors.textActionAccent,
                 )

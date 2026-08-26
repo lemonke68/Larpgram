@@ -10,4 +10,10 @@
         <item quantity="other">%1$d подписчиков</item>
     </plurals>
     <string name="screen_room_unblock_user">Вы заблокировали этого пользователя. Нажмите, чтобы разблокировать.</string>
+    <plurals name="channel_comments_count">
+        <item quantity="one">%1$d комментарий</item>
+        <item quantity="few">%1$d комментария</item>
+        <item quantity="many">%1$d комментариев</item>
+        <item quantity="other">%1$d комментариев</item>
+    </plurals>
 </resources>

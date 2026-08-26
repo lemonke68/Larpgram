@@ -68,7 +68,8 @@ class RoomDetailsViewTest : RobolectricTest() {
             setRoomDetailView(
                 openRoomMemberList = callback,
             )
-            clickOn(CommonStrings.common_people)
+            // Правка форка (роумлесс): у группы пункт теперь «Участники».
+            clickOn(R.string.screen_room_details_members)
         }
     }
 
@@ -163,7 +164,8 @@ class RoomDetailsViewTest : RobolectricTest() {
         }
     }
 
-    @Config(qualifiers = "h1024dp")
+    // Правка форка (роумлесс): шапка стала выше на подпись-счётчик, поднимаем высоту рендера.
+    @Config(qualifiers = "h1500dp")
     @Test
     fun `click on security and privacy invokes expected callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
@@ -292,7 +294,8 @@ class RoomDetailsViewTest : RobolectricTest() {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(R.string.screen_room_details_leave_room_title)
+        // Правка форка (роумлесс): у группы выход теперь «Выйти из группы».
+        clickOn(R.string.screen_room_details_leave_group)
         eventsRecorder.assertSingle(RoomDetailsEvent.LeaveRoom(needsConfirmation = true))
     }
 
