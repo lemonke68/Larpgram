@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -345,44 +346,73 @@ fun TimelineItemEventRow(
 }
 
 // Larpgram (роумлесс, gap D): TG-чип «Комментарии», влитый нижней секцией в карточку поста канала.
-// Живёт внутри пузыря, поэтому наследует его ширину и фон; сверху — делитель, отделяющий от контента.
+// Ширину получает от PostWithCommentsFooter (= ширина контента поста); текст на weight ужимается на
+// узком посте. Без делителя — по требованию дизайна.
 @Composable
 private fun ChannelPostCommentsFooter(
     count: Long?,
     onClick: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        HorizontalDivider(color = ElementTheme.colors.separatorPrimary)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = CompoundIcons.Chat(),
-                contentDescription = null,
-                tint = ElementTheme.colors.textActionAccent,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = if (count != null && count > 0) {
-                    pluralStringResource(id = R.plurals.channel_comments_count, count = count.toInt(), count.toInt())
-                } else {
-                    stringResource(id = R.string.screen_channel_comments)
-                },
-                style = ElementTheme.typography.fontBodySmMedium,
-                color = ElementTheme.colors.textActionAccent,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(
-                imageVector = CompoundIcons.ChevronRight(),
-                contentDescription = null,
-                tint = ElementTheme.colors.iconTertiary,
-                modifier = Modifier.size(16.dp),
-            )
+    Row(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = CompoundIcons.Chat(),
+            contentDescription = null,
+            tint = ElementTheme.colors.textActionAccent,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        // weight + ellipsis: на узком посте (вертикальное медиа) текст ужимается/обрезается, а не
+        // раздвигает рамку — ширину задаёт контент поста (см. PostWithCommentsFooter).
+        Text(
+            text = if (count != null && count > 0) {
+                pluralStringResource(id = R.plurals.channel_comments_count, count = count.toInt(), count.toInt())
+            } else {
+                stringResource(id = R.string.screen_channel_comments)
+            },
+            style = ElementTheme.typography.fontBodySmMedium,
+            color = ElementTheme.colors.textActionAccent,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Icon(
+            imageVector = CompoundIcons.ChevronRight(),
+            contentDescription = null,
+            tint = ElementTheme.colors.iconTertiary,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/**
+ * Larpgram: колонка «контент поста + футер комментариев», где футер ПРИНИМАЕТ ширину контента, а не
+ * навязывает свою (в отличие от [EqualWidthColumn], который берёт максимум). Контент меряется первым;
+ * футер меряется с фиксированной шириной = ширине контента, поэтому рамка комментов всегда точно по
+ * размеру поста — голосовое, картинка, текст, узкое вертикальное медиа.
+ */
+@Composable
+private fun PostWithCommentsFooter(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+    footer: @Composable () -> Unit,
+) {
+    SubcomposeLayout(modifier = modifier) { constraints ->
+        val contentPlaceables = subcompose("content", content).map { it.measure(constraints) }
+        val width = contentPlaceables.maxOfOrNull { it.width } ?: 0
+        val contentHeight = contentPlaceables.sumOf { it.height }
+        val footerConstraints = constraints.copy(minWidth = width, maxWidth = width)
+        val footerPlaceables = subcompose("footer", footer).map { it.measure(footerConstraints) }
+        val footerHeight = footerPlaceables.sumOf { it.height }
+        layout(width, contentHeight + footerHeight) {
+            var y = 0
+            contentPlaceables.forEach { it.placeRelative(0, y); y += it.height }
+            footerPlaceables.forEach { it.placeRelative(0, y); y += it.height }
         }
     }
 }
@@ -592,6 +622,7 @@ private fun TimelineItemEventRowContent(
         val isMediaPost = event.content is TimelineItemImageContent ||
             event.content is TimelineItemVideoContent ||
             event.content is TimelineItemAudioContent ||
+            event.content is TimelineItemVoiceContent ||
             event.content is TimelineItemFileContent
         val showChannelComments = timelineRoomInfo.isChannel &&
             (hasTextComments || (isMediaPost && timelineRoomInfo.channelDiscussionRoomId != null))
@@ -989,6 +1020,23 @@ private fun MessageEventBubbleContent(
                 contentWithTimestamp()
                 commentsFooter?.invoke()
             }
+        } else if (commentsFooter != null) {
+            // Larpgram: футер комментариев принимает ширину контента поста (PostWithCommentsFooter),
+            // поэтому рамка следует за размером поста/медиа, а не наоборот.
+            PostWithCommentsFooter(
+                modifier = modifier,
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        threadDecoration()
+                        // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            senderName()
+                            contentWithTimestamp()
+                        }
+                    }
+                },
+                footer = { commentsFooter() },
+            )
         } else {
             Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 threadDecoration()
@@ -997,7 +1045,6 @@ private fun MessageEventBubbleContent(
                     senderName()
                     contentWithTimestamp()
                 }
-                commentsFooter?.invoke()
             }
         }
     }

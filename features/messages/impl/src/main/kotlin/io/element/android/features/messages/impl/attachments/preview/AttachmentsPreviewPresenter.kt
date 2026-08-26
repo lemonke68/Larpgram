@@ -30,7 +30,7 @@ import io.element.android.features.messages.impl.attachments.preview.imageeditor
 import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorPresenter
 import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorState
 import io.element.android.features.messages.impl.attachments.video.VideoCompressionPresetSelector
-import io.element.android.features.messages.impl.channel.ChannelDiscussion
+import io.element.android.features.messages.impl.channel.ChannelPostMirror
 import io.element.android.libraries.androidutils.file.TemporaryUriDeleter
 import io.element.android.libraries.androidutils.file.safeDelete
 import io.element.android.libraries.androidutils.hash.hash
@@ -42,10 +42,8 @@ import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeVideo
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
-import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.room.JoinedRoom
-import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfig
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
@@ -60,15 +58,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import timber.log.Timber
 import java.io.File
 
@@ -546,69 +537,14 @@ class AttachmentsPreviewPresenter(
     // --- Larpgram: mirror a single channel media post into its discussion group -------------------
     // A channel photo/video/audio/file is sent normally (the SDK encrypts it); we can't inject a
     // comment reference into that send, so we identify the just-sent event, then re-post its content
-    // into the discussion group carrying the post's event id. "Comments" correlates by that id.
+    // into the discussion group carrying the post's event id. Shared logic lives in ChannelPostMirror.
 
     /** Event ids of our media posts already in the timeline, used to spot the newly-sent one. */
-    private suspend fun myMediaEventIds(): Set<String> = runCatchingExceptions {
-        room.liveTimeline.timelineItems.first()
-            .asSequence()
-            .filterIsInstance<MatrixTimelineItem.Event>()
-            .filter { it.event.sender.value == room.sessionId.value }
-            .filter { isMediaEvent(it.event.timelineItemDebugInfoProvider().originalJson) }
-            .mapNotNull { it.event.eventId?.value }
-            .toSet()
-    }.getOrDefault(emptySet())
+    private suspend fun myMediaEventIds(): Set<String> =
+        ChannelPostMirror.myPostIds(room) { ChannelPostMirror.isMirrorableMessage(it) }
 
-    private suspend fun mirrorMediaPostToDiscussion(preMediaIds: Set<String>) {
-        val isChannel = (room.info().roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
-        if (!isChannel) return
-        val discussionId = resolveDiscussionRoomId() ?: return
-        val myId = room.sessionId.value
-        // Wait for our just-sent media to appear with a remote event id (skip local echo and any
-        // older media posts captured in [preMediaIds]).
-        val sent = withTimeoutOrNull(MIRROR_TIMEOUT_MS) {
-            room.liveTimeline.timelineItems
-                .mapNotNull { items ->
-                    items.asSequence()
-                        .filterIsInstance<MatrixTimelineItem.Event>()
-                        .lastOrNull { ev ->
-                            val id = ev.event.eventId?.value
-                            id != null && id !in preMediaIds &&
-                                ev.event.sender.value == myId &&
-                                isMediaEvent(ev.event.timelineItemDebugInfoProvider().originalJson)
-                        }
-                }
-                .first()
-        } ?: return
-        val eventId = sent.event.eventId?.value ?: return
-        val originalJson = sent.event.timelineItemDebugInfoProvider().originalJson ?: return
-        // Reuse the exact media content: the mxc url and (for encrypted rooms) the file decryption
-        // keys travel inside the event content, so re-sending it into the discussion group shows the
-        // same media there. We just add the comment id linking the mirror back to the post.
-        val content = buildMirrorMediaContent(originalJson, eventId) ?: return
-        matrixClient.getJoinedRoom(discussionId)?.use { it.sendRawEvent(ROOM_MESSAGE_EVENT_TYPE, content) }
-    }
-
-    private fun buildMirrorMediaContent(originalJson: String, commentId: String): String? = runCatchingExceptions {
-        val content = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
-            ?: return@runCatchingExceptions null
-        buildJsonObject {
-            content.forEach { (key, value) -> put(key, value) }
-            put(ChannelDiscussion.COMMENT_ID_FIELD, commentId)
-        }.toString()
-    }.getOrNull()
-
-    private suspend fun resolveDiscussionRoomId(): RoomId? =
-        ChannelDiscussion.resolveDiscussionRoomId(room, matrixClient)
-
-    private fun isMediaEvent(originalJson: String?): Boolean {
-        originalJson ?: return false
-        return runCatchingExceptions {
-            val msgtype = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]
-                ?.jsonObject?.get("msgtype")?.jsonPrimitive?.content
-            msgtype in MIRRORABLE_MSGTYPES
-        }.getOrDefault(false)
-    }
+    private suspend fun mirrorMediaPostToDiscussion(preMediaIds: Set<String>) =
+        ChannelPostMirror.mirrorLastPost(room, matrixClient, preMediaIds) { ChannelPostMirror.isMirrorableMessage(it) }
 
     private fun resetPreparedMedia(sendActionState: MutableState<SendActionState>) {
         sendActionState.value.mediaUploadInfoList()?.forEach(::cleanUp)
@@ -655,9 +591,3 @@ class AttachmentsPreviewPresenter(
     )
 }
 
-// Larpgram: how long to wait for our just-sent channel media to get a remote event id.
-private const val MIRROR_TIMEOUT_MS = 20_000L
-private const val ROOM_MESSAGE_EVENT_TYPE = "m.room.message"
-
-// Media msgtypes sent through the attachment preview that we mirror into a channel's discussion group.
-private val MIRRORABLE_MSGTYPES = setOf("m.image", "m.video", "m.audio", "m.file")

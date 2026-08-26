@@ -30,11 +30,15 @@ import io.element.android.features.messages.api.MessageComposerContext
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerEvent
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerPresenter
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
+import io.element.android.features.messages.impl.channel.ChannelPostMirror
 import io.element.android.libraries.audio.api.AudioFocus
 import io.element.android.libraries.audio.api.AudioFocusRequester
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.mediaupload.api.MediaSenderFactory
 import io.element.android.libraries.permissions.api.PermissionsEvent
@@ -66,6 +70,9 @@ class DefaultVoiceMessageComposerPresenter(
     mediaSenderFactory: MediaSenderFactory,
     private val player: VoiceMessageComposerPlayer,
     private val messageComposerContext: MessageComposerContext,
+    // Larpgram: mirror a channel voice post into its discussion group so it gets a comments chip.
+    private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     permissionsPresenterFactory: PermissionsPresenter.Factory
 ) : VoiceMessageComposerPresenter {
     @ContributesBinding(RoomScope::class)
@@ -290,6 +297,10 @@ class DefaultVoiceMessageComposerPresenter(
         waveform: List<Float>,
         inReplyToEventId: EventId? = null,
     ): Result<Unit> {
+        // Larpgram: voice is sent as an m.audio event; remember our existing audio posts so we can
+        // spot the just-sent one and mirror it into the channel's discussion group for comments.
+        val preIds = ChannelPostMirror.myPostIds(room) { ChannelPostMirror.isMirrorableMessage(it) }
+
         val result = mediaSender.sendVoiceMessage(
             uri = file.toUri(),
             mimeType = mimeType,
@@ -303,6 +314,10 @@ class DefaultVoiceMessageComposerPresenter(
         }
 
         voiceRecorder.deleteRecording()
+
+        runCatchingExceptions {
+            ChannelPostMirror.mirrorLastPost(room, matrixClient, preIds) { ChannelPostMirror.isMirrorableMessage(it) }
+        }.onFailure { Timber.w(it, "Failed to mirror channel voice post") }
 
         return result
     }
