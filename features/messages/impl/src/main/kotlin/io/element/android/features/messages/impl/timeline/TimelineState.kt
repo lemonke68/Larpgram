@@ -21,6 +21,8 @@ import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.room.tombstone.PredecessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentMapOf
 import kotlin.time.Duration
 
 data class TimelineState(
@@ -79,6 +81,12 @@ data class TimelineRoomInfo(
     val isChannel: Boolean,
     /** Linked discussion group of this channel (Telegram-style comments), or null if none/not a channel. */
     val channelDiscussionRoomId: RoomId? = null,
+    /**
+     * Правка форка (роумлесс, gap D): счётчик комментариев на пост канала — commentId → число
+     * реплаев его зеркала-треда в дискуссии. Пусто, если не канал или дискуссия ещё не загружена
+     * (тогда чип показывает подпись без числа).
+     */
+    val channelCommentCounts: ImmutableMap<String, Long> = persistentMapOf(),
     val name: String?,
     val userHasPermissionToSendMessage: Boolean,
     val userHasPermissionToSendReaction: Boolean,

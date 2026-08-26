@@ -61,6 +61,8 @@ open class RoomDetailsStateProvider : PreviewParameterProvider<RoomDetailsState>
             aSharedHistoryRoomDetailsState(roomHistoryVisibility = RoomHistoryVisibility.Joined),
             aSharedHistoryRoomDetailsState(roomHistoryVisibility = RoomHistoryVisibility.Shared),
             aSharedHistoryRoomDetailsState(roomHistoryVisibility = RoomHistoryVisibility.WorldReadable),
+            // Правка форка (роумлесс): канал — «Подписчики», «Выйти из канала», счётчик в шапке.
+            aRoomDetailsState(isChannel = true, roomName = "Announcements", memberCount = 1280),
             // Add other state here
         )
 }
@@ -109,6 +111,7 @@ fun aRoomDetailsState(
     canEdit: Boolean = false,
     roomCallState: RoomCallState = aStandByCallState(),
     roomType: RoomDetailsType = RoomDetailsType.Room,
+    isChannel: Boolean = false,
     dmOtherMemberDetailsState: UserProfileState? = null,
     leaveRoomState: LeaveRoomState = aLeaveRoomState(),
     roomNotificationSettings: RoomNotificationSettings = aRoomNotificationSettings(),
@@ -140,6 +143,7 @@ fun aRoomDetailsState(
     canEdit = canEdit,
     roomCallState = roomCallState,
     roomType = roomType,
+    isChannel = isChannel,
     dmOtherMemberDetailsState = dmOtherMemberDetailsState,
     leaveRoomState = leaveRoomState,
     roomNotificationSettings = roomNotificationSettings,

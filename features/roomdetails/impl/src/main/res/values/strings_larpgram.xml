@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larpgram fork strings for the room details screen. Kept out of localazy.xml so the
+     translation pipeline does not overwrite them. -->
+<resources>
+    <!-- Roomless: room-details terminology by chat type (group vs channel), Telegram-style. -->
+    <string name="screen_room_details_members">Members</string>
+    <string name="screen_room_details_subscribers">Subscribers</string>
+    <string name="screen_room_details_leave_group">Leave group</string>
+    <!-- Roomless (gap D): leaving a channel reads as "Unsubscribe" for its subscribers. Key name
+         predates the wording. -->
+    <string name="screen_room_details_leave_channel">Unsubscribe</string>
+    <string name="screen_room_details_delete_chat">Delete chat</string>
+    <!-- Member/subscriber count shown under the name in the details header. -->
+    <plurals name="screen_room_details_member_count">
+        <item quantity="one">%1$d member</item>
+        <item quantity="other">%1$d members</item>
+    </plurals>
+    <plurals name="screen_room_details_subscriber_count">
+        <item quantity="one">%1$d subscriber</item>
+        <item quantity="other">%1$d subscribers</item>
+    </plurals>
+</resources>

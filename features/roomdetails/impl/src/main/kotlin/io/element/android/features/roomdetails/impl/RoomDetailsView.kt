@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -158,6 +159,10 @@ fun RoomDetailsView(
                         roomAlias = state.roomAlias,
                         heroes = state.heroes,
                         isTombstoned = state.isTombstoned,
+                        // Правка форка (роумлесс): TG-подпись под именем — счётчик участников
+                        // (группа) / подписчиков (канал).
+                        memberCount = state.memberCount,
+                        isChannel = state.isChannel,
                         openAvatarPreview = { avatarUrl ->
                             openAvatarPreview(state.roomName, avatarUrl)
                         },
@@ -272,6 +277,7 @@ fun RoomDetailsView(
                         MembersItem(
                             memberCount = state.memberCount,
                             hasVerificationViolations = state.hasMemberVerificationViolations,
+                            isChannel = state.isChannel,
                             openRoomMemberList = openRoomMemberList,
                         )
                         if (state.canShowKnockRequests) {
@@ -336,6 +342,8 @@ fun RoomDetailsView(
             OtherActionsSection(
                 dmOtherMemberDetailsState = state.dmOtherMemberDetailsState,
                 canReportRoom = state.canReportRoom,
+                roomType = state.roomType,
+                isChannel = state.isChannel,
                 onReportRoomClick = onReportRoomClick,
                 onLeaveRoomClick = { state.eventSink(RoomDetailsEvent.LeaveRoom(needsConfirmation = true)) }
             )
@@ -474,6 +482,8 @@ private fun RoomHeaderSection(
     roomAlias: RoomAlias?,
     heroes: ImmutableList<MatrixUser>,
     isTombstoned: Boolean,
+    memberCount: Long,
+    isChannel: Boolean,
     openAvatarPreview: (url: String) -> Unit,
     onSubtitleClick: (String) -> Unit,
 ) {
@@ -506,6 +516,18 @@ private fun RoomHeaderSection(
         Text(
             text = roomName,
             style = ElementTheme.typography.fontHeadingLgBold,
+            textAlign = TextAlign.Center,
+        )
+        // Правка форка (роумлесс): TG-подпись со счётчиком — участники (группа) / подписчики (канал).
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = if (isChannel) {
+                pluralStringResource(R.plurals.screen_room_details_subscriber_count, memberCount.toInt(), memberCount.toInt())
+            } else {
+                pluralStringResource(R.plurals.screen_room_details_member_count, memberCount.toInt(), memberCount.toInt())
+            },
+            style = ElementTheme.typography.fontBodyLgRegular,
+            color = ElementTheme.colors.textSecondary,
             textAlign = TextAlign.Center,
         )
         if (roomAlias != null) {
@@ -752,10 +774,18 @@ private fun ProfileItem(
 private fun MembersItem(
     memberCount: Long,
     hasVerificationViolations: Boolean,
+    isChannel: Boolean,
     openRoomMemberList: () -> Unit,
 ) {
     ListItem(
-        headlineContent = { Text(stringResource(CommonStrings.common_people)) },
+        // Правка форка (роумлесс): «Участники» (группа) / «Подписчики» (канал).
+        headlineContent = {
+            Text(
+                stringResource(
+                    if (isChannel) R.string.screen_room_details_subscribers else R.string.screen_room_details_members
+                )
+            )
+        },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.User())),
         trailingContent = if (hasVerificationViolations) {
             ListItemContent.Icon(
@@ -829,6 +859,8 @@ private fun MediaGalleryItem(
 @Composable
 private fun OtherActionsSection(
     canReportRoom: Boolean,
+    roomType: RoomDetailsType,
+    isChannel: Boolean,
     onReportRoomClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
     dmOtherMemberDetailsState: UserProfileState?,
@@ -848,11 +880,18 @@ private fun OtherActionsSection(
                 onClick = onReportRoomClick,
             )
         }
+        // Правка форка (роумлесс): подпись выхода по типу. ЛС — «Удалить чат» (иконка Delete),
+        // группа — «Выйти из группы», канал — «Выйти из канала».
+        val (leaveTextResId, leaveIcon) = when {
+            roomType is RoomDetailsType.Dm -> R.string.screen_room_details_delete_chat to CompoundIcons.Delete()
+            isChannel -> R.string.screen_room_details_leave_channel to CompoundIcons.Leave()
+            else -> R.string.screen_room_details_leave_group to CompoundIcons.Leave()
+        }
         ListItem(
             headlineContent = {
-                Text(stringResource(CommonStrings.action_leave_room))
+                Text(stringResource(leaveTextResId))
             },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Leave())),
+            leadingContent = ListItemContent.Icon(IconSource.Vector(leaveIcon)),
             style = ListItemStyle.Destructive,
             onClick = onLeaveRoomClick,
         )

@@ -11,6 +11,6 @@
     <string name="screen_roomlist_unpin">Открепить</string>
     <string name="screen_roomlist_delete_chat">Удалить чат</string>
     <string name="screen_roomlist_leave_group">Выйти из группы</string>
-    <string name="screen_roomlist_leave_channel">Выйти из канала</string>
+    <string name="screen_roomlist_leave_channel">Отписаться</string>
     <string name="screen_roomlist_block_user">Заблокировать</string>
 </resources>
