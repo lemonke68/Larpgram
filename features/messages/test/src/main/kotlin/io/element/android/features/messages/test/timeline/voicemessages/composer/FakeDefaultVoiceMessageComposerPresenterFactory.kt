@@ -14,6 +14,8 @@ import io.element.android.features.messages.test.FakeMessageComposerContext
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.mediaplayer.test.FakeAudioFocus
 import io.element.android.libraries.mediaplayer.test.FakeMediaPlayer
+import io.element.android.libraries.matrix.test.FakeMatrixClient
+import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
 import io.element.android.libraries.mediaupload.api.MediaSender
 import io.element.android.libraries.mediaupload.test.FakeMediaSender
 import io.element.android.libraries.permissions.test.FakePermissionsPresenterFactory
@@ -41,6 +43,8 @@ class FakeDefaultVoiceMessageComposerPresenterFactory(
                 sessionCoroutineScope = sessionCoroutineScope,
             ),
             messageComposerContext = FakeMessageComposerContext(),
+            room = FakeJoinedRoom(),
+            matrixClient = FakeMatrixClient(),
             permissionsPresenterFactory = FakePermissionsPresenterFactory(),
         )
     }
