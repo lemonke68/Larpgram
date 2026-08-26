@@ -324,63 +324,6 @@ fun TimelineItemEventRow(
             )
         }
 
-        // Larpgram: channel posts get a Telegram-style "Comments" chip opening the post's comment
-        // thread. Text posts embed the comment link in their own content; image posts don't, but
-        // are mirrored into the discussion group, so show the chip on images too when the channel
-        // has a discussion. Other media types aren't mirrored yet and show none.
-        val hasTextComments = remember(event.id) {
-            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) != null } ?: false
-        }
-        val isMediaPost = event.content is TimelineItemImageContent ||
-            event.content is TimelineItemVideoContent ||
-            event.content is TimelineItemAudioContent ||
-            event.content is TimelineItemFileContent
-        val showChannelComments = timelineRoomInfo.isChannel &&
-            (hasTextComments || (isMediaPost && timelineRoomInfo.channelDiscussionRoomId != null))
-        // Правка форка (роумлесс, gap D): число комментариев. Текстовый пост коррелируется по
-        // correlation-id из своего контента, медиа-пост — по своему eventId (в его зеркале
-        // comment_id = eventId поста). Нет числа (дискуссия ещё не загружена) → подпись без числа.
-        val commentKey = remember(event.id) {
-            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it)?.second }
-                ?: event.eventId?.value
-        }
-        val commentCount = commentKey?.let { timelineRoomInfo.channelCommentCounts[it] }
-        if (showChannelComments) {
-            Row(
-                modifier = Modifier
-                    .then(
-                        if (event.isMine) {
-                            Modifier.align(Alignment.End).padding(end = 16.dp)
-                        } else {
-                            Modifier.padding(start = 16.dp)
-                        }
-                    )
-                    .padding(top = 4.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(ElementTheme.colors.bgSubtleSecondary)
-                    .clickable { eventSink(TimelineEvent.OpenChannelPostComments(event)) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = CompoundIcons.Chat(),
-                    contentDescription = null,
-                    tint = ElementTheme.colors.textActionAccent,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = if (commentCount != null && commentCount > 0) {
-                        pluralStringResource(id = R.plurals.channel_comments_count, count = commentCount.toInt(), commentCount.toInt())
-                    } else {
-                        stringResource(id = R.string.screen_channel_comments)
-                    },
-                    style = ElementTheme.typography.fontBodySmMedium,
-                    color = ElementTheme.colors.textActionAccent,
-                )
-            }
-        }
-
         // Larpgram: in a channel comment thread the first item is the post (its mirror). Mark it as
         // a header by separating it from the comments below with a "Комментарии" divider, like
         // Telegram's "Discussion started". Detected: thread mode, this event is the root, and it
@@ -398,6 +341,49 @@ fun TimelineItemEventRow(
         // Правка форка: аватарки прочтения убраны. Те же два факта, отправлено и прочитано,
         // теперь показывают галочки внутри пузыря (MessageDeliveryTicks), а два индикатора
         // одного и того же — лишний шум. Telegram аватарки под сообщением не рисует.
+    }
+}
+
+// Larpgram (роумлесс, gap D): TG-чип «Комментарии», влитый нижней секцией в карточку поста канала.
+// Живёт внутри пузыря, поэтому наследует его ширину и фон; сверху — делитель, отделяющий от контента.
+@Composable
+private fun ChannelPostCommentsFooter(
+    count: Long?,
+    onClick: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = ElementTheme.colors.separatorPrimary)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = CompoundIcons.Chat(),
+                contentDescription = null,
+                tint = ElementTheme.colors.textActionAccent,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = if (count != null && count > 0) {
+                    pluralStringResource(id = R.plurals.channel_comments_count, count = count.toInt(), count.toInt())
+                } else {
+                    stringResource(id = R.string.screen_channel_comments)
+                },
+                style = ElementTheme.typography.fontBodySmMedium,
+                color = ElementTheme.colors.textActionAccent,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = CompoundIcons.ChevronRight(),
+                contentDescription = null,
+                tint = ElementTheme.colors.iconTertiary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -596,6 +582,33 @@ private fun TimelineItemEventRowContent(
             background to border
         }
 
+        // Larpgram (роумлесс, gap D): TG-чип «Комментарии» под постом канала, влитый в карточку.
+        // Текстовый пост несёт ссылку на дискуссию в своём контенте; медиа-пост — нет, но зеркалится
+        // в дискуссию, поэтому чип показываем и на медиа, когда у канала есть дискуссия. Остальные
+        // типы пока не зеркалятся и чип не получают.
+        val hasTextComments = remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) != null } ?: false
+        }
+        val isMediaPost = event.content is TimelineItemImageContent ||
+            event.content is TimelineItemVideoContent ||
+            event.content is TimelineItemAudioContent ||
+            event.content is TimelineItemFileContent
+        val showChannelComments = timelineRoomInfo.isChannel &&
+            (hasTextComments || (isMediaPost && timelineRoomInfo.channelDiscussionRoomId != null))
+        // Число комментариев: текстовый пост коррелируется по correlation-id из своего контента,
+        // медиа-пост — по своему eventId (в его зеркале comment_id = eventId поста). Нет числа
+        // (дискуссия ещё не загружена) → подпись без числа.
+        val commentKey = remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it)?.second }
+                ?: event.eventId?.value
+        }
+        val commentCount = commentKey?.let { timelineRoomInfo.channelCommentCounts[it] }
+        val commentsFooter: (@Composable () -> Unit)? = if (showChannelComments) {
+            { ChannelPostCommentsFooter(count = commentCount, onClick = { eventSink(TimelineEvent.OpenChannelPostComments(event)) }) }
+        } else {
+            null
+        }
+
         // Message bubble
         val bubbleState = BubbleState(
             groupPosition = event.groupPosition,
@@ -636,6 +649,9 @@ private fun TimelineItemEventRowContent(
                     !timelineRoomInfo.isDm &&
                     !event.content.isBubbleless,
                 onSenderNameClick = onUserDataClick,
+                // Чип-футер только для постов с пузырём; на безпузырном контенте (стикеры/кружочки)
+                // карточки нет — влить некуда, поэтому не показываем.
+                commentsFooter = commentsFooter.takeUnless { event.content.isBubbleless },
                 eventContentView = eventContentView,
             )
         }
@@ -747,6 +763,9 @@ private fun MessageEventBubbleContent(
     // need to rename this modifier to prevent linter false positives
     @Suppress("ModifierNaming")
     bubbleModifier: Modifier = Modifier,
+    // Larpgram (роумлесс): необязательная нижняя секция пузыря — TG-чип «Комментарии», влитый
+    // в карточку поста (наследует ширину и фон пузыря). null для не-каналов и обычных сообщений.
+    commentsFooter: (@Composable () -> Unit)? = null,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
     // Long clicks are not not automatically propagated from a `clickable`
@@ -968,6 +987,7 @@ private fun MessageEventBubbleContent(
                 threadDecoration()
                 inReplyTo(inReplyToDetails)
                 contentWithTimestamp()
+                commentsFooter?.invoke()
             }
         } else {
             Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -977,6 +997,7 @@ private fun MessageEventBubbleContent(
                     senderName()
                     contentWithTimestamp()
                 }
+                commentsFooter?.invoke()
             }
         }
     }
