@@ -5,7 +5,7 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-package io.element.android.features.messages.impl.channel
+package io.element.android.libraries.channelcomments
 
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -25,7 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
  * readable via the SDK, so the discussion is discovered from account data or, failing that,
  * backfilled from an existing post's raw content.
  */
-internal object ChannelDiscussion {
+object ChannelDiscussion {
     const val ACCOUNT_DATA_TYPE = "ru.mangokokos.larpgram.channel_discussions"
     const val COMMENT_REF_FIELD = "ru.mangokokos.larpgram.comment"
     const val COMMENT_ID_FIELD = "ru.mangokokos.larpgram.comment_id"

@@ -30,7 +30,7 @@ import io.element.android.features.messages.api.MessageComposerContext
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerEvent
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerPresenter
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
-import io.element.android.features.messages.impl.channel.ChannelPostMirror
+import io.element.android.libraries.channelcomments.ChannelPostMirror
 import io.element.android.libraries.audio.api.AudioFocus
 import io.element.android.libraries.audio.api.AudioFocusRequester
 import io.element.android.libraries.core.extensions.runCatchingExceptions

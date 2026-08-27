@@ -19,9 +19,12 @@ import dev.zacsweers.metro.Inject
 import io.element.android.features.stickers.impl.import.ImportResult
 import io.element.android.features.stickers.impl.import.StickerPackImporter
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.channelcomments.ChannelPostMirror
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.imagepacks.api.ImagePack
 import io.element.android.libraries.imagepacks.api.ImagePackSource
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -34,6 +37,7 @@ import timber.log.Timber
 class StickerPickerPresenter(
     private val imagePackSource: ImagePackSource,
     private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     private val importer: StickerPackImporter,
 ) : Presenter<StickerPickerState> {
     @Composable
@@ -69,6 +73,9 @@ class StickerPickerPresenter(
                 }
                 is StickerPickerEvents.SendSticker -> coroutineScope.launch {
                     val image = event.image
+                    // Larpgram: запомним свои стикеры до отправки, чтобы опознать только что
+                    // отправленный и зеркалить его в дискуссию канала (комменты под стикером).
+                    val preIds = ChannelPostMirror.myPostIds(room) { ChannelPostMirror.isStickerEvent(it) }
                     room.sendSticker(
                         url = image.url,
                         body = image.bestDescription,
@@ -76,7 +83,16 @@ class StickerPickerPresenter(
                         width = image.width,
                         height = image.height,
                         size = image.size,
-                    ).onFailure { error ->
+                    ).onSuccess {
+                        runCatchingExceptions {
+                            ChannelPostMirror.mirrorLastPost(
+                                room = room,
+                                matrixClient = matrixClient,
+                                preIds = preIds,
+                                eventType = ChannelPostMirror.STICKER_EVENT_TYPE,
+                            ) { ChannelPostMirror.isStickerEvent(it) }
+                        }.onFailure { Timber.w(it, "не удалось зеркалить стикер в дискуссию") }
+                    }.onFailure { error ->
                         // Молча ронять отправку нельзя: именно из-за этого неотправка
                         // стикеров в шифрованных комнатах не оставляла ни следа ни в
                         // логе, ни на экране.

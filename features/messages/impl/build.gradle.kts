@@ -36,6 +36,7 @@ dependencies {
     implementation(projects.features.poll.api)
     implementation(projects.features.roomcall.api)
     implementation(projects.libraries.androidutils)
+    implementation(projects.libraries.channelcomments)
     implementation(projects.libraries.core)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
