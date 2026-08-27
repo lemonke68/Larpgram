@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +37,7 @@ import coil3.compose.AsyncImage
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.protection.ProtectedView
+import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -79,6 +83,24 @@ fun LarpgramCircleVideoView(
             withSound = false
         },
     )
+
+    // Larpgram: моно-звук. Пока этот кружок звучит — держим аудио-фокус; кто-то другой (кружок
+    // или голосовое) забрал фокус — возвращаемся к беззвучному кругу. Токен = mediaSource кружочка.
+    val audioToken = content.mediaSource
+    val currentAudible by AudiblePlaybackController.current.collectAsState()
+    val isAudible = withSound && !isPaused && isVisible
+    LaunchedEffect(isAudible) {
+        if (isAudible) AudiblePlaybackController.requestFocus(audioToken) else AudiblePlaybackController.release(audioToken)
+    }
+    LaunchedEffect(currentAudible) {
+        if (withSound && currentAudible != audioToken) {
+            withSound = false
+            isPaused = false
+        }
+    }
+    DisposableEffect(audioToken) {
+        onDispose { AudiblePlaybackController.release(audioToken) }
+    }
 
     fun onCircleClick() {
         when {
