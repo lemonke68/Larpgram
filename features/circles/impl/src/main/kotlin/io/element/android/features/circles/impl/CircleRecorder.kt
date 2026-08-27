@@ -6,8 +6,10 @@
 
 package io.element.android.features.circles.impl
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.MirrorMode
 import androidx.camera.core.Preview
@@ -132,6 +134,14 @@ class CircleRecorder(
     @OptIn(ExperimentalPersistentRecording::class)
     fun start(onFinished: (Result<File>) -> Unit): Boolean {
         val capture = videoCapture ?: return false
+        // Не стартуем, пока обе рантайм-пермишены реально не выданы. `withAudioEnabled` у
+        // CameraX бросает SecurityException, если RECORD_AUDIO ещё не дан — а на первом
+        // запуске диалоги CAMERA и RECORD_AUDIO приходят по очереди, и запись успевает
+        // дёрнуть start() между ними, роняя приложение. Возврат false штатный: вызывающий
+        // цикл (`while (!recorder.start())`) подождёт грант, а по таймауту свернётся сам.
+        if (!hasPermission(Manifest.permission.CAMERA) || !hasPermission(Manifest.permission.RECORD_AUDIO)) {
+            return false
+        }
         val target = File(cacheDir, "larpgram-circle-${UUID.randomUUID()}.mp4")
         val options = FileOutputOptions.Builder(target).build()
         recording = capture.output
@@ -178,6 +188,9 @@ class CircleRecorder(
         previewUseCase = null
         videoCapture = null
     }
+
+    private fun hasPermission(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 }
 
 private suspend fun Context.awaitCameraProvider(): ProcessCameraProvider = suspendCoroutine { continuation ->
