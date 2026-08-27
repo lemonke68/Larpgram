@@ -106,10 +106,17 @@ class StickerPickerPresenter(
                     importState = ImportState.InProgress
                     importState = when (val result = importer.import(event.packName)) {
                         is ImportResult.Success -> {
-                            // Пак уже записан в account data, осталось показать его в пикере.
-                            load()
+                            // Пак записан в account data, но getAccountData сразу после setAccountData
+                            // может ещё отдавать старый кэш — из-за этого load() не видел свежий пак до
+                            // следующего импорта. Поэтому добавляем его в список оптимистично (дедуп по
+                            // id) и показываем; на следующем открытии пикера load() всё сверит с сервером.
+                            val pack = result.pack
+                            if (pack.stickers.isNotEmpty() && packs.none { it.id == pack.id }) {
+                                packs = (packs + pack).toImmutableList()
+                            }
+                            selectedPackIndex = packs.indexOfFirst { it.id == pack.id }.coerceAtLeast(0)
                             ImportState.Done(
-                                packName = result.pack.displayName.orEmpty(),
+                                packName = pack.displayName.orEmpty(),
                                 skipped = result.skipped,
                             )
                         }
