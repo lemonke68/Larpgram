@@ -20,6 +20,7 @@ import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runUpdatingState
 import io.element.android.libraries.core.extensions.flatMap
+import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.ui.utils.time.formatShort
@@ -61,6 +62,18 @@ class VoiceMessagePresenter(
             player.setPlaybackSpeed(VoicePlayerConfig.availablePlaybackSpeeds[playbackSpeedIndex])
         }
 
+        // Larpgram: моно-звук на весь процесс. Фокус берём синхронно в момент play (см. handleEvent),
+        // а здесь только реагируем: если фокус забрал другой звучащий элемент (другое голосовое или
+        // кружочек) — встаём на паузу. Ключ ТОЛЬКО currentAudible: если завязать ещё и на isPlaying,
+        // при старте гс isPlaying успевает стать true раньше, чем collectAsState обновит currentAudible
+        // до нашего eventId, и гс паузился бы мгновенно сам об себя.
+        val currentAudible by AudiblePlaybackController.current.collectAsState()
+        LaunchedEffect(currentAudible) {
+            if (playerState.isPlaying && eventId != null && currentAudible != eventId) {
+                player.pause()
+            }
+        }
+
         val buttonType by remember {
             derivedStateOf {
                 when {
@@ -98,9 +111,15 @@ class VoiceMessagePresenter(
         fun handleEvent(event: VoiceMessageEvent) {
             when (event) {
                 is VoiceMessageEvent.PlayPause -> {
+                    // Larpgram: фокус берём синхронно ДО player.play(), чтобы currentAudible уже
+                    // равнялся нашему eventId к моменту, когда наблюдатель проверит его (иначе гонка
+                    // паузит гс сразу на старте). release при собственной паузе — необязательно, но
+                    // отдаёт фокус, чтобы фон не считал гс звучащим.
                     if (playerState.isPlaying) {
                         player.pause()
+                        if (eventId != null) AudiblePlaybackController.release(eventId)
                     } else if (playerState.isReady) {
+                        if (eventId != null) AudiblePlaybackController.requestFocus(eventId)
                         player.play()
                     } else {
                         sessionCoroutineScope.launch {
@@ -113,7 +132,10 @@ class VoiceMessagePresenter(
                                 },
                             ) {
                                 player.prepare().flatMap {
-                                    runCatchingExceptions { player.play() }
+                                    runCatchingExceptions {
+                                        if (eventId != null) AudiblePlaybackController.requestFocus(eventId)
+                                        player.play()
+                                    }
                                 }
                             }
                         }
