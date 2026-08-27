@@ -50,6 +50,7 @@ internal fun LarpgramRecordModeButton(
     onVoiceStart: () -> Unit,
     onVoiceStop: () -> Unit,
     onVoiceCancel: () -> Unit,
+    onVoiceLock: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var mode by rememberSaveable { mutableStateOf(RecordMode.Voice) }
@@ -58,6 +59,7 @@ internal fun LarpgramRecordModeButton(
     val currentVoiceStart by rememberUpdatedState(onVoiceStart)
     val currentVoiceStop by rememberUpdatedState(onVoiceStop)
     val currentVoiceCancel by rememberUpdatedState(onVoiceCancel)
+    val currentVoiceLock by rememberUpdatedState(onVoiceLock)
 
     val density = LocalDensity.current
     val lockThresholdPx = with(density) { LOCK_THRESHOLD.toPx() }
@@ -118,9 +120,11 @@ internal fun LarpgramRecordModeButton(
                             locked = true
                             if (startMode == RecordMode.Circle) {
                                 currentCircleGestures.onLock()
+                            } else {
+                                // Голосовое фиксируется, как кружок: после отпускания запись
+                                // продолжается «без рук», а композер показывает кнопку отправки.
+                                currentVoiceLock()
                             }
-                            // У голосовых фиксация не нужна: после остановки апстрим и так
-                            // показывает предпросмотр с кнопкой отправки.
                         }
                     }
 
