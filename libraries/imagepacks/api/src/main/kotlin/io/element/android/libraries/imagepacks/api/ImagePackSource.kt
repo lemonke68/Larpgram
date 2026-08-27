@@ -28,6 +28,14 @@ object ImagePackEventTypes {
      * приемлемо, кроссклиентность мы и так не поддерживаем.
      */
     const val SAVED_PACKS = "ru.mangokokos.larpgram.packs"
+
+    /**
+     * Наше поле в контенте `m.sticker`: дескриптор пака, из которого отправлен стикер.
+     *
+     * Нужно, чтобы по тапу на стикер в чате показать его пак и предложить добавить/удалить —
+     * даже тому, у кого пака нет. Кросс-клиентно поле игнорируется (обычный m.sticker).
+     */
+    const val STICKER_PACK_FIELD = "ru.mangokokos.larpgram.pack"
 }
 
 /** Отдаёт стикер-паки, доступные текущему пользователю. */
@@ -72,4 +80,13 @@ interface ImagePackSource {
      * Сохранённые идут первыми: это то, что человек добавил сам.
      */
     suspend fun getAllPacks(): List<ImagePack>
+
+    /**
+     * Сериализует один пак в компактный дескриптор для вложения в событие `m.sticker`
+     * (поле [ImagePackEventTypes.STICKER_PACK_FIELD]). Только у пака с [ImagePackId.Saved].
+     */
+    fun serializePackDescriptor(pack: ImagePack): String
+
+    /** Разбирает дескриптор пака из события `m.sticker` обратно в модель, или null. */
+    fun parsePackDescriptor(json: String): ImagePack?
 }

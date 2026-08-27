@@ -265,6 +265,7 @@ class FakeJoinedRoom(
         width: Long?,
         height: Long?,
         size: Long?,
+        extraContent: String?,
     ): Result<Unit> = simulateLongTask {
         sendStickerResult(url, body)
     }
