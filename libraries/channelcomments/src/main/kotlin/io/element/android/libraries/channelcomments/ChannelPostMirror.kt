@@ -5,7 +5,7 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-package io.element.android.features.messages.impl.channel
+package io.element.android.libraries.channelcomments
 
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.MatrixClient
@@ -30,9 +30,10 @@ import kotlinx.serialization.json.put
  * messages, …). Each path supplies a [matches] predicate identifying its own event kind, since the
  * different senders never return an event id.
  */
-internal object ChannelPostMirror {
+object ChannelPostMirror {
     private const val MIRROR_TIMEOUT_MS = 20_000L
     const val ROOM_MESSAGE_EVENT_TYPE = "m.room.message"
+    const val STICKER_EVENT_TYPE = "m.sticker"
 
     /** Message msgtypes we can mirror verbatim (mxc url + decryption keys travel inside the content). */
     private val MIRRORABLE_MSGTYPES = setOf("m.image", "m.video", "m.audio", "m.file")
@@ -44,6 +45,15 @@ internal object ChannelPostMirror {
             val msgtype = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]
                 ?.jsonObject?.get("msgtype")?.jsonPrimitive?.content
             msgtype in MIRRORABLE_MSGTYPES
+        }.getOrDefault(false)
+    }
+
+    /** True for an `m.sticker` event (its content has no msgtype; identified by the top-level event type). */
+    fun isStickerEvent(originalJson: String?): Boolean {
+        originalJson ?: return false
+        return runCatchingExceptions {
+            ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["type"]
+                ?.jsonPrimitive?.content == STICKER_EVENT_TYPE
         }.getOrDefault(false)
     }
 

@@ -71,7 +71,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
-import io.element.android.features.messages.impl.channel.ChannelDiscussion
+import io.element.android.libraries.channelcomments.ChannelDiscussion
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
@@ -325,6 +325,26 @@ fun TimelineItemEventRow(
             )
         }
 
+        // Larpgram: для безпузырного контента канала (стикеры/гифки/кружочки) чип-футер внутри
+        // карточки не работает — карточки нет. Рисуем отдельную пилюлю под контентом (TG-стиль).
+        // Пузырные посты получают чип внутри пузыря (см. commentsFooter в TimelineItemEventRowContent).
+        if (event.content.isBubbleless && timelineRoomInfo.isChannel && timelineRoomInfo.channelDiscussionRoomId != null) {
+            val commentKey = remember(event.id) {
+                event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it)?.second }
+                    ?: event.eventId?.value
+            }
+            val commentCount = commentKey?.let { timelineRoomInfo.channelCommentCounts[it] }
+            StandaloneChannelCommentsChip(
+                count = commentCount,
+                modifier = if (event.isMine) {
+                    Modifier.align(Alignment.End).padding(end = 16.dp)
+                } else {
+                    Modifier.padding(start = 16.dp)
+                }.padding(top = 4.dp),
+                onClick = { eventSink(TimelineEvent.OpenChannelPostComments(event)) },
+            )
+        }
+
         // Larpgram: in a channel comment thread the first item is the post (its mirror). Mark it as
         // a header by separating it from the comments below with a "Комментарии" divider, like
         // Telegram's "Discussion started". Detected: thread mode, this event is the root, and it
@@ -386,6 +406,41 @@ private fun ChannelPostCommentsFooter(
             contentDescription = null,
             tint = ElementTheme.colors.iconTertiary,
             modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+// Larpgram: отдельная пилюля «Комментарии» под безпузырным постом канала (стикер/гифка/кружок),
+// где влить чип в карточку некуда. Своя скруглённая подложка, компактно (иконка + число/подпись).
+@Composable
+private fun StandaloneChannelCommentsChip(
+    count: Long?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(ElementTheme.colors.bgSubtleSecondary)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = CompoundIcons.Chat(),
+            contentDescription = null,
+            tint = ElementTheme.colors.textActionAccent,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = if (count != null && count > 0) {
+                pluralStringResource(id = R.plurals.channel_comments_count, count = count.toInt(), count.toInt())
+            } else {
+                stringResource(id = R.string.screen_channel_comments)
+            },
+            style = ElementTheme.typography.fontBodySmMedium,
+            color = ElementTheme.colors.textActionAccent,
         )
     }
 }
