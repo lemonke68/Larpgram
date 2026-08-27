@@ -18,9 +18,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import timber.log.Timber
 
 /**
  * Правка форка (роумлесс): свой пин чатов поверх списка.
@@ -64,15 +66,23 @@ class PinnedChatsStore(
             if (next == current) return@launch
             _pinnedFlow.value = next
             client.setAccountData(ACCOUNT_DATA_TYPE, encode(next))
+                .onFailure { Timber.w(it, "не удалось сохранить закреплённые чаты") }
         }
     }
 
+    /**
+     * Контент account data в Matrix обязан быть JSON-ОБЪЕКТОМ: голый массив сервер отклоняет
+     * (PUT падает 400), и пины не сохранялись между сессиями. Поэтому список лежит в поле [pinned].
+     */
+    @Serializable
+    private data class Content(val pinned: List<String> = emptyList())
+
     private fun decode(raw: String?): List<RoomId> = raw
-        ?.let { runCatching { json.decodeFromString<List<String>>(it) }.getOrNull() }
+        ?.let { runCatching { json.decodeFromString<Content>(it).pinned }.getOrNull() }
         .orEmpty()
         .map { RoomId(it) }
 
-    private fun encode(list: List<RoomId>): String = json.encodeToString(list.map { it.value })
+    private fun encode(list: List<RoomId>): String = json.encodeToString(Content(list.map { it.value }))
 
     companion object {
         const val ACCOUNT_DATA_TYPE = "ru.mangokokos.larpgram.pinned_chats"

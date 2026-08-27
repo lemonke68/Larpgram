@@ -18,7 +18,10 @@ import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.channelcomments.ChannelPostMirror
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,6 +41,7 @@ import java.io.File
 @ContributesBinding(RoomScope::class)
 class CircleRecorderPresenter(
     private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     private val recorder: CircleRecorder,
     private val sender: CircleSender,
 ) : Presenter<CircleRecorderState> {
@@ -85,7 +89,19 @@ class CircleRecorderPresenter(
                 return
             }
             coroutineScope.launch {
+                // Larpgram: как со стикером/голосом — запомним свои кружочки до отправки, чтобы
+                // опознать только что отправленный и зеркалить его в дискуссию канала (комменты).
+                val preIds = ChannelPostMirror.myPostIds(room) { ChannelPostMirror.isCircleEvent(it) }
                 sender.send(room, file)
+                    .onSuccess {
+                        runCatchingExceptions {
+                            ChannelPostMirror.mirrorLastPost(
+                                room = room,
+                                matrixClient = matrixClient,
+                                preIds = preIds,
+                            ) { ChannelPostMirror.isCircleEvent(it) }
+                        }.onFailure { Timber.w(it, "не удалось зеркалить кружочек в дискуссию") }
+                    }
                     .onFailure { Timber.e(it, "кружочек не отправился") }
                 mode = CircleRecorderMode.Hidden
             }

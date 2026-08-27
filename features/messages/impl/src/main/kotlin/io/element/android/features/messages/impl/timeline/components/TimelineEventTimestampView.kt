@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -46,13 +47,24 @@ fun TimelineEventTimestampView(
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     modifier: Modifier = Modifier,
     isLayoutDirectionMismatched: Boolean = false,
+    // Larpgram: на постах канала вместо тиков доставки показываем «просмотры» (по числу read
+    // receipts) со значком глаза — как в Telegram. Тики в вещательном канале смысла не имеют:
+    // пост не «прочитан» одним адресатом.
+    showViewCount: Boolean = false,
+    // Larpgram: цвет содержимого плашки. Для оверлея поверх медиа задаём белый — фон плашки там
+    // полупрозрачный тёмный, а тема-зависимый textSecondary на ярком фото читался бы плохо.
+    contentColor: Color? = null,
 ) {
     val formattedTime = event.sentTime
     val hasError = event.failedToSend
     val hasEncryptionCritical = event.messageShield?.isCritical.orFalse()
     val isMessageEdited = event.content.isEdited()
     val isMessageRedacted = event.content.isRedacted()
-    val tint = if (hasError || hasEncryptionCritical && !isMessageRedacted) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textSecondary
+    val tint = if (hasError || hasEncryptionCritical && !isMessageRedacted) {
+        ElementTheme.colors.textCriticalPrimary
+    } else {
+        contentColor ?: ElementTheme.colors.textSecondary
+    }
 
     val shield = event.messageShield
     val isVerifiedUserSendFailure = event.localSendState is LocalEventSendState.Failed.VerifiedUser
@@ -104,6 +116,26 @@ fun TimelineEventTimestampView(
             )
             Spacer(modifier = Modifier.width(4.dp))
         }
+        // Larpgram: «просмотры» канала — значок глаза + число прочитавших (read receipts), перед
+        // временем, как в Telegram. Показываем вместо тиков.
+        if (showViewCount) {
+            Icon(
+                imageVector = CompoundIcons.VisibilityOn(),
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(12.dp),
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Text(
+                // read receipts исключают самого зрителя, поэтому +1 = собственный просмотр.
+                // Приближение: receipt отмечает лишь ПОСЛЕДНИЙ прочитанный юзером пост, поэтому на
+                // старых постах число оседает к 1 по мере чтения новых — это не истинный кумулятив.
+                text = (event.readReceiptState.receipts.size + 1).toString(),
+                style = ElementTheme.typography.fontBodyXsRegular,
+                color = tint,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
         Text(
             formattedTime,
             style = ElementTheme.typography.fontBodyXsRegular,
@@ -112,7 +144,7 @@ fun TimelineEventTimestampView(
         // Telegram's delivery ticks, on our own messages only. One tick means the server took it,
         // two mean somebody has read it: Matrix spells those as the local send state and read
         // receipts respectively.
-        if (event.isMine && !hasError && !isMessageRedacted) {
+        if (event.isMine && !hasError && !isMessageRedacted && !showViewCount) {
             Spacer(modifier = Modifier.width(3.dp))
             MessageDeliveryTicks(
                 state = when {

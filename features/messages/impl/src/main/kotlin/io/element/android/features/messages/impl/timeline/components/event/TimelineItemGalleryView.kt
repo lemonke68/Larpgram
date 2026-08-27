@@ -12,8 +12,10 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
@@ -49,17 +52,50 @@ import io.element.android.libraries.matrix.ui.media.contentvalidation.ContentVal
 import io.element.android.libraries.matrix.ui.media.contentvalidation.collectMediaState
 import io.element.android.libraries.matrix.ui.media.contentvalidation.rememberEventContentValidationState
 import io.element.android.libraries.ui.utils.time.formatShort
-import kotlinx.collections.immutable.ImmutableList
 
-private const val MAX_TILES = 5
+private const val MAX_TILES = 6
 private val GALLERY_WIDTH = 264.dp
-private val GRID_SPACING = 4.dp
-private val GROUP_CORNER_RADIUS = 6.dp
+private val GRID_SPACING = 2.dp
+private val GROUP_CORNER_RADIUS = 12.dp
 
-private val SINGLE_IMAGE_HEIGHT = 130.dp
-private val TWO_IMAGE_ROW_HEIGHT = 130.dp
-private val THREE_IMAGE_ROW_HEIGHT = 85.dp
+// Границы высоты тайлов. Telegram-мозаика считает высоту рядов из аспектов, но не даёт им
+// вырождаться: очень широкое фото не сплющивается в полоску, очень узкое не вытягивается на
+// пол-экрана.
+private val MIN_TILE_HEIGHT = 72.dp
+private val MAX_ROW_HEIGHT = 200.dp
+private val MAX_STACK_HEIGHT = 320.dp
 
+/** Аспект тайла (ш/в), с запасными 1:1 и зажимом, чтобы крайние пропорции не ломали ряд. */
+private fun GalleryItem.ratio(): Float = (aspectRatio ?: 1f).coerceIn(0.5f, 2.0f)
+
+/** Естественная высота ряда «в строку»: при ней ширины ∝ аспектам и сумма равна ширине блока. */
+private fun rowHeight(items: List<GalleryItem>): Dp {
+    val sumRatio = items.fold(0f) { acc, item -> acc + item.ratio() }
+    if (sumRatio <= 0f) return MIN_TILE_HEIGHT
+    val available = GALLERY_WIDTH - GRID_SPACING * (items.size - 1)
+    return (available / sumRatio).coerceIn(MIN_TILE_HEIGHT, MAX_ROW_HEIGHT)
+}
+
+/** Высота одного тайла «во всю ширину» из его аспекта. */
+private fun stackHeight(item: GalleryItem): Dp =
+    (GALLERY_WIDTH / item.ratio()).coerceIn(MIN_TILE_HEIGHT, MAX_STACK_HEIGHT)
+
+/** Один тайл мозаики: индекс в галерее плюс пометка последнего с «+N». */
+private data class GalleryCell(
+    val index: Int,
+    val item: GalleryItem,
+    val isLast: Boolean = false,
+    val remaining: Int = 0,
+)
+
+/**
+ * Telegram-подобная мозаика альбома.
+ *
+ * Раскладка выбирается по аспектам, а не по фиксированным шаблонам: горизонтальные фото идут
+ * стопкой, вертикальные — рядом, тройки/четвёрки складываются в «большой + столбик» либо в сетку.
+ * Тайлы кадрируются (`ContentScale.Crop`) и стыкуются тонким швом цвета канваса, как в Telegram.
+ * Геометрия снята со скриншотов TG-кита, код Telegram не переносится.
+ */
 @Composable
 fun TimelineItemGalleryView(
     eventId: EventId?,
@@ -68,191 +104,186 @@ fun TimelineItemGalleryView(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val totalItems = content.items.size
+    val items = content.items
+    val totalItems = items.size
     val showOverflow = totalItems > MAX_TILES
     val overflowCount = totalItems - MAX_TILES
+    // Тайлы сверх лимита в мозаике не рисуем — последний виден показывает «+N».
+    val visible = items.take(MAX_TILES)
+
     Column(modifier = modifier) {
-        val containerModifier = Modifier.clip(RoundedCornerShape(GROUP_CORNER_RADIUS))
         Column(
-            modifier = containerModifier.width(GALLERY_WIDTH),
+            modifier = Modifier
+                .width(GALLERY_WIDTH)
+                .clip(RoundedCornerShape(GROUP_CORNER_RADIUS))
+                // Нейтральные швы: без фона 2dp-зазоры просвечивают акцентным пузырём поста
+                // канала — между фото шли фиолетовые полосы. Канвас читается как тонкий TG-шов.
+                .background(ElementTheme.colors.bgCanvasDefault),
             verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
         ) {
-            when (totalItems) {
-                0 -> Unit
-                1 -> SingleItemLayout(
-                    eventId = eventId,
-                    item = content.items[0],
-                    onClick = { onGalleryItemClick(0) },
-                    onLongClick = onLongClick,
-                )
-                2 -> TwoItemLayout(
-                    eventId = eventId,
-                    items = content.items,
-                    onItemClick = onGalleryItemClick,
-                    onLongClick = onLongClick,
-                )
-                3 -> ThreeItemLayout(
-                    eventId = eventId,
-                    items = content.items,
-                    onItemClick = onGalleryItemClick,
-                    onLongClick = onLongClick,
-                )
-                else -> FourPlusItemLayout(
-                    eventId = eventId,
-                    items = content.items,
-                    showOverflow = showOverflow,
-                    overflowCount = overflowCount,
-                    onItemClick = onGalleryItemClick,
-                    onLongClick = onLongClick,
+            val cells = visible.mapIndexed { index, item ->
+                val isLastVisible = index == visible.lastIndex
+                GalleryCell(
+                    index = index,
+                    item = item,
+                    isLast = showOverflow && isLastVisible,
+                    remaining = if (showOverflow && isLastVisible) overflowCount else 0,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun SingleItemLayout(
-    eventId: EventId?,
-    item: GalleryItem,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)?,
-) {
-    GalleryItemCell(
-        eventId = eventId,
-        item = item,
-        isLast = false,
-        remainingCount = 0,
-        onClick = onClick,
-        onLongClick = onLongClick,
-        modifier = Modifier
-            .width(GALLERY_WIDTH)
-            .height(SINGLE_IMAGE_HEIGHT),
-    )
-}
-
-@Composable
-private fun TwoItemLayout(
-    eventId: EventId?,
-    items: ImmutableList<GalleryItem>,
-    onItemClick: (Int) -> Unit,
-    onLongClick: (() -> Unit)?,
-) {
-    Column(
-        modifier = Modifier.width(GALLERY_WIDTH),
-        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
-    ) {
-        items.forEachIndexed { index, item ->
-            GalleryItemCell(
+            MosaicLayout(
                 eventId = eventId,
-                item = item,
-                isLast = false,
-                remainingCount = 0,
-                onClick = { onItemClick(index) },
+                cells = cells,
+                onItemClick = onGalleryItemClick,
                 onLongClick = onLongClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(TWO_IMAGE_ROW_HEIGHT),
             )
         }
     }
 }
 
 @Composable
-private fun ThreeItemLayout(
+private fun ColumnScope.MosaicLayout(
     eventId: EventId?,
-    items: ImmutableList<GalleryItem>,
+    cells: List<GalleryCell>,
     onItemClick: (Int) -> Unit,
     onLongClick: (() -> Unit)?,
 ) {
-    Column(
-        modifier = Modifier.width(GALLERY_WIDTH),
-        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
-    ) {
-        GalleryItemCell(
-            eventId = eventId,
-            item = items[0],
-            isLast = false,
-            remainingCount = 0,
-            onClick = { onItemClick(0) },
-            onLongClick = onLongClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(SINGLE_IMAGE_HEIGHT),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
-        ) {
-            for (it in 1..2) {
-                GalleryItemCell(
-                    eventId = eventId,
-                    item = items[it],
-                    isLast = false,
-                    remainingCount = 0,
-                    onClick = { onItemClick(it) },
-                    onLongClick = onLongClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(TWO_IMAGE_ROW_HEIGHT),
-                )
+    val ratios = cells.map { it.item.ratio() }
+    when (cells.size) {
+        0 -> Unit
+        1 -> StackedCell(eventId, cells[0], stackHeight(cells[0].item), onItemClick, onLongClick)
+        2 -> {
+            // Оба горизонтальные — стопкой; иначе рядом (два вертикальных встают в два столбца).
+            if (ratios.all { it > 1f }) {
+                cells.forEach { StackedCell(eventId, it, stackHeight(it.item), onItemClick, onLongClick) }
+            } else {
+                MosaicRow(eventId, cells, rowHeight(cells.map { it.item }), onItemClick, onLongClick)
             }
+        }
+        3 -> {
+            if (ratios[0] < 1f) {
+                // Первый вертикальный крупно слева, два справа в столбик.
+                BigLeftWithColumn(eventId, cells, onItemClick, onLongClick)
+            } else {
+                // Первый во всю ширину сверху, два под ним в ряд.
+                StackedCell(eventId, cells[0], stackHeight(cells[0].item), onItemClick, onLongClick)
+                MosaicRow(eventId, cells.subList(1, 3), rowHeight(cells.subList(1, 3).map { it.item }), onItemClick, onLongClick)
+            }
+        }
+        4 -> {
+            if (ratios[0] > 1f) {
+                // Широкий первый сверху, три под ним в ряд.
+                StackedCell(eventId, cells[0], stackHeight(cells[0].item), onItemClick, onLongClick)
+                MosaicRow(eventId, cells.subList(1, 4), rowHeight(cells.subList(1, 4).map { it.item }), onItemClick, onLongClick)
+            } else {
+                // Сетка 2x2.
+                MosaicRow(eventId, cells.subList(0, 2), rowHeight(cells.subList(0, 2).map { it.item }), onItemClick, onLongClick)
+                MosaicRow(eventId, cells.subList(2, 4), rowHeight(cells.subList(2, 4).map { it.item }), onItemClick, onLongClick)
+            }
+        }
+        else -> {
+            // 5–6: верхний ряд из двух, остальные (2–4) в нижнем ряду; «+N» на последнем.
+            MosaicRow(eventId, cells.subList(0, 2), rowHeight(cells.subList(0, 2).map { it.item }), onItemClick, onLongClick)
+            val bottom = cells.subList(2, cells.size)
+            MosaicRow(eventId, bottom, rowHeight(bottom.map { it.item }), onItemClick, onLongClick)
         }
     }
 }
 
+/** Ряд тайлов равной высоты; ширины распределяются по аспектам (weight = аспект). */
 @Composable
-private fun FourPlusItemLayout(
+private fun MosaicRow(
     eventId: EventId?,
-    items: ImmutableList<GalleryItem>,
-    showOverflow: Boolean,
-    overflowCount: Int,
+    cells: List<GalleryCell>,
+    height: Dp,
     onItemClick: (Int) -> Unit,
     onLongClick: (() -> Unit)?,
 ) {
-    Column(
-        modifier = Modifier.width(GALLERY_WIDTH),
-        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+        cells.forEach { cell ->
+            GalleryItemCell(
+                eventId = eventId,
+                item = cell.item,
+                isLast = cell.isLast,
+                remainingCount = cell.remaining,
+                onClick = { onItemClick(cell.index) },
+                onLongClick = onLongClick,
+                modifier = Modifier
+                    .weight(cell.item.ratio())
+                    .height(height),
+            )
+        }
+    }
+}
+
+/** Один тайл во всю ширину блока. */
+@Composable
+private fun StackedCell(
+    eventId: EventId?,
+    cell: GalleryCell,
+    height: Dp,
+    onItemClick: (Int) -> Unit,
+    onLongClick: (() -> Unit)?,
+) {
+    GalleryItemCell(
+        eventId = eventId,
+        item = cell.item,
+        isLast = cell.isLast,
+        remainingCount = cell.remaining,
+        onClick = { onItemClick(cell.index) },
+        onLongClick = onLongClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height),
+    )
+}
+
+/** Крупный тайл слева на всю высоту, два тайла справа в столбик равной высоты. */
+@Composable
+private fun BigLeftWithColumn(
+    eventId: EventId?,
+    cells: List<GalleryCell>,
+    onItemClick: (Int) -> Unit,
+    onLongClick: (() -> Unit)?,
+) {
+    // Левый занимает ~2/3 ширины; высота блока — из его аспекта при этой ширине.
+    val leftWidth = GALLERY_WIDTH * 2f / 3f
+    val height = (leftWidth / cells[0].item.ratio()).coerceIn(140.dp, MAX_STACK_HEIGHT)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height),
+        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+    ) {
+        GalleryItemCell(
+            eventId = eventId,
+            item = cells[0].item,
+            isLast = cells[0].isLast,
+            remainingCount = cells[0].remaining,
+            onClick = { onItemClick(cells[0].index) },
+            onLongClick = onLongClick,
+            modifier = Modifier
+                .weight(2f)
+                .fillMaxHeight(),
+        )
+        Column(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
         ) {
-            for (it in 0..1) {
+            for (i in 1..2) {
                 GalleryItemCell(
                     eventId = eventId,
-                    item = items[it],
-                    isLast = false,
-                    remainingCount = 0,
-                    onClick = { onItemClick(it) },
+                    item = cells[i].item,
+                    isLast = cells[i].isLast,
+                    remainingCount = cells[i].remaining,
+                    onClick = { onItemClick(cells[i].index) },
                     onLongClick = onLongClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(TWO_IMAGE_ROW_HEIGHT),
+                        .fillMaxWidth()
+                        .weight(1f),
                 )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
-        ) {
-            val bottomRowItems = if (showOverflow) 3 else minOf(items.size - 2, 3)
-            val bottomRowHeight = if (bottomRowItems == 3) THREE_IMAGE_ROW_HEIGHT else TWO_IMAGE_ROW_HEIGHT
-            for (i in 0 until bottomRowItems) {
-                val itemIndex = 2 + i
-                if (itemIndex < items.size) {
-                    val isOverflowItem = showOverflow && i == bottomRowItems - 1
-                    GalleryItemCell(
-                        eventId = eventId,
-                        item = items[itemIndex],
-                        isLast = isOverflowItem,
-                        remainingCount = if (isOverflowItem) overflowCount else 0,
-                        onClick = { onItemClick(itemIndex) },
-                        onLongClick = onLongClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(bottomRowHeight),
-                    )
-                }
             }
         }
     }

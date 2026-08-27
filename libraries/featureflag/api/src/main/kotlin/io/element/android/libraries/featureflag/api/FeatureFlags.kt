@@ -151,7 +151,11 @@ enum class FeatureFlags(
         key = "feature.send_gallery_messages",
         title = "Send gallery messages",
         description = "Allow sending multiple media items in a single message.",
-        defaultValue = { false },
+        // Larpgram: on by default. Telegram sends multiple photos/videos as an album, and our
+        // audience expects it; the single-item picker felt broken ("can't pick more than one").
+        // Channel comments already mirror gallery posts. Upstream still marks this isFinished=false,
+        // so watch the multi-select picker and gallery preview on device.
+        defaultValue = { true },
         isFinished = false,
     ),
     UserStatus(
