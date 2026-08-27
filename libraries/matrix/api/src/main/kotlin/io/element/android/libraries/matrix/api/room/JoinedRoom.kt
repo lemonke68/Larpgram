@@ -238,6 +238,9 @@ interface JoinedRoom : BaseRoom {
         width: Long?,
         height: Long?,
         size: Long?,
+        // Larpgram: необязательные доп. поля контента `m.sticker` (JSON-объект строкой), например
+        // дескриптор пака `ru.mangokokos.larpgram.pack`. Ключи мёржатся в контент события.
+        extraContent: String? = null,
     ): Result<Unit>
 
     /**

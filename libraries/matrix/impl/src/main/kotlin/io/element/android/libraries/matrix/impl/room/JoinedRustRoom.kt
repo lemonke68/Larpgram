@@ -71,7 +71,9 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.matrix.rustcomponents.sdk.DateDividerMode
 import org.matrix.rustcomponents.sdk.IdentityStatusChangeListener
@@ -565,6 +567,7 @@ class JoinedRustRoom(
         width: Long?,
         height: Long?,
         size: Long?,
+        extraContent: String?,
     ): Result<Unit> = withContext(roomDispatcher) {
         runCatchingExceptions {
             val info = buildJsonObject {
@@ -573,10 +576,15 @@ class JoinedRustRoom(
                 height?.let { put("h", it) }
                 size?.let { put("size", it) }
             }
+            // Larpgram: доп. поля (напр. дескриптор пака) мёржим в контент верхним уровнем.
+            val extra = extraContent?.let {
+                runCatchingExceptions { Json.parseToJsonElement(it).jsonObject }.getOrNull()
+            }
             val content = buildJsonObject {
                 put("body", body)
                 put("url", url)
                 put("info", info)
+                extra?.forEach { (key, value) -> put(key, value) }
             }
             // Стикер уходит сырым событием: своего метода в SDK нет, см. JoinedRoom.sendSticker.
             innerRoom.sendRaw(STICKER_EVENT_TYPE, content.toString())

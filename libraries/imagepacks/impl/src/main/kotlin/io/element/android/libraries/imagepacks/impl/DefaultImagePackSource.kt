@@ -109,6 +109,10 @@ class DefaultImagePackSource(
         return getSavedPacks() + getUserPacks() + roomPacks
     }
 
+    override fun serializePackDescriptor(pack: ImagePack): String = parser.serializePackDescriptor(pack)
+
+    override fun parsePackDescriptor(json: String): ImagePack? = parser.parsePackDescriptor(json)
+
     private fun String.encode(): String = URLEncoder.encode(this, Charsets.UTF_8.name())
         // URLEncoder делает форму для тела запроса, а не для пути: пробел там '+',
         // а в пути он должен быть %20.

@@ -23,6 +23,8 @@ import io.element.android.libraries.channelcomments.ChannelPostMirror
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.imagepacks.api.ImagePack
+import io.element.android.libraries.imagepacks.api.ImagePackEventTypes
+import io.element.android.libraries.imagepacks.api.ImagePackId
 import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -76,6 +78,13 @@ class StickerPickerPresenter(
                     // Larpgram: запомним свои стикеры до отправки, чтобы опознать только что
                     // отправленный и зеркалить его в дискуссию канала (комменты под стикером).
                     val preIds = ChannelPostMirror.myPostIds(room) { ChannelPostMirror.isStickerEvent(it) }
+                    // Larpgram: вшиваем дескриптор пака в событие (только у сохранённых паков),
+                    // чтобы по тапу на стикер показать его пак и предложить добавить/удалить.
+                    val pack = packs.getOrNull(selectedPackIndex)?.takeIf { it.id is ImagePackId.Saved }
+                    val extraContent = pack?.let {
+                        "{\"" + ImagePackEventTypes.STICKER_PACK_FIELD + "\":" +
+                            imagePackSource.serializePackDescriptor(it) + "}"
+                    }
                     room.sendSticker(
                         url = image.url,
                         body = image.bestDescription,
@@ -83,6 +92,7 @@ class StickerPickerPresenter(
                         width = image.width,
                         height = image.height,
                         size = image.size,
+                        extraContent = extraContent,
                     ).onSuccess {
                         runCatchingExceptions {
                             ChannelPostMirror.mirrorLastPost(

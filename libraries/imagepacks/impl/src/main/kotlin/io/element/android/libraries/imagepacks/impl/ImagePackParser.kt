@@ -23,6 +23,7 @@ class ImagePackParser {
         ignoreUnknownKeys = true
         isLenient = true
     }
+    private val encodeJson = Json { encodeDefaults = true }
 
     /**
      * @param rawContent JSON события целиком.
@@ -103,47 +104,61 @@ class ImagePackParser {
     }
 
     /** Сериализует паки обратно в наш формат для записи в account data. */
-    fun serializeSavedPacks(packs: List<ImagePack>): String {
-        val json = Json { encodeDefaults = true }
-        return json.encodeToString(
-            SavedPacksJson(
-                packs = packs.mapNotNull { pack ->
-                    val slug = (pack.id as? ImagePackId.Saved)?.slug ?: return@mapNotNull null
-                    SavedPackJson(
-                        slug = slug,
-                        pack = ImagePackInfoJson(
-                            displayName = pack.displayName,
-                            avatarUrl = pack.avatarUrl,
-                            usage = pack.usages.map { usage ->
-                                when (usage) {
-                                    ImagePackUsage.EMOTICON -> USAGE_EMOTICON
-                                    ImagePackUsage.STICKER -> USAGE_STICKER
-                                }
-                            },
-                            attribution = pack.attribution,
-                        ),
-                        images = pack.images.associate { image ->
-                            image.shortcode to ImagePackImageJson(
-                                url = image.url,
-                                body = image.body,
-                                usage = image.usages.map { usage ->
-                                    when (usage) {
-                                        ImagePackUsage.EMOTICON -> USAGE_EMOTICON
-                                        ImagePackUsage.STICKER -> USAGE_STICKER
-                                    }
-                                },
-                                info = ImagePackImageInfoJson(
-                                    mimetype = image.mimeType,
-                                    width = image.width,
-                                    height = image.height,
-                                    size = image.size,
-                                ),
-                            )
-                        },
-                    )
-                }
-            )
+    fun serializeSavedPacks(packs: List<ImagePack>): String =
+        encodeJson.encodeToString(SavedPacksJson(packs = packs.mapNotNull { it.toSavedPackJson() }))
+
+    /**
+     * Дескриптор одного пака для вложения в событие `m.sticker`: тот же формат, что у сохранённого
+     * пака (slug + images + pack), поэтому [parsePackDescriptor] разбирает его тем же кодом.
+     */
+    fun serializePackDescriptor(pack: ImagePack): String {
+        val saved = pack.toSavedPackJson() ?: return "{}"
+        return encodeJson.encodeToString(saved)
+    }
+
+    /** Обратный разбор дескриптора пака из `m.sticker`, или null если нечитаем/без slug. */
+    fun parsePackDescriptor(rawContent: String): ImagePack? {
+        val saved = try {
+            json.decodeFromString<SavedPackJson>(rawContent)
+        } catch (_: Exception) {
+            return null
+        }
+        if (saved.slug.isBlank()) return null
+        return parseContent(
+            ImagePackContentJson(images = saved.images, pack = saved.pack),
+            ImagePackId.Saved(saved.slug),
         )
+    }
+
+    private fun ImagePack.toSavedPackJson(): SavedPackJson? {
+        val slug = (id as? ImagePackId.Saved)?.slug ?: return null
+        return SavedPackJson(
+            slug = slug,
+            pack = ImagePackInfoJson(
+                displayName = displayName,
+                avatarUrl = avatarUrl,
+                usage = usages.map { it.toWire() },
+                attribution = attribution,
+            ),
+            images = images.associate { image ->
+                image.shortcode to ImagePackImageJson(
+                    url = image.url,
+                    body = image.body,
+                    usage = image.usages.map { it.toWire() },
+                    info = ImagePackImageInfoJson(
+                        mimetype = image.mimeType,
+                        width = image.width,
+                        height = image.height,
+                        size = image.size,
+                    ),
+                )
+            },
+        )
+    }
+
+    private fun ImagePackUsage.toWire(): String = when (this) {
+        ImagePackUsage.EMOTICON -> USAGE_EMOTICON
+        ImagePackUsage.STICKER -> USAGE_STICKER
     }
 
     private fun List<String>?.toUsages(fallback: Set<ImagePackUsage> = ALL_USAGES): Set<ImagePackUsage> {
