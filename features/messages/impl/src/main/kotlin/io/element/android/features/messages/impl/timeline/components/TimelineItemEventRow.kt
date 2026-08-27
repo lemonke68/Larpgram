@@ -383,7 +383,7 @@ private fun ChannelPostCommentsFooter(
             imageVector = CompoundIcons.Chat(),
             contentDescription = null,
             tint = ElementTheme.colors.textActionAccent,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
         // weight + ellipsis: на узком посте (вертикальное медиа) текст ужимается/обрезается, а не
@@ -394,7 +394,7 @@ private fun ChannelPostCommentsFooter(
             } else {
                 stringResource(id = R.string.screen_channel_comments)
             },
-            style = ElementTheme.typography.fontBodySmMedium,
+            style = ElementTheme.typography.fontBodyMdMedium,
             color = ElementTheme.colors.textActionAccent,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -405,7 +405,7 @@ private fun ChannelPostCommentsFooter(
             imageVector = CompoundIcons.ChevronRight(),
             contentDescription = null,
             tint = ElementTheme.colors.iconTertiary,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -430,7 +430,7 @@ private fun StandaloneChannelCommentsChip(
             imageVector = CompoundIcons.Chat(),
             contentDescription = null,
             tint = ElementTheme.colors.textActionAccent,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
@@ -439,7 +439,7 @@ private fun StandaloneChannelCommentsChip(
             } else {
                 stringResource(id = R.string.screen_channel_comments)
             },
-            style = ElementTheme.typography.fontBodySmMedium,
+            style = ElementTheme.typography.fontBodyMdMedium,
             color = ElementTheme.colors.textActionAccent,
         )
     }
@@ -678,7 +678,8 @@ private fun TimelineItemEventRowContent(
             event.content is TimelineItemVideoContent ||
             event.content is TimelineItemAudioContent ||
             event.content is TimelineItemVoiceContent ||
-            event.content is TimelineItemFileContent
+            event.content is TimelineItemFileContent ||
+            event.content is TimelineItemGalleryContent
         val showChannelComments = timelineRoomInfo.isChannel &&
             (hasTextComments || (isMediaPost && timelineRoomInfo.channelDiscussionRoomId != null))
         // Число комментариев: текстовый пост коррелируется по correlation-id из своего контента,
@@ -735,6 +736,7 @@ private fun TimelineItemEventRowContent(
                     !timelineRoomInfo.isDm &&
                     !event.content.isBubbleless,
                 onSenderNameClick = onUserDataClick,
+                isChannel = timelineRoomInfo.isChannel,
                 // Чип-футер только для постов с пузырём; на безпузырном контенте (стикеры/кружочки)
                 // карточки нет — влить некуда, поэтому не показываем.
                 commentsFooter = commentsFooter.takeUnless { event.content.isBubbleless },
@@ -842,6 +844,8 @@ private fun MessageEventBubbleContent(
     onMessageLongClick: () -> Unit,
     inReplyToClick: () -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
+    // Larpgram: пост канала — в плашке времени показываем просмотры вместо тиков доставки.
+    isChannel: Boolean,
     // Правка форка: имя отправителя рисуется внутри пузыря, первой строкой.
     showSenderName: Boolean,
     onSenderNameClick: () -> Unit,
@@ -899,13 +903,16 @@ private fun MessageEventBubbleContent(
                     TimelineEventTimestampView(
                         event = event,
                         eventSink = eventSink,
+                        showViewCount = isChannel,
+                        // Полупрозрачная тёмная плашка поверх медиа + белый текст, как в Telegram.
+                        contentColor = Color.White,
                         modifier = Modifier
-                            // Outer padding
-                            .padding(horizontal = 4.dp, vertical = 4.dp)
-                            .background(ElementTheme.colors.bgSubtleSecondary, RoundedCornerShape(10.0.dp))
+                            // Отступ от угла: плашка сидит ВНУТРИ медиа, а не на рамке поста.
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
                             .align(Alignment.BottomEnd)
-                            // Inner padding
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            // Внутренний отступ плашки (компактнее).
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
             TimestampPosition.Aligned -> @Composable {
@@ -938,6 +945,7 @@ private fun MessageEventBubbleContent(
                                     event = event,
                                     eventSink = eventSink,
                                     isLayoutDirectionMismatched = originalLayoutDirection != contentDirection,
+                                    showViewCount = isChannel,
                                     modifier = Modifier
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
@@ -952,6 +960,7 @@ private fun MessageEventBubbleContent(
                     TimelineEventTimestampView(
                         event = event,
                         eventSink = eventSink,
+                        showViewCount = isChannel,
                         modifier = Modifier
                             .align(Alignment.End)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1118,8 +1127,11 @@ private fun MessageEventBubbleContent(
         when (val content = event.content) {
             is TimelineItemImageContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
             is TimelineItemVideoContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
-            is TimelineItemGalleryContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
-            is TimelineItemAttachmentsContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
+            // Правка форка: без подписи плашка времени висит полупрозрачной пилюлей в углу медиа
+            // (как в Telegram), а не отдельной строкой под альбомом — та резервировала спейсинг и
+            // делала рамку «жирной». С подписью время встаёт в хвост подписи (Aligned), без своей строки.
+            is TimelineItemGalleryContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
+            is TimelineItemAttachmentsContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
             is TimelineItemStickerContent -> TimestampPosition.Overlay
             // Правка форка: сообщение из одних эмодзи рисуется без пузыря, поэтому время
             // берёт ту же плашку, что у стикеров и кружочков. Без неё оно повисло бы прямо
@@ -1147,7 +1159,7 @@ private fun MessageEventBubbleContent(
         when (event.content) {
             is TimelineItemImageContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
             is TimelineItemVideoContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
-            is TimelineItemGalleryContent -> ContentPadding.CaptionedMedia
+            is TimelineItemGalleryContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
             is TimelineItemAttachmentsContent -> ContentPadding.CaptionedMedia
             is TimelineItemStickerContent,
             is TimelineItemLocationContent -> ContentPadding.Media

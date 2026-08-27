@@ -271,11 +271,11 @@ class AttachmentsPreviewPresenter(
 
                         // Send the media using the session coroutine scope so it doesn't matter if this screen or the chat one are closed
                         sessionCoroutineScope.launch(dispatchers.io) {
-                            // Larpgram: for a single image in a channel, remember our existing image
-                            // posts so we can identify the just-sent one and mirror it into the
-                            // discussion group (Telegram-style comments under the photo).
-                            val singleMedia = allMediaUploadInfos.singleOrNull()
-                            val preMediaIds = if (singleMedia != null) myMediaEventIds() else emptySet()
+                            // Larpgram: for a channel media post (a single photo/video/audio/file or a
+                            // multi-item gallery) remember our existing media posts so we can identify
+                            // the just-sent one and mirror it into the discussion group (Telegram-style
+                            // comments under the media).
+                            val preMediaIds = myMediaEventIds()
 
                             sendMedia(
                                 mediaUploadInfos = allMediaUploadInfos,
@@ -284,10 +284,8 @@ class AttachmentsPreviewPresenter(
                                 inReplyToEventId = inReplyToEventId,
                             )
 
-                            if (singleMedia != null) {
-                                runCatchingExceptions { mirrorMediaPostToDiscussion(preMediaIds) }
-                                    .onFailure { Timber.w(it, "Failed to mirror channel media post") }
-                            }
+                            runCatchingExceptions { mirrorMediaPostToDiscussion(preMediaIds) }
+                                .onFailure { Timber.w(it, "Failed to mirror channel media post") }
 
                             // Clean up the pre-processed media after it's been sent
                             mediaSender.cleanUp()
@@ -539,12 +537,16 @@ class AttachmentsPreviewPresenter(
     // comment reference into that send, so we identify the just-sent event, then re-post its content
     // into the discussion group carrying the post's event id. Shared logic lives in ChannelPostMirror.
 
-    /** Event ids of our media posts already in the timeline, used to spot the newly-sent one. */
+    /** True for anything we mirror from this screen: a single media message or a gallery. */
+    private fun isMediaOrGallery(originalJson: String?): Boolean =
+        ChannelPostMirror.isMirrorableMessage(originalJson) || ChannelPostMirror.isGalleryEvent(originalJson)
+
+    /** Event ids of our media/gallery posts already in the timeline, used to spot the newly-sent one. */
     private suspend fun myMediaEventIds(): Set<String> =
-        ChannelPostMirror.myPostIds(room) { ChannelPostMirror.isMirrorableMessage(it) }
+        ChannelPostMirror.myPostIds(room) { isMediaOrGallery(it) }
 
     private suspend fun mirrorMediaPostToDiscussion(preMediaIds: Set<String>) =
-        ChannelPostMirror.mirrorLastPost(room, matrixClient, preMediaIds) { ChannelPostMirror.isMirrorableMessage(it) }
+        ChannelPostMirror.mirrorLastPost(room, matrixClient, preMediaIds) { isMediaOrGallery(it) }
 
     private fun resetPreparedMedia(sendActionState: MutableState<SendActionState>) {
         sendActionState.value.mediaUploadInfoList()?.forEach(::cleanUp)

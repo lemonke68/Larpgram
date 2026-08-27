@@ -23,6 +23,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.coroutines.core)
     implementation(projects.libraries.architecture)
+    implementation(projects.libraries.channelcomments)
     implementation(projects.libraries.core)
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.di)

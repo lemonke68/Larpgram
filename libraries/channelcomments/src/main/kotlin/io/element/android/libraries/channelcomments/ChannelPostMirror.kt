@@ -11,9 +11,11 @@ import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
+import io.element.android.libraries.matrix.api.timeline.item.event.LARPGRAM_CIRCLE_FILENAME_PREFIX
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -54,6 +56,38 @@ object ChannelPostMirror {
         return runCatchingExceptions {
             ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["type"]
                 ?.jsonPrimitive?.content == STICKER_EVENT_TYPE
+        }.getOrDefault(false)
+    }
+
+    /**
+     * True for a Larpgram circle: an `m.video` message whose filename carries the circle marker
+     * ([LARPGRAM_CIRCLE_FILENAME_PREFIX]). Circles have no custom content field (the SDK owns the
+     * encrypted upload), so they are identified by filename, same as everywhere else in the app.
+     */
+    fun isCircleEvent(originalJson: String?): Boolean {
+        originalJson ?: return false
+        return runCatchingExceptions {
+            val content = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
+                ?: return@runCatchingExceptions false
+            if (content["msgtype"]?.jsonPrimitive?.content != "m.video") return@runCatchingExceptions false
+            val name = content["filename"]?.jsonPrimitive?.content
+                ?: content["body"]?.jsonPrimitive?.content
+            name?.startsWith(LARPGRAM_CIRCLE_FILENAME_PREFIX) == true
+        }.getOrDefault(false)
+    }
+
+    /**
+     * True for an MSC4274 media gallery: an `m.room.message` grouping several media into an
+     * `itemtypes` array (msgtype `m.gallery`). Detected by either signal so a msgtype rename does
+     * not silently drop the mirror. Mirrored verbatim like single media — every item's mxc url and
+     * decryption keys live inside the content.
+     */
+    fun isGalleryEvent(originalJson: String?): Boolean {
+        originalJson ?: return false
+        return runCatchingExceptions {
+            val content = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
+                ?: return@runCatchingExceptions false
+            content["msgtype"]?.jsonPrimitive?.content == "m.gallery" || content["itemtypes"] is JsonArray
         }.getOrDefault(false)
     }
 
