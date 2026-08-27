@@ -41,8 +41,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -252,6 +256,16 @@ fun TextComposer(
         onSendVoiceMessage()
     }
 
+    // Larpgram: голосовое зафиксировано свайпом вверх (запись «без рук»). Пока true — вместо
+    // кнопки-режима справа стоит кнопка отправки, а отпускание пальца больше не отправляет.
+    // Сбрасываем, как только запись покинула состояние Recording (ушла в предпросмотр/Idle).
+    var voiceRecordingLocked by remember { mutableStateOf(false) }
+    LaunchedEffect(voiceMessageState) {
+        if (voiceMessageState !is VoiceMessageState.Recording) {
+            voiceRecordingLocked = false
+        }
+    }
+
     fun performHapticFeedback() {
         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
     }
@@ -261,6 +275,7 @@ fun TextComposer(
         composerMode.isEditing,
         voiceMessageState.endButtonKey(),
         canSendTextMessage,
+        voiceRecordingLocked,
     ) {
         when {
             !canSendTextMessage ->
@@ -277,18 +292,37 @@ fun TextComposer(
                             )
                         }
                     )
-                    is VoiceMessageState.Recording -> EndButtonParams(
-                        endButtonContentDescriptionResId = CommonStrings.a11y_voice_message_stop_recording,
-                        endButtonClick = {
-                            performHapticFeedback()
-                            onVoiceRecorderEvent.invoke(VoiceMessageRecorderEvent.Stop)
-                        },
-                        endButtonContent = @Composable {
-                            VoiceMessageRecorderButtonIcon(
-                                isRecording = true,
-                            )
-                        }
-                    )
+                    is VoiceMessageState.Recording -> if (voiceRecordingLocked) {
+                        // Зафиксировано свайпом вверх: палец отпущен, запись идёт «без рук»,
+                        // тап по кнопке отправляет (Stop + автоотправка в предпросмотре).
+                        EndButtonParams(
+                            endButtonContentDescriptionResId = CommonStrings.action_send_voice_message,
+                            endButtonClick = {
+                                performHapticFeedback()
+                                autoSendVoiceMessage = true
+                                onVoiceRecorderEvent.invoke(VoiceMessageRecorderEvent.Stop)
+                            },
+                            endButtonContent = @Composable {
+                                SendButtonIcon(
+                                    canSendMessage = true,
+                                    isEditing = composerMode.isEditing,
+                                )
+                            },
+                        )
+                    } else {
+                        EndButtonParams(
+                            endButtonContentDescriptionResId = CommonStrings.a11y_voice_message_stop_recording,
+                            endButtonClick = {
+                                performHapticFeedback()
+                                onVoiceRecorderEvent.invoke(VoiceMessageRecorderEvent.Stop)
+                            },
+                            endButtonContent = @Composable {
+                                VoiceMessageRecorderButtonIcon(
+                                    isRecording = true,
+                                )
+                            }
+                        )
+                    }
                     is VoiceMessageState.Preview -> if (voiceMessageState.isSending) {
                         EndButtonParams(
                             endButtonContentDescriptionResId = CommonStrings.common_sending,
@@ -433,7 +467,10 @@ fun TextComposer(
             // (телефон, 2026-08-15).
             showRecordModeButton = circleRecordGestures != null &&
                 !canSendTextMessage &&
-                (voiceMessageState is VoiceMessageState.Idle || voiceMessageState is VoiceMessageState.Recording),
+                (
+                    voiceMessageState is VoiceMessageState.Idle ||
+                        (voiceMessageState is VoiceMessageState.Recording && !voiceRecordingLocked)
+                    ),
             onVoiceHoldStop = {
                 autoSendVoiceMessage = true
                 onVoiceRecorderEvent(VoiceMessageRecorderEvent.Stop)
@@ -441,6 +478,9 @@ fun TextComposer(
             onVoiceHoldCancel = {
                 autoSendVoiceMessage = false
                 onVoiceRecorderEvent(VoiceMessageRecorderEvent.Cancel)
+            },
+            onVoiceHoldLock = {
+                voiceRecordingLocked = true
             },
             onAddAttachment = onAddAttachment,
             onDeleteVoiceMessage = onDeleteVoiceMessage,
@@ -501,6 +541,7 @@ private fun StandardLayout(
     showRecordModeButton: Boolean = false,
     onVoiceHoldStop: () -> Unit = {},
     onVoiceHoldCancel: () -> Unit = {},
+    onVoiceHoldLock: () -> Unit = {},
     onDeleteVoiceMessage: () -> Unit,
     onVoiceRecorderEvent: (VoiceMessageRecorderEvent) -> Unit,
     onResetComposerMode: () -> Unit,
@@ -604,15 +645,46 @@ private fun StandardLayout(
             // остальных состояниях (есть текст, идёт запись голосового, предпросмотр)
             // кнопка апстримовская, потому что там она отправляет и останавливает.
             if (showRecordModeButton && circleRecordGestures != null) {
-                LarpgramRecordModeButton(
-                    circleGestures = circleRecordGestures,
-                    onVoiceStart = {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onVoiceRecorderEvent(VoiceMessageRecorderEvent.Start)
-                    },
-                    onVoiceStop = onVoiceHoldStop,
-                    onVoiceCancel = onVoiceHoldCancel,
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    LarpgramRecordModeButton(
+                        circleGestures = circleRecordGestures,
+                        onVoiceStart = {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onVoiceRecorderEvent(VoiceMessageRecorderEvent.Start)
+                        },
+                        onVoiceStop = onVoiceHoldStop,
+                        onVoiceCancel = onVoiceHoldCancel,
+                        onVoiceLock = onVoiceHoldLock,
+                    )
+                    // Подсказка «свайп вверх — зафиксировать», та же плашка, что на экране записи
+                    // кружка (44dp белый круг + LockSolid 20dp). Рисуем через Popup: он в отдельном
+                    // слое окна, поэтому плавает над кнопкой, НЕ входит в поток (высота полосы
+                    // композера не скачет) и не обрезается родителями (простой offset уходил выше
+                    // композера и клипался — замок пропадал).
+                    if (voiceMessageState is VoiceMessageState.Recording) {
+                        val density = LocalDensity.current
+                        Popup(
+                            alignment = Alignment.TopCenter,
+                            offset = IntOffset(0, with(density) { (-52).dp.roundToPx() }),
+                            properties = PopupProperties(focusable = false, clippingEnabled = false),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(20.dp),
+                                    imageVector = CompoundIcons.LockSolid(),
+                                    contentDescription = "Закрепить запись",
+                                    tint = ElementTheme.colors.iconAccentPrimary,
+                                )
+                            }
+                        }
+                    }
+                }
             } else {
                 // To avoid loosing keyboard focus, the IconButton has to be defined here and has to be always enabled.
                 val endButtonContentDescription = stringResource(endButtonParams.endButtonContentDescriptionResId)
