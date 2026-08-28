@@ -55,6 +55,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
@@ -333,26 +334,6 @@ fun TimelineItemEventRow(
             )
         }
 
-        // Larpgram: для безпузырного контента канала (стикеры/гифки/кружочки) чип-футер внутри
-        // карточки не работает — карточки нет. Рисуем отдельную пилюлю под контентом (TG-стиль).
-        // Пузырные посты получают чип внутри пузыря (см. commentsFooter в TimelineItemEventRowContent).
-        if (event.content.isBubbleless && timelineRoomInfo.isChannel && timelineRoomInfo.channelDiscussionRoomId != null) {
-            val commentKey = remember(event.id) {
-                event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it)?.second }
-                    ?: event.eventId?.value
-            }
-            val commentCount = commentKey?.let { timelineRoomInfo.channelCommentCounts[it] }
-            StandaloneChannelCommentsChip(
-                count = commentCount,
-                modifier = if (event.isMine) {
-                    Modifier.align(Alignment.End).padding(end = 16.dp)
-                } else {
-                    Modifier.padding(start = 16.dp)
-                }.padding(top = 4.dp),
-                onClick = { eventSink(TimelineEvent.OpenChannelPostComments(event)) },
-            )
-        }
-
         // Larpgram: in a channel comment thread the first item is the post (its mirror). Mark it as
         // a header by separating it from the comments below with a "Комментарии" divider, like
         // Telegram's "Discussion started". Detected: thread mode, this event is the root, and it
@@ -418,21 +399,30 @@ private fun ChannelPostCommentsFooter(
     }
 }
 
-// Larpgram: отдельная пилюля «Комментарии» под безпузырным постом канала (стикер/гифка/кружок),
-// где влить чип в карточку некуда. Своя скруглённая подложка, компактно (иконка + число/подпись).
+// Larpgram: круглый бабл комментариев под безпузырным постом канала (стикер/гифка/кружок), где влить
+// чип в карточку некуда. TG-стиль: компактный круг «иконка (+число)», без слова «Комментарии» — оно
+// раздувало пилюлю под мелким стикером. CircleShape → круг при пустом счётчике, стадион при числе.
 @Composable
 private fun StandaloneChannelCommentsChip(
     count: Long?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hasCount = count != null && count > 0
+    val a11yLabel = if (hasCount) {
+        pluralStringResource(id = R.plurals.channel_comments_count, count = count!!.toInt(), count.toInt())
+    } else {
+        stringResource(id = R.string.screen_channel_comments)
+    }
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(CircleShape)
             .background(ElementTheme.colors.bgSubtleSecondary)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .semantics { contentDescription = a11yLabel }
+            .padding(horizontal = if (hasCount) 10.dp else 7.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
         Icon(
             imageVector = CompoundIcons.Chat(),
@@ -440,16 +430,15 @@ private fun StandaloneChannelCommentsChip(
             tint = ElementTheme.colors.textActionAccent,
             modifier = Modifier.size(18.dp),
         )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = if (count != null && count > 0) {
-                pluralStringResource(id = R.plurals.channel_comments_count, count = count.toInt(), count.toInt())
-            } else {
-                stringResource(id = R.string.screen_channel_comments)
-            },
-            style = ElementTheme.typography.fontBodyMdMedium,
-            color = ElementTheme.colors.textActionAccent,
-        )
+        if (hasCount) {
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = count!!.toInt().toString(),
+                style = ElementTheme.typography.fontBodyMdMedium,
+                color = ElementTheme.colors.textActionAccent,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -640,6 +629,7 @@ private fun TimelineItemEventRowContent(
             message,
             reactions,
             pinIcon,
+            channelComments,
         ) = createRefs()
 
         // Правка форка: аватар больше не наезжает на угол пузыря сверху, а стоит слева от него
@@ -770,6 +760,26 @@ private fun TimelineItemEventRowContent(
                             start.linkTo(message.end, margin = 8.dp)
                         }
                     }
+            )
+        }
+
+        // Larpgram: у безпузырного поста канала (стикер/гифка/кружок) карточки нет — влить чип
+        // некуда, а снизу он раздвигал вертикальный ритм. Ставим круглый бабл СБОКУ от контента
+        // (по образцу pinIcon), низом по низу — тот же ряд, дефолтный спейсинг до следующего поста.
+        if (event.content.isBubbleless && timelineRoomInfo.isChannel && timelineRoomInfo.channelDiscussionRoomId != null) {
+            StandaloneChannelCommentsChip(
+                count = commentCount,
+                onClick = { eventSink(TimelineEvent.OpenChannelPostComments(event)) },
+                modifier = Modifier
+                    .constrainAs(channelComments) {
+                        bottom.linkTo(message.bottom)
+                        if (event.isMine) {
+                            end.linkTo(message.start, margin = 8.dp)
+                        } else {
+                            start.linkTo(message.end, margin = 8.dp)
+                        }
+                    }
+                    .zIndex(1f),
             )
         }
 
