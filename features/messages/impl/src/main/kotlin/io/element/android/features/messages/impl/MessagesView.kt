@@ -105,6 +105,8 @@ import io.element.android.features.messages.impl.timeline.aTimelineState
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionEvent
 import io.element.android.features.messages.impl.timeline.components.event.LocalCircleMediaLoader
+import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
+import io.element.android.features.messages.impl.timeline.components.event.StickerPackSheet
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryEvent
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryView
 import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheet
@@ -622,11 +624,20 @@ private fun MessagesViewContent(
             // date badge offset so the badge sits below whichever banners are currently showing.
             var topBannersHeightDp by remember { mutableStateOf(0.dp) }
 
+            // Larpgram: запрос показать лист стикер-пака (originalJson события + mxc стикера),
+            // выставляется по тапу на стикер через LocalOpenStickerPack.
+            var stickerPackRequest by remember { mutableStateOf<Pair<String?, String?>?>(null) }
+
             // Правка форка: загрузчик медиа для кружочков. Кладём его прямо здесь, вокруг
             // таймлайна: кружочек рисуется глубоко внутри него, и протаскивать загрузчик
             // параметрами пришлось бы через апстримовские компоненты, то есть ловить
             // конфликты при каждом ребейзе.
-            CompositionLocalProvider(LocalCircleMediaLoader provides state.circleMediaLoader) {
+            CompositionLocalProvider(
+                LocalCircleMediaLoader provides state.circleMediaLoader,
+                LocalOpenStickerPack provides { originalJson, stickerUrl ->
+                    stickerPackRequest = originalJson to stickerUrl
+                },
+            ) {
                 TimelineView(
                     state = state.timelineState,
                     timelineProtectionState = state.timelineProtectionState,
@@ -644,6 +655,18 @@ private fun MessagesViewContent(
                     forceJumpToBottomVisibility = forceJumpToBottomVisibility,
                     nestedScrollConnection = scrollBehavior.nestedScrollConnection,
                     floatingDateTopOffset = topBannersHeightDp,
+                )
+            }
+
+            // Larpgram: лист стикер-пака по тапу на стикер.
+            val packRequest = stickerPackRequest
+            val packSource = state.imagePackSource
+            if (packRequest != null && packSource != null) {
+                StickerPackSheet(
+                    originalJson = packRequest.first,
+                    stickerUrl = packRequest.second,
+                    imagePackSource = packSource,
+                    onDismiss = { stickerPackRequest = null },
                 )
             }
 

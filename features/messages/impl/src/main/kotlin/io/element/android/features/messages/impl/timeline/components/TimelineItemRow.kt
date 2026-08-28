@@ -29,7 +29,9 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.components.event.TimelineItemEventContentView
+import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayoutData
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.RtcNotificationState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
@@ -77,11 +79,21 @@ internal fun TimelineItemRow(
     modifier: Modifier = Modifier,
     eventContentView: @Composable (TimelineItem.Event, Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit =
         { event, contentModifier, onContentLayoutChange ->
+            // Larpgram: тап по стикеру открывает лист его пака, а не общий обработчик клика.
+            // Это реальный прод-путь рендера контента (дефолтный eventContentView TimelineItemRow);
+            // одноимённая ветка в TimelineItemEventRow — только для превью и в проде не зовётся.
+            val openStickerPack = LocalOpenStickerPack.current
+            val stickerContent = event.content as? TimelineItemStickerContent
+            val onEventContentClick: () -> Unit = if (stickerContent != null) {
+                { openStickerPack(event.debugInfo.originalJson, stickerContent.mediaSource.safeUrl) }
+            } else {
+                { onContentClick(event) }
+            }
             TimelineItemEventContentView(
                 eventId = event.eventId,
                 content = event.content,
                 timelineProtectionState = timelineProtectionState,
-                onContentClick = { onContentClick(event) },
+                onContentClick = onEventContentClick,
                 onGalleryItemClick = { index -> onGalleryItemClick(event, index) },
                 onLongClick = { onLongClick(event) },
                 onLinkClick = onLinkClick,
