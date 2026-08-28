@@ -51,7 +51,15 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
+import androidx.compose.material3.SnackbarDuration
+import io.element.android.features.home.impl.R
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
+import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
+import io.element.android.libraries.ui.strings.CommonStrings
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
@@ -77,6 +85,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
+
+// Окно отмены «удалить у обоих» перед серверным purge.
+private const val DELETE_FOR_BOTH_UNDO_MS = 5_000L
 
 @Inject
 class RoomListPresenter(
@@ -104,8 +115,14 @@ class RoomListPresenter(
     private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
     // Правка форка (роумлесс): свой пин чатов поверх списка (account data).
     private val pinnedChatsStore: PinnedChatsStore,
+    // Правка форка: «удалить у обоих» для ЛС через наш серверный Synapse purge.
+    private val keyEscrowService: KeyEscrowService,
+    private val snackbarDispatcher: SnackbarDispatcher,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
+
+    // Отложенная (5с) задача «удалить у обоих» — её отменяет тап «Отменить» на плашке.
+    private var pendingDeleteForBothJob: Job? = null
 
     @Composable
     override fun present(): RoomListState {
@@ -225,6 +242,7 @@ class RoomListPresenter(
                 is RoomListEvent.SetRoomIsMuted -> coroutineScope.setRoomIsMuted(event.roomId, event.isMuted)
                 is RoomListEvent.SetRoomIsPinned -> pinnedChatsStore.setPinned(event.roomId, event.isPinned)
                 is RoomListEvent.DeleteRoom -> coroutineScope.deleteRoom(event.roomId)
+                is RoomListEvent.DeleteRoomForBoth -> coroutineScope.deleteRoomForBoth(event.roomId)
                 is RoomListEvent.BlockUser -> coroutineScope.blockUser(event.roomId, event.userId)
                 is RoomListEvent.MarkAsRead -> coroutineScope.markAsRead(event.roomId)
                 is RoomListEvent.MarkAsUnread -> coroutineScope.markAsUnread(event.roomId)
@@ -463,6 +481,29 @@ class RoomListPresenter(
         client.getRoom(roomId)?.use { room ->
             room.leave().onSuccess { room.forget() }
         }
+    }
+
+    // Правка форка: «удалить у обоих» (ЛС) — серверный Synapse purge на нашем сервере. Показываем
+    // 5с undo-плашку; если не отменили — дёргаем сервер, он сносит комнату у обоих. Локально ничего
+    // не удаляем заранее, чтобы «Отменить» действительно отменял (комната сама уйдёт после purge).
+    private fun CoroutineScope.deleteRoomForBoth(roomId: RoomId) {
+        pendingDeleteForBothJob?.cancel()
+        val job = launch {
+            delay(DELETE_FOR_BOTH_UNDO_MS)
+            val ok = keyEscrowService.deleteDmForBoth(roomId)
+            if (!ok) {
+                snackbarDispatcher.post(SnackbarMessage(messageResId = R.string.screen_roomlist_delete_both_failed))
+            }
+        }
+        pendingDeleteForBothJob = job
+        snackbarDispatcher.post(
+            SnackbarMessage(
+                messageResId = R.string.screen_roomlist_delete_both_pending,
+                actionResId = CommonStrings.action_cancel,
+                duration = SnackbarDuration.Long,
+                action = { job.cancel() },
+            )
+        )
     }
 
     // Правка форка (роумлесс), ф4 блок (только ЛС): односторонняя TG-стена — ignoreUser +

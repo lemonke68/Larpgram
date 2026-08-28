@@ -6,6 +6,8 @@
 
 package io.element.android.libraries.keyescrow.api
 
+import io.element.android.libraries.matrix.api.core.RoomId
+
 /**
  * Серверное депонирование ключа восстановления, чтобы верифицировать новую сессию кодом
  * с почты, а не вторым устройством.
@@ -37,6 +39,13 @@ interface KeyEscrowService {
 
     /** Проверить код и получить ключ восстановления. */
     suspend fun redeemCode(code: String): RedeemResult
+
+    /**
+     * Правка форка: «удалить у обоих» для ЛС. Просит наш сервер снести комнату целиком через
+     * Synapse admin API — Matrix не даёт удалить чужую сторону. Сервер сам проверяет, что это
+     * личка (2 участника) и что мы в ней состоим. `true` — сервер принял задачу (202).
+     */
+    suspend fun deleteDmForBoth(roomId: RoomId): Boolean
 }
 
 /** Результат запроса кода на почту. */

@@ -10,6 +10,9 @@
     <string name="screen_roomlist_pin">Закрепить</string>
     <string name="screen_roomlist_unpin">Открепить</string>
     <string name="screen_roomlist_delete_chat">Удалить чат</string>
+    <string name="screen_roomlist_delete_both">Удалить у обоих</string>
+    <string name="screen_roomlist_delete_both_pending">Чат удалится у обоих</string>
+    <string name="screen_roomlist_delete_both_failed">Не удалось удалить у обоих</string>
     <string name="screen_roomlist_leave_group">Выйти из группы</string>
     <string name="screen_roomlist_leave_channel">Отписаться</string>
     <string name="screen_roomlist_block_user">Заблокировать</string>

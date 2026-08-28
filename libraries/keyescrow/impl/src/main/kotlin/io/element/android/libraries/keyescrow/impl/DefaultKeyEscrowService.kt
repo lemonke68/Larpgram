@@ -13,6 +13,7 @@ import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RedeemResult
 import io.element.android.libraries.keyescrow.api.RequestCodeResult
 import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -129,6 +130,18 @@ class DefaultKeyEscrowService(
         } ?: RedeemResult.NetworkError
     }
 
+    override suspend fun deleteDmForBoth(roomId: RoomId): Boolean {
+        val token = accessToken() ?: return false
+        val body = json.encodeToString(DeleteRoomRequest(roomId.value)).toRequestBody(JSON_MEDIA_TYPE)
+        val request = Request.Builder()
+            .url("$BASE_URL/room/delete")
+            .header(HEADER_AUTH, "Bearer $token")
+            .post(body)
+            .build()
+        // 202 — сервер принял задачу удаления. Любой другой код (401/403/409/5xx) = не вышло.
+        return execute(request) { it.code == 202 } ?: false
+    }
+
     private suspend fun accessToken(): String? = matrixClient.getAccessToken().getOrNull()
 
     /**
@@ -156,6 +169,11 @@ class DefaultKeyEscrowService(
 @Serializable
 private data class StoreRequest(
     @SerialName("recovery_key") val recoveryKey: String,
+)
+
+@Serializable
+private data class DeleteRoomRequest(
+    @SerialName("room_id") val roomId: String,
 )
 
 @Serializable

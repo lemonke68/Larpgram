@@ -50,8 +50,14 @@ sealed interface RoomListEvent {
      */
     data class SetRoomIsPinned(val roomId: RoomId, val isPinned: Boolean) : ContextMenuEvent
 
-    /** Ф3: удалить чат у себя = leave + forget (уходит из списка). «У обоих» в Matrix нельзя. */
+    /** Ф3: удалить чат у себя = leave + forget (уходит из списка). */
     data class DeleteRoom(val roomId: RoomId) : ContextMenuEvent
+
+    /**
+     * Правка форка: «удалить у обоих» для ЛС — серверный Synapse purge комнаты (наш закрытый
+     * сервер). Matrix сам так не умеет. Показываем 5с undo-плашку, по истечении дёргаем сервер.
+     */
+    data class DeleteRoomForBoth(val roomId: RoomId) : ContextMenuEvent
 
     /**
      * Ф4: заблокировать собеседника (только ЛС) — односторонняя TG-стена:
