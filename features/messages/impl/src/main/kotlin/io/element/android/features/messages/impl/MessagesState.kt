@@ -29,6 +29,7 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
+import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
@@ -85,6 +86,9 @@ data class MessagesState(
     // Загрузчик медиа для проигрывания кружочков в таймлайне. Дефолт null по той же
     // причине: превью и тесты собирают состояние сами, и медиа им не нужно.
     val circleMediaLoader: MatrixMediaLoader? = null,
+    // Источник стикер-паков: по тапу на стикер показываем его пак (добавить/удалить). Дефолт
+    // null — превью и тесты его не требуют.
+    val imagePackSource: ImagePackSource? = null,
 ) {
     val isTombstoned = successorRoom != null
 

@@ -90,6 +90,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
+import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
@@ -215,11 +216,18 @@ fun TimelineItemEventRow(
     val coroutineScope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
 
-    val onContentClick = if (event.mustBeProtected()) {
-        // In this case, let the content handle the click
-        {}
-    } else {
-        onEventClick
+    // Larpgram: тап по стикеру открывает его пак (добавить/удалить), а не общий обработчик клика.
+    val openStickerPack = LocalOpenStickerPack.current
+    val stickerContent = event.content as? TimelineItemStickerContent
+    val onContentClick: () -> Unit = when {
+        stickerContent != null -> {
+            { openStickerPack(event.debugInfo.originalJson, stickerContent.mediaSource.safeUrl) }
+        }
+        event.mustBeProtected() -> {
+            // In this case, let the content handle the click
+            {}
+        }
+        else -> onEventClick
     }
 
     fun onUserDataClick() {

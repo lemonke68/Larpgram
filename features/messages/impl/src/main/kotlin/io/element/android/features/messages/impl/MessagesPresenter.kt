@@ -67,6 +67,7 @@ import io.element.android.libraries.core.extensions.flatMap
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
+import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
@@ -126,6 +127,8 @@ class MessagesPresenter(
     private val stickerPickerPresenter: Presenter<StickerPickerState>,
     private val gifPickerPresenter: Presenter<GifPickerState>,
     private val circleRecorderPresenter: Presenter<CircleRecorderState>,
+    // Larpgram: по тапу на стикер показываем его пак (добавить/удалить).
+    private val imagePackSource: ImagePackSource,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val dispatchers: CoroutineDispatchers,
     private val clipboardHelper: ClipboardHelper,
@@ -402,6 +405,7 @@ class MessagesPresenter(
             gifPickerState = gifPickerState,
             circleRecorderState = circleRecorderState,
             circleMediaLoader = matrixClient.matrixMediaLoader,
+            imagePackSource = imagePackSource,
             isChannel = isChannel,
             isChannelMuted = isChannelMuted,
             channelSubscriberCount = if (isChannel) roomInfo.joinedMembersCount else null,

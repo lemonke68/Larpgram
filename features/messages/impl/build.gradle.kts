@@ -37,6 +37,7 @@ dependencies {
     implementation(projects.features.roomcall.api)
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.channelcomments)
+    implementation(projects.libraries.imagepacks.api)
     implementation(projects.libraries.core)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
