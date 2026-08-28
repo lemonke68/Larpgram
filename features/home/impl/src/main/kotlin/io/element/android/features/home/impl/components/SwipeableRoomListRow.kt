@@ -10,9 +10,9 @@ package io.element.android.features.home.impl.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -47,9 +49,15 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val ACTION_WIDTH = 76.dp
+
+// Доля ширины строки у каждого края, где горизонтальный свайп открывает действия строки
+// (мьют/пин/…). В остальной середине горизонтальный свайп не перехватывается — он всплывает
+// к родителю и переключает папку (см. Modifier.spaceFolderSwipe). Как в Telegram.
+private const val EDGE_SWIPE_FRACTION = 0.15f
 
 /**
  * A single revealed swipe action (icon + label on a coloured panel).
@@ -96,20 +104,51 @@ fun SwipeableRoomListRow(
             close()
         },
         onContentTapWhileOpen = { close() },
-        modifier = modifier.draggable(
-            orientation = Orientation.Horizontal,
-            state = rememberDraggableState { delta ->
-                scope.launch { offsetX.snapTo((offsetX.value + delta).coerceIn(-endWidthPx, startWidthPx)) }
-            },
-            onDragStopped = {
+        // Свайп строки перехватываем ТОЛЬКО когда жест начался в краевой зоне (15% слева/справа)
+        // или когда строка уже приоткрыта. Жест из середины не трогаем — он всплывает к родителю
+        // и листает папки. Реализовано вручную (draggable перехватывал всю ширину).
+        modifier = modifier.pointerInput(endWidthPx, startWidthPx) {
+            val touchSlop = viewConfiguration.touchSlop
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                val width = size.width.toFloat()
+                val inEdgeZone = width > 0f &&
+                    (down.position.x <= width * EDGE_SWIPE_FRACTION || down.position.x >= width * (1f - EDGE_SWIPE_FRACTION))
+                // Кооперативно определяем направление, НЕ потребляя события: вертикаль отдаём
+                // списку (скролл), горизонталь из середины — родителю (листание папок), и только
+                // горизонталь из краевой зоны ведём сами. Потребление начинается лишь после захвата.
+                var claimed = false
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                    if (!change.pressed) return@awaitEachGesture
+                    val dx = change.position.x - down.position.x
+                    val dy = change.position.y - down.position.y
+                    if (abs(dy) > touchSlop && abs(dy) >= abs(dx)) {
+                        return@awaitEachGesture
+                    }
+                    if (abs(dx) > touchSlop) {
+                        if (!inEdgeZone && offsetX.value == 0f) return@awaitEachGesture
+                        claimed = true
+                        break
+                    }
+                }
+                if (!claimed) return@awaitEachGesture
+                horizontalDrag(down.id) { change ->
+                    val delta = change.positionChange().x
+                    change.consume()
+                    scope.launch {
+                        offsetX.snapTo((offsetX.value + delta).coerceIn(-endWidthPx, startWidthPx))
+                    }
+                }
                 val target = when {
                     offsetX.value <= -endWidthPx / 2 -> -endWidthPx
                     offsetX.value >= startWidthPx / 2 -> startWidthPx
                     else -> 0f
                 }
                 scope.launch { offsetX.animateTo(target) }
-            },
-        ),
+            }
+        },
         content = content,
     )
 }
