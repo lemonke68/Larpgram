@@ -275,13 +275,21 @@ fun rememberChatSwipeStartActions(
                 icon = CompoundIcons.Delete(),
                 label = stringResource(
                     when (room.chatType) {
-                        ChatType.Dm -> R.string.screen_roomlist_delete_chat
+                        // В ЛС удаление сносит комнату у обоих (серверный purge), поэтому и подпись
+                        // другая; в группе/канале — только выход со своей стороны.
+                        ChatType.Dm -> R.string.screen_roomlist_delete_both
                         ChatType.Group -> R.string.screen_roomlist_leave_group
                         ChatType.Channel -> R.string.screen_roomlist_leave_channel
                     }
                 ),
                 background = Color(0xFFE0533D),
-                onClick = { eventSink(RoomListEvent.DeleteRoom(room.roomId)) },
+                onClick = {
+                    if (room.chatType == ChatType.Dm) {
+                        eventSink(RoomListEvent.DeleteRoomForBoth(room.roomId))
+                    } else {
+                        eventSink(RoomListEvent.DeleteRoom(room.roomId))
+                    }
+                },
             )
         )
         if (room.isDm) {

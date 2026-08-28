@@ -10,3 +10,8 @@ plugins {
 android {
     namespace = "io.element.android.libraries.keyescrow.api"
 }
+
+dependencies {
+    // Правка форка: RoomId для «удалить у обоих».
+    api(projects.libraries.matrix.api)
+}

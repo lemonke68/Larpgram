@@ -16,6 +16,9 @@
     <string name="screen_roomlist_pin">Pin</string>
     <string name="screen_roomlist_unpin">Unpin</string>
     <string name="screen_roomlist_delete_chat">Delete chat</string>
+    <string name="screen_roomlist_delete_both">Delete for both</string>
+    <string name="screen_roomlist_delete_both_pending">Chat will be deleted for both</string>
+    <string name="screen_roomlist_delete_both_failed">Couldn\'t delete for both</string>
     <string name="screen_roomlist_leave_group">Leave group</string>
     <!-- Roomless (gap D): a channel reads as "Unsubscribe". Key name predates the wording. -->
     <string name="screen_roomlist_leave_channel">Unsubscribe</string>
