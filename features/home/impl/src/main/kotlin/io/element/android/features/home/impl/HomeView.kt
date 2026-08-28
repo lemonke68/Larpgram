@@ -56,6 +56,7 @@ import io.element.android.features.home.impl.search.RoomListSearchView
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersView
+import io.element.android.features.home.impl.spacefilters.SpaceFolderSwipe
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -167,7 +168,11 @@ private fun HomeScaffold(
     val isChatsTab = state.currentHomeNavigationBarItem == HomeNavigationBarItem.Chats
 
     val appBarState = rememberTopAppBarState()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(appBarState)
+    // Larpgram: папки-пилюли закреплены (не сворачиваются), поэтому бар пиннится, а не enterAlways.
+    // При enterAlways без TopAppBarScrollBehaviorLayout heightOffsetLimit оставался -Float.MAX_VALUE,
+    // и nestedScrollConnection съедал ВЕСЬ вертикальный скролл в несуществующее сворачивание — список
+    // не листался. pinnedScrollBehavior скролл не потребляет.
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(appBarState)
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val roomListState: RoomListState = state.roomListState
 
@@ -256,23 +261,27 @@ private fun HomeScaffold(
             )
             when (state.currentHomeNavigationBarItem) {
                 HomeNavigationBarItem.Chats -> {
-                    RoomListContentView(
-                        contentState = roomListState.contentState,
-                        filtersState = roomListState.filtersState,
-                        spaceFiltersState = roomListState.spaceFiltersState,
-                        lazyListState = roomsLazyListState,
-                        hideInvitesAvatars = roomListState.hideInvitesAvatars,
-                        eventSink = roomListState.eventSink,
-                        onSetUpRecoveryClick = onSetUpRecoveryClick,
-                        onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
-                        onRoomClick = ::onRoomClick,
-                        onCreateRoomClick = onStartChatClick,
-                        contentPadding = lazyColumnContentPadding + contentPadding,
-                        modifier = Modifier
-                            .padding(outerPadding)
-                            .consumeWindowInsets(outerPadding)
-                            .hazeSource(state = hazeState)
-                    )
+                    SpaceFolderSwipe(
+                        state = roomListState.spaceFiltersState,
+                        modifier = Modifier.padding(outerPadding),
+                    ) {
+                        RoomListContentView(
+                            contentState = roomListState.contentState,
+                            filtersState = roomListState.filtersState,
+                            spaceFiltersState = roomListState.spaceFiltersState,
+                            lazyListState = roomsLazyListState,
+                            hideInvitesAvatars = roomListState.hideInvitesAvatars,
+                            eventSink = roomListState.eventSink,
+                            onSetUpRecoveryClick = onSetUpRecoveryClick,
+                            onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
+                            onRoomClick = ::onRoomClick,
+                            onCreateRoomClick = onStartChatClick,
+                            contentPadding = lazyColumnContentPadding + contentPadding,
+                            modifier = Modifier
+                                .consumeWindowInsets(outerPadding)
+                                .hazeSource(state = hazeState)
+                        )
+                    }
                     SpaceFiltersView(roomListState.spaceFiltersState)
                 }
                 // Settings and Profile tabs render the real feature screens, hosted as child

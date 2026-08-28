@@ -54,7 +54,6 @@ import io.element.android.features.home.impl.spacefilters.aSelectedSpaceFiltersS
 import io.element.android.features.home.impl.spacefilters.anUnselectedSpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.availableFilters
 import io.element.android.libraries.designsystem.atomic.atoms.RedIndicatorAtom
-import io.element.android.libraries.designsystem.components.TopAppBarScrollBehaviorLayout
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
@@ -150,12 +149,12 @@ fun HomeTopBar(
         val showFolderPills = selectedNavigationItem == HomeNavigationBarItem.Chats &&
             spaceFiltersState.availableFilters().isNotEmpty()
         if (showFolderPills) {
-            TopAppBarScrollBehaviorLayout(scrollBehavior = scrollBehavior) {
-                SpaceFolderPillsView(
-                    state = spaceFiltersState,
-                    modifier = Modifier.padding(bottom = 16.dp).padding(contentPadding)
-                )
-            }
+            // Закреплено: раньше пилюли жили в TopAppBarScrollBehaviorLayout и сворачивались при
+            // скролле списка. По TG папки-вкладки не уезжают — рендерим их статично под заголовком.
+            SpaceFolderPillsView(
+                state = spaceFiltersState,
+                modifier = Modifier.padding(bottom = 16.dp).padding(contentPadding),
+            )
         }
     }
 }

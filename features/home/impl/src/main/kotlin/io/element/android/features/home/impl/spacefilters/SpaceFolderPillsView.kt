@@ -7,17 +7,20 @@
 
 package io.element.android.features.home.impl.spacefilters
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,33 +63,46 @@ fun SpaceFolderPillsView(
         }
     }
 
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    // «Большой бабл»: один закруглённый полупрозрачный (80%) контейнер, внутри — лента папок-пилюль.
+    // Активная папка = светлая пилюля (bgSubtleSecondary) на фоне более тёмного полупрозрачного
+    // контейнера (bgCanvasDefault @ 0.8), как сегмент-контрол в Telegram.
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .clip(CircleShape)
+            .background(ElementTheme.colors.bgCanvasDefault.copy(alpha = 0.8f)),
     ) {
-        item("all") {
-            FolderPill(
-                label = stringResource(R.string.screen_roomlist_folder_all),
-                selected = selectedFilter == null,
-                onClick = ::onSelectAll,
-            )
-        }
-        items(
-            count = filters.size,
-            key = { index -> filters[index].spaceRoom.roomId.value },
-        ) { index ->
-            val filter = filters[index]
-            FolderPill(
-                label = filter.spaceRoom.displayName,
-                selected = selectedFilter?.spaceRoom?.roomId == filter.spaceRoom.roomId,
-                onClick = { onSelectSpace(filter) },
-            )
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            item("all") {
+                FolderPill(
+                    label = stringResource(R.string.screen_roomlist_folder_all),
+                    selected = selectedFilter == null,
+                    onClick = ::onSelectAll,
+                )
+            }
+            items(
+                count = filters.size,
+                key = { index -> filters[index].spaceRoom.roomId.value },
+            ) { index ->
+                val filter = filters[index]
+                FolderPill(
+                    label = filter.spaceRoom.displayName,
+                    selected = selectedFilter?.spaceRoom?.roomId == filter.spaceRoom.roomId,
+                    onClick = { onSelectSpace(filter) },
+                )
+            }
         }
     }
 }
 
+// TG-стиль вкладок-папок: выбранная — субтл-серая пилюля (bgSubtleSecondary), невыбранные —
+// просто текст без заливки и рамки. Без акцент-фиолета и без белой заливки (см. фидбек юзера).
 @Composable
 private fun FolderPill(
     label: String,
@@ -94,32 +110,23 @@ private fun FolderPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        modifier = modifier.height(32.dp),
-        shape = CircleShape,
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = ElementTheme.colors.bgCanvasDefault,
-            selectedContainerColor = ElementTheme.colors.bgActionPrimaryRest,
-            labelColor = ElementTheme.colors.textPrimary,
-            selectedLabelColor = ElementTheme.colors.textOnSolidPrimary,
-        ),
-        label = {
-            Text(
-                text = label,
-                style = ElementTheme.typography.fontBodyMdRegular,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = selected,
-            borderColor = ElementTheme.colors.borderInteractiveSecondary,
-            selectedBorderColor = Color.Transparent,
-        ),
-    )
+    Box(
+        modifier = modifier
+            .height(32.dp)
+            .clip(CircleShape)
+            .background(if (selected) ElementTheme.colors.bgSubtleSecondary else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = ElementTheme.typography.fontBodyMdMedium,
+            color = if (selected) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @PreviewsDayNight
