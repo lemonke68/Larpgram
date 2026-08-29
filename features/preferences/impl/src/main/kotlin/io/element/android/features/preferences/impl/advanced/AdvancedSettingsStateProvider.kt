@@ -48,6 +48,7 @@ fun aAdvancedSettingsState(
     messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
     bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
     chatWallpaperId: String = ChatWallpaperOption.DEFAULT.id,
+    chatWallpaperCustomColorArgb: Int? = null,
     setTimelineMediaPreviewAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     setHideInviteAvatarsAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     eventSink: (AdvancedSettingsEvents) -> Unit = {},
@@ -67,5 +68,6 @@ fun aAdvancedSettingsState(
     messageTextSizeSp = messageTextSizeSp,
     bubbleCornerRadiusDp = bubbleCornerRadiusDp,
     chatWallpaperId = chatWallpaperId,
+    chatWallpaperCustomColorArgb = chatWallpaperCustomColorArgb,
     eventSink = eventSink
 )

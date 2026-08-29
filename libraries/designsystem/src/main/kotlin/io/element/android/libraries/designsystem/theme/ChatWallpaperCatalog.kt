@@ -32,9 +32,18 @@ enum class ChatWallpaperOption(val id: String, val solidColor: Color?) {
     companion object {
         val DEFAULT = Pattern
 
+        /**
+         * Id for a user-chosen arbitrary color (the eyedropper). Not an enum entry: the actual
+         * color lives in its own pref and reaches the timeline via [LocalChatWallpaperCustomColor].
+         */
+        const val CUSTOM_ID = "custom"
+
         fun fromId(id: String?): ChatWallpaperOption = entries.firstOrNull { it.id == id } ?: DEFAULT
     }
 }
 
 /** Selected wallpaper id, fed from AppPreferencesStore in ElementThemeApp and read by the timeline. */
 val LocalChatWallpaperId = staticCompositionLocalOf { ChatWallpaperOption.DEFAULT.id }
+
+/** The custom color chosen via the eyedropper; only meaningful when the selected id is [ChatWallpaperOption.CUSTOM_ID]. */
+val LocalChatWallpaperCustomColor = staticCompositionLocalOf<Color?> { null }

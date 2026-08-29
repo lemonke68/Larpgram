@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
@@ -79,6 +80,9 @@ fun ElementThemeApp(
     val chatWallpaperId by remember {
         appPreferencesStore.getChatWallpaperIdFlow()
     }.collectAsState(initial = null)
+    val chatWallpaperCustomColorArgb by remember {
+        appPreferencesStore.getChatWallpaperCustomColorArgbFlow()
+    }.collectAsState(initial = null)
     LaunchedEffect(theme) {
         AppCompatDelegate.setDefaultNightMode(
             when (theme) {
@@ -93,6 +97,7 @@ fun ElementThemeApp(
         LocalMessageTextScale provides ChatAppearanceDefaults.textScaleFor(messageTextSizeSp),
         LocalChatBubbleRadius provides ChatAppearanceDefaults.bubbleRadiusFor(bubbleCornerRadiusDp),
         LocalChatWallpaperId provides (chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id),
+        LocalChatWallpaperCustomColor provides chatWallpaperCustomColorArgb?.let { Color(it) },
     ) {
         ElementTheme(
             theme = theme,

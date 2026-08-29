@@ -44,6 +44,10 @@ interface AppPreferencesStore {
     suspend fun setChatWallpaperId(id: String)
     fun getChatWallpaperIdFlow(): Flow<String?>
 
+    /** ARGB color chosen with the wallpaper eyedropper. Used only when the id is the custom one. */
+    suspend fun setChatWallpaperCustomColorArgb(argb: Int)
+    fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?>
+
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
     suspend fun setHideInviteAvatars(hide: Boolean?)
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

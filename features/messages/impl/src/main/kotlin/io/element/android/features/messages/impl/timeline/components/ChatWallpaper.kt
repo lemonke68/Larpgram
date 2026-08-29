@@ -22,6 +22,7 @@ import androidx.compose.ui.res.painterResource
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.R
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
+import io.element.android.libraries.designsystem.theme.LocalChatWallpaperCustomColor
 import io.element.android.libraries.designsystem.theme.LocalChatWallpaperId
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
 
@@ -70,7 +71,12 @@ fun defaultChatWallpaper(): ChatWallpaper = ChatWallpaper.Image(
  */
 @Composable
 fun selectedChatWallpaper(): ChatWallpaper {
-    val option = ChatWallpaperOption.fromId(LocalChatWallpaperId.current)
+    val id = LocalChatWallpaperId.current
+    // Пипетка: произвольный цвет юзера хранится отдельным пре­фом, id-маркер = CUSTOM_ID.
+    if (id == ChatWallpaperOption.CUSTOM_ID) {
+        LocalChatWallpaperCustomColor.current?.let { return ChatWallpaper.Solid(it) }
+    }
+    val option = ChatWallpaperOption.fromId(id)
     return when (val color = option.solidColor) {
         null -> defaultChatWallpaper()
         else -> ChatWallpaper.Solid(color)
