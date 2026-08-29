@@ -29,11 +29,13 @@ import io.element.android.features.preferences.impl.about.AboutNode
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsNode
 import io.element.android.features.preferences.impl.analytics.AnalyticsSettingsNode
 import io.element.android.features.preferences.impl.blockedusers.BlockedUsersNode
+import io.element.android.features.preferences.impl.category.SettingsCategoryNode
 import io.element.android.features.preferences.impl.developer.DeveloperSettingsNode
 import io.element.android.features.preferences.impl.labs.LabsNode
 import io.element.android.features.preferences.impl.notifications.NotificationSettingsNode
 import io.element.android.features.preferences.impl.notifications.edit.EditDefaultNotificationSettingNode
 import io.element.android.features.preferences.impl.root.PreferencesRootNode
+import io.element.android.features.preferences.impl.root.SettingsCategory
 import io.element.android.features.preferences.impl.user.editprofile.EditUserProfileNode
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
@@ -72,6 +74,9 @@ class PreferencesFlowNode(
     sealed interface NavTarget : Parcelable {
         @Parcelize
         data object Root : NavTarget
+
+        @Parcelize
+        data class Category(val category: SettingsCategory) : NavTarget
 
         @Parcelize
         data object DeveloperSettings : NavTarget
@@ -130,20 +135,22 @@ class PreferencesFlowNode(
         return when (navTarget) {
             NavTarget.Root -> {
                 val callback = object : PreferencesRootNode.Callback {
+                    override fun navigateToCategory(category: SettingsCategory) {
+                        // Категории с готовым экраном Element открываются напрямую, минуя
+                        // промежуточный экран-категорию.
+                        when (category.directTarget) {
+                            SettingsCategory.DirectTarget.Notifications -> backstack.push(NavTarget.NotificationSettings)
+                            SettingsCategory.DirectTarget.Advanced -> backstack.push(NavTarget.AdvancedSettings)
+                            null -> backstack.push(NavTarget.Category(category))
+                        }
+                    }
+
                     override fun navigateToAddAccount() {
                         callback.navigateToAddAccount()
                     }
 
                     override fun navigateToBugReport() {
                         callback.navigateToBugReport()
-                    }
-
-                    override fun navigateToSecureBackup() {
-                        callback.navigateToSecureBackup()
-                    }
-
-                    override fun navigateToAnalyticsSettings() {
-                        backstack.push(NavTarget.AnalyticsSettings)
                     }
 
                     override fun navigateToAbout() {
@@ -154,32 +161,44 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.DeveloperSettings)
                     }
 
-                    override fun navigateToNotificationSettings() {
-                        backstack.push(NavTarget.NotificationSettings)
-                    }
-
-                    override fun navigateToLockScreenSettings() {
-                        backstack.push(NavTarget.LockScreenSettings)
-                    }
-
-                    override fun navigateToAdvancedSettings() {
-                        backstack.push(NavTarget.AdvancedSettings)
-                    }
-
                     override fun navigateToLabs() {
                         backstack.push(NavTarget.Labs)
+                    }
+
+                    override fun navigateToUserProfile(matrixUser: MatrixUser) {
+                        backstack.push(NavTarget.UserProfile(matrixUser))
+                    }
+                }
+                createNode<PreferencesRootNode>(buildContext, plugins = listOf(callback))
+            }
+            is NavTarget.Category -> {
+                val categoryCallback = object : SettingsCategoryNode.Callback {
+                    override fun navigateToUserProfile(matrixUser: MatrixUser) {
+                        backstack.push(NavTarget.UserProfile(matrixUser))
+                    }
+
+                    override fun navigateToAddAccount() {
+                        callback.navigateToAddAccount()
                     }
 
                     override fun navigateToLinkNewDevice() {
                         callback.navigateToLinkNewDevice()
                     }
 
-                    override fun navigateToUserProfile(matrixUser: MatrixUser) {
-                        backstack.push(NavTarget.UserProfile(matrixUser))
-                    }
-
                     override fun navigateToBlockedUsers() {
                         backstack.push(NavTarget.BlockedUsers)
+                    }
+
+                    override fun navigateToSecureBackup() {
+                        callback.navigateToSecureBackup()
+                    }
+
+                    override fun navigateToLockScreenSettings() {
+                        backstack.push(NavTarget.LockScreenSettings)
+                    }
+
+                    override fun navigateToAnalyticsSettings() {
+                        backstack.push(NavTarget.AnalyticsSettings)
                     }
 
                     override fun startSignOutFlow() {
@@ -190,7 +209,8 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.AccountDeactivation)
                     }
                 }
-                createNode<PreferencesRootNode>(buildContext, plugins = listOf(callback))
+                val input = SettingsCategoryNode.Inputs(navTarget.category)
+                createNode<SettingsCategoryNode>(buildContext, plugins = listOf(input, categoryCallback))
             }
             NavTarget.DeveloperSettings -> {
                 val developerSettingsCallback = object : DeveloperSettingsNode.Callback {
