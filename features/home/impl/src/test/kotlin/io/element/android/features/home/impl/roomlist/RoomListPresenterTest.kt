@@ -43,7 +43,10 @@ import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventForma
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
+import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
+import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
 import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -826,6 +829,8 @@ class RoomListPresenterTest {
         accountEmailStatus: AccountEmailStatus = FakeAccountEmailStatus(),
         updateChecker: UpdateChecker = FakeUpdateChecker(),
         recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
+        keyEscrowService: KeyEscrowService = FakeKeyEscrowService(),
+        snackbarDispatcher: SnackbarDispatcher = SnackbarDispatcher(),
     ) = RoomListPresenter(
         client = client,
         leaveRoomPresenter = { leaveRoomState },
@@ -870,5 +875,7 @@ class RoomListPresenterTest {
             client = client,
             sessionCoroutineScope = backgroundScope,
         ),
+        keyEscrowService = keyEscrowService,
+        snackbarDispatcher = snackbarDispatcher,
     )
 }
