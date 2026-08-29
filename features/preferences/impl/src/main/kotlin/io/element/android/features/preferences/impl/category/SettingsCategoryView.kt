@@ -23,6 +23,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsState
 import io.element.android.features.preferences.impl.advanced.AppearanceThemeItem
+import io.element.android.features.preferences.impl.advanced.ChatAppearanceSection
 import io.element.android.features.preferences.impl.advanced.MediaUploadSection
 import io.element.android.features.preferences.impl.advanced.ModerationAndSafetySection
 import io.element.android.features.preferences.impl.advanced.SharePresenceItem
@@ -204,10 +205,11 @@ private fun ColumnScope.PrivacyCategory(
 
 @Composable
 private fun ColumnScope.ChatsCategory(advancedSettingsState: AdvancedSettingsState) {
-    // Единственное, что реально есть в Element: тема оформления (день/ночь/чёрная).
+    // Тема оформления (день/ночь/чёрная) — реальный бэкенд Element.
     AppearanceThemeItem(advancedSettingsState)
-    // Обои, размер текста, цвет имени, углы блоков и т.п. — TG-фичи без бэкенда, пишем позже.
-    ComingSoonCategory(SettingsCategory.Chats)
+    // Larpgram: размер текста сообщений + радиус углов пузырей (превью + два ползунка).
+    ChatAppearanceSection(advancedSettingsState)
+    // Ещё открыто (TG-фичи без бэкенда): обои, цвет имени, стиль списка чатов, иконка приложения.
 }
 
 @Composable

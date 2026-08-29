@@ -20,6 +20,8 @@ import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.matrix.api.tracing.LogLevel
 import io.element.android.libraries.matrix.api.tracing.TraceLogPack
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
+import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.NotificationSound
 import io.element.android.libraries.preferences.api.store.NotificationSound.Companion.toStored
 import io.element.android.libraries.preferences.api.store.NotificationSoundChannelConfig
@@ -34,6 +36,8 @@ private val themeKey = stringPreferencesKey("theme")
 private val hideInviteAvatarsKey = booleanPreferencesKey("hideInviteAvatars")
 private val timelineMediaPreviewValueKey = stringPreferencesKey("timelineMediaPreviewValue")
 private val liveLocationMinimumDistanceUpdateKey = intPreferencesKey("liveLocationMinimumDistanceUpdate")
+private val messageTextSizeSpKey = intPreferencesKey("larpgramMessageTextSizeSp")
+private val bubbleCornerRadiusDpKey = intPreferencesKey("larpgramBubbleCornerRadiusDp")
 private val logLevelKey = stringPreferencesKey("logLevel")
 private val traceLogPacksKey = stringPreferencesKey("traceLogPacks")
 private val messageSoundUriKey = stringPreferencesKey("notificationMessageSoundUri")
@@ -101,6 +105,22 @@ class DefaultAppPreferencesStore(
         return store.data.map { prefs ->
             prefs[liveLocationMinimumDistanceUpdateKey] ?: 10
         }
+    }
+
+    override suspend fun setMessageTextSizeSp(value: Int) {
+        store.edit { prefs -> prefs[messageTextSizeSpKey] = value }
+    }
+
+    override fun getMessageTextSizeSpFlow(): Flow<Int> {
+        return store.data.map { prefs -> prefs[messageTextSizeSpKey] ?: DEFAULT_MESSAGE_TEXT_SIZE_SP }
+    }
+
+    override suspend fun setBubbleCornerRadiusDp(value: Int) {
+        store.edit { prefs -> prefs[bubbleCornerRadiusDpKey] = value }
+    }
+
+    override fun getBubbleCornerRadiusDpFlow(): Flow<Int> {
+        return store.data.map { prefs -> prefs[bubbleCornerRadiusDpKey] ?: DEFAULT_BUBBLE_CORNER_RADIUS_DP }
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

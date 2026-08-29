@@ -11,6 +11,8 @@ package io.element.android.features.preferences.impl.advanced
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.media.MediaPreviewValue
+import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
+import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -42,6 +44,8 @@ fun aAdvancedSettingsState(
     hideInviteAvatars: Boolean = false,
     timelineMediaPreviewValue: MediaPreviewValue = MediaPreviewValue.On,
     liveLocationMinimumDistanceUpdate: Int? = 50,
+    messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
+    bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
     setTimelineMediaPreviewAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     setHideInviteAvatarsAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     eventSink: (AdvancedSettingsEvents) -> Unit = {},
@@ -58,5 +62,7 @@ fun aAdvancedSettingsState(
         setHideInviteAvatarsAction = setHideInviteAvatarsAction
     ),
     liveLocationMinimumDistanceUpdate = liveLocationMinimumDistanceUpdate,
+    messageTextSizeSp = messageTextSizeSp,
+    bubbleCornerRadiusDp = bubbleCornerRadiusDp,
     eventSink = eventSink
 )

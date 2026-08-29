@@ -41,6 +41,8 @@ private val DESIGN_PREVIEWS = setOf(
     // Self-profile TG redesign (2026-08-25): 3-button row + info card + bio.
     "UserProfileViewPreview",
     "EditUserProfileViewPreview",
+    // Chat customization (2026-08-29): message text size + bubble corner radius.
+    "ChatAppearanceSectionPreview",
 )
 
 object LarpgramPreviewProvider : TestParameterValuesProvider() {

@@ -22,6 +22,8 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
+import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -56,6 +58,14 @@ class AdvancedSettingsPresenter(
         val liveLocationMinimumDistanceUpdate by produceState<Int?>(null) {
             appPreferencesStore.getLiveLocationMinimumDistanceInMetersUpdateFlow().collect { value = it }
         }
+
+        // Larpgram: chat appearance customization.
+        val messageTextSizeSp by remember {
+            appPreferencesStore.getMessageTextSizeSpFlow()
+        }.collectAsState(initial = DEFAULT_MESSAGE_TEXT_SIZE_SP)
+        val bubbleCornerRadiusDp by remember {
+            appPreferencesStore.getBubbleCornerRadiusDpFlow()
+        }.collectAsState(initial = DEFAULT_BUBBLE_CORNER_RADIUS_DP)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
@@ -124,6 +134,12 @@ class AdvancedSettingsPresenter(
                 is AdvancedSettingsEvents.SetLiveLocationMinimumDistanceUpdate -> sessionCoroutineScope.launch {
                     appPreferencesStore.setLiveLocationMinimumDistanceInMetersUpdate(event.value)
                 }
+                is AdvancedSettingsEvents.SetMessageTextSize -> sessionCoroutineScope.launch {
+                    appPreferencesStore.setMessageTextSizeSp(event.sizeSp)
+                }
+                is AdvancedSettingsEvents.SetBubbleCornerRadius -> sessionCoroutineScope.launch {
+                    appPreferencesStore.setBubbleCornerRadiusDp(event.radiusDp)
+                }
                 is AdvancedSettingsEvents.SetCompressImages -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setOptimizeImages(event.compress)
                 }
@@ -141,6 +157,8 @@ class AdvancedSettingsPresenter(
             availableThemeOptions = availableThemeOptions,
             mediaPreviewConfigState = mediaPreviewConfigState,
             liveLocationMinimumDistanceUpdate = liveLocationMinimumDistanceUpdate,
+            messageTextSizeSp = messageTextSizeSp,
+            bubbleCornerRadiusDp = bubbleCornerRadiusDp,
             eventSink = ::handleEvent,
         )
     }
