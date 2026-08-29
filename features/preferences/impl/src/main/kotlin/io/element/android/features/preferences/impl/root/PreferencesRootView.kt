@@ -22,7 +22,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.preferences.impl.R
 import io.element.android.features.preferences.impl.user.UserPreferences
 import io.element.android.features.preferences.impl.userstatus.UserStatusState
 import io.element.android.features.preferences.impl.userstatus.UserStatusView
@@ -36,7 +35,6 @@ import io.element.android.libraries.designsystem.preview.PreviewWithLargeHeight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.CommonDrawables
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
@@ -54,26 +52,16 @@ fun PreferencesRootView(
     emojiPickerRenderer: EmojiPickerRenderer,
     onBackClick: () -> Unit,
     onAddAccountClick: () -> Unit,
-    onSecureBackupClick: () -> Unit,
-    onManageAccountClick: (url: String) -> Unit,
-    onLinkNewDeviceClick: () -> Unit,
-    onOpenAnalytics: () -> Unit,
-    onOpenRageShake: () -> Unit,
-    onOpenLockScreenSettings: () -> Unit,
-    onOpenAbout: () -> Unit,
-    onOpenDeveloperSettings: () -> Unit,
-    onOpenAdvancedSettings: () -> Unit,
-    onOpenLabs: () -> Unit,
-    onOpenNotificationSettings: () -> Unit,
+    onOpenCategory: (SettingsCategory) -> Unit,
     onOpenUserProfile: (MatrixUser) -> Unit,
-    onOpenBlockedUsers: () -> Unit,
-    onSignOutClick: () -> Unit,
-    onDeactivateClick: () -> Unit,
+    onOpenAbout: () -> Unit,
+    onOpenRageShake: () -> Unit,
+    onOpenLabs: () -> Unit,
+    onOpenDeveloperSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
 
-    // Include pref from other modules
     PreferencePage(
         modifier = modifier,
         onBackClick = onBackClick,
@@ -99,32 +87,15 @@ fun PreferencesRootView(
                 showTopDivider = !state.isMultiAccountEnabled,
             )
         }
-        // 'Account' section
-        ManageAccountSection(
-            state = state,
-            onManageAccountClick = onManageAccountClick,
-            onLinkNewDeviceClick = onLinkNewDeviceClick,
-            onOpenBlockedUsers = onOpenBlockedUsers
-        )
-        // 'Manage my app' section
-        ManageAppSection(
-            state = state,
-            onOpenNotificationSettings = onOpenNotificationSettings,
-            onOpenLockScreenSettings = onOpenLockScreenSettings,
-            onSecureBackupClick = onSecureBackupClick,
-        )
-
-        // General section
-        GeneralSection(
+        // TG-категории (Ф2): один верхнеуровневый список, каждая строка ведёт в свой под-экран.
+        CategoriesSection(onOpenCategory = onOpenCategory)
+        // «О приложении» — аналог блока «Помощь» в TG-настройках.
+        AppInfoSection(
             state = state,
             onOpenAbout = onOpenAbout,
-            onOpenAnalytics = onOpenAnalytics,
             onOpenRageShake = onOpenRageShake,
-            onOpenAdvancedSettings = onOpenAdvancedSettings,
-            onOpenDeveloperSettings = onOpenDeveloperSettings,
             onOpenLabs = onOpenLabs,
-            onSignOutClick = onSignOutClick,
-            onDeactivateClick = onDeactivateClick,
+            onOpenDeveloperSettings = onOpenDeveloperSettings,
         )
         // Version
         Footer(
@@ -136,6 +107,67 @@ fun PreferencesRootView(
                 null
             }
         )
+    }
+}
+
+@Composable
+private fun ColumnScope.CategoriesSection(
+    onOpenCategory: (SettingsCategory) -> Unit,
+) {
+    TgSettingsGroup {
+        SettingsCategory.entries.forEach { category ->
+            TgSettingsItem(
+                title = category.title,
+                subtitle = category.subtitle,
+                color = category.color,
+                iconVector = category.icon,
+                trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
+                onClick = { onOpenCategory(category) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ColumnScope.AppInfoSection(
+    state: PreferencesRootState,
+    onOpenAbout: () -> Unit,
+    onOpenRageShake: () -> Unit,
+    onOpenLabs: () -> Unit,
+    onOpenDeveloperSettings: () -> Unit,
+) {
+    TgSettingsGroup {
+        TgSettingsItem(
+            title = stringResource(id = CommonStrings.common_about),
+            color = TgSettingsColors.Blue,
+            iconVector = CompoundIcons.Info(),
+            onClick = onOpenAbout,
+        )
+        if (state.canReportBug) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_report_a_problem),
+                color = TgSettingsColors.Orange,
+                iconVector = CompoundIcons.ChatProblem(),
+                onClick = onOpenRageShake,
+            )
+        }
+        if (state.showLabsItem) {
+            TgSettingsItem(
+                title = stringResource(id = io.element.android.features.preferences.impl.R.string.screen_labs_title),
+                color = TgSettingsColors.Purple,
+                iconVector = CompoundIcons.Labs(),
+                onClick = onOpenLabs,
+            )
+        }
+        // В конце, чтобы случайный 8-кратный тап по версии ничего не ломал.
+        if (state.showDeveloperSettings) {
+            TgSettingsItem(
+                title = stringResource(id = CommonStrings.common_developer_options),
+                color = TgSettingsColors.Gray,
+                iconVector = CompoundIcons.Code(),
+                onClick = onOpenDeveloperSettings,
+            )
+        }
     }
 }
 
@@ -197,161 +229,6 @@ private fun ColumnScope.MultiAccountSection(
 }
 
 @Composable
-private fun ColumnScope.ManageAppSection(
-    state: PreferencesRootState,
-    onOpenNotificationSettings: () -> Unit,
-    onOpenLockScreenSettings: () -> Unit,
-    onSecureBackupClick: () -> Unit,
-) {
-    TgSettingsGroup {
-        TgSettingsItem(
-            title = stringResource(id = R.string.screen_notification_settings_title),
-            subtitle = "Звуки, звонки, счётчик сообщений",
-            color = TgSettingsColors.Red,
-            iconVector = CompoundIcons.Notifications(),
-            onClick = onOpenNotificationSettings,
-        )
-        TgSettingsItem(
-            title = stringResource(id = CommonStrings.common_screen_lock),
-            subtitle = "Код-пароль и биометрия",
-            color = TgSettingsColors.Orange,
-            iconVector = CompoundIcons.Lock(),
-            onClick = onOpenLockScreenSettings,
-        )
-        if (state.showSecureBackup) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_encryption),
-                subtitle = "Резервные ключи, безопасный бэкап",
-                color = TgSettingsColors.Green,
-                iconVector = CompoundIcons.Key(),
-                trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
-                onClick = onSecureBackupClick,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ColumnScope.ManageAccountSection(
-    state: PreferencesRootState,
-    onManageAccountClick: (url: String) -> Unit,
-    onLinkNewDeviceClick: () -> Unit,
-    onOpenBlockedUsers: () -> Unit,
-) {
-    if (state.accountManagementUrl == null && !state.showLinkNewDevice && !state.showBlockedUsersItem) {
-        return
-    }
-    TgSettingsGroup {
-        state.accountManagementUrl?.let { url ->
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.action_manage_account_and_devices),
-                color = TgSettingsColors.Blue,
-                iconVector = CompoundIcons.UserProfile(),
-                trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.PopOut())),
-                onClick = { onManageAccountClick(url) },
-            )
-        }
-        if (state.showLinkNewDevice) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_link_new_device),
-                color = TgSettingsColors.Cyan,
-                iconVector = CompoundIcons.Devices(),
-                onClick = onLinkNewDeviceClick,
-            )
-        }
-        if (state.showBlockedUsersItem) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_blocked_users),
-                color = TgSettingsColors.Gray,
-                iconVector = CompoundIcons.Block(),
-                onClick = onOpenBlockedUsers,
-                trailingContent = ListItemContent.Text(state.nbOfBlockedUsers.toString()),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ColumnScope.GeneralSection(
-    state: PreferencesRootState,
-    onOpenAbout: () -> Unit,
-    onOpenAnalytics: () -> Unit,
-    onOpenRageShake: () -> Unit,
-    onOpenAdvancedSettings: () -> Unit,
-    onOpenLabs: () -> Unit,
-    onOpenDeveloperSettings: () -> Unit,
-    onSignOutClick: () -> Unit,
-    onDeactivateClick: () -> Unit,
-) {
-    TgSettingsGroup {
-        TgSettingsItem(
-            title = stringResource(id = CommonStrings.common_advanced_settings),
-            color = TgSettingsColors.Gray,
-            iconVector = CompoundIcons.Settings(),
-            onClick = onOpenAdvancedSettings,
-        )
-        if (state.showLabsItem) {
-            TgSettingsItem(
-                title = stringResource(id = R.string.screen_labs_title),
-                color = TgSettingsColors.Purple,
-                iconVector = CompoundIcons.Labs(),
-                onClick = onOpenLabs,
-            )
-        }
-        TgSettingsItem(
-            title = stringResource(id = CommonStrings.common_about),
-            color = TgSettingsColors.Blue,
-            iconVector = CompoundIcons.Info(),
-            onClick = onOpenAbout,
-        )
-        if (state.canReportBug) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_report_a_problem),
-                color = TgSettingsColors.Orange,
-                iconVector = CompoundIcons.ChatProblem(),
-                onClick = onOpenRageShake,
-            )
-        }
-        if (state.showAnalyticsSettings) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_analytics),
-                subtitle = "Отправка обезличенных данных",
-                color = TgSettingsColors.Cyan,
-                iconVector = CompoundIcons.Chart(),
-                onClick = onOpenAnalytics,
-            )
-        }
-        // Put developer settings at the end, so nothing bad happens if the user clicks 8 times to enable the entry
-        if (state.showDeveloperSettings) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_developer_options),
-                color = TgSettingsColors.Gray,
-                iconVector = CompoundIcons.Code(),
-                onClick = onOpenDeveloperSettings,
-            )
-        }
-    }
-    TgSettingsGroup {
-        TgSettingsItem(
-            title = stringResource(id = CommonStrings.action_signout),
-            color = TgSettingsColors.Red,
-            iconVector = CompoundIcons.SignOut(),
-            style = ListItemStyle.Destructive,
-            onClick = onSignOutClick,
-        )
-        if (state.canDeactivateAccount) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.action_delete_account),
-                color = TgSettingsColors.Red,
-                iconVector = CompoundIcons.Delete(),
-                style = ListItemStyle.Destructive,
-                onClick = onDeactivateClick,
-            )
-        }
-    }
-}
-
-@Composable
 private fun ColumnScope.Footer(
     version: String,
     deviceId: DeviceId?,
@@ -400,20 +277,11 @@ private fun ContentToPreview(state: PreferencesRootState) {
         emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onBackClick = {},
         onAddAccountClick = {},
-        onOpenAnalytics = {},
-        onOpenRageShake = {},
-        onOpenDeveloperSettings = {},
-        onOpenAdvancedSettings = {},
-        onOpenLabs = {},
-        onOpenAbout = {},
-        onSecureBackupClick = {},
-        onManageAccountClick = {},
-        onLinkNewDeviceClick = {},
-        onOpenNotificationSettings = {},
-        onOpenLockScreenSettings = {},
+        onOpenCategory = {},
         onOpenUserProfile = {},
-        onOpenBlockedUsers = {},
-        onSignOutClick = {},
-        onDeactivateClick = {},
+        onOpenAbout = {},
+        onOpenRageShake = {},
+        onOpenLabs = {},
+        onOpenDeveloperSettings = {},
     )
 }
