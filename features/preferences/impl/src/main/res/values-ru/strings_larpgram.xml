@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screen_chat_appearance_text_size_title">Размер текста сообщений</string>
+    <string name="screen_chat_appearance_corner_radius_title">Углы блоков с сообщениями</string>
+    <string name="screen_chat_appearance_preview_incoming">Доброе утро! Знаешь, который час?</string>
+    <string name="screen_chat_appearance_preview_outgoing">В Токио утро</string>
+</resources>

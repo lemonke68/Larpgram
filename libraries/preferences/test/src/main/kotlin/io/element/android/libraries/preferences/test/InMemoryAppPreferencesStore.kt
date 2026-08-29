@@ -12,6 +12,8 @@ import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.matrix.api.tracing.LogLevel
 import io.element.android.libraries.matrix.api.tracing.TraceLogPack
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
+import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.NotificationSound
 import io.element.android.libraries.preferences.api.store.NotificationSoundChannelConfig
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +27,8 @@ class InMemoryAppPreferencesStore(
     timelineMediaPreviewValue: MediaPreviewValue? = null,
     theme: String? = null,
     liveLocationMinimumDistanceUpdate: Int = 10,
+    messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
+    bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
     logLevel: LogLevel = LogLevel.INFO,
     traceLogPacks: Set<TraceLogPack> = emptySet(),
     messageSound: NotificationSound = NotificationSound.SystemDefault,
@@ -38,6 +42,8 @@ class InMemoryAppPreferencesStore(
     private val customElementCallBaseUrl = MutableStateFlow(customElementCallBaseUrl)
     private val theme = MutableStateFlow(theme)
     private val liveLocationMinimumDistanceUpdate = MutableStateFlow(liveLocationMinimumDistanceUpdate)
+    private val messageTextSizeSp = MutableStateFlow(messageTextSizeSp)
+    private val bubbleCornerRadiusDp = MutableStateFlow(bubbleCornerRadiusDp)
     private val logLevel = MutableStateFlow(logLevel)
     private val tracingLogPacks = MutableStateFlow(traceLogPacks)
     private val hideInviteAvatars = MutableStateFlow(hideInviteAvatars)
@@ -79,6 +85,22 @@ class InMemoryAppPreferencesStore(
 
     override fun getLiveLocationMinimumDistanceInMetersUpdateFlow(): Flow<Int> {
         return liveLocationMinimumDistanceUpdate
+    }
+
+    override suspend fun setMessageTextSizeSp(value: Int) {
+        messageTextSizeSp.value = value
+    }
+
+    override fun getMessageTextSizeSpFlow(): Flow<Int> {
+        return messageTextSizeSp
+    }
+
+    override suspend fun setBubbleCornerRadiusDp(value: Int) {
+        bubbleCornerRadiusDp.value = value
+    }
+
+    override fun getBubbleCornerRadiusDpFlow(): Flow<Int> {
+        return bubbleCornerRadiusDp
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

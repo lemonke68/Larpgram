@@ -30,6 +30,7 @@ import io.element.android.features.messages.impl.timeline.model.event.isEmojiOnl
 import io.element.android.libraries.androidutils.text.LinkifyHelper
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.LocalMessageTextScale
 import io.element.android.libraries.designsystem.utils.LocalUiTestMode
 import io.element.android.libraries.textcomposer.ElementRichTextEditorStyle
 import io.element.android.libraries.textcomposer.mentions.LocalMentionSpanUpdater
@@ -48,13 +49,22 @@ fun TimelineItemTextView(
     if (LocalUiTestMode.current) return
 
     // Правка форка: признак переехал в LarpgramBubbleless.kt, по нему же решается пузырь.
-    val textStyle = when {
+    val baseTextStyle = when {
         content.isEmojiOnly -> ElementTheme.typography.fontHeadingXlRegular
         else -> ElementTheme.typography.fontBodyLgRegular
     }
+    // Larpgram: масштаб размера текста сообщений из настроек. Тело рисует EditorStyledText (легаси
+    // View), и его размер берётся из LocalTextStyle.fontSize (дефолт wysiwyg), поэтому масштабируем
+    // именно fontSize стиля — этого достаточно и для обычного текста, и для одиночных эмодзи.
+    val messageTextScale = LocalMessageTextScale.current
+    val textStyle = if (messageTextScale == 1f) {
+        baseTextStyle
+    } else {
+        baseTextStyle.copy(fontSize = baseTextStyle.fontSize * messageTextScale)
+    }
     CompositionLocalProvider(
         LocalContentColor provides ElementTheme.colors.textPrimary,
-        LocalTextStyle provides textStyle
+        LocalTextStyle provides textStyle,
     ) {
         val text = getTextWithResolvedMentions(content)
         Box(modifier.semantics { contentDescription = content.plainText }) {

@@ -119,6 +119,7 @@ import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
 import io.element.android.libraries.designsystem.swipe.SwipeableActionsState
 import io.element.android.libraries.designsystem.swipe.rememberSwipeableActionsState
 import io.element.android.libraries.designsystem.text.toPx
+import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -1016,7 +1017,7 @@ private fun MessageEventBubbleContent(
             // ободок был одинаковой толщины и на углах.
             ContentPadding.Media -> Modifier
                 .padding(MEDIA_BUBBLE_INSET)
-                .clip(RoundedCornerShape(TelegramBubbleShape.BUBBLE_RADIUS - MEDIA_BUBBLE_INSET))
+                .clip(RoundedCornerShape((LocalChatBubbleRadius.current - MEDIA_BUBBLE_INSET).coerceAtLeast(0.dp)))
             ContentPadding.CaptionedMedia ->
                 Modifier.padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = 8.dp)
             ContentPadding.InvalidContent -> Modifier.padding(top = topPadding, bottom = 8.dp)

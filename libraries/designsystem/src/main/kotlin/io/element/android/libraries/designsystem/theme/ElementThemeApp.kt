@@ -25,6 +25,8 @@ import io.element.android.libraries.core.meta.BuildType
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
+import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 
 val LocalBuildMeta = staticCompositionLocalOf {
     BuildMeta(
@@ -67,6 +69,13 @@ fun ElementThemeApp(
     val theme by remember(isBlackThemeAllowed) {
         appPreferencesStore.getThemeFlow().mapToTheme(allowBlackTheme = isBlackThemeAllowed)
     }.collectAsState(initial = Theme.System)
+    // Larpgram: chat appearance customization, provided app-wide for the timeline to read.
+    val messageTextSizeSp by remember {
+        appPreferencesStore.getMessageTextSizeSpFlow()
+    }.collectAsState(initial = DEFAULT_MESSAGE_TEXT_SIZE_SP)
+    val bubbleCornerRadiusDp by remember {
+        appPreferencesStore.getBubbleCornerRadiusDpFlow()
+    }.collectAsState(initial = DEFAULT_BUBBLE_CORNER_RADIUS_DP)
     LaunchedEffect(theme) {
         AppCompatDelegate.setDefaultNightMode(
             when (theme) {
@@ -78,6 +87,8 @@ fun ElementThemeApp(
     }
     CompositionLocalProvider(
         LocalBuildMeta provides buildMeta,
+        LocalMessageTextScale provides ChatAppearanceDefaults.textScaleFor(messageTextSizeSp),
+        LocalChatBubbleRadius provides ChatAppearanceDefaults.bubbleRadiusFor(bubbleCornerRadiusDp),
     ) {
         ElementTheme(
             theme = theme,

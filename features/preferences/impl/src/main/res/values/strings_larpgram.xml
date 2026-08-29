@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larpgram fork strings. Kept out of localazy.xml so the translation pipeline does not overwrite them. -->
+<resources>
+    <!-- Chat appearance settings ("Настройки чатов"): message text size slider. -->
+    <string name="screen_chat_appearance_text_size_title">Message text size</string>
+    <!-- Chat appearance settings: bubble corner radius slider. -->
+    <string name="screen_chat_appearance_corner_radius_title">Message corner radius</string>
+    <!-- Live preview bubble, incoming sample message. -->
+    <string name="screen_chat_appearance_preview_incoming">Good morning! Know what time it is?</string>
+    <!-- Live preview bubble, outgoing sample message. -->
+    <string name="screen_chat_appearance_preview_outgoing">Morning in Tokyo</string>
+</resources>

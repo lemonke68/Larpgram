@@ -24,6 +24,9 @@ data class AdvancedSettingsState(
     val availableThemeOptions: ImmutableList<ThemeOption>,
     val mediaPreviewConfigState: MediaPreviewConfigState,
     val liveLocationMinimumDistanceUpdate: Int?,
+    // Larpgram: chat appearance customization.
+    val messageTextSizeSp: Int,
+    val bubbleCornerRadiusDp: Int,
     val eventSink: (AdvancedSettingsEvents) -> Unit
 )
 

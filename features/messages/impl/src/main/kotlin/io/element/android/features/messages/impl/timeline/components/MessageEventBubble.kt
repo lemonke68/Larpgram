@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
@@ -46,6 +47,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.text.toPx
+import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.messageFromMeBackground
 import io.element.android.libraries.designsystem.theme.messageFromOtherBackground
@@ -94,9 +96,11 @@ fun MessageEventBubble(
             else -> customBackgroundColor ?: MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine)
         }
     )
-    val bubbleShape = remember(state, showBubble) {
+    // Larpgram: user-tunable corner radius from settings.
+    val bubbleRadius = LocalChatBubbleRadius.current
+    val bubbleShape = remember(state, showBubble, bubbleRadius) {
         if (showBubble) {
-            MessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine)
+            MessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine, bubbleRadius)
         } else {
             RectangleShape
         }
@@ -174,12 +178,17 @@ object MessageEventBubbleDefaults {
      * corners — the only thing that still does is [cutTopStart], which makes room for the avatar.
      */
     @Suppress("UNUSED_PARAMETER")
-    fun shape(cutTopStart: Boolean, groupPosition: TimelineItemGroupPosition, isMine: Boolean): Shape {
+    fun shape(
+        cutTopStart: Boolean,
+        groupPosition: TimelineItemGroupPosition,
+        isMine: Boolean,
+        radius: Dp = BUBBLE_RADIUS,
+    ): Shape {
         return TelegramBubbleShape(
-            topStart = if (cutTopStart) 0.dp else BUBBLE_RADIUS,
-            topEnd = BUBBLE_RADIUS,
-            bottomEnd = BUBBLE_RADIUS,
-            bottomStart = BUBBLE_RADIUS,
+            topStart = if (cutTopStart) 0.dp else radius,
+            topEnd = radius,
+            bottomEnd = radius,
+            bottomStart = radius,
             tailSide = if (isMine) BubbleTailSide.End else BubbleTailSide.Start,
             hasTail = true,
         )
