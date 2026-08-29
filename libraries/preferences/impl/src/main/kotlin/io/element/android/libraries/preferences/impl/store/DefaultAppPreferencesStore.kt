@@ -39,6 +39,7 @@ private val liveLocationMinimumDistanceUpdateKey = intPreferencesKey("liveLocati
 private val messageTextSizeSpKey = intPreferencesKey("larpgramMessageTextSizeSp")
 private val bubbleCornerRadiusDpKey = intPreferencesKey("larpgramBubbleCornerRadiusDp")
 private val chatWallpaperIdKey = stringPreferencesKey("larpgramChatWallpaperId")
+private val chatWallpaperCustomColorKey = intPreferencesKey("larpgramChatWallpaperCustomColor")
 private val logLevelKey = stringPreferencesKey("logLevel")
 private val traceLogPacksKey = stringPreferencesKey("traceLogPacks")
 private val messageSoundUriKey = stringPreferencesKey("notificationMessageSoundUri")
@@ -130,6 +131,14 @@ class DefaultAppPreferencesStore(
 
     override fun getChatWallpaperIdFlow(): Flow<String?> {
         return store.data.map { prefs -> prefs[chatWallpaperIdKey] }
+    }
+
+    override suspend fun setChatWallpaperCustomColorArgb(argb: Int) {
+        store.edit { prefs -> prefs[chatWallpaperCustomColorKey] = argb }
+    }
+
+    override fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?> {
+        return store.data.map { prefs -> prefs[chatWallpaperCustomColorKey] }
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

@@ -22,20 +22,29 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.ChatAppearanceDefaults
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
+import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Slider
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.messageFromMeBackground
@@ -52,11 +61,20 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun ColumnScope.ChatAppearanceSection(state: AdvancedSettingsState) {
+    val isCustomSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_ID
+    val customColor = state.chatWallpaperCustomColorArgb?.let { Color(it) }
     val selectedWallpaper = ChatWallpaperOption.fromId(state.chatWallpaperId)
+    val previewColor = if (isCustomSelected && customColor != null) {
+        customColor
+    } else {
+        wallpaperSwatchColor(selectedWallpaper)
+    }
+    var showColorPicker by remember { mutableStateOf(false) }
+
     ChatAppearancePreview(
         messageTextSizeSp = state.messageTextSizeSp,
         bubbleCornerRadiusDp = state.bubbleCornerRadiusDp,
-        wallpaper = selectedWallpaper,
+        wallpaperColor = previewColor,
     )
 
     SliderRow(
@@ -75,19 +93,33 @@ fun ColumnScope.ChatAppearanceSection(state: AdvancedSettingsState) {
 
     WallpaperRow(
         selected = selectedWallpaper,
+        isCustomSelected = isCustomSelected,
+        customColor = customColor,
         onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatWallpaper(it.id)) },
+        onEyedropperClick = { showColorPicker = true },
     )
+
+    if (showColorPicker) {
+        ChatWallpaperColorPickerDialog(
+            initialColor = customColor ?: previewColor,
+            onColorSelected = {
+                state.eventSink(AdvancedSettingsEvents.SetChatWallpaperCustomColor(it.toArgb()))
+                showColorPicker = false
+            },
+            onDismiss = { showColorPicker = false },
+        )
+    }
 }
 
 @Composable
-private fun wallpaperSwatchColor(option: ChatWallpaperOption): androidx.compose.ui.graphics.Color =
+private fun wallpaperSwatchColor(option: ChatWallpaperOption): Color =
     option.solidColor ?: ElementTheme.colors.chatWallpaperBackground
 
 @Composable
 private fun ChatAppearancePreview(
     messageTextSizeSp: Int,
     bubbleCornerRadiusDp: Int,
-    wallpaper: ChatWallpaperOption,
+    wallpaperColor: Color,
 ) {
     val bubbleShape = RoundedCornerShape(bubbleCornerRadiusDp.dp)
     Box(
@@ -95,7 +127,7 @@ private fun ChatAppearancePreview(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(wallpaperSwatchColor(wallpaper))
+            .background(wallpaperColor)
             .padding(12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -182,7 +214,10 @@ private fun ColumnScope.SliderRow(
 @Composable
 private fun ColumnScope.WallpaperRow(
     selected: ChatWallpaperOption,
+    isCustomSelected: Boolean,
+    customColor: Color?,
     onSelect: (ChatWallpaperOption) -> Unit,
+    onEyedropperClick: () -> Unit,
 ) {
     Text(
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
@@ -197,13 +232,64 @@ private fun ColumnScope.WallpaperRow(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // Пипетка: любой цвет через RGB-пикер. Слева от пресетов.
+        EyedropperSwatch(
+            customColor = customColor,
+            isSelected = isCustomSelected,
+            onClick = onEyedropperClick,
+        )
         ChatWallpaperOption.entries.forEach { option ->
             WallpaperSwatch(
                 option = option,
-                isSelected = option == selected,
+                isSelected = !isCustomSelected && option == selected,
                 onClick = { onSelect(option) },
             )
         }
+    }
+}
+
+@Composable
+private fun EyedropperSwatch(
+    customColor: Color?,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ringColor = if (isSelected) ElementTheme.colors.iconAccentTertiary else ElementTheme.colors.borderInteractiveSecondary
+    // Радужная заливка = «выбрать любой цвет»; если цвет уже выбран, показываем его.
+    val rainbow = remember {
+        Brush.sweepGradient(
+            listOf(
+                Color(0xFFE0554E),
+                Color(0xFFE0A64E),
+                Color(0xFFD8D24E),
+                Color(0xFF5B9E6F),
+                Color(0xFF5A86D8),
+                Color(0xFF8A5AD8),
+                Color(0xFFE0554E),
+            )
+        )
+    }
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (customColor != null) Modifier.background(customColor) else Modifier.background(rainbow)
+            )
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = ringColor,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = CompoundIcons.Edit(),
+            contentDescription = stringResource(R.string.screen_chat_appearance_custom_color_title),
+            tint = Color.White,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

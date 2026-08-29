@@ -70,6 +70,9 @@ class AdvancedSettingsPresenter(
         val chatWallpaperId by remember {
             appPreferencesStore.getChatWallpaperIdFlow()
         }.collectAsState(initial = null)
+        val chatWallpaperCustomColorArgb by remember {
+            appPreferencesStore.getChatWallpaperCustomColorArgbFlow()
+        }.collectAsState(initial = null)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
@@ -147,6 +150,11 @@ class AdvancedSettingsPresenter(
                 is AdvancedSettingsEvents.SetChatWallpaper -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatWallpaperId(event.id)
                 }
+                is AdvancedSettingsEvents.SetChatWallpaperCustomColor -> sessionCoroutineScope.launch {
+                    // Сохраняем цвет и переключаем выбор на кастомный маркер-id.
+                    appPreferencesStore.setChatWallpaperCustomColorArgb(event.argb)
+                    appPreferencesStore.setChatWallpaperId(ChatWallpaperOption.CUSTOM_ID)
+                }
                 is AdvancedSettingsEvents.SetCompressImages -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setOptimizeImages(event.compress)
                 }
@@ -167,6 +175,7 @@ class AdvancedSettingsPresenter(
             messageTextSizeSp = messageTextSizeSp,
             bubbleCornerRadiusDp = bubbleCornerRadiusDp,
             chatWallpaperId = chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id,
+            chatWallpaperCustomColorArgb = chatWallpaperCustomColorArgb,
             eventSink = ::handleEvent,
         )
     }

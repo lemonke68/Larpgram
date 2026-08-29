@@ -11,4 +11,6 @@
     <string name="screen_chat_appearance_preview_outgoing">Morning in Tokyo</string>
     <!-- Chat appearance settings: wallpaper picker heading. -->
     <string name="screen_chat_appearance_wallpaper_title">Wallpaper</string>
+    <!-- Wallpaper eyedropper: RGB color picker dialog title / button label. -->
+    <string name="screen_chat_appearance_custom_color_title">Custom color</string>
 </resources>

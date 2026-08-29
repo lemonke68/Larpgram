@@ -30,6 +30,7 @@ class InMemoryAppPreferencesStore(
     messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
     bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
     chatWallpaperId: String? = null,
+    chatWallpaperCustomColorArgb: Int? = null,
     logLevel: LogLevel = LogLevel.INFO,
     traceLogPacks: Set<TraceLogPack> = emptySet(),
     messageSound: NotificationSound = NotificationSound.SystemDefault,
@@ -46,6 +47,7 @@ class InMemoryAppPreferencesStore(
     private val messageTextSizeSp = MutableStateFlow(messageTextSizeSp)
     private val bubbleCornerRadiusDp = MutableStateFlow(bubbleCornerRadiusDp)
     private val chatWallpaperId = MutableStateFlow(chatWallpaperId)
+    private val chatWallpaperCustomColorArgb = MutableStateFlow(chatWallpaperCustomColorArgb)
     private val logLevel = MutableStateFlow(logLevel)
     private val tracingLogPacks = MutableStateFlow(traceLogPacks)
     private val hideInviteAvatars = MutableStateFlow(hideInviteAvatars)
@@ -111,6 +113,14 @@ class InMemoryAppPreferencesStore(
 
     override fun getChatWallpaperIdFlow(): Flow<String?> {
         return chatWallpaperId
+    }
+
+    override suspend fun setChatWallpaperCustomColorArgb(argb: Int) {
+        chatWallpaperCustomColorArgb.value = argb
+    }
+
+    override fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?> {
+        return chatWallpaperCustomColorArgb
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
