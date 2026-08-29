@@ -40,6 +40,10 @@ interface AppPreferencesStore {
     suspend fun setBubbleCornerRadiusDp(value: Int)
     fun getBubbleCornerRadiusDpFlow(): Flow<Int>
 
+    /** Selected chat wallpaper id (see ChatWallpaperOption). Null flow value means the default. */
+    suspend fun setChatWallpaperId(id: String)
+    fun getChatWallpaperIdFlow(): Flow<String?>
+
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
     suspend fun setHideInviteAvatars(hide: Boolean?)
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

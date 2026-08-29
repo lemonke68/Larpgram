@@ -4,4 +4,5 @@
     <string name="screen_chat_appearance_corner_radius_title">Углы блоков с сообщениями</string>
     <string name="screen_chat_appearance_preview_incoming">Доброе утро! Знаешь, который час?</string>
     <string name="screen_chat_appearance_preview_outgoing">В Токио утро</string>
+    <string name="screen_chat_appearance_wallpaper_title">Обои</string>
 </resources>

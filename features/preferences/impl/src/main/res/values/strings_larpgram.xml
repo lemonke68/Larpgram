@@ -9,4 +9,6 @@
     <string name="screen_chat_appearance_preview_incoming">Good morning! Know what time it is?</string>
     <!-- Live preview bubble, outgoing sample message. -->
     <string name="screen_chat_appearance_preview_outgoing">Morning in Tokyo</string>
+    <!-- Chat appearance settings: wallpaper picker heading. -->
+    <string name="screen_chat_appearance_wallpaper_title">Wallpaper</string>
 </resources>

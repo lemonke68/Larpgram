@@ -25,4 +25,5 @@ sealed interface AdvancedSettingsEvents {
     // Larpgram: chat appearance customization.
     data class SetMessageTextSize(val sizeSp: Int) : AdvancedSettingsEvents
     data class SetBubbleCornerRadius(val radiusDp: Int) : AdvancedSettingsEvents
+    data class SetChatWallpaper(val id: String) : AdvancedSettingsEvents
 }

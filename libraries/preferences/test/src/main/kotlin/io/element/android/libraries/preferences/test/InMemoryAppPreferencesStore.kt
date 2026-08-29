@@ -29,6 +29,7 @@ class InMemoryAppPreferencesStore(
     liveLocationMinimumDistanceUpdate: Int = 10,
     messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
     bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
+    chatWallpaperId: String? = null,
     logLevel: LogLevel = LogLevel.INFO,
     traceLogPacks: Set<TraceLogPack> = emptySet(),
     messageSound: NotificationSound = NotificationSound.SystemDefault,
@@ -44,6 +45,7 @@ class InMemoryAppPreferencesStore(
     private val liveLocationMinimumDistanceUpdate = MutableStateFlow(liveLocationMinimumDistanceUpdate)
     private val messageTextSizeSp = MutableStateFlow(messageTextSizeSp)
     private val bubbleCornerRadiusDp = MutableStateFlow(bubbleCornerRadiusDp)
+    private val chatWallpaperId = MutableStateFlow(chatWallpaperId)
     private val logLevel = MutableStateFlow(logLevel)
     private val tracingLogPacks = MutableStateFlow(traceLogPacks)
     private val hideInviteAvatars = MutableStateFlow(hideInviteAvatars)
@@ -101,6 +103,14 @@ class InMemoryAppPreferencesStore(
 
     override fun getBubbleCornerRadiusDpFlow(): Flow<Int> {
         return bubbleCornerRadiusDp
+    }
+
+    override suspend fun setChatWallpaperId(id: String) {
+        chatWallpaperId.value = id
+    }
+
+    override fun getChatWallpaperIdFlow(): Flow<String?> {
+        return chatWallpaperId
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
