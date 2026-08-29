@@ -210,6 +210,20 @@ class PreferencesRootViewTest : RobolectricTest() {
     }
 
     @Test
+    fun `click on Advanced settings invokes the expected callback`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        ensureCalledOnce { callback ->
+            setView(
+                aPreferencesRootState(
+                    eventSink = eventsRecorder,
+                ),
+                onOpenAdvancedSettings = callback,
+            )
+            clickOn(CommonStrings.common_advanced_settings)
+        }
+    }
+
+    @Test
     fun `clicking on version sends a PreferencesRootEvents`() = runAndroidComposeUiTest {
         val version = "VERSION"
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>()
@@ -242,6 +256,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
     onOpenRageShake: () -> Unit = EnsureNeverCalled(),
     onOpenLabs: () -> Unit = EnsureNeverCalled(),
     onOpenDeveloperSettings: () -> Unit = EnsureNeverCalled(),
+    onOpenAdvancedSettings: () -> Unit = EnsureNeverCalled(),
 ) {
     setContent {
         PreferencesRootView(
@@ -255,6 +270,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
             onOpenRageShake = onOpenRageShake,
             onOpenLabs = onOpenLabs,
             onOpenDeveloperSettings = onOpenDeveloperSettings,
+            onOpenAdvancedSettings = onOpenAdvancedSettings,
         )
     }
 }

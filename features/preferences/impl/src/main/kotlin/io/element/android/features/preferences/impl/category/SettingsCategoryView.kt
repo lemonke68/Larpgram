@@ -21,6 +21,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.preferences.impl.advanced.AdvancedSettingsState
+import io.element.android.features.preferences.impl.advanced.AppearanceThemeItem
+import io.element.android.features.preferences.impl.advanced.MediaUploadSection
+import io.element.android.features.preferences.impl.advanced.ModerationAndSafetySection
+import io.element.android.features.preferences.impl.advanced.SharePresenceItem
 import io.element.android.features.preferences.impl.root.PreferencesRootState
 import io.element.android.features.preferences.impl.root.SettingsCategory
 import io.element.android.features.preferences.impl.root.TgSettingsColors
@@ -36,6 +41,7 @@ import io.element.android.libraries.ui.strings.CommonStrings
 fun SettingsCategoryView(
     category: SettingsCategory,
     state: PreferencesRootState,
+    advancedSettingsState: AdvancedSettingsState,
     onBackClick: () -> Unit,
     onOpenUserProfile: (io.element.android.libraries.matrix.api.user.MatrixUser) -> Unit,
     onAddAccountClick: () -> Unit,
@@ -65,6 +71,7 @@ fun SettingsCategoryView(
             )
             SettingsCategory.Privacy -> PrivacyCategory(
                 state = state,
+                advancedSettingsState = advancedSettingsState,
                 onOpenBlockedUsers = onOpenBlockedUsers,
                 onSecureBackupClick = onSecureBackupClick,
                 onOpenLockScreenSettings = onOpenLockScreenSettings,
@@ -75,14 +82,14 @@ fun SettingsCategoryView(
                 onLinkNewDeviceClick = onLinkNewDeviceClick,
                 onManageAccountClick = onManageAccountClick,
             )
+            SettingsCategory.Chats -> ChatsCategory(advancedSettingsState = advancedSettingsState)
+            SettingsCategory.Data -> DataCategory(advancedSettingsState = advancedSettingsState)
             // Категории без бэкенда в Element — заглушка «скоро». Наполнение придёт
-            // с эпиком кастомизации (Настройки чатов) и папками/энергосбережением.
-            SettingsCategory.Chats,
+            // с TG-фичами (обои/размер текста, папки, энергосбережение, язык), пишем с нуля позже.
             SettingsCategory.Folders,
             SettingsCategory.Power,
             SettingsCategory.Language,
-            SettingsCategory.Notifications,
-            SettingsCategory.Data -> ComingSoonCategory(category)
+            SettingsCategory.Notifications -> ComingSoonCategory(category)
         }
     }
 }
@@ -147,6 +154,7 @@ private fun ColumnScope.AccountCategory(
 @Composable
 private fun ColumnScope.PrivacyCategory(
     state: PreferencesRootState,
+    advancedSettingsState: AdvancedSettingsState,
     onOpenBlockedUsers: () -> Unit,
     onSecureBackupClick: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
@@ -189,6 +197,23 @@ private fun ColumnScope.PrivacyCategory(
             )
         }
     }
+    // Реальные тумблеры Element: присутствие + модерация (перенесены из «Дополнительно»).
+    SharePresenceItem(advancedSettingsState)
+    ModerationAndSafetySection(advancedSettingsState)
+}
+
+@Composable
+private fun ColumnScope.ChatsCategory(advancedSettingsState: AdvancedSettingsState) {
+    // Единственное, что реально есть в Element: тема оформления (день/ночь/чёрная).
+    AppearanceThemeItem(advancedSettingsState)
+    // Обои, размер текста, цвет имени, углы блоков и т.п. — TG-фичи без бэкенда, пишем позже.
+    ComingSoonCategory(SettingsCategory.Chats)
+}
+
+@Composable
+private fun ColumnScope.DataCategory(advancedSettingsState: AdvancedSettingsState) {
+    // Сжатие и качество загрузки медиа (перенесено из «Дополнительно»).
+    MediaUploadSection(advancedSettingsState)
 }
 
 @Composable

@@ -68,6 +68,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -112,6 +113,10 @@ class HomeFlowNode(
 ) {
     private val callback: HomeEntryPoint.Callback = callback()
     private val stateFlow = launchMolecule { presenter.present() }
+
+    // Larpgram: true пока таб настроек показывает корневой экран. На вложенных экранах настроек
+    // прячем персистентный нижний бар, иначе он перекрывает контент.
+    private val settingsTabAtRoot = MutableStateFlow(true)
 
     override fun onBuilt() {
         super.onBuilt()
@@ -270,6 +275,7 @@ class HomeFlowNode(
                         modifier = Modifier
                     )
                 },
+                settingsTabAtRoot = settingsTabAtRoot.collectAsState().value,
                 // Real Settings/Profile screens, hosted as permanent children and rendered in
                 // the tab content area under the persistent bottom bar.
                 settingsContent = {
@@ -323,6 +329,9 @@ class HomeFlowNode(
                         callback.navigateToRoomNotificationSettings(roomId)
                     override fun navigateToEvent(roomId: RoomId, eventId: EventId) =
                         callback.navigateToEvent(roomId, eventId)
+                    override fun onNestedNavigationStateChanged(isAtRoot: Boolean) {
+                        settingsTabAtRoot.value = isAtRoot
+                    }
                 }
                 preferencesEntryPoint.createNode(
                     parentNode = this,

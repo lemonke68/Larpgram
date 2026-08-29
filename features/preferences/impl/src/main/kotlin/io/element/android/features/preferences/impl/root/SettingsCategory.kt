@@ -91,9 +91,8 @@ enum class SettingsCategory(
     val directTarget: DirectTarget?
         get() = when (this) {
             Notifications -> DirectTarget.Notifications
-            Data -> DirectTarget.Advanced
             else -> null
         }
 
-    enum class DirectTarget { Notifications, Advanced }
+    enum class DirectTarget { Notifications }
 }

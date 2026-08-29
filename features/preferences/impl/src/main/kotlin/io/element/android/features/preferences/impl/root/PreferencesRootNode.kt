@@ -36,6 +36,7 @@ class PreferencesRootNode(
         fun navigateToAbout()
         fun navigateToDeveloperSettings()
         fun navigateToLabs()
+        fun navigateToAdvancedSettings()
         fun navigateToUserProfile(matrixUser: MatrixUser)
     }
 
@@ -56,6 +57,7 @@ class PreferencesRootNode(
             onOpenRageShake = callback::navigateToBugReport,
             onOpenLabs = callback::navigateToLabs,
             onOpenDeveloperSettings = callback::navigateToDeveloperSettings,
+            onOpenAdvancedSettings = callback::navigateToAdvancedSettings,
         )
     }
 }

@@ -10,6 +10,9 @@ package io.element.android.features.preferences.impl
 
 import android.os.Parcelable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -140,7 +143,6 @@ class PreferencesFlowNode(
                         // промежуточный экран-категорию.
                         when (category.directTarget) {
                             SettingsCategory.DirectTarget.Notifications -> backstack.push(NavTarget.NotificationSettings)
-                            SettingsCategory.DirectTarget.Advanced -> backstack.push(NavTarget.AdvancedSettings)
                             null -> backstack.push(NavTarget.Category(category))
                         }
                     }
@@ -163,6 +165,10 @@ class PreferencesFlowNode(
 
                     override fun navigateToLabs() {
                         backstack.push(NavTarget.Labs)
+                    }
+
+                    override fun navigateToAdvancedSettings() {
+                        backstack.push(NavTarget.AdvancedSettings)
                     }
 
                     override fun navigateToUserProfile(matrixUser: MatrixUser) {
@@ -367,6 +373,13 @@ class PreferencesFlowNode(
 
     @Composable
     override fun View(modifier: Modifier) {
+        // Larpgram: сообщаем хосту (таб настроек в нижнем баре), в корне ли мы, чтобы он прятал
+        // персистентный нижний бар на вложенных экранах, где тот перекрывает контент.
+        val elements by backstack.elements.collectAsState()
+        val isAtRoot = elements.none { it.targetState == BackStack.State.STASHED }
+        LaunchedEffect(isAtRoot) {
+            callback.onNestedNavigationStateChanged(isAtRoot)
+        }
         BackstackView()
     }
 }
