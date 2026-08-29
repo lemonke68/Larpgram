@@ -58,6 +58,7 @@ fun PreferencesRootView(
     onOpenRageShake: () -> Unit,
     onOpenLabs: () -> Unit,
     onOpenDeveloperSettings: () -> Unit,
+    onOpenAdvancedSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
@@ -96,6 +97,7 @@ fun PreferencesRootView(
             onOpenRageShake = onOpenRageShake,
             onOpenLabs = onOpenLabs,
             onOpenDeveloperSettings = onOpenDeveloperSettings,
+            onOpenAdvancedSettings = onOpenAdvancedSettings,
         )
         // Version
         Footer(
@@ -135,6 +137,7 @@ private fun ColumnScope.AppInfoSection(
     onOpenRageShake: () -> Unit,
     onOpenLabs: () -> Unit,
     onOpenDeveloperSettings: () -> Unit,
+    onOpenAdvancedSettings: () -> Unit,
 ) {
     TgSettingsGroup {
         TgSettingsItem(
@@ -142,6 +145,13 @@ private fun ColumnScope.AppInfoSection(
             color = TgSettingsColors.Blue,
             iconVector = CompoundIcons.Info(),
             onClick = onOpenAbout,
+        )
+        // Полный экран «Дополнительно» (dev-режим, live-location и пр. — то, что не легло в категории).
+        TgSettingsItem(
+            title = stringResource(id = CommonStrings.common_advanced_settings),
+            color = TgSettingsColors.Gray,
+            iconVector = CompoundIcons.Settings(),
+            onClick = onOpenAdvancedSettings,
         )
         if (state.canReportBug) {
             TgSettingsItem(
@@ -283,5 +293,6 @@ private fun ContentToPreview(state: PreferencesRootState) {
         onOpenRageShake = {},
         onOpenLabs = {},
         onOpenDeveloperSettings = {},
+        onOpenAdvancedSettings = {},
     )
 }

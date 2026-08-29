@@ -21,6 +21,7 @@ import io.element.android.annotations.ContributesNode
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.logout.api.direct.DirectLogoutEvents
 import io.element.android.features.logout.api.direct.DirectLogoutView
+import io.element.android.features.preferences.impl.advanced.AdvancedSettingsPresenter
 import io.element.android.features.preferences.impl.root.PreferencesRootPresenter
 import io.element.android.features.preferences.impl.root.SettingsCategory
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
@@ -36,6 +37,7 @@ class SettingsCategoryNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
     private val presenter: PreferencesRootPresenter,
+    private val advancedSettingsPresenter: AdvancedSettingsPresenter,
     private val directLogoutView: DirectLogoutView,
 ) : Node(buildContext, plugins = plugins) {
     data class Inputs(val category: SettingsCategory) : NodeInputs
@@ -72,11 +74,13 @@ class SettingsCategoryNode(
     @Composable
     override fun View(modifier: Modifier) {
         val state = presenter.present()
+        val advancedSettingsState = advancedSettingsPresenter.present()
         val activity = requireNotNull(LocalActivity.current)
         val isDark = ElementTheme.isLightTheme.not()
         SettingsCategoryView(
             category = inputs.category,
             state = state,
+            advancedSettingsState = advancedSettingsState,
             modifier = modifier,
             onBackClick = this::navigateUp,
             onOpenUserProfile = callback::navigateToUserProfile,

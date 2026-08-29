@@ -53,6 +53,14 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
         fun navigateToSecureBackup()
         fun navigateToRoomNotificationSettings(roomId: RoomId)
         fun navigateToEvent(roomId: RoomId, eventId: EventId)
+
+        /**
+         * Fired when the settings flow moves between its root screen and a deeper screen.
+         * Larpgram hosts settings as a bottom-bar tab; the host uses this to hide the persistent
+         * bottom bar on nested screens (where it would otherwise overlap content). Default no-op
+         * for hosts that show settings full-screen.
+         */
+        fun onNestedNavigationStateChanged(isAtRoot: Boolean) = Unit
     }
 
     fun createAppDeveloperSettingsNode(

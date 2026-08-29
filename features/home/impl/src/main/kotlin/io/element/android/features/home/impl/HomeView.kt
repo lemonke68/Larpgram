@@ -89,6 +89,8 @@ fun HomeView(
     acceptDeclineInviteView: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     leaveRoomView: @Composable () -> Unit,
+    // false когда таб настроек ушёл во вложенный экран: тогда прячем нижний бар.
+    settingsTabAtRoot: Boolean = true,
     // Content of the Settings/Profile tabs, hosted as child nodes by HomeFlowNode. Null in
     // previews, where a placeholder is shown instead.
     settingsContent: (@Composable () -> Unit)? = null,
@@ -128,6 +130,7 @@ fun HomeView(
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
             onCreateChannelClick = { if (firstThrottler.canHandle()) onCreateChannelClick() },
             onMenuActionClick = onMenuActionClick,
+            settingsTabAtRoot = settingsTabAtRoot,
             settingsContent = settingsContent,
             profileContent = profileContent,
         )
@@ -158,6 +161,7 @@ private fun HomeScaffold(
     onCreateChannelClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     modifier: Modifier = Modifier,
+    settingsTabAtRoot: Boolean = true,
     settingsContent: (@Composable () -> Unit)? = null,
     profileContent: (@Composable () -> Unit)? = null,
 ) {
@@ -165,7 +169,11 @@ private fun HomeScaffold(
         onRoomClick(room.roomId)
     }
 
-    val isChatsTab = state.currentHomeNavigationBarItem == HomeNavigationBarItem.Chats
+    val currentItem = state.currentHomeNavigationBarItem
+    val isChatsTab = currentItem == HomeNavigationBarItem.Chats
+    // Бар видим на списке чатов, корне настроек и профиле. На вложенных экранах настроек прячем,
+    // иначе плавающая плашка перекрывает контент.
+    val isBottomBarVisible = currentItem != HomeNavigationBarItem.Settings || settingsTabAtRoot
 
     val appBarState = rememberTopAppBarState()
     // Larpgram: папки-пилюли закреплены (не сворачиваются), поэтому бар пиннится, а не enterAlways.
@@ -222,7 +230,8 @@ private fun HomeScaffold(
         },
         floatingActionButton = {
             val coroutineScope = rememberCoroutineScope()
-            HomeBottomBar(
+            if (isBottomBarVisible) {
+                HomeBottomBar(
                 currentHomeNavigationBarItem = state.currentHomeNavigationBarItem,
                 onItemClick = { item ->
                     // scroll to top if selecting the Chats tab while already on it
@@ -244,7 +253,8 @@ private fun HomeScaffold(
                 // No FAB in the bar: it unbalanced the panel. Creating a chat will move to the
                 // top of the screen later (⋮ / pencil); for now the bar is just the tabs, centred.
                 floatingActionButton = null,
-            )
+                )
+            }
         },
         floatingActionButtonPosition = FabPosition.Center,
         contentWindowInsets = scaffoldScrollableContentInsets,

@@ -38,12 +38,12 @@ import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.test.FakeDateFormatter
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.eventformatter.api.RoomLatestEventFormatter
 import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventFormatter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
-import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
