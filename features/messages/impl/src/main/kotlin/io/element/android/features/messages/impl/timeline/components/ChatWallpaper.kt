@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.R
+import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
+import io.element.android.libraries.designsystem.theme.LocalChatWallpaperId
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
 
 /**
@@ -61,6 +63,19 @@ fun defaultChatWallpaper(): ChatWallpaper = ChatWallpaper.Image(
     drawable = R.drawable.chat_wallpaper_pattern,
     tint = Color.White.copy(alpha = if (ElementTheme.isLightTheme) 0.45f else 0.05f),
 )
+
+/**
+ * Обои по выбору юзера (`LocalChatWallpaperId`, раздаётся в `ElementThemeApp`). Сплошные пресеты —
+ * фиксированный цвет; вариант «паттерн» отдаётся в [defaultChatWallpaper] (тема-зависимый рисунок).
+ */
+@Composable
+fun selectedChatWallpaper(): ChatWallpaper {
+    val option = ChatWallpaperOption.fromId(LocalChatWallpaperId.current)
+    return when (val color = option.solidColor) {
+        null -> defaultChatWallpaper()
+        else -> ChatWallpaper.Solid(color)
+    }
+}
 
 /**
  * Рисует обои под содержимым. Именно `drawBehind`, а не `background`: паттерн замащивается

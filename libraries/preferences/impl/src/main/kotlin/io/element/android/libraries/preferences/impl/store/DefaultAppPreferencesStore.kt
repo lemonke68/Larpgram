@@ -38,6 +38,7 @@ private val timelineMediaPreviewValueKey = stringPreferencesKey("timelineMediaPr
 private val liveLocationMinimumDistanceUpdateKey = intPreferencesKey("liveLocationMinimumDistanceUpdate")
 private val messageTextSizeSpKey = intPreferencesKey("larpgramMessageTextSizeSp")
 private val bubbleCornerRadiusDpKey = intPreferencesKey("larpgramBubbleCornerRadiusDp")
+private val chatWallpaperIdKey = stringPreferencesKey("larpgramChatWallpaperId")
 private val logLevelKey = stringPreferencesKey("logLevel")
 private val traceLogPacksKey = stringPreferencesKey("traceLogPacks")
 private val messageSoundUriKey = stringPreferencesKey("notificationMessageSoundUri")
@@ -121,6 +122,14 @@ class DefaultAppPreferencesStore(
 
     override fun getBubbleCornerRadiusDpFlow(): Flow<Int> {
         return store.data.map { prefs -> prefs[bubbleCornerRadiusDpKey] ?: DEFAULT_BUBBLE_CORNER_RADIUS_DP }
+    }
+
+    override suspend fun setChatWallpaperId(id: String) {
+        store.edit { prefs -> prefs[chatWallpaperIdKey] = id }
+    }
+
+    override fun getChatWallpaperIdFlow(): Flow<String?> {
+        return store.data.map { prefs -> prefs[chatWallpaperIdKey] }
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

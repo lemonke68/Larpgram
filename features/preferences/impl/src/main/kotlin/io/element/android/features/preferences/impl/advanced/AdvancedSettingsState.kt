@@ -27,6 +27,7 @@ data class AdvancedSettingsState(
     // Larpgram: chat appearance customization.
     val messageTextSizeSp: Int,
     val bubbleCornerRadiusDp: Int,
+    val chatWallpaperId: String,
     val eventSink: (AdvancedSettingsEvents) -> Unit
 )
 

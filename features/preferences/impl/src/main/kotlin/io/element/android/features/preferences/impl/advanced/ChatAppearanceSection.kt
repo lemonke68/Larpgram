@@ -8,12 +8,18 @@
 package io.element.android.features.preferences.impl.advanced
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,6 +34,7 @@ import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.ChatAppearanceDefaults
+import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
 import io.element.android.libraries.designsystem.theme.components.Slider
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -45,9 +52,11 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun ColumnScope.ChatAppearanceSection(state: AdvancedSettingsState) {
+    val selectedWallpaper = ChatWallpaperOption.fromId(state.chatWallpaperId)
     ChatAppearancePreview(
         messageTextSizeSp = state.messageTextSizeSp,
         bubbleCornerRadiusDp = state.bubbleCornerRadiusDp,
+        wallpaper = selectedWallpaper,
     )
 
     SliderRow(
@@ -63,12 +72,22 @@ fun ColumnScope.ChatAppearanceSection(state: AdvancedSettingsState) {
         valueRange = ChatAppearanceDefaults.BUBBLE_RADIUS_MIN_DP..ChatAppearanceDefaults.BUBBLE_RADIUS_MAX_DP,
         onValueChange = { state.eventSink(AdvancedSettingsEvents.SetBubbleCornerRadius(it)) },
     )
+
+    WallpaperRow(
+        selected = selectedWallpaper,
+        onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatWallpaper(it.id)) },
+    )
 }
+
+@Composable
+private fun wallpaperSwatchColor(option: ChatWallpaperOption): androidx.compose.ui.graphics.Color =
+    option.solidColor ?: ElementTheme.colors.chatWallpaperBackground
 
 @Composable
 private fun ChatAppearancePreview(
     messageTextSizeSp: Int,
     bubbleCornerRadiusDp: Int,
+    wallpaper: ChatWallpaperOption,
 ) {
     val bubbleShape = RoundedCornerShape(bubbleCornerRadiusDp.dp)
     Box(
@@ -76,7 +95,7 @@ private fun ChatAppearancePreview(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(ElementTheme.colors.chatWallpaperBackground)
+            .background(wallpaperSwatchColor(wallpaper))
             .padding(12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -160,6 +179,55 @@ private fun ColumnScope.SliderRow(
     }
 }
 
+@Composable
+private fun ColumnScope.WallpaperRow(
+    selected: ChatWallpaperOption,
+    onSelect: (ChatWallpaperOption) -> Unit,
+) {
+    Text(
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+        text = stringResource(R.string.screen_chat_appearance_wallpaper_title),
+        style = ElementTheme.typography.fontBodyLgRegular,
+        color = ElementTheme.colors.textPrimary,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        ChatWallpaperOption.entries.forEach { option ->
+            WallpaperSwatch(
+                option = option,
+                isSelected = option == selected,
+                onClick = { onSelect(option) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun WallpaperSwatch(
+    option: ChatWallpaperOption,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ringColor = if (isSelected) ElementTheme.colors.iconAccentTertiary else ElementTheme.colors.borderInteractiveSecondary
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(wallpaperSwatchColor(option))
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = ringColor,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clickable(onClick = onClick),
+    )
+}
+
 @PreviewsDayNight
 @Composable
 internal fun ChatAppearanceSectionPreview() = ElementPreview {
@@ -168,6 +236,7 @@ internal fun ChatAppearanceSectionPreview() = ElementPreview {
             state = aAdvancedSettingsState(
                 messageTextSizeSp = 18,
                 bubbleCornerRadiusDp = 12,
+                chatWallpaperId = ChatWallpaperOption.Navy.id,
             ),
         )
     }

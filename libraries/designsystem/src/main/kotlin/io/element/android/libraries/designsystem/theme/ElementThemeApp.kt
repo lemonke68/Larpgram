@@ -76,6 +76,9 @@ fun ElementThemeApp(
     val bubbleCornerRadiusDp by remember {
         appPreferencesStore.getBubbleCornerRadiusDpFlow()
     }.collectAsState(initial = DEFAULT_BUBBLE_CORNER_RADIUS_DP)
+    val chatWallpaperId by remember {
+        appPreferencesStore.getChatWallpaperIdFlow()
+    }.collectAsState(initial = null)
     LaunchedEffect(theme) {
         AppCompatDelegate.setDefaultNightMode(
             when (theme) {
@@ -89,6 +92,7 @@ fun ElementThemeApp(
         LocalBuildMeta provides buildMeta,
         LocalMessageTextScale provides ChatAppearanceDefaults.textScaleFor(messageTextSizeSp),
         LocalChatBubbleRadius provides ChatAppearanceDefaults.bubbleRadiusFor(bubbleCornerRadiusDp),
+        LocalChatWallpaperId provides (chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id),
     ) {
         ElementTheme(
             theme = theme,

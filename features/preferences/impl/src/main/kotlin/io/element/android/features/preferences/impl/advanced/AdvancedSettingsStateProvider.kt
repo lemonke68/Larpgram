@@ -10,6 +10,7 @@ package io.element.android.features.preferences.impl.advanced
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.libraries.architecture.AsyncAction
+import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
 import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
@@ -46,6 +47,7 @@ fun aAdvancedSettingsState(
     liveLocationMinimumDistanceUpdate: Int? = 50,
     messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
     bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
+    chatWallpaperId: String = ChatWallpaperOption.DEFAULT.id,
     setTimelineMediaPreviewAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     setHideInviteAvatarsAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     eventSink: (AdvancedSettingsEvents) -> Unit = {},
@@ -64,5 +66,6 @@ fun aAdvancedSettingsState(
     liveLocationMinimumDistanceUpdate = liveLocationMinimumDistanceUpdate,
     messageTextSizeSp = messageTextSizeSp,
     bubbleCornerRadiusDp = bubbleCornerRadiusDp,
+    chatWallpaperId = chatWallpaperId,
     eventSink = eventSink
 )

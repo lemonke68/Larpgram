@@ -18,6 +18,7 @@ import dev.zacsweers.metro.Inject
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
@@ -66,6 +67,9 @@ class AdvancedSettingsPresenter(
         val bubbleCornerRadiusDp by remember {
             appPreferencesStore.getBubbleCornerRadiusDpFlow()
         }.collectAsState(initial = DEFAULT_BUBBLE_CORNER_RADIUS_DP)
+        val chatWallpaperId by remember {
+            appPreferencesStore.getChatWallpaperIdFlow()
+        }.collectAsState(initial = null)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
@@ -140,6 +144,9 @@ class AdvancedSettingsPresenter(
                 is AdvancedSettingsEvents.SetBubbleCornerRadius -> sessionCoroutineScope.launch {
                     appPreferencesStore.setBubbleCornerRadiusDp(event.radiusDp)
                 }
+                is AdvancedSettingsEvents.SetChatWallpaper -> sessionCoroutineScope.launch {
+                    appPreferencesStore.setChatWallpaperId(event.id)
+                }
                 is AdvancedSettingsEvents.SetCompressImages -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setOptimizeImages(event.compress)
                 }
@@ -159,6 +166,7 @@ class AdvancedSettingsPresenter(
             liveLocationMinimumDistanceUpdate = liveLocationMinimumDistanceUpdate,
             messageTextSizeSp = messageTextSizeSp,
             bubbleCornerRadiusDp = bubbleCornerRadiusDp,
+            chatWallpaperId = chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id,
             eventSink = ::handleEvent,
         )
     }
