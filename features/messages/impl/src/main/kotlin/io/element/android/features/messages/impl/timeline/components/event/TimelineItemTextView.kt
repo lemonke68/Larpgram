@@ -31,6 +31,7 @@ import io.element.android.libraries.androidutils.text.LinkifyHelper
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.LocalMessageTextScale
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
 import io.element.android.libraries.designsystem.utils.LocalUiTestMode
 import io.element.android.libraries.textcomposer.ElementRichTextEditorStyle
 import io.element.android.libraries.textcomposer.mentions.LocalMentionSpanUpdater
@@ -62,8 +63,11 @@ fun TimelineItemTextView(
     } else {
         baseTextStyle.copy(fontSize = baseTextStyle.fontSize * messageTextScale)
     }
+    // Larpgram: inside an outgoing bubble with a user-chosen color, use the contrast color instead
+    // of textPrimary so the message stays legible on any bubble color.
+    val contentColor = LocalOutgoingBubbleContentColor.current ?: ElementTheme.colors.textPrimary
     CompositionLocalProvider(
-        LocalContentColor provides ElementTheme.colors.textPrimary,
+        LocalContentColor provides contentColor,
         LocalTextStyle provides textStyle,
     ) {
         val text = getTextWithResolvedMentions(content)

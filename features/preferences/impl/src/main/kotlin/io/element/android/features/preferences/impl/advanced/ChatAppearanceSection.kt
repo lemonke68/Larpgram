@@ -42,8 +42,10 @@ import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.ChatAppearanceDefaults
+import io.element.android.libraries.designsystem.theme.ChatThemeOption
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
+import io.element.android.libraries.designsystem.theme.contentColorForBubble
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Slider
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -69,12 +71,28 @@ fun ColumnScope.ChatAppearanceSection(state: AdvancedSettingsState) {
     } else {
         wallpaperSwatchColor(selectedWallpaper)
     }
+    val bubbleColor = state.chatBubbleColorArgb?.let { Color(it) }
+    val accentColor = state.chatAccentColorArgb?.let { Color(it) }
+    val selectedTheme = ChatThemeOption.matching(
+        state.chatWallpaperId,
+        state.chatBubbleColorArgb,
+        state.chatAccentColorArgb,
+    )
     var showColorPicker by remember { mutableStateOf(false) }
+    var showBubbleColorPicker by remember { mutableStateOf(false) }
+    var showAccentColorPicker by remember { mutableStateOf(false) }
 
     ChatAppearancePreview(
         messageTextSizeSp = state.messageTextSizeSp,
         bubbleCornerRadiusDp = state.bubbleCornerRadiusDp,
         wallpaperColor = previewColor,
+        bubbleColor = bubbleColor,
+    )
+
+    // Готовые темы = связка обои+пузырь одним тапом (палитра согласована).
+    ThemePresetRow(
+        selected = selectedTheme,
+        onSelect = { state.eventSink(AdvancedSettingsEvents.ApplyChatTheme(it.id)) },
     )
 
     SliderRow(
@@ -99,6 +117,20 @@ fun ColumnScope.ChatAppearanceSection(state: AdvancedSettingsState) {
         onEyedropperClick = { showColorPicker = true },
     )
 
+    BubbleColorRow(
+        bubbleColor = bubbleColor,
+        onSelectDefault = { state.eventSink(AdvancedSettingsEvents.SetChatBubbleColor(null)) },
+        onSelectColor = { state.eventSink(AdvancedSettingsEvents.SetChatBubbleColor(it.toArgb())) },
+        onEyedropperClick = { showBubbleColorPicker = true },
+    )
+
+    AccentColorRow(
+        accentColor = accentColor,
+        onSelectDefault = { state.eventSink(AdvancedSettingsEvents.SetChatAccentColor(null)) },
+        onSelectColor = { state.eventSink(AdvancedSettingsEvents.SetChatAccentColor(it.toArgb())) },
+        onEyedropperClick = { showAccentColorPicker = true },
+    )
+
     if (showColorPicker) {
         ChatWallpaperColorPickerDialog(
             initialColor = customColor ?: previewColor,
@@ -109,7 +141,47 @@ fun ColumnScope.ChatAppearanceSection(state: AdvancedSettingsState) {
             onDismiss = { showColorPicker = false },
         )
     }
+
+    if (showBubbleColorPicker) {
+        ChatWallpaperColorPickerDialog(
+            initialColor = bubbleColor ?: ElementTheme.colors.messageFromMeBackground,
+            onColorSelected = {
+                state.eventSink(AdvancedSettingsEvents.SetChatBubbleColor(it.toArgb()))
+                showBubbleColorPicker = false
+            },
+            onDismiss = { showBubbleColorPicker = false },
+        )
+    }
+
+    if (showAccentColorPicker) {
+        ChatWallpaperColorPickerDialog(
+            initialColor = accentColor ?: ElementTheme.colors.iconAccentTertiary,
+            onColorSelected = {
+                state.eventSink(AdvancedSettingsEvents.SetChatAccentColor(it.toArgb()))
+                showAccentColorPicker = false
+            },
+            onDismiss = { showAccentColorPicker = false },
+        )
+    }
 }
+
+/** Quick accent colors offered as swatches next to the default + eyedropper. */
+private val ACCENT_QUICK_COLORS = listOf(
+    Color(0xFF3D82D6),
+    Color(0xFF3B8F6B),
+    Color(0xFFC4703C),
+    Color(0xFFB5474E),
+    Color(0xFF2FA8A8),
+)
+
+/** Quick outgoing-bubble colors offered as swatches next to the default + eyedropper. */
+private val BUBBLE_QUICK_COLORS = listOf(
+    Color(0xFF2E5C99),
+    Color(0xFF3B8F6B),
+    Color(0xFF6949A8),
+    Color(0xFFC4703C),
+    Color(0xFFB5474E),
+)
 
 @Composable
 private fun wallpaperSwatchColor(option: ChatWallpaperOption): Color =
@@ -120,8 +192,11 @@ private fun ChatAppearancePreview(
     messageTextSizeSp: Int,
     bubbleCornerRadiusDp: Int,
     wallpaperColor: Color,
+    bubbleColor: Color?,
 ) {
     val bubbleShape = RoundedCornerShape(bubbleCornerRadiusDp.dp)
+    val outgoingBg = bubbleColor ?: ElementTheme.colors.messageFromMeBackground
+    val outgoingText = if (bubbleColor != null) contentColorForBubble(bubbleColor) else ElementTheme.colors.textPrimary
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -141,8 +216,8 @@ private fun ChatAppearancePreview(
             )
             PreviewBubble(
                 text = stringResource(R.string.screen_chat_appearance_preview_outgoing),
-                backgroundColor = ElementTheme.colors.messageFromMeBackground,
-                textColor = ElementTheme.colors.textPrimary,
+                backgroundColor = outgoingBg,
+                textColor = outgoingText,
                 textSizeSp = messageTextSizeSp,
                 shape = bubbleShape,
                 alignment = Alignment.End,
@@ -305,6 +380,170 @@ private fun WallpaperSwatch(
             .size(52.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(wallpaperSwatchColor(option))
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = ringColor,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clickable(onClick = onClick),
+    )
+}
+
+@Composable
+private fun ColumnScope.ThemePresetRow(
+    selected: ChatThemeOption?,
+    onSelect: (ChatThemeOption) -> Unit,
+) {
+    Text(
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+        text = stringResource(R.string.screen_chat_appearance_theme_title),
+        style = ElementTheme.typography.fontBodyLgRegular,
+        color = ElementTheme.colors.textPrimary,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        ChatThemeOption.entries.forEach { theme ->
+            ThemeSwatch(
+                theme = theme,
+                isSelected = theme == selected,
+                onClick = { onSelect(theme) },
+            )
+        }
+    }
+}
+
+/** Mini theme preview: the wallpaper color with a single outgoing bubble in the theme's color. */
+@Composable
+private fun ThemeSwatch(
+    theme: ChatThemeOption,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ringColor = if (isSelected) ElementTheme.colors.iconAccentTertiary else ElementTheme.colors.borderInteractiveSecondary
+    val bubbleColor = theme.bubbleColor ?: ElementTheme.colors.messageFromMeBackground
+    Box(
+        modifier = Modifier
+            .size(width = 54.dp, height = 72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(wallpaperSwatchColor(theme.wallpaper))
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = ringColor,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.BottomEnd,
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(6.dp)
+                .size(width = 30.dp, height = 16.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(bubbleColor),
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.BubbleColorRow(
+    bubbleColor: Color?,
+    onSelectDefault: () -> Unit,
+    onSelectColor: (Color) -> Unit,
+    onEyedropperClick: () -> Unit,
+) {
+    Text(
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+        text = stringResource(R.string.screen_chat_appearance_bubble_color_title),
+        style = ElementTheme.typography.fontBodyLgRegular,
+        color = ElementTheme.colors.textPrimary,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // Дефолт = вернуть тема-зависимый цвет пузыря.
+        BubbleColorSwatch(
+            color = ElementTheme.colors.messageFromMeBackground,
+            isSelected = bubbleColor == null,
+            onClick = onSelectDefault,
+        )
+        // Пипетка: любой цвет пузыря.
+        EyedropperSwatch(
+            customColor = bubbleColor.takeIf { c -> c != null && BUBBLE_QUICK_COLORS.none { it == c } },
+            isSelected = bubbleColor != null && BUBBLE_QUICK_COLORS.none { it == bubbleColor },
+            onClick = onEyedropperClick,
+        )
+        BUBBLE_QUICK_COLORS.forEach { color ->
+            BubbleColorSwatch(
+                color = color,
+                isSelected = bubbleColor == color,
+                onClick = { onSelectColor(color) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ColumnScope.AccentColorRow(
+    accentColor: Color?,
+    onSelectDefault: () -> Unit,
+    onSelectColor: (Color) -> Unit,
+    onEyedropperClick: () -> Unit,
+) {
+    Text(
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+        text = stringResource(R.string.screen_chat_appearance_accent_color_title),
+        style = ElementTheme.typography.fontBodyLgRegular,
+        color = ElementTheme.colors.textPrimary,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // Дефолт = вернуть брендовый акцент.
+        BubbleColorSwatch(
+            color = ElementTheme.colors.iconAccentTertiary,
+            isSelected = accentColor == null,
+            onClick = onSelectDefault,
+        )
+        EyedropperSwatch(
+            customColor = accentColor.takeIf { c -> c != null && ACCENT_QUICK_COLORS.none { it == c } },
+            isSelected = accentColor != null && ACCENT_QUICK_COLORS.none { it == accentColor },
+            onClick = onEyedropperClick,
+        )
+        ACCENT_QUICK_COLORS.forEach { color ->
+            BubbleColorSwatch(
+                color = color,
+                isSelected = accentColor == color,
+                onClick = { onSelectColor(color) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun BubbleColorSwatch(
+    color: Color,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ringColor = if (isSelected) ElementTheme.colors.iconAccentTertiary else ElementTheme.colors.borderInteractiveSecondary
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(color)
             .border(
                 width = if (isSelected) 2.dp else 1.dp,
                 color = ringColor,

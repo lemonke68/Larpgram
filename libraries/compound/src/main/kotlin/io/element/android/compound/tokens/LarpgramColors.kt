@@ -8,6 +8,7 @@
 package io.element.android.compound.tokens
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import io.element.android.compound.tokens.generated.SemanticColors
 import io.element.android.compound.tokens.generated.compoundColorsDark
 import io.element.android.compound.tokens.generated.compoundColorsLight
@@ -123,3 +124,46 @@ val larpgramColorsDark: SemanticColors = compoundColorsDark.copy(
     bgSubtleSecondary = Color(0xFF262628),
     bgCanvasDisabled = Color(0xFF222222),
 )
+
+/**
+ * Larpgram: rebuild the whole accent family from a single user-chosen [accent] color, on top of
+ * an already-Larpgram-themed [SemanticColors]. This is the runtime counterpart of the static
+ * overrides above (which pin the purple brand accent): the accent picker feeds a color in, and this
+ * derives the hovered/pressed/subtle shades and the action gradients from it so the app stays
+ * coherent. Non-accent tokens (surfaces, text, borders) are left as they are.
+ *
+ * Shades are derived by nudging the accent toward black (light theme) or white (dark theme), the
+ * same direction the hand-tuned static shades move, so an arbitrary accent reads correctly in both.
+ */
+fun SemanticColors.withLarpgramAccent(accent: Color, isLight: Boolean): SemanticColors {
+    val shadeTarget = if (isLight) Color.Black else Color.White
+    val hovered = lerp(accent, shadeTarget, 0.12f)
+    val pressed = lerp(accent, shadeTarget, 0.26f)
+    val subtleBg = if (isLight) lerp(accent, Color.White, 0.90f) else lerp(accent, Color.Black, 0.80f)
+    val gradientLight1 = lerp(accent, Color.White, 0.34f)
+    val gradientLight2 = lerp(accent, Color.White, 0.16f)
+    return copy(
+        bgAccentRest = accent,
+        bgAccentHovered = hovered,
+        bgAccentPressed = pressed,
+        bgAccentSelected = accent.copy(alpha = 0.20f),
+        bgAccentSubtle = subtleBg,
+        borderAccentPrimary = accent,
+        borderAccentSubtle = accent.copy(alpha = 0.40f),
+        iconAccentPrimary = accent,
+        iconAccentTertiary = accent,
+        textActionAccent = accent,
+        textLinkExternal = accent,
+        bgBadgeAccent = accent,
+        textBadgeAccent = Color(0xFFFFFFFF),
+        gradientActionStop1 = gradientLight1,
+        gradientActionStop2 = gradientLight2,
+        gradientActionStop3 = accent,
+        gradientActionStop4 = pressed,
+        gradientSubtleStop1 = accent.copy(alpha = 0.16f),
+        gradientSubtleStop2 = accent.copy(alpha = 0.12f),
+        gradientSubtleStop3 = accent.copy(alpha = 0.08f),
+        gradientSubtleStop4 = accent.copy(alpha = 0.05f),
+        gradientSubtleStop5 = accent.copy(alpha = 0.02f),
+    )
+}

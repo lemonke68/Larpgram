@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -48,6 +49,9 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.text.toPx
 import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleColor
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
+import io.element.android.libraries.designsystem.theme.contentColorForBubble
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.messageFromMeBackground
 import io.element.android.libraries.designsystem.theme.messageFromOtherBackground
@@ -89,11 +93,15 @@ fun MessageEventBubble(
     }
 
     val cutTopStart = state.cutTopStart && showBubble
+    // Larpgram: user-chosen outgoing bubble color (null keeps the themed default).
+    val outgoingBubbleColor = LocalOutgoingBubbleColor.current
     // Ignore state.isHighlighted for now, we need a design decision on it.
     val backgroundBubbleColor by rememberUpdatedState(
         when {
             !showBubble -> Color.Transparent
-            else -> customBackgroundColor ?: MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine)
+            customBackgroundColor != null -> customBackgroundColor
+            state.isMine && outgoingBubbleColor != null -> outgoingBubbleColor
+            else -> MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine)
         }
     )
     // Larpgram: user-tunable corner radius from settings.
@@ -166,8 +174,21 @@ fun MessageEventBubble(
                     end = if (state.isMine && showBubble) TelegramBubbleShape.TAIL_WIDTH else 0.dp,
                 )
                 .then(clickableModifier),
-            content = content,
-        )
+        ) {
+            // Larpgram: when an outgoing bubble color is active, override the text color for contrast.
+            val contentColorOverride = if (showBubble && state.isMine) {
+                outgoingBubbleColor?.let { contentColorForBubble(it) }
+            } else {
+                null
+            }
+            if (contentColorOverride != null) {
+                CompositionLocalProvider(LocalOutgoingBubbleContentColor provides contentColorOverride) {
+                    content()
+                }
+            } else {
+                content()
+            }
+        }
     }
 }
 

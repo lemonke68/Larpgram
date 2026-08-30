@@ -29,6 +29,8 @@ data class AdvancedSettingsState(
     val bubbleCornerRadiusDp: Int,
     val chatWallpaperId: String,
     val chatWallpaperCustomColorArgb: Int?,
+    val chatBubbleColorArgb: Int?,
+    val chatAccentColorArgb: Int?,
     val eventSink: (AdvancedSettingsEvents) -> Unit
 )
 

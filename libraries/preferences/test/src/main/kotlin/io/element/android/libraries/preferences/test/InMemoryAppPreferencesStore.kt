@@ -31,6 +31,8 @@ class InMemoryAppPreferencesStore(
     bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
     chatWallpaperId: String? = null,
     chatWallpaperCustomColorArgb: Int? = null,
+    chatBubbleColorArgb: Int? = null,
+    chatAccentColorArgb: Int? = null,
     logLevel: LogLevel = LogLevel.INFO,
     traceLogPacks: Set<TraceLogPack> = emptySet(),
     messageSound: NotificationSound = NotificationSound.SystemDefault,
@@ -48,6 +50,8 @@ class InMemoryAppPreferencesStore(
     private val bubbleCornerRadiusDp = MutableStateFlow(bubbleCornerRadiusDp)
     private val chatWallpaperId = MutableStateFlow(chatWallpaperId)
     private val chatWallpaperCustomColorArgb = MutableStateFlow(chatWallpaperCustomColorArgb)
+    private val chatBubbleColorArgb = MutableStateFlow(chatBubbleColorArgb)
+    private val chatAccentColorArgb = MutableStateFlow(chatAccentColorArgb)
     private val logLevel = MutableStateFlow(logLevel)
     private val tracingLogPacks = MutableStateFlow(traceLogPacks)
     private val hideInviteAvatars = MutableStateFlow(hideInviteAvatars)
@@ -121,6 +125,22 @@ class InMemoryAppPreferencesStore(
 
     override fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?> {
         return chatWallpaperCustomColorArgb
+    }
+
+    override suspend fun setChatBubbleColorArgb(argb: Int?) {
+        chatBubbleColorArgb.value = argb
+    }
+
+    override fun getChatBubbleColorArgbFlow(): Flow<Int?> {
+        return chatBubbleColorArgb
+    }
+
+    override suspend fun setChatAccentColorArgb(argb: Int?) {
+        chatAccentColorArgb.value = argb
+    }
+
+    override fun getChatAccentColorArgbFlow(): Flow<Int?> {
+        return chatAccentColorArgb
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

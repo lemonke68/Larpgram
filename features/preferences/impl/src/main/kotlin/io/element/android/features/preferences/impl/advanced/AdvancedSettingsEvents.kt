@@ -27,4 +27,7 @@ sealed interface AdvancedSettingsEvents {
     data class SetBubbleCornerRadius(val radiusDp: Int) : AdvancedSettingsEvents
     data class SetChatWallpaper(val id: String) : AdvancedSettingsEvents
     data class SetChatWallpaperCustomColor(val argb: Int) : AdvancedSettingsEvents
+    data class SetChatBubbleColor(val argb: Int?) : AdvancedSettingsEvents
+    data class SetChatAccentColor(val argb: Int?) : AdvancedSettingsEvents
+    data class ApplyChatTheme(val themeId: String) : AdvancedSettingsEvents
 }
