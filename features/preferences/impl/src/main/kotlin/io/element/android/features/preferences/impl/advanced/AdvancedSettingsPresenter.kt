@@ -87,6 +87,9 @@ class AdvancedSettingsPresenter(
         val chatListThreeLine by remember {
             appPreferencesStore.getChatListThreeLineFlow()
         }.collectAsState(initial = false)
+        val chatWallpaperGradientSpec by remember {
+            appPreferencesStore.getChatWallpaperGradientFlow()
+        }.collectAsState(initial = null)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
@@ -178,6 +181,14 @@ class AdvancedSettingsPresenter(
                 is AdvancedSettingsEvents.SetChatListThreeLine -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatListThreeLine(event.enabled)
                 }
+                is AdvancedSettingsEvents.SetChatWallpaperGradient -> sessionCoroutineScope.launch {
+                    // Градиент задан: сохраняем спеку и переводим id обоев на «градиент». Сброс (null)
+                    // — очищаем и возвращаем паттерн.
+                    appPreferencesStore.setChatWallpaperGradient(event.spec)
+                    appPreferencesStore.setChatWallpaperId(
+                        if (event.spec != null) ChatWallpaperOption.CUSTOM_GRADIENT_ID else ChatWallpaperOption.DEFAULT.id
+                    )
+                }
                 is AdvancedSettingsEvents.SetChatWallpaperImage -> sessionCoroutineScope.launch {
                     // Фото выбрано: сохраняем URI и переводим маркер обоев на «фото». Сброс (null) —
                     // очищаем URI и возвращаем обои к дефолтному паттерну.
@@ -217,6 +228,7 @@ class AdvancedSettingsPresenter(
             chatBubbleColorArgb = chatBubbleColorArgb,
             chatAccentColorArgb = chatAccentColorArgb,
             chatWallpaperImageUri = chatWallpaperImageUri,
+            chatWallpaperGradientSpec = chatWallpaperGradientSpec,
             chatListThreeLine = chatListThreeLine,
             eventSink = ::handleEvent,
         )

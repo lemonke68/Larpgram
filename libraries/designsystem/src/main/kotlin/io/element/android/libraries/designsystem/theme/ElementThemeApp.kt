@@ -96,6 +96,12 @@ fun ElementThemeApp(
     val chatListThreeLine by remember {
         appPreferencesStore.getChatListThreeLineFlow()
     }.collectAsState(initial = false)
+    val chatWallpaperGradientSpec by remember {
+        appPreferencesStore.getChatWallpaperGradientFlow()
+    }.collectAsState(initial = null)
+    val chatWallpaperGradient = remember(chatWallpaperGradientSpec) {
+        ChatWallpaperGradient.parse(chatWallpaperGradientSpec)
+    }
     // Larpgram: a chosen accent rebuilds the whole accent family on top of the themed palettes.
     val accentColor = chatAccentColorArgb?.let { Color(it) }
     val effectiveCompoundLight = remember(compoundLight, accentColor) {
@@ -120,6 +126,7 @@ fun ElementThemeApp(
         LocalChatWallpaperId provides (chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id),
         LocalChatWallpaperCustomColor provides chatWallpaperCustomColorArgb?.let { Color(it) },
         LocalChatWallpaperImageUri provides chatWallpaperImageUri,
+        LocalChatWallpaperGradient provides chatWallpaperGradient,
         LocalChatListThreeLine provides chatListThreeLine,
         LocalOutgoingBubbleColor provides chatBubbleColorArgb?.let { Color(it) },
     ) {

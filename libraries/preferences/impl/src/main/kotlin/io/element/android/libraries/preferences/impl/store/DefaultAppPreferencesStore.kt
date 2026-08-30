@@ -44,6 +44,7 @@ private val chatBubbleColorKey = intPreferencesKey("larpgramChatBubbleColor")
 private val chatAccentColorKey = intPreferencesKey("larpgramChatAccentColor")
 private val chatWallpaperImageUriKey = stringPreferencesKey("larpgramChatWallpaperImageUri")
 private val chatListThreeLineKey = booleanPreferencesKey("larpgramChatListThreeLine")
+private val chatWallpaperGradientKey = stringPreferencesKey("larpgramChatWallpaperGradient")
 private val logLevelKey = stringPreferencesKey("logLevel")
 private val traceLogPacksKey = stringPreferencesKey("traceLogPacks")
 private val messageSoundUriKey = stringPreferencesKey("notificationMessageSoundUri")
@@ -193,6 +194,20 @@ class DefaultAppPreferencesStore(
 
     override fun getChatListThreeLineFlow(): Flow<Boolean> {
         return store.data.map { prefs -> prefs[chatListThreeLineKey] ?: false }
+    }
+
+    override suspend fun setChatWallpaperGradient(spec: String?) {
+        store.edit { prefs ->
+            if (spec != null) {
+                prefs[chatWallpaperGradientKey] = spec
+            } else {
+                prefs.remove(chatWallpaperGradientKey)
+            }
+        }
+    }
+
+    override fun getChatWallpaperGradientFlow(): Flow<String?> {
+        return store.data.map { prefs -> prefs[chatWallpaperGradientKey] }
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

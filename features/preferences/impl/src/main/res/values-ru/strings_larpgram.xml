@@ -15,4 +15,8 @@
     <string name="screen_chat_appearance_row_style_title">Список чатов</string>
     <string name="screen_chat_appearance_row_style_two">Двустрочный</string>
     <string name="screen_chat_appearance_row_style_three">Трёхстрочный</string>
+    <string name="screen_chat_appearance_gradient_title">Градиентные обои</string>
+    <string name="screen_chat_appearance_gradient_color_1">Цвет 1</string>
+    <string name="screen_chat_appearance_gradient_color_2">Цвет 2</string>
+    <string name="screen_chat_appearance_gradient_angle">Угол: %1$d°</string>
 </resources>

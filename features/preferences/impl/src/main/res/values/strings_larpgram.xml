@@ -31,4 +31,12 @@
     <string name="screen_chat_appearance_row_style_two">Two-line</string>
     <!-- Chat list density: three-line rows (name + two preview lines). -->
     <string name="screen_chat_appearance_row_style_three">Three-line</string>
+    <!-- Gradient wallpaper editor: dialog title. -->
+    <string name="screen_chat_appearance_gradient_title">Gradient wallpaper</string>
+    <!-- Gradient wallpaper editor: first colour label. -->
+    <string name="screen_chat_appearance_gradient_color_1">Colour 1</string>
+    <!-- Gradient wallpaper editor: second colour label. -->
+    <string name="screen_chat_appearance_gradient_color_2">Colour 2</string>
+    <!-- Gradient wallpaper editor: angle in degrees. %1$d is the angle. -->
+    <string name="screen_chat_appearance_gradient_angle">Angle: %1$d°</string>
 </resources>

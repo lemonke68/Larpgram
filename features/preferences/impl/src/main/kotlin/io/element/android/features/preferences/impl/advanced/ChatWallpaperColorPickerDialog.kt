@@ -22,9 +22,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,6 +77,10 @@ fun ChatWallpaperColorPickerDialog(
         (currentColor.green * 255).roundToInt(),
         (currentColor.blue * 255).roundToInt(),
     )
+    // Редактируемый hex: источник правды — HSV. Поле следует за hex, пока пользователь не правит его
+    // руками; при вводе валидных 6 hex-цифр парсим обратно в HSV.
+    var hexInput by remember { mutableStateOf(hex) }
+    LaunchedEffect(currentColor) { hexInput = hex }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
@@ -112,15 +119,25 @@ fun ChatWallpaperColorPickerDialog(
                 ) {
                     Row(
                         modifier = Modifier
-                            .height(36.dp)
-                            .fillMaxWidth(0.28f)
+                            .height(48.dp)
+                            .fillMaxWidth(0.24f)
                             .clip(RoundedCornerShape(10.dp))
                             .background(currentColor),
                     ) {}
-                    Text(
-                        text = hex,
-                        style = ElementTheme.typography.fontBodyLgMedium,
-                        color = ElementTheme.colors.textPrimary,
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = hexInput,
+                        onValueChange = { raw ->
+                            hexInput = raw
+                            parseHexColor(raw)?.let { parsed ->
+                                val hsv = FloatArray(3).also { AndroidColor.colorToHSV(parsed.toArgb(), it) }
+                                hue = hsv[0]
+                                saturation = hsv[1]
+                                value = hsv[2]
+                            }
+                        },
+                        singleLine = true,
+                        label = { Text(text = "HEX") },
                     )
                 }
 
@@ -142,6 +159,13 @@ fun ChatWallpaperColorPickerDialog(
             }
         }
     }
+}
+
+/** Парсит `#RRGGBB` или `RRGGBB` в цвет; null, если это не ровно 6 hex-цифр. */
+private fun parseHexColor(raw: String): Color? {
+    val digits = raw.trim().removePrefix("#")
+    if (digits.length != 6 || !digits.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) return null
+    return runCatching { Color(AndroidColor.parseColor("#$digits")) }.getOrNull()
 }
 
 /** 2D-карта: X = насыщенность (0..1), Y = яркость (1..0). Тап и перетаскивание. */

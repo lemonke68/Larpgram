@@ -64,6 +64,10 @@ interface AppPreferencesStore {
     suspend fun setChatListThreeLine(enabled: Boolean)
     fun getChatListThreeLineFlow(): Flow<Boolean>
 
+    /** Two-colour gradient wallpaper spec ("start:end:angle"). Null = no gradient set. */
+    suspend fun setChatWallpaperGradient(spec: String?)
+    fun getChatWallpaperGradientFlow(): Flow<String?>
+
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
     suspend fun setHideInviteAvatars(hide: Boolean?)
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
