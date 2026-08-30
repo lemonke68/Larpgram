@@ -31,6 +31,7 @@ data class AdvancedSettingsState(
     val chatWallpaperCustomColorArgb: Int?,
     val chatBubbleColorArgb: Int?,
     val chatAccentColorArgb: Int?,
+    val chatWallpaperImageUri: String?,
     val eventSink: (AdvancedSettingsEvents) -> Unit
 )
 

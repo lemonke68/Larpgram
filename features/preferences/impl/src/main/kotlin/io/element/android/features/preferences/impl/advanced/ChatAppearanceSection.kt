@@ -7,6 +7,9 @@
 
 package io.element.android.features.preferences.impl.advanced
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,10 +39,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.preferences.impl.R
@@ -77,6 +83,24 @@ import kotlin.math.roundToInt
 /** Диаметр круглых цветовых свотчей (обои/пузырь/акцент). Мельче прежних 52dp квадратов. */
 private val SWATCH_SIZE = 38.dp
 
+/**
+ * Пикер картинки для обоев: системный SAF (OpenDocument), берём стойкое разрешение на чтение URI,
+ * чтобы обои пережили перезапуск. Возвращает лямбду-запуск. onPicked получает URI строкой.
+ */
+@Composable
+private fun rememberWallpaperImagePicker(onPicked: (String) -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            onPicked(uri.toString())
+        }
+    }
+    return { launcher.launch(arrayOf("image/*")) }
+}
+
 /** Объект настройки, выбираемый в выпадающем меню на экране «Настройки темы». */
 private enum class ThemeEditTarget(val titleRes: Int) {
     Wallpaper(R.string.screen_chat_appearance_wallpaper_title),
@@ -94,9 +118,12 @@ fun ColumnScope.ChatAppearanceSection(
     val isCustomSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_ID
     val customColor = state.chatWallpaperCustomColorArgb?.let { Color(it) }
     val selectedWallpaper = ChatWallpaperOption.fromId(state.chatWallpaperId)
+    val isImageSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_IMAGE_ID
+    val imageUri = state.chatWallpaperImageUri
     val previewColor = if (isCustomSelected && customColor != null) customColor else wallpaperSwatchColor(selectedWallpaper)
     val bubbleColor = state.chatBubbleColorArgb?.let { Color(it) }
     var showColorPicker by remember { mutableStateOf(false) }
+    val pickImage = rememberWallpaperImagePicker { state.eventSink(AdvancedSettingsEvents.SetChatWallpaperImage(it)) }
 
     TgSettingsGroup {
         SliderRow(
@@ -111,6 +138,7 @@ fun ColumnScope.ChatAppearanceSection(
         messageTextSizeSp = state.messageTextSizeSp,
         bubbleCornerRadiusDp = state.bubbleCornerRadiusDp,
         wallpaperColor = previewColor,
+        wallpaperImageUri = imageUri.takeIf { isImageSelected },
         bubbleColor = bubbleColor,
     )
 
@@ -127,9 +155,12 @@ fun ColumnScope.ChatAppearanceSection(
         WallpaperRow(
             selected = selectedWallpaper,
             isCustomSelected = isCustomSelected,
+            isImageSelected = isImageSelected,
+            imageUri = imageUri,
             customColor = customColor,
             onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatWallpaper(it.id)) },
             onEyedropperClick = { showColorPicker = true },
+            onPickImage = pickImage,
         )
     }
 
@@ -161,6 +192,8 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
     val isCustomSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_ID
     val customColor = state.chatWallpaperCustomColorArgb?.let { Color(it) }
     val selectedWallpaper = ChatWallpaperOption.fromId(state.chatWallpaperId)
+    val isImageSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_IMAGE_ID
+    val imageUri = state.chatWallpaperImageUri
     val previewColor = if (isCustomSelected && customColor != null) customColor else wallpaperSwatchColor(selectedWallpaper)
     val bubbleColor = state.chatBubbleColorArgb?.let { Color(it) }
     val accentColor = state.chatAccentColorArgb?.let { Color(it) }
@@ -173,11 +206,13 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
     var showColorPicker by remember { mutableStateOf(false) }
     var showBubbleColorPicker by remember { mutableStateOf(false) }
     var showAccentColorPicker by remember { mutableStateOf(false) }
+    val pickImage = rememberWallpaperImagePicker { state.eventSink(AdvancedSettingsEvents.SetChatWallpaperImage(it)) }
 
     ChatAppearancePreview(
         messageTextSizeSp = state.messageTextSizeSp,
         bubbleCornerRadiusDp = state.bubbleCornerRadiusDp,
         wallpaperColor = previewColor,
+        wallpaperImageUri = imageUri.takeIf { isImageSelected },
         bubbleColor = bubbleColor,
     )
 
@@ -197,9 +232,12 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
             ThemeEditTarget.Wallpaper -> WallpaperRow(
                 selected = selectedWallpaper,
                 isCustomSelected = isCustomSelected,
+                isImageSelected = isImageSelected,
+                imageUri = imageUri,
                 customColor = customColor,
                 onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatWallpaper(it.id)) },
                 onEyedropperClick = { showColorPicker = true },
+                onPickImage = pickImage,
             )
             ThemeEditTarget.Accent -> AccentColorRow(
                 accentColor = accentColor,
@@ -285,6 +323,7 @@ private fun ChatAppearancePreview(
     messageTextSizeSp: Int,
     bubbleCornerRadiusDp: Int,
     wallpaperColor: Color,
+    wallpaperImageUri: String?,
     bubbleColor: Color?,
 ) {
     val bubbleShape = RoundedCornerShape(bubbleCornerRadiusDp.dp)
@@ -295,10 +334,20 @@ private fun ChatAppearancePreview(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(wallpaperColor)
-            .padding(12.dp),
+            .background(wallpaperColor),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (wallpaperImageUri != null) {
+            AsyncImage(
+                model = wallpaperImageUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             PreviewBubble(
                 text = stringResource(R.string.screen_chat_appearance_preview_incoming),
                 backgroundColor = ElementTheme.colors.messageFromOtherBackground,
@@ -435,12 +484,21 @@ private fun ColumnScope.ThemeTargetDropdown(
 private fun ColumnScope.WallpaperRow(
     selected: ChatWallpaperOption,
     isCustomSelected: Boolean,
+    isImageSelected: Boolean,
+    imageUri: String?,
     customColor: Color?,
     onSelect: (ChatWallpaperOption) -> Unit,
     onEyedropperClick: () -> Unit,
+    onPickImage: () -> Unit,
 ) {
     SwatchRow {
-        // Пипетка: любой цвет через RGB-пикер. Слева от пресетов.
+        // Своя фотография: слева, открывает системный пикер картинки.
+        PhotoSwatch(
+            imageUri = imageUri,
+            isSelected = isImageSelected,
+            onClick = onPickImage,
+        )
+        // Пипетка: любой цвет через RGB-пикер.
         EyedropperSwatch(
             customColor = customColor,
             isSelected = isCustomSelected,
@@ -449,8 +507,49 @@ private fun ColumnScope.WallpaperRow(
         ChatWallpaperOption.entries.forEach { option ->
             ColorSwatch(
                 color = wallpaperSwatchColor(option),
-                isSelected = !isCustomSelected && option == selected,
+                isSelected = !isCustomSelected && !isImageSelected && option == selected,
                 onClick = { onSelect(option) },
+            )
+        }
+    }
+}
+
+/** Круглый свотч «своя фотография»: превью выбранной картинки либо иконка-плейсхолдер. */
+@Composable
+private fun PhotoSwatch(
+    imageUri: String?,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ringColor = if (isSelected) ElementTheme.colors.iconAccentTertiary else ElementTheme.colors.borderInteractiveSecondary
+    Box(
+        modifier = Modifier
+            .size(SWATCH_SIZE)
+            .clip(CircleShape)
+            .background(ElementTheme.colors.bgSubtlePrimary)
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = ringColor,
+                shape = CircleShape,
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (imageUri != null) {
+            AsyncImage(
+                model = imageUri,
+                contentDescription = stringResource(R.string.screen_chat_appearance_wallpaper_title),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(CircleShape),
+            )
+        } else {
+            Icon(
+                imageVector = CompoundIcons.Image(),
+                contentDescription = stringResource(R.string.screen_chat_appearance_wallpaper_title),
+                tint = ElementTheme.colors.iconSecondary,
+                modifier = Modifier.size(18.dp),
             )
         }
     }

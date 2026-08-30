@@ -38,6 +38,12 @@ enum class ChatWallpaperOption(val id: String, val solidColor: Color?) {
          */
         const val CUSTOM_ID = "custom"
 
+        /**
+         * Id-marker for a user-picked photo wallpaper. Like [CUSTOM_ID] it is not an enum entry;
+         * the actual image lives in its own pref and reaches the timeline via [LocalChatWallpaperImageUri].
+         */
+        const val CUSTOM_IMAGE_ID = "photo"
+
         fun fromId(id: String?): ChatWallpaperOption = entries.firstOrNull { it.id == id } ?: DEFAULT
     }
 }
@@ -47,3 +53,6 @@ val LocalChatWallpaperId = staticCompositionLocalOf { ChatWallpaperOption.DEFAUL
 
 /** The custom color chosen via the eyedropper; only meaningful when the selected id is [ChatWallpaperOption.CUSTOM_ID]. */
 val LocalChatWallpaperCustomColor = staticCompositionLocalOf<Color?> { null }
+
+/** The user-picked photo wallpaper URI; only meaningful when the selected id is [ChatWallpaperOption.CUSTOM_IMAGE_ID]. */
+val LocalChatWallpaperImageUri = staticCompositionLocalOf<String?> { null }

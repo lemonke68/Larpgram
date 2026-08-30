@@ -90,6 +90,9 @@ fun ElementThemeApp(
     val chatAccentColorArgb by remember {
         appPreferencesStore.getChatAccentColorArgbFlow()
     }.collectAsState(initial = null)
+    val chatWallpaperImageUri by remember {
+        appPreferencesStore.getChatWallpaperImageUriFlow()
+    }.collectAsState(initial = null)
     // Larpgram: a chosen accent rebuilds the whole accent family on top of the themed palettes.
     val accentColor = chatAccentColorArgb?.let { Color(it) }
     val effectiveCompoundLight = remember(compoundLight, accentColor) {
@@ -113,6 +116,7 @@ fun ElementThemeApp(
         LocalChatBubbleRadius provides ChatAppearanceDefaults.bubbleRadiusFor(bubbleCornerRadiusDp),
         LocalChatWallpaperId provides (chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id),
         LocalChatWallpaperCustomColor provides chatWallpaperCustomColorArgb?.let { Color(it) },
+        LocalChatWallpaperImageUri provides chatWallpaperImageUri,
         LocalOutgoingBubbleColor provides chatBubbleColorArgb?.let { Color(it) },
     ) {
         ElementTheme(
