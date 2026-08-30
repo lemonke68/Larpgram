@@ -44,6 +44,12 @@ enum class ChatWallpaperOption(val id: String, val solidColor: Color?) {
          */
         const val CUSTOM_IMAGE_ID = "photo"
 
+        /**
+         * Id-marker for a two-colour linear gradient wallpaper. Not an enum entry; the actual spec
+         * lives in its own pref and reaches the timeline via [LocalChatWallpaperGradient].
+         */
+        const val CUSTOM_GRADIENT_ID = "gradient"
+
         fun fromId(id: String?): ChatWallpaperOption = entries.firstOrNull { it.id == id } ?: DEFAULT
     }
 }
@@ -56,3 +62,29 @@ val LocalChatWallpaperCustomColor = staticCompositionLocalOf<Color?> { null }
 
 /** The user-picked photo wallpaper URI; only meaningful when the selected id is [ChatWallpaperOption.CUSTOM_IMAGE_ID]. */
 val LocalChatWallpaperImageUri = staticCompositionLocalOf<String?> { null }
+
+/**
+ * Two-colour linear gradient wallpaper: [startArgb] -> [endArgb] along [angleDeg] (0 = left→right,
+ * 90 = top→bottom). Persisted as a compact `start:end:angle` string via [format]/[parse].
+ */
+data class ChatWallpaperGradient(
+    val startArgb: Int,
+    val endArgb: Int,
+    val angleDeg: Int,
+) {
+    fun format(): String = "$startArgb:$endArgb:$angleDeg"
+
+    companion object {
+        fun parse(spec: String?): ChatWallpaperGradient? {
+            val parts = spec?.split(":") ?: return null
+            if (parts.size != 3) return null
+            val start = parts[0].toIntOrNull() ?: return null
+            val end = parts[1].toIntOrNull() ?: return null
+            val angle = parts[2].toIntOrNull() ?: return null
+            return ChatWallpaperGradient(start, end, angle)
+        }
+    }
+}
+
+/** The gradient wallpaper spec; only meaningful when the selected id is [ChatWallpaperOption.CUSTOM_GRADIENT_ID]. */
+val LocalChatWallpaperGradient = staticCompositionLocalOf<ChatWallpaperGradient?> { null }

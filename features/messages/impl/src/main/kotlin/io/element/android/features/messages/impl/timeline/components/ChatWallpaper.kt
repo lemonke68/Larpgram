@@ -11,8 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.isSpecified
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -24,6 +26,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.R
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.LocalChatWallpaperCustomColor
+import io.element.android.libraries.designsystem.theme.LocalChatWallpaperGradient
 import io.element.android.libraries.designsystem.theme.LocalChatWallpaperId
 import io.element.android.libraries.designsystem.theme.LocalChatWallpaperImageUri
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
@@ -55,6 +58,9 @@ sealed interface ChatWallpaper {
 
     /** Своя фотография пользователя, адресуется content-URI. Грузится Coil'ом, кроется по площади. */
     data class Photo(val uri: String) : ChatWallpaper
+
+    /** Двухцветный линейный градиент под углом [angleDeg] (0 = слева направо, 90 = сверху вниз). */
+    data class Gradient(val start: Color, val end: Color, val angleDeg: Int) : ChatWallpaper
 }
 
 /**
@@ -80,6 +86,12 @@ fun selectedChatWallpaper(): ChatWallpaper {
     // Своя фотография: URI хранится отдельным пре­фом, id-маркер = CUSTOM_IMAGE_ID.
     if (id == ChatWallpaperOption.CUSTOM_IMAGE_ID) {
         LocalChatWallpaperImageUri.current?.let { return ChatWallpaper.Photo(it) }
+    }
+    // Двухцветный градиент: спека хранится отдельным пре­фом, id-маркер = CUSTOM_GRADIENT_ID.
+    if (id == ChatWallpaperOption.CUSTOM_GRADIENT_ID) {
+        LocalChatWallpaperGradient.current?.let {
+            return ChatWallpaper.Gradient(Color(it.startArgb), Color(it.endArgb), it.angleDeg)
+        }
     }
     // Пипетка: произвольный цвет юзера хранится отдельным пре­фом, id-маркер = CUSTOM_ID.
     if (id == ChatWallpaperOption.CUSTOM_ID) {
@@ -117,6 +129,22 @@ fun Modifier.chatWallpaper(wallpaper: ChatWallpaper): Modifier = when (wallpaper
             drawRect(background)
             drawCovering(painter, null)
         }
+    }
+    is ChatWallpaper.Gradient -> drawBehind {
+        // Угол в направление: 0° = слева направо, растём по часовой. Линию тянем через центр так,
+        // чтобы покрыть весь прямоугольник.
+        val rad = Math.toRadians(wallpaper.angleDeg.toDouble())
+        val dx = kotlin.math.cos(rad).toFloat()
+        val dy = kotlin.math.sin(rad).toFloat()
+        val half = (kotlin.math.abs(dx) * size.width + kotlin.math.abs(dy) * size.height) / 2f
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val brush = Brush.linearGradient(
+            colors = listOf(wallpaper.start, wallpaper.end),
+            start = Offset(cx - dx * half, cy - dy * half),
+            end = Offset(cx + dx * half, cy + dy * half),
+        )
+        drawRect(brush)
     }
 }
 

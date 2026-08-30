@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,6 +58,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.ChatAppearanceDefaults
 import io.element.android.libraries.designsystem.theme.ChatThemeOption
+import io.element.android.libraries.designsystem.theme.ChatWallpaperGradient
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
 import io.element.android.libraries.designsystem.theme.contentColorForBubble
@@ -90,6 +92,8 @@ private val SWATCH_SIZE = 38.dp
  */
 @Composable
 private fun rememberWallpaperImagePicker(onPicked: (String) -> Unit): () -> Unit {
+    // Paparazzi/preview не имеет ActivityResultRegistryOwner — launcher там не регистрируем.
+    if (LocalInspectionMode.current) return {}
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -120,10 +124,13 @@ fun ColumnScope.ChatAppearanceSection(
     val customColor = state.chatWallpaperCustomColorArgb?.let { Color(it) }
     val selectedWallpaper = ChatWallpaperOption.fromId(state.chatWallpaperId)
     val isImageSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_IMAGE_ID
+    val isGradientSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_GRADIENT_ID
     val imageUri = state.chatWallpaperImageUri
+    val gradient = remember(state.chatWallpaperGradientSpec) { ChatWallpaperGradient.parse(state.chatWallpaperGradientSpec) }
     val previewColor = if (isCustomSelected && customColor != null) customColor else wallpaperSwatchColor(selectedWallpaper)
     val bubbleColor = state.chatBubbleColorArgb?.let { Color(it) }
     var showColorPicker by remember { mutableStateOf(false) }
+    var showGradientDialog by remember { mutableStateOf(false) }
     val pickImage = rememberWallpaperImagePicker { state.eventSink(AdvancedSettingsEvents.SetChatWallpaperImage(it)) }
 
     TgSettingsGroup {
@@ -157,11 +164,14 @@ fun ColumnScope.ChatAppearanceSection(
             selected = selectedWallpaper,
             isCustomSelected = isCustomSelected,
             isImageSelected = isImageSelected,
+            isGradientSelected = isGradientSelected,
             imageUri = imageUri,
+            gradient = gradient,
             customColor = customColor,
             onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatWallpaper(it.id)) },
             onEyedropperClick = { showColorPicker = true },
             onPickImage = pickImage,
+            onGradientClick = { showGradientDialog = true },
         )
     }
 
@@ -191,6 +201,17 @@ fun ColumnScope.ChatAppearanceSection(
             onDismiss = { showColorPicker = false },
         )
     }
+
+    if (showGradientDialog) {
+        ChatWallpaperGradientDialog(
+            initial = gradient,
+            onApply = {
+                state.eventSink(AdvancedSettingsEvents.SetChatWallpaperGradient(it))
+                showGradientDialog = false
+            },
+            onDismiss = { showGradientDialog = false },
+        )
+    }
 }
 
 // ---- Экран «Настройки темы» -----------------------------------------------------------------
@@ -201,7 +222,9 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
     val customColor = state.chatWallpaperCustomColorArgb?.let { Color(it) }
     val selectedWallpaper = ChatWallpaperOption.fromId(state.chatWallpaperId)
     val isImageSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_IMAGE_ID
+    val isGradientSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_GRADIENT_ID
     val imageUri = state.chatWallpaperImageUri
+    val gradient = remember(state.chatWallpaperGradientSpec) { ChatWallpaperGradient.parse(state.chatWallpaperGradientSpec) }
     val previewColor = if (isCustomSelected && customColor != null) customColor else wallpaperSwatchColor(selectedWallpaper)
     val bubbleColor = state.chatBubbleColorArgb?.let { Color(it) }
     val accentColor = state.chatAccentColorArgb?.let { Color(it) }
@@ -214,6 +237,7 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
     var showColorPicker by remember { mutableStateOf(false) }
     var showBubbleColorPicker by remember { mutableStateOf(false) }
     var showAccentColorPicker by remember { mutableStateOf(false) }
+    var showGradientDialog by remember { mutableStateOf(false) }
     val pickImage = rememberWallpaperImagePicker { state.eventSink(AdvancedSettingsEvents.SetChatWallpaperImage(it)) }
 
     ChatAppearancePreview(
@@ -241,11 +265,14 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
                 selected = selectedWallpaper,
                 isCustomSelected = isCustomSelected,
                 isImageSelected = isImageSelected,
+                isGradientSelected = isGradientSelected,
                 imageUri = imageUri,
+                gradient = gradient,
                 customColor = customColor,
                 onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatWallpaper(it.id)) },
                 onEyedropperClick = { showColorPicker = true },
                 onPickImage = pickImage,
+                onGradientClick = { showGradientDialog = true },
             )
             ThemeEditTarget.Accent -> AccentColorRow(
                 accentColor = accentColor,
@@ -290,6 +317,16 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
                 showAccentColorPicker = false
             },
             onDismiss = { showAccentColorPicker = false },
+        )
+    }
+    if (showGradientDialog) {
+        ChatWallpaperGradientDialog(
+            initial = gradient,
+            onApply = {
+                state.eventSink(AdvancedSettingsEvents.SetChatWallpaperGradient(it))
+                showGradientDialog = false
+            },
+            onDismiss = { showGradientDialog = false },
         )
     }
 }
@@ -601,11 +638,14 @@ private fun ColumnScope.WallpaperRow(
     selected: ChatWallpaperOption,
     isCustomSelected: Boolean,
     isImageSelected: Boolean,
+    isGradientSelected: Boolean,
     imageUri: String?,
+    gradient: ChatWallpaperGradient?,
     customColor: Color?,
     onSelect: (ChatWallpaperOption) -> Unit,
     onEyedropperClick: () -> Unit,
     onPickImage: () -> Unit,
+    onGradientClick: () -> Unit,
 ) {
     SwatchRow {
         // Своя фотография: слева, открывает системный пикер картинки.
@@ -613,6 +653,12 @@ private fun ColumnScope.WallpaperRow(
             imageUri = imageUri,
             isSelected = isImageSelected,
             onClick = onPickImage,
+        )
+        // Градиент: открывает редактор двух цветов + угла.
+        GradientSwatch(
+            gradient = gradient,
+            isSelected = isGradientSelected,
+            onClick = onGradientClick,
         )
         // Пипетка: любой цвет через RGB-пикер.
         EyedropperSwatch(
@@ -623,11 +669,36 @@ private fun ColumnScope.WallpaperRow(
         ChatWallpaperOption.entries.forEach { option ->
             ColorSwatch(
                 color = wallpaperSwatchColor(option),
-                isSelected = !isCustomSelected && !isImageSelected && option == selected,
+                isSelected = !isCustomSelected && !isImageSelected && !isGradientSelected && option == selected,
                 onClick = { onSelect(option) },
             )
         }
     }
+}
+
+/** Круглый свотч «градиент»: превью текущего градиента либо дефолтный. */
+@Composable
+private fun GradientSwatch(
+    gradient: ChatWallpaperGradient?,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val ringColor = if (isSelected) ElementTheme.colors.iconAccentTertiary else ElementTheme.colors.borderInteractiveSecondary
+    val start = gradient?.let { Color(it.startArgb) } ?: Color(0xFF3D82D6)
+    val end = gradient?.let { Color(it.endArgb) } ?: Color(0xFF7B54C4)
+    val angle = gradient?.angleDeg ?: 45
+    Box(
+        modifier = Modifier
+            .size(SWATCH_SIZE)
+            .clip(CircleShape)
+            .gradientBackground(start, end, angle)
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = ringColor,
+                shape = CircleShape,
+            )
+            .clickable(onClick = onClick),
+    )
 }
 
 /** Круглый свотч «своя фотография»: превью выбранной картинки либо иконка-плейсхолдер. */

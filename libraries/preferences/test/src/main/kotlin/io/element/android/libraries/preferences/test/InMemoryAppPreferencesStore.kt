@@ -35,6 +35,7 @@ class InMemoryAppPreferencesStore(
     chatAccentColorArgb: Int? = null,
     chatWallpaperImageUri: String? = null,
     chatListThreeLine: Boolean = false,
+    chatWallpaperGradient: String? = null,
     logLevel: LogLevel = LogLevel.INFO,
     traceLogPacks: Set<TraceLogPack> = emptySet(),
     messageSound: NotificationSound = NotificationSound.SystemDefault,
@@ -56,6 +57,7 @@ class InMemoryAppPreferencesStore(
     private val chatAccentColorArgb = MutableStateFlow(chatAccentColorArgb)
     private val chatWallpaperImageUri = MutableStateFlow(chatWallpaperImageUri)
     private val chatListThreeLine = MutableStateFlow(chatListThreeLine)
+    private val chatWallpaperGradient = MutableStateFlow(chatWallpaperGradient)
     private val logLevel = MutableStateFlow(logLevel)
     private val tracingLogPacks = MutableStateFlow(traceLogPacks)
     private val hideInviteAvatars = MutableStateFlow(hideInviteAvatars)
@@ -161,6 +163,14 @@ class InMemoryAppPreferencesStore(
 
     override fun getChatListThreeLineFlow(): Flow<Boolean> {
         return chatListThreeLine
+    }
+
+    override suspend fun setChatWallpaperGradient(spec: String?) {
+        chatWallpaperGradient.value = spec
+    }
+
+    override fun getChatWallpaperGradientFlow(): Flow<String?> {
+        return chatWallpaperGradient
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
