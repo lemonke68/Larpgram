@@ -67,6 +67,7 @@ import io.element.android.libraries.designsystem.components.messages.MessageDeli
 import io.element.android.libraries.designsystem.modifiers.onKeyboardContextMenuAction
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.LocalChatListThreeLine
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.roomListRoomMessage
@@ -344,6 +345,8 @@ private fun MessagePreviewAndIndicatorRow(
     showUnreadCount: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // Larpgram: плотность строки списка чатов (двустрочный/трёхстрочный) — из настроек чатов.
+    val previewMaxLines = if (LocalChatListThreeLine.current) 2 else PREVIEW_MAX_LINES
     Row(
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -353,7 +356,7 @@ private fun MessagePreviewAndIndicatorRow(
                 text = stringResource(R.string.screen_roomlist_tombstoned_room_description),
                 color = ElementTheme.colors.roomListRoomMessage,
                 style = ElementTheme.typography.fontBodyMdRegular,
-                maxLines = PREVIEW_MAX_LINES,
+                maxLines = previewMaxLines,
                 overflow = TextOverflow.Ellipsis,
             )
         } else {
@@ -373,7 +376,7 @@ private fun MessagePreviewAndIndicatorRow(
                     text = stringResource(CommonStrings.common_message_failed_to_send),
                     color = ElementTheme.colors.textCriticalPrimary,
                     style = ElementTheme.typography.fontBodyMdRegular,
-                    maxLines = PREVIEW_MAX_LINES,
+                    maxLines = previewMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
@@ -388,7 +391,7 @@ private fun MessagePreviewAndIndicatorRow(
                     text = annotatedMessagePreview,
                     color = ElementTheme.colors.roomListRoomMessage,
                     style = ElementTheme.typography.fontBodyMdRegular,
-                    maxLines = PREVIEW_MAX_LINES,
+                    maxLines = previewMaxLines,
                     overflow = TextOverflow.Ellipsis,
                     inlineContent = latestEventThumbnailContent(room.latestEvent.thumbnail()),
                 )

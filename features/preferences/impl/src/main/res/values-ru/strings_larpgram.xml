@@ -12,4 +12,7 @@
     <string name="screen_chat_theme_settings_title">Настройки темы</string>
     <string name="screen_chat_theme_select_title">Выбрать тему</string>
     <string name="screen_chat_theme_customize_title">Настроить</string>
+    <string name="screen_chat_appearance_row_style_title">Список чатов</string>
+    <string name="screen_chat_appearance_row_style_two">Двустрочный</string>
+    <string name="screen_chat_appearance_row_style_three">Трёхстрочный</string>
 </resources>

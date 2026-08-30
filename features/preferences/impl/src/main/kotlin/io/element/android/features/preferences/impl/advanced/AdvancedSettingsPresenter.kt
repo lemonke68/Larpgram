@@ -84,6 +84,9 @@ class AdvancedSettingsPresenter(
         val chatWallpaperImageUri by remember {
             appPreferencesStore.getChatWallpaperImageUriFlow()
         }.collectAsState(initial = null)
+        val chatListThreeLine by remember {
+            appPreferencesStore.getChatListThreeLineFlow()
+        }.collectAsState(initial = false)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
@@ -172,6 +175,9 @@ class AdvancedSettingsPresenter(
                 is AdvancedSettingsEvents.SetChatAccentColor -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatAccentColorArgb(event.argb)
                 }
+                is AdvancedSettingsEvents.SetChatListThreeLine -> sessionCoroutineScope.launch {
+                    appPreferencesStore.setChatListThreeLine(event.enabled)
+                }
                 is AdvancedSettingsEvents.SetChatWallpaperImage -> sessionCoroutineScope.launch {
                     // Фото выбрано: сохраняем URI и переводим маркер обоев на «фото». Сброс (null) —
                     // очищаем URI и возвращаем обои к дефолтному паттерну.
@@ -211,6 +217,7 @@ class AdvancedSettingsPresenter(
             chatBubbleColorArgb = chatBubbleColorArgb,
             chatAccentColorArgb = chatAccentColorArgb,
             chatWallpaperImageUri = chatWallpaperImageUri,
+            chatListThreeLine = chatListThreeLine,
             eventSink = ::handleEvent,
         )
     }
