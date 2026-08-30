@@ -50,6 +50,7 @@ class SettingsCategoryNode(
         fun navigateToSecureBackup()
         fun navigateToLockScreenSettings()
         fun navigateToAnalyticsSettings()
+        fun navigateToChatThemeSettings()
         fun startSignOutFlow()
         fun startAccountDeactivationFlow()
     }
@@ -90,6 +91,7 @@ class SettingsCategoryNode(
             onSecureBackupClick = callback::navigateToSecureBackup,
             onOpenLockScreenSettings = callback::navigateToLockScreenSettings,
             onOpenAnalytics = callback::navigateToAnalyticsSettings,
+            onOpenChatThemeSettings = callback::navigateToChatThemeSettings,
             onManageAccountClick = { onManageAccountClick(activity, it, isDark) },
             onSignOutClick = {
                 if (state.directLogoutState.canDoDirectSignOut) {

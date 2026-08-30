@@ -30,6 +30,7 @@ import io.element.android.features.logout.api.LogoutEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.preferences.impl.about.AboutNode
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsNode
+import io.element.android.features.preferences.impl.advanced.ChatThemeSettingsNode
 import io.element.android.features.preferences.impl.analytics.AnalyticsSettingsNode
 import io.element.android.features.preferences.impl.blockedusers.BlockedUsersNode
 import io.element.android.features.preferences.impl.category.SettingsCategoryNode
@@ -86,6 +87,9 @@ class PreferencesFlowNode(
 
         @Parcelize
         data object AdvancedSettings : NavTarget
+
+        @Parcelize
+        data object ChatThemeSettings : NavTarget
 
         @Parcelize
         data object Labs : NavTarget
@@ -207,6 +211,10 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.AnalyticsSettings)
                     }
 
+                    override fun navigateToChatThemeSettings() {
+                        backstack.push(NavTarget.ChatThemeSettings)
+                    }
+
                     override fun startSignOutFlow() {
                         backstack.push(NavTarget.SignOut)
                     }
@@ -314,6 +322,9 @@ class PreferencesFlowNode(
             }
             NavTarget.AdvancedSettings -> {
                 createNode<AdvancedSettingsNode>(buildContext)
+            }
+            NavTarget.ChatThemeSettings -> {
+                createNode<ChatThemeSettingsNode>(buildContext)
             }
             is NavTarget.UserProfile -> {
                 val inputs = EditUserProfileNode.Inputs(navTarget.matrixUser)
