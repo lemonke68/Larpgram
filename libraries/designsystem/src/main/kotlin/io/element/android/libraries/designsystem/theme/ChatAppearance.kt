@@ -29,6 +29,12 @@ val LocalMessageTextScale = staticCompositionLocalOf { 1f }
 val LocalChatBubbleRadius = staticCompositionLocalOf { 20.dp }
 
 /**
+ * Chat list row density. `false` (default) = two-line rows (name + one preview line); `true` =
+ * three-line (name + up to two preview lines). Consumed by the room list row's message preview.
+ */
+val LocalChatListThreeLine = staticCompositionLocalOf { false }
+
+/**
  * User-chosen color of the outgoing ("Мои сообщения") bubble. `null` keeps the themed default
  * (`messageFromMeBackground`), so any composable reading it without a provider renders as before.
  */

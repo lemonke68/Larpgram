@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -161,6 +162,13 @@ fun ColumnScope.ChatAppearanceSection(
             onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatWallpaper(it.id)) },
             onEyedropperClick = { showColorPicker = true },
             onPickImage = pickImage,
+        )
+    }
+
+    TgSettingsGroup {
+        ChatListStyleRow(
+            threeLine = state.chatListThreeLine,
+            onSelect = { state.eventSink(AdvancedSettingsEvents.SetChatListThreeLine(it)) },
         )
     }
 
@@ -307,6 +315,114 @@ private val BUBBLE_QUICK_COLORS = listOf(
 @Composable
 private fun wallpaperSwatchColor(option: ChatWallpaperOption): Color =
     option.solidColor ?: ElementTheme.colors.chatWallpaperBackground
+
+/** «Список чатов»: выбор плотности строки — двустрочный / трёхстрочный, с мини-превью строки. */
+@Composable
+private fun ColumnScope.ChatListStyleRow(
+    threeLine: Boolean,
+    onSelect: (Boolean) -> Unit,
+) {
+    SectionLabel(stringResource(R.string.screen_chat_appearance_row_style_title))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        RowStyleCard(
+            modifier = Modifier.weight(1f),
+            label = stringResource(R.string.screen_chat_appearance_row_style_two),
+            previewLines = 1,
+            isSelected = !threeLine,
+            onClick = { onSelect(false) },
+        )
+        RowStyleCard(
+            modifier = Modifier.weight(1f),
+            label = stringResource(R.string.screen_chat_appearance_row_style_three),
+            previewLines = 2,
+            isSelected = threeLine,
+            onClick = { onSelect(true) },
+        )
+    }
+}
+
+@Composable
+private fun RowStyleCard(
+    label: String,
+    previewLines: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ringColor = if (isSelected) ElementTheme.colors.iconAccentTertiary else ElementTheme.colors.borderInteractiveSecondary
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(ElementTheme.colors.bgSubtlePrimary)
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = ringColor,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Мини-строка списка: аватар-кружок + имя + N строк превью.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(ElementTheme.colors.iconSecondary.copy(alpha = 0.4f))
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                MiniLine(widthFraction = 0.5f, color = ElementTheme.colors.textPrimary.copy(alpha = 0.7f))
+                repeat(previewLines) {
+                    MiniLine(widthFraction = if (it == previewLines - 1) 0.6f else 0.85f, color = ElementTheme.colors.textSecondary.copy(alpha = 0.5f))
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = label,
+                style = ElementTheme.typography.fontBodyMdMedium,
+                color = ElementTheme.colors.textPrimary,
+            )
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .border(width = 2.dp, color = ringColor, shape = CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(ElementTheme.colors.iconAccentTertiary)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniLine(widthFraction: Float, color: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction)
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(color)
+    )
+}
 
 @Composable
 private fun ColumnScope.SectionLabel(text: String) {

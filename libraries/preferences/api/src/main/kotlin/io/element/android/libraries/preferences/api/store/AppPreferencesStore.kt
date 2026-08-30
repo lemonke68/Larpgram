@@ -60,6 +60,10 @@ interface AppPreferencesStore {
     suspend fun setChatWallpaperImageUri(uri: String?)
     fun getChatWallpaperImageUriFlow(): Flow<String?>
 
+    /** Chat list row density: true = three-line (two preview lines), false = two-line (one). */
+    suspend fun setChatListThreeLine(enabled: Boolean)
+    fun getChatListThreeLineFlow(): Flow<Boolean>
+
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
     suspend fun setHideInviteAvatars(hide: Boolean?)
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

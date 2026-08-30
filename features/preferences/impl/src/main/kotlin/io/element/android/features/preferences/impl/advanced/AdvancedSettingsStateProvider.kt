@@ -52,6 +52,7 @@ fun aAdvancedSettingsState(
     chatBubbleColorArgb: Int? = null,
     chatAccentColorArgb: Int? = null,
     chatWallpaperImageUri: String? = null,
+    chatListThreeLine: Boolean = false,
     setTimelineMediaPreviewAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     setHideInviteAvatarsAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     eventSink: (AdvancedSettingsEvents) -> Unit = {},
@@ -75,5 +76,6 @@ fun aAdvancedSettingsState(
     chatBubbleColorArgb = chatBubbleColorArgb,
     chatAccentColorArgb = chatAccentColorArgb,
     chatWallpaperImageUri = chatWallpaperImageUri,
+    chatListThreeLine = chatListThreeLine,
     eventSink = eventSink
 )

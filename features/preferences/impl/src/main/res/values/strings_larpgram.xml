@@ -25,4 +25,10 @@
     <string name="screen_chat_theme_select_title">Choose a theme</string>
     <!-- Theme editor: dropdown label choosing which element to customize (wallpaper / accent / bubble). -->
     <string name="screen_chat_theme_customize_title">Customize</string>
+    <!-- Chat appearance settings: chat list row density section heading. -->
+    <string name="screen_chat_appearance_row_style_title">Chat list</string>
+    <!-- Chat list density: two-line rows (name + one preview line). -->
+    <string name="screen_chat_appearance_row_style_two">Two-line</string>
+    <!-- Chat list density: three-line rows (name + two preview lines). -->
+    <string name="screen_chat_appearance_row_style_three">Three-line</string>
 </resources>
