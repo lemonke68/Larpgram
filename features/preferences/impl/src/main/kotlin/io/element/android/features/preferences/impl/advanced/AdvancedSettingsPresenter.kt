@@ -81,6 +81,9 @@ class AdvancedSettingsPresenter(
         val chatAccentColorArgb by remember {
             appPreferencesStore.getChatAccentColorArgbFlow()
         }.collectAsState(initial = null)
+        val chatWallpaperImageUri by remember {
+            appPreferencesStore.getChatWallpaperImageUriFlow()
+        }.collectAsState(initial = null)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
@@ -169,6 +172,14 @@ class AdvancedSettingsPresenter(
                 is AdvancedSettingsEvents.SetChatAccentColor -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatAccentColorArgb(event.argb)
                 }
+                is AdvancedSettingsEvents.SetChatWallpaperImage -> sessionCoroutineScope.launch {
+                    // Фото выбрано: сохраняем URI и переводим маркер обоев на «фото». Сброс (null) —
+                    // очищаем URI и возвращаем обои к дефолтному паттерну.
+                    appPreferencesStore.setChatWallpaperImageUri(event.uri)
+                    appPreferencesStore.setChatWallpaperId(
+                        if (event.uri != null) ChatWallpaperOption.CUSTOM_IMAGE_ID else ChatWallpaperOption.DEFAULT.id
+                    )
+                }
                 is AdvancedSettingsEvents.ApplyChatTheme -> sessionCoroutineScope.launch {
                     // Пресет = связка: ставим обои, цвет пузыря и акцент разом, палитра согласована.
                     val theme = ChatThemeOption.entries.first { it.id == event.themeId }
@@ -199,6 +210,7 @@ class AdvancedSettingsPresenter(
             chatWallpaperCustomColorArgb = chatWallpaperCustomColorArgb,
             chatBubbleColorArgb = chatBubbleColorArgb,
             chatAccentColorArgb = chatAccentColorArgb,
+            chatWallpaperImageUri = chatWallpaperImageUri,
             eventSink = ::handleEvent,
         )
     }

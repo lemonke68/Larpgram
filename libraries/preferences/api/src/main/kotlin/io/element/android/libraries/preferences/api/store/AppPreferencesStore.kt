@@ -56,6 +56,10 @@ interface AppPreferencesStore {
     suspend fun setChatAccentColorArgb(argb: Int?)
     fun getChatAccentColorArgbFlow(): Flow<Int?>
 
+    /** User-picked chat wallpaper photo, as a persistable content URI string. Null = no photo. */
+    suspend fun setChatWallpaperImageUri(uri: String?)
+    fun getChatWallpaperImageUriFlow(): Flow<String?>
+
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
     suspend fun setHideInviteAvatars(hide: Boolean?)
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

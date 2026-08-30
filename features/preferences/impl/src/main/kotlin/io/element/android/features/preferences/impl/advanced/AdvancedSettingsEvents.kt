@@ -29,5 +29,6 @@ sealed interface AdvancedSettingsEvents {
     data class SetChatWallpaperCustomColor(val argb: Int) : AdvancedSettingsEvents
     data class SetChatBubbleColor(val argb: Int?) : AdvancedSettingsEvents
     data class SetChatAccentColor(val argb: Int?) : AdvancedSettingsEvents
+    data class SetChatWallpaperImage(val uri: String?) : AdvancedSettingsEvents
     data class ApplyChatTheme(val themeId: String) : AdvancedSettingsEvents
 }

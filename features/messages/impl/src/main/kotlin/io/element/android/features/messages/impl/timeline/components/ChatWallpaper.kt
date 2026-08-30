@@ -19,11 +19,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
+import coil3.compose.rememberAsyncImagePainter
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.R
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.LocalChatWallpaperCustomColor
 import io.element.android.libraries.designsystem.theme.LocalChatWallpaperId
+import io.element.android.libraries.designsystem.theme.LocalChatWallpaperImageUri
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
 
 /**
@@ -50,6 +52,9 @@ sealed interface ChatWallpaper {
         @DrawableRes val drawable: Int,
         val tint: Color? = null,
     ) : ChatWallpaper
+
+    /** Своя фотография пользователя, адресуется content-URI. Грузится Coil'ом, кроется по площади. */
+    data class Photo(val uri: String) : ChatWallpaper
 }
 
 /**
@@ -72,6 +77,10 @@ fun defaultChatWallpaper(): ChatWallpaper = ChatWallpaper.Image(
 @Composable
 fun selectedChatWallpaper(): ChatWallpaper {
     val id = LocalChatWallpaperId.current
+    // Своя фотография: URI хранится отдельным пре­фом, id-маркер = CUSTOM_IMAGE_ID.
+    if (id == ChatWallpaperOption.CUSTOM_IMAGE_ID) {
+        LocalChatWallpaperImageUri.current?.let { return ChatWallpaper.Photo(it) }
+    }
     // Пипетка: произвольный цвет юзера хранится отдельным пре­фом, id-маркер = CUSTOM_ID.
     if (id == ChatWallpaperOption.CUSTOM_ID) {
         LocalChatWallpaperCustomColor.current?.let { return ChatWallpaper.Solid(it) }
@@ -96,6 +105,17 @@ fun Modifier.chatWallpaper(wallpaper: ChatWallpaper): Modifier = when (wallpaper
         drawBehind {
             drawRect(wallpaper.background)
             drawCovering(painter, filter)
+        }
+    }
+    is ChatWallpaper.Photo -> {
+        // Фотография пользователя: Coil грузит из content-URI, кроем по площади. Пока не
+        // загрузилось (или ошибка) — под ней тема-зависимый фон, drawCovering молчит на
+        // неопределённом intrinsic-size.
+        val background = ElementTheme.colors.chatWallpaperBackground
+        val painter = rememberAsyncImagePainter(model = wallpaper.uri)
+        drawBehind {
+            drawRect(background)
+            drawCovering(painter, null)
         }
     }
 }
