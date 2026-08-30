@@ -36,6 +36,7 @@ import io.element.android.libraries.designsystem.components.messages.MessageDeli
 import io.element.android.libraries.designsystem.components.messages.MessageDeliveryTicks
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
@@ -60,10 +61,14 @@ fun TimelineEventTimestampView(
     val hasEncryptionCritical = event.messageShield?.isCritical.orFalse()
     val isMessageEdited = event.content.isEdited()
     val isMessageRedacted = event.content.isRedacted()
+    // Larpgram: на цветном исходящем пузыре берём контраст-локал (тот же, что у текста), иначе
+    // серый textSecondary сливается — например время на оранжевом пузыре. Дефолтный пузырь без
+    // кастома оставляет локал null, поэтому там время серое как прежде.
+    val bubbleContentColor = LocalOutgoingBubbleContentColor.current
     val tint = if (hasError || hasEncryptionCritical && !isMessageRedacted) {
         ElementTheme.colors.textCriticalPrimary
     } else {
-        contentColor ?: ElementTheme.colors.textSecondary
+        contentColor ?: bubbleContentColor ?: ElementTheme.colors.textSecondary
     }
 
     val shield = event.messageShield

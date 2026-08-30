@@ -51,6 +51,7 @@ fun SettingsCategoryView(
     onSecureBackupClick: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
     onOpenAnalytics: () -> Unit,
+    onOpenChatThemeSettings: () -> Unit,
     onManageAccountClick: (url: String) -> Unit,
     onSignOutClick: () -> Unit,
     onDeactivateClick: () -> Unit,
@@ -83,7 +84,10 @@ fun SettingsCategoryView(
                 onLinkNewDeviceClick = onLinkNewDeviceClick,
                 onManageAccountClick = onManageAccountClick,
             )
-            SettingsCategory.Chats -> ChatsCategory(advancedSettingsState = advancedSettingsState)
+            SettingsCategory.Chats -> ChatsCategory(
+                advancedSettingsState = advancedSettingsState,
+                onOpenChatThemeSettings = onOpenChatThemeSettings,
+            )
             SettingsCategory.Data -> DataCategory(advancedSettingsState = advancedSettingsState)
             // Категории без бэкенда в Element — заглушка «скоро». Наполнение придёт
             // с TG-фичами (обои/размер текста, папки, энергосбережение, язык), пишем с нуля позже.
@@ -204,12 +208,15 @@ private fun ColumnScope.PrivacyCategory(
 }
 
 @Composable
-private fun ColumnScope.ChatsCategory(advancedSettingsState: AdvancedSettingsState) {
+private fun ColumnScope.ChatsCategory(
+    advancedSettingsState: AdvancedSettingsState,
+    onOpenChatThemeSettings: () -> Unit,
+) {
     // Тема оформления (день/ночь/чёрная) — реальный бэкенд Element.
     AppearanceThemeItem(advancedSettingsState)
-    // Larpgram: размер текста сообщений + радиус углов пузырей (превью + два ползунка).
-    ChatAppearanceSection(advancedSettingsState)
-    // Ещё открыто (TG-фичи без бэкенда): обои, цвет имени, стиль списка чатов, иконка приложения.
+    // Larpgram: размер текста, углы, обои + переход на экран «Настройки темы» (пресеты/акцент/пузырь).
+    ChatAppearanceSection(advancedSettingsState, onOpenChatThemeSettings = onOpenChatThemeSettings)
+    // Ещё открыто (TG-фичи без бэкенда): цвет имени, стиль списка чатов, иконка приложения.
 }
 
 @Composable

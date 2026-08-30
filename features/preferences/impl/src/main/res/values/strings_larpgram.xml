@@ -19,4 +19,10 @@
     <string name="screen_chat_appearance_bubble_color_title">My messages</string>
     <!-- Chat appearance settings: app accent color heading. -->
     <string name="screen_chat_appearance_accent_color_title">Accent color</string>
+    <!-- Row on "Настройки чатов" opening the dedicated theme editor screen; also that screen's title. -->
+    <string name="screen_chat_theme_settings_title">Theme settings</string>
+    <!-- Theme editor: heading above the ready-made theme presets grid. -->
+    <string name="screen_chat_theme_select_title">Choose a theme</string>
+    <!-- Theme editor: dropdown label choosing which element to customize (wallpaper / accent / bubble). -->
+    <string name="screen_chat_theme_customize_title">Customize</string>
 </resources>

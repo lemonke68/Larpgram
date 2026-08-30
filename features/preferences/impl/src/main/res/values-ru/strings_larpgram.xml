@@ -9,4 +9,7 @@
     <string name="screen_chat_appearance_theme_title">Тема</string>
     <string name="screen_chat_appearance_bubble_color_title">Мои сообщения</string>
     <string name="screen_chat_appearance_accent_color_title">Цвет акцентов</string>
+    <string name="screen_chat_theme_settings_title">Настройки темы</string>
+    <string name="screen_chat_theme_select_title">Выбрать тему</string>
+    <string name="screen_chat_theme_customize_title">Настроить</string>
 </resources>
