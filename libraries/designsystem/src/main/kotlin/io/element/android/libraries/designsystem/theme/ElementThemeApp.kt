@@ -21,6 +21,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
 import io.element.android.compound.tokens.generated.SemanticColors
+import io.element.android.compound.tokens.withLarpgramAccent
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.core.meta.BuildType
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -83,6 +84,20 @@ fun ElementThemeApp(
     val chatWallpaperCustomColorArgb by remember {
         appPreferencesStore.getChatWallpaperCustomColorArgbFlow()
     }.collectAsState(initial = null)
+    val chatBubbleColorArgb by remember {
+        appPreferencesStore.getChatBubbleColorArgbFlow()
+    }.collectAsState(initial = null)
+    val chatAccentColorArgb by remember {
+        appPreferencesStore.getChatAccentColorArgbFlow()
+    }.collectAsState(initial = null)
+    // Larpgram: a chosen accent rebuilds the whole accent family on top of the themed palettes.
+    val accentColor = chatAccentColorArgb?.let { Color(it) }
+    val effectiveCompoundLight = remember(compoundLight, accentColor) {
+        accentColor?.let { compoundLight.withLarpgramAccent(it, isLight = true) } ?: compoundLight
+    }
+    val effectiveCompoundDark = remember(compoundDark, accentColor) {
+        accentColor?.let { compoundDark.withLarpgramAccent(it, isLight = false) } ?: compoundDark
+    }
     LaunchedEffect(theme) {
         AppCompatDelegate.setDefaultNightMode(
             when (theme) {
@@ -98,12 +113,13 @@ fun ElementThemeApp(
         LocalChatBubbleRadius provides ChatAppearanceDefaults.bubbleRadiusFor(bubbleCornerRadiusDp),
         LocalChatWallpaperId provides (chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id),
         LocalChatWallpaperCustomColor provides chatWallpaperCustomColorArgb?.let { Color(it) },
+        LocalOutgoingBubbleColor provides chatBubbleColorArgb?.let { Color(it) },
     ) {
         ElementTheme(
             theme = theme,
             content = content,
-            compoundLight = compoundLight,
-            compoundDark = compoundDark,
+            compoundLight = effectiveCompoundLight,
+            compoundDark = effectiveCompoundDark,
         )
     }
 }

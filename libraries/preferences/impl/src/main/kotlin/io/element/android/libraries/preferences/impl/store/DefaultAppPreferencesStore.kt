@@ -40,6 +40,8 @@ private val messageTextSizeSpKey = intPreferencesKey("larpgramMessageTextSizeSp"
 private val bubbleCornerRadiusDpKey = intPreferencesKey("larpgramBubbleCornerRadiusDp")
 private val chatWallpaperIdKey = stringPreferencesKey("larpgramChatWallpaperId")
 private val chatWallpaperCustomColorKey = intPreferencesKey("larpgramChatWallpaperCustomColor")
+private val chatBubbleColorKey = intPreferencesKey("larpgramChatBubbleColor")
+private val chatAccentColorKey = intPreferencesKey("larpgramChatAccentColor")
 private val logLevelKey = stringPreferencesKey("logLevel")
 private val traceLogPacksKey = stringPreferencesKey("traceLogPacks")
 private val messageSoundUriKey = stringPreferencesKey("notificationMessageSoundUri")
@@ -139,6 +141,34 @@ class DefaultAppPreferencesStore(
 
     override fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?> {
         return store.data.map { prefs -> prefs[chatWallpaperCustomColorKey] }
+    }
+
+    override suspend fun setChatBubbleColorArgb(argb: Int?) {
+        store.edit { prefs ->
+            if (argb != null) {
+                prefs[chatBubbleColorKey] = argb
+            } else {
+                prefs.remove(chatBubbleColorKey)
+            }
+        }
+    }
+
+    override fun getChatBubbleColorArgbFlow(): Flow<Int?> {
+        return store.data.map { prefs -> prefs[chatBubbleColorKey] }
+    }
+
+    override suspend fun setChatAccentColorArgb(argb: Int?) {
+        store.edit { prefs ->
+            if (argb != null) {
+                prefs[chatAccentColorKey] = argb
+            } else {
+                prefs.remove(chatAccentColorKey)
+            }
+        }
+    }
+
+    override fun getChatAccentColorArgbFlow(): Flow<Int?> {
+        return store.data.map { prefs -> prefs[chatAccentColorKey] }
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

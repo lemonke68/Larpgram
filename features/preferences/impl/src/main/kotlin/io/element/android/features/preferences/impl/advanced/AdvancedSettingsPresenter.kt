@@ -18,6 +18,8 @@ import dev.zacsweers.metro.Inject
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
 import io.element.android.libraries.architecture.Presenter
+import androidx.compose.ui.graphics.toArgb
+import io.element.android.libraries.designsystem.theme.ChatThemeOption
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -72,6 +74,12 @@ class AdvancedSettingsPresenter(
         }.collectAsState(initial = null)
         val chatWallpaperCustomColorArgb by remember {
             appPreferencesStore.getChatWallpaperCustomColorArgbFlow()
+        }.collectAsState(initial = null)
+        val chatBubbleColorArgb by remember {
+            appPreferencesStore.getChatBubbleColorArgbFlow()
+        }.collectAsState(initial = null)
+        val chatAccentColorArgb by remember {
+            appPreferencesStore.getChatAccentColorArgbFlow()
         }.collectAsState(initial = null)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
@@ -155,6 +163,19 @@ class AdvancedSettingsPresenter(
                     appPreferencesStore.setChatWallpaperCustomColorArgb(event.argb)
                     appPreferencesStore.setChatWallpaperId(ChatWallpaperOption.CUSTOM_ID)
                 }
+                is AdvancedSettingsEvents.SetChatBubbleColor -> sessionCoroutineScope.launch {
+                    appPreferencesStore.setChatBubbleColorArgb(event.argb)
+                }
+                is AdvancedSettingsEvents.SetChatAccentColor -> sessionCoroutineScope.launch {
+                    appPreferencesStore.setChatAccentColorArgb(event.argb)
+                }
+                is AdvancedSettingsEvents.ApplyChatTheme -> sessionCoroutineScope.launch {
+                    // Пресет = связка: ставим обои, цвет пузыря и акцент разом, палитра согласована.
+                    val theme = ChatThemeOption.entries.first { it.id == event.themeId }
+                    appPreferencesStore.setChatWallpaperId(theme.wallpaper.id)
+                    appPreferencesStore.setChatBubbleColorArgb(theme.bubbleColor?.toArgb())
+                    appPreferencesStore.setChatAccentColorArgb(theme.accentColor?.toArgb())
+                }
                 is AdvancedSettingsEvents.SetCompressImages -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setOptimizeImages(event.compress)
                 }
@@ -176,6 +197,8 @@ class AdvancedSettingsPresenter(
             bubbleCornerRadiusDp = bubbleCornerRadiusDp,
             chatWallpaperId = chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id,
             chatWallpaperCustomColorArgb = chatWallpaperCustomColorArgb,
+            chatBubbleColorArgb = chatBubbleColorArgb,
+            chatAccentColorArgb = chatAccentColorArgb,
             eventSink = ::handleEvent,
         )
     }

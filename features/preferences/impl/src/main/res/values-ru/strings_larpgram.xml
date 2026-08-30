@@ -6,4 +6,7 @@
     <string name="screen_chat_appearance_preview_outgoing">В Токио утро</string>
     <string name="screen_chat_appearance_wallpaper_title">Обои</string>
     <string name="screen_chat_appearance_custom_color_title">Свой цвет</string>
+    <string name="screen_chat_appearance_theme_title">Тема</string>
+    <string name="screen_chat_appearance_bubble_color_title">Мои сообщения</string>
+    <string name="screen_chat_appearance_accent_color_title">Цвет акцентов</string>
 </resources>

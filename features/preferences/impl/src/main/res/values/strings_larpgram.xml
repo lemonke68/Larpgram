@@ -13,4 +13,10 @@
     <string name="screen_chat_appearance_wallpaper_title">Wallpaper</string>
     <!-- Wallpaper eyedropper: RGB color picker dialog title / button label. -->
     <string name="screen_chat_appearance_custom_color_title">Custom color</string>
+    <!-- Chat appearance settings: ready-made theme presets heading (wallpaper + bubble bundle). -->
+    <string name="screen_chat_appearance_theme_title">Theme</string>
+    <!-- Chat appearance settings: outgoing message ("my messages") bubble color heading. -->
+    <string name="screen_chat_appearance_bubble_color_title">My messages</string>
+    <!-- Chat appearance settings: app accent color heading. -->
+    <string name="screen_chat_appearance_accent_color_title">Accent color</string>
 </resources>

@@ -48,6 +48,14 @@ interface AppPreferencesStore {
     suspend fun setChatWallpaperCustomColorArgb(argb: Int)
     fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?>
 
+    /** Outgoing ("Мои сообщения") bubble color, ARGB. Null clears it back to the themed default. */
+    suspend fun setChatBubbleColorArgb(argb: Int?)
+    fun getChatBubbleColorArgbFlow(): Flow<Int?>
+
+    /** App accent color, ARGB. Null keeps the default brand accent. */
+    suspend fun setChatAccentColorArgb(argb: Int?)
+    fun getChatAccentColorArgbFlow(): Flow<Int?>
+
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
     suspend fun setHideInviteAvatars(hide: Boolean?)
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")
