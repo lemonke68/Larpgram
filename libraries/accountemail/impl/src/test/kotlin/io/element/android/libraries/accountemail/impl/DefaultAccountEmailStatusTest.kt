@@ -131,7 +131,7 @@ class DefaultAccountEmailStatusTest {
 
     @Test
     fun `isBannerHidden - no account data means the banner is shown`() = runTest {
-        val status = createStatus(FakeMatrixClient(getAccountDataResult = { Result.success(null) }))
+        val status = createStatus(FakeMatrixClient(getAccountDataLambda = { Result.success(null) }))
 
         assertThat(status.isBannerHidden()).isFalse()
     }
@@ -140,7 +140,7 @@ class DefaultAccountEmailStatusTest {
     fun `isBannerHidden - a future date hides the banner`() = runTest {
         val future = System.currentTimeMillis() + 60_000
         val status = createStatus(
-            FakeMatrixClient(getAccountDataResult = { Result.success("""{ "hidden_until": $future }""") }),
+            FakeMatrixClient(getAccountDataLambda = { Result.success("""{ "hidden_until": $future }""") }),
         )
 
         assertThat(status.isBannerHidden()).isTrue()
@@ -150,7 +150,7 @@ class DefaultAccountEmailStatusTest {
     fun `isBannerHidden - the silence expires`() = runTest {
         val past = System.currentTimeMillis() - 60_000
         val status = createStatus(
-            FakeMatrixClient(getAccountDataResult = { Result.success("""{ "hidden_until": $past }""") }),
+            FakeMatrixClient(getAccountDataLambda = { Result.success("""{ "hidden_until": $past }""") }),
         )
 
         assertThat(status.isBannerHidden()).isFalse()
@@ -159,7 +159,7 @@ class DefaultAccountEmailStatusTest {
     @Test
     fun `isBannerHidden - garbage in account data does not hide the banner forever`() = runTest {
         val status = createStatus(
-            FakeMatrixClient(getAccountDataResult = { Result.success("мусор") }),
+            FakeMatrixClient(getAccountDataLambda = { Result.success("мусор") }),
         )
 
         assertThat(status.isBannerHidden()).isFalse()
@@ -170,7 +170,7 @@ class DefaultAccountEmailStatusTest {
         var written: Pair<String, String>? = null
         val status = createStatus(
             FakeMatrixClient(
-                setAccountDataResult = { eventType, content ->
+                setAccountDataLambda = { eventType, content ->
                     written = eventType to content
                     Result.success(Unit)
                 },

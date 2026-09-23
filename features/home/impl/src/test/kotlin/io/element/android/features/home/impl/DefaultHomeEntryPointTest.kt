@@ -12,6 +12,7 @@ import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.api.HomeEntryPoint
+import io.element.android.features.invite.test.declineandblock.FakeDeclineInviteAndBlockEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
@@ -62,14 +63,14 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 acceptDeclineInviteView = { _, _, _, _ -> lambdaError() },
                 directLogoutView = { _ -> lambdaError() },
                 reportRoomEntryPoint = { _, _, _ -> lambdaError() },
-                declineInviteAndBlockUserEntryPoint = { _, _, _ -> lambdaError() },
+                declineInviteAndBlockUserEntryPoint = FakeDeclineInviteAndBlockEntryPoint(),
                 changeRoomMemberRolesEntryPoint = { _, _, _, _ -> lambdaError() },
                 leaveRoomRenderer = { _, _, _ -> lambdaError() },
                 sessionCoroutineScope = backgroundScope,
             )
         }
         val callback = object : HomeEntryPoint.Callback {
-            override fun navigateToRoom(roomId: RoomId, joinedRoom: JoinedRoom?) = lambdaError()
+            override fun navigateToRoom(roomId: RoomId, eventId: EventId?, joinedRoom: JoinedRoom?) = lambdaError()
             override fun navigateToCreateRoom() = lambdaError()
             override fun navigateToCreateSpace() = lambdaError()
             override fun navigateToCreateChannel() = lambdaError()

@@ -674,7 +674,7 @@ class InReplyToMetadataKtTest : RobolectricTest() {
     fun `redacted content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
-                eventContent = RedactedContent
+                eventContent = RedactedContent(threadInfo = null)
             ).metadata(hideImage = false)
         }.test {
             awaitItem().let {

@@ -39,7 +39,7 @@ private const val versionYear = 26
  * Month of the version on 2 digits. Value must be in [1,12].
  * Do not update this value. it is updated by the release script.
  */
-private const val versionMonth = 8
+private const val versionMonth = 9
 
 /**
  * Release number in the month. Value must be in [0,99].
@@ -48,7 +48,7 @@ private const val versionMonth = 8
  * поле теперь двигает ТОЛЬКО versionCode — его сравнивает проверка обновлений, поэтому при
  * каждом релизе увеличивай на 1 (в пределах месяца; при смене месяца сбрасывается CalVer'ом).
  */
-private const val versionReleaseNumber = 4
+private const val versionReleaseNumber = 0
 
 /**
  * Правка форка: у Larpgram своя человекочитаемая версия (v0.x), а не CalVer апстрима.

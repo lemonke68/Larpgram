@@ -79,7 +79,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.MessageConten
 import io.element.android.libraries.matrix.api.timeline.item.event.TextMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.toEventOrTransactionId
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
-import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetailsProvider
+import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetailsPreviewParam
 import io.element.android.libraries.matrix.ui.messages.reply.aProfileDetailsReady
 import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.testtags.testTag
@@ -137,6 +137,7 @@ fun TextComposer(
     resolveAtRoomMentionDisplay: () -> TextDisplay,
     modifier: Modifier = Modifier,
     showTextFormatting: Boolean = false,
+    isInThreadTimeline: Boolean = false,
     // Правка форка: кнопка стикеров. null означает «не показывать», чтобы превью и
     // прочие места апстрима продолжали работать без изменений.
     onStickerClick: (() -> Unit)? = null,
@@ -163,13 +164,15 @@ fun TextComposer(
         .fillMaxSize()
         .height(IntrinsicSize.Min)
 
-    val placeholder = if (composerMode.inThread) {
+    val placeholder = if (composerMode.inThread || composerMode is MessageComposerMode.Normal && isInThreadTimeline) {
         stringResource(id = CommonStrings.action_reply_in_thread)
     } else if (composerMode is MessageComposerMode.Attachment || composerMode is MessageComposerMode.EditCaption) {
         stringResource(id = R.string.rich_text_editor_composer_caption_placeholder)
     } else {
         stringResource(id = R.string.rich_text_editor_composer_placeholder)
     }
+    val canSendTextMessage = markdown.isNotBlank() || composerMode is MessageComposerMode.Attachment
+
     val textInput: @Composable () -> Unit = when (state) {
         is TextEditorState.Rich -> {
             val coroutineScope = rememberCoroutineScope()
@@ -225,6 +228,7 @@ fun TextComposer(
                         placeholder = placeholder,
                         placeholderColor = ElementTheme.colors.textSecondary,
                         onTyping = onTyping,
+                        onSendMessage = { if (canSendTextMessage) onSendMessage() },
                         onReceiveSuggestion = onReceiveSuggestion,
                         richTextEditorStyle = style,
                         onSelectRichContent = onSelectRichContent,
@@ -233,8 +237,6 @@ fun TextComposer(
             }
         }
     }
-
-    val canSendTextMessage = markdown.isNotBlank() || composerMode is MessageComposerMode.Attachment
 
     val textFormattingOptions: @Composable (() -> Unit)? = (state as? TextEditorState.Rich)?.let {
         @Composable { TextFormatting(state = it.richTextEditorState) }
@@ -277,6 +279,20 @@ fun TextComposer(
         voiceRecordingLocked,
     ) {
         when {
+            composerMode.isEditing -> EndButtonParams(
+                endButtonContentDescriptionResId = CommonStrings.action_send_edited_message,
+                endButtonClick = {
+                    if (canSendTextMessage) {
+                        onSendMessage()
+                    }
+                },
+                endButtonContent = @Composable {
+                    SendButtonIcon(
+                        canSendMessage = canSendTextMessage,
+                        isEditing = true,
+                    )
+                },
+            )
             !canSendTextMessage ->
                 when (voiceMessageState) {
                     VoiceMessageState.Idle -> EndButtonParams(
@@ -347,18 +363,6 @@ fun TextComposer(
                         )
                     }
                 }
-            composerMode.isEditing -> EndButtonParams(
-                endButtonContentDescriptionResId = CommonStrings.action_send_edited_message,
-                endButtonClick = {
-                    onSendMessage()
-                },
-                endButtonContent = @Composable {
-                    SendButtonIcon(
-                        canSendMessage = true,
-                        isEditing = true,
-                    )
-                },
-            )
             else -> EndButtonParams(
                 endButtonContentDescriptionResId = CommonStrings.action_send_message,
                 endButtonClick = {
@@ -1004,7 +1008,7 @@ internal fun MarkdownTextComposerEditPreview() = ElementPreview {
 
 @PreviewsDayNight
 @Composable
-internal fun TextComposerReplyPreview(@PreviewParameter(InReplyToDetailsProvider::class) inReplyToDetails: InReplyToDetails) = ElementPreview {
+internal fun TextComposerReplyPreview(@PreviewParameter(InReplyToDetailsPreviewParam::class) inReplyToDetails: InReplyToDetails) = ElementPreview {
     PreviewColumn(
         items = aTextEditorStateRichList()
     ) { textEditorState ->
@@ -1028,7 +1032,7 @@ internal fun TextComposerReplyPreview(@PreviewParameter(InReplyToDetailsProvider
     heightDp = 800,
 )
 @Composable
-internal fun TextComposerReplyNotEncryptedPreview(@PreviewParameter(InReplyToDetailsProvider::class) inReplyToDetails: InReplyToDetails) = ElementPreview {
+internal fun TextComposerReplyNotEncryptedPreview(@PreviewParameter(InReplyToDetailsPreviewParam::class) inReplyToDetails: InReplyToDetails) = ElementPreview {
     PreviewColumn(
         items = aTextEditorStateRichList(isRoomEncrypted = false)
     ) { textEditorState ->

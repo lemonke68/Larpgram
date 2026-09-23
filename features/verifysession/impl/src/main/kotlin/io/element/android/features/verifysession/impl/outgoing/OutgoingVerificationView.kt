@@ -70,13 +70,13 @@ fun OutgoingVerificationView(
     val step = state.step
     fun cancelOrResetFlow() {
         when (step) {
-            is Step.Canceled -> state.eventSink(OutgoingVerificationViewEvents.Reset)
+            is Step.Canceled -> state.eventSink(OutgoingVerificationViewEvent.Reset)
             Step.Initial -> onBack()
             Step.Completed -> onFinish()
-            Step.Ready, is Step.AwaitingOtherDeviceResponse -> state.eventSink(OutgoingVerificationViewEvents.Cancel)
+            Step.Ready, is Step.AwaitingOtherDeviceResponse -> state.eventSink(OutgoingVerificationViewEvent.Cancel)
             is Step.Verifying -> {
                 if (!step.state.isLoading()) {
-                    state.eventSink(OutgoingVerificationViewEvents.DeclineVerification)
+                    state.eventSink(OutgoingVerificationViewEvent.DeclineVerification)
                 }
             }
             else -> Unit
@@ -141,7 +141,7 @@ fun OutgoingVerificationView(
 @Composable
 private fun EmailVerificationDialogs(
     emailStep: EmailVerifyStep,
-    eventSink: (OutgoingVerificationViewEvents) -> Unit,
+    eventSink: (OutgoingVerificationViewEvent) -> Unit,
 ) {
     when (emailStep) {
         EmailVerifyStep.Hidden -> Unit
@@ -167,14 +167,14 @@ private fun EmailVerificationDialogs(
                     submitText = "Подтвердить",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     validation = { it != null && it.trim().length == CODE_LENGTH && it.trim().all(Char::isDigit) },
-                    onSubmit = { eventSink(OutgoingVerificationViewEvents.SubmitEmailCode(it.trim())) },
-                    onDismissRequest = { eventSink(OutgoingVerificationViewEvents.DismissEmailVerification) },
+                    onSubmit = { eventSink(OutgoingVerificationViewEvent.SubmitEmailCode(it.trim())) },
+                    onDismissRequest = { eventSink(OutgoingVerificationViewEvent.DismissEmailVerification) },
                 )
             }
         }
         is EmailVerifyStep.Unavailable -> ErrorDialog(
             content = emailVerifyUnavailableText(emailStep.reason),
-            onSubmit = { eventSink(OutgoingVerificationViewEvents.DismissEmailVerification) },
+            onSubmit = { eventSink(OutgoingVerificationViewEvent.DismissEmailVerification) },
         )
     }
 }
@@ -338,7 +338,7 @@ private fun OutgoingVerificationBottomMenu(
                     text = stringResource(CommonStrings.action_start_verification),
                     enabled = !isWaiting,
                     showProgress = isWaiting,
-                    onClick = { eventSink(OutgoingVerificationViewEvents.RequestVerification) },
+                    onClick = { eventSink(OutgoingVerificationViewEvent.RequestVerification) },
                 )
                 // Правка форка: альтернатива второму устройству — подтвердить кодом с почты.
                 // Только при верификации своей сессии и пока не ждём ответа устройства.
@@ -346,7 +346,7 @@ private fun OutgoingVerificationBottomMenu(
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
                         text = "Подтвердить по почте",
-                        onClick = { eventSink(OutgoingVerificationViewEvents.StartEmailVerification) },
+                        onClick = { eventSink(OutgoingVerificationViewEvent.StartEmailVerification) },
                     )
                 } else {
                     InvisibleButton()
@@ -368,7 +368,7 @@ private fun OutgoingVerificationBottomMenu(
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     text = stringResource(CommonStrings.action_start),
-                    onClick = { eventSink(OutgoingVerificationViewEvents.StartSasVerification) },
+                    onClick = { eventSink(OutgoingVerificationViewEvent.StartSasVerification) },
                 )
                 TextButton(
                     modifier = Modifier.fillMaxWidth(),
@@ -386,7 +386,7 @@ private fun OutgoingVerificationBottomMenu(
                     enabled = !isVerifying,
                     showProgress = isVerifying,
                     onClick = {
-                        eventSink(OutgoingVerificationViewEvents.ConfirmVerification)
+                        eventSink(OutgoingVerificationViewEvent.ConfirmVerification)
                     },
                 )
                 TextButton(
@@ -394,7 +394,7 @@ private fun OutgoingVerificationBottomMenu(
                     text = stringResource(R.string.screen_session_verification_they_dont_match),
                     enabled = !isVerifying,
                     onClick = {
-                        eventSink(OutgoingVerificationViewEvents.DeclineVerification)
+                        eventSink(OutgoingVerificationViewEvent.DeclineVerification)
                     },
                 )
             }
@@ -415,7 +415,9 @@ private fun OutgoingVerificationBottomMenu(
 
 @PreviewsDayNight
 @Composable
-internal fun OutgoingVerificationViewPreview(@PreviewParameter(OutgoingVerificationStateProvider::class) state: OutgoingVerificationState) = ElementPreview {
+internal fun OutgoingVerificationViewPreview(@PreviewParameter(
+    OutgoingVerificationStatePreviewParam::class
+) state: OutgoingVerificationState) = ElementPreview {
     OutgoingVerificationView(
         state = state,
         onLearnMoreClick = {},

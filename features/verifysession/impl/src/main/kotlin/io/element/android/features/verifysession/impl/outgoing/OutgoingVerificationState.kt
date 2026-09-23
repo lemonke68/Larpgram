@@ -20,7 +20,7 @@ data class OutgoingVerificationState(
     // step, не в SDK-машине: после успешного recover() статус сессии сам станет Verified и
     // step уедет в Completed/Exit.
     val emailStep: EmailVerifyStep,
-    val eventSink: (OutgoingVerificationViewEvents) -> Unit,
+    val eventSink: (OutgoingVerificationViewEvent) -> Unit,
 ) {
     @Stable
     sealed interface Step {

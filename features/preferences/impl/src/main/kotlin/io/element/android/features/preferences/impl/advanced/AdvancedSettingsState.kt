@@ -34,7 +34,7 @@ data class AdvancedSettingsState(
     val chatWallpaperImageUri: String?,
     val chatWallpaperGradientSpec: String?,
     val chatListThreeLine: Boolean,
-    val eventSink: (AdvancedSettingsEvents) -> Unit
+    val eventSink: (AdvancedSettingsEvent) -> Unit
 )
 
 sealed interface MediaOptimizationState {

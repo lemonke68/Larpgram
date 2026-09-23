@@ -76,7 +76,7 @@ fun AdvancedSettingsView(
     ) {
         AppearanceThemeItem(state)
         ListItem(
-            headlineContent = {
+            content = {
                 Text(text = stringResource(id = CommonStrings.action_view_source))
             },
             supportingContent = {
@@ -85,7 +85,7 @@ fun AdvancedSettingsView(
             trailingContent = ListItemContent.Switch(
                 checked = state.isDeveloperModeEnabled,
             ),
-            onClick = { state.eventSink(AdvancedSettingsEvents.SetDeveloperModeEnabled(!state.isDeveloperModeEnabled)) }
+            onClick = { state.eventSink(AdvancedSettingsEvent.SetDeveloperModeEnabled(!state.isDeveloperModeEnabled)) }
         )
         SharePresenceItem(state)
         MediaUploadSection(state)
@@ -95,7 +95,7 @@ fun AdvancedSettingsView(
             LiveLocationUpdatesSection(
                 value = state.liveLocationMinimumDistanceUpdate,
                 onSaveValue = { value ->
-                    state.eventSink(AdvancedSettingsEvents.SetLiveLocationMinimumDistanceUpdate(value))
+                    state.eventSink(AdvancedSettingsEvent.SetLiveLocationMinimumDistanceUpdate(value))
                 },
                 onOpenAppPermissionsClick = onOpenAppSettingsClick,
             )
@@ -177,17 +177,17 @@ private fun LiveLocationUpdatesSection(
 
 @PreviewWithLargeHeight
 @Composable
-internal fun AdvancedSettingsViewLightPreview(@PreviewParameter(AdvancedSettingsStateProvider::class) state: AdvancedSettingsState) =
+internal fun AdvancedSettingsViewLightPreview(@PreviewParameter(AdvancedSettingsStatePreviewParam::class) state: AdvancedSettingsState) =
     ElementPreviewLight { ContentToPreview(state) }
 
 @PreviewWithLargeHeight
 @Composable
-internal fun AdvancedSettingsViewDarkPreview(@PreviewParameter(AdvancedSettingsStateProvider::class) state: AdvancedSettingsState) =
+internal fun AdvancedSettingsViewDarkPreview(@PreviewParameter(AdvancedSettingsStatePreviewParam::class) state: AdvancedSettingsState) =
     ElementPreviewDark { ContentToPreview(state) }
 
 @PreviewWithLargeHeight
 @Composable
-internal fun AdvancedSettingsViewBlackPreview(@PreviewParameter(AdvancedSettingsStateProvider::class) state: AdvancedSettingsState) =
+internal fun AdvancedSettingsViewBlackPreview(@PreviewParameter(AdvancedSettingsStatePreviewParam::class) state: AdvancedSettingsState) =
     ElementPreviewBlack { ContentToPreview(state) }
 
 @ExcludeFromCoverage

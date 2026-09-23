@@ -75,10 +75,11 @@ fun TimelineEventTimestampView(
     val isVerifiedUserSendFailure = event.localSendState is LocalEventSendState.Failed.VerifiedUser
     val onClickLabel = when {
         shield != null -> stringResource(CommonStrings.a11y_view_details)
-        hasError && isVerifiedUserSendFailure -> stringResource(CommonStrings.action_open_context_menu)
+        isVerifiedUserSendFailure -> stringResource(CommonStrings.action_open_context_menu)
+        hasError -> stringResource(CommonStrings.a11y_view_details)
         else -> null
     }
-    val clickableModifier = remember(shield, hasError) {
+    val clickableModifier = remember(event) {
         when {
             shield != null -> {
                 Modifier.clickable(
@@ -89,10 +90,9 @@ fun TimelineEventTimestampView(
             }
             hasError -> Modifier
                 .clickable(
-                    enabled = isVerifiedUserSendFailure,
                     onClickLabel = onClickLabel,
                 ) {
-                    eventSink(TimelineEvent.ComputeVerifiedUserSendFailure(event))
+                    eventSink(TimelineEvent.ShowSendFailureDialog(event))
                 }
             else -> Modifier
         }
@@ -187,7 +187,9 @@ fun TimelineEventTimestampView(
 
 @PreviewsDayNight
 @Composable
-internal fun TimelineEventTimestampViewPreview(@PreviewParameter(TimelineItemEventForTimestampViewProvider::class) event: TimelineItem.Event) = ElementPreview {
+internal fun TimelineEventTimestampViewPreview(@PreviewParameter(
+    TimelineItemEventForTimestampViewPreviewParam::class
+) event: TimelineItem.Event) = ElementPreview {
     TimelineEventTimestampView(
         event = event,
         eventSink = {},

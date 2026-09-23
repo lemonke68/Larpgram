@@ -20,6 +20,7 @@ import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.test.FakeMatrixClient
+import io.element.android.libraries.mediaviewer.test.FakeFileViewerEntryPoint
 import io.element.android.libraries.troubleshoot.test.FakeNotificationTroubleShootEntryPoint
 import io.element.android.libraries.troubleshoot.test.FakePushHistoryEntryPoint
 import io.element.android.tests.testutils.lambda.lambdaError
@@ -44,6 +45,7 @@ class DefaultPreferencesEntryPointTest {
                 lockScreenEntryPoint = FakeLockScreenEntryPoint(),
                 notificationTroubleShootEntryPoint = FakeNotificationTroubleShootEntryPoint(),
                 pushHistoryEntryPoint = FakePushHistoryEntryPoint(),
+                fileViewerEntryPoint = FakeFileViewerEntryPoint(),
                 logoutEntryPoint = FakeLogoutEntryPoint(),
                 openSourceLicensesEntryPoint = FakeOpenSourceLicensesEntryPoint(),
                 accountDeactivationEntryPoint = FakeAccountDeactivationEntryPoint(),

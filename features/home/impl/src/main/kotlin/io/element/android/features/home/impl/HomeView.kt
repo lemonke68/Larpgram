@@ -14,12 +14,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -52,6 +55,8 @@ import io.element.android.features.home.impl.roomlist.RoomListContextMenu
 import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.home.impl.roomlist.RoomListState
+import io.element.android.features.home.impl.search.GlobalSearchEvent
+import io.element.android.features.home.impl.search.GlobalSearchView
 import io.element.android.features.home.impl.search.RoomListSearchView
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
@@ -69,13 +74,14 @@ import io.element.android.libraries.designsystem.utils.lazyColumnContentPadding
 import io.element.android.libraries.designsystem.utils.scaffoldScrollableContentInsets
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
+import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeView(
     homeState: HomeState,
-    onRoomClick: (RoomId) -> Unit,
+    onRoomClick: (RoomId, EventId?) -> Unit,
     onSettingsClick: () -> Unit,
     onSetUpRecoveryClick: () -> Unit,
     onConfirmRecoveryKeyClick: () -> Unit,
@@ -124,7 +130,7 @@ fun HomeView(
             state = homeState,
             onSetUpRecoveryClick = onSetUpRecoveryClick,
             onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
-            onRoomClick = { if (firstThrottler.canHandle()) onRoomClick(it) },
+            onRoomClick = { roomId -> if (firstThrottler.canHandle()) onRoomClick(roomId, null) },
             onOpenSettings = { if (firstThrottler.canHandle()) onSettingsClick() },
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
@@ -134,16 +140,28 @@ fun HomeView(
             settingsContent = settingsContent,
             profileContent = profileContent,
         )
-        // This overlaid view will only be visible when state.displaySearchResults is true
-        RoomListSearchView(
-            state = state.searchState,
-            eventSink = state.eventSink,
-            hideInvitesAvatars = state.hideInvitesAvatars,
-            onRoomClick = { if (firstThrottler.canHandle()) onRoomClick(it) },
-            modifier = Modifier
-                .fillMaxSize()
-                .background(ElementTheme.colors.bgCanvasDefault)
-        )
+
+        if (state.globalSearchState.isEnabled) {
+            GlobalSearchView(
+                state = state.globalSearchState,
+                onSelectSearchResult = { roomId, eventId -> if (firstThrottler.canHandle()) onRoomClick(roomId, eventId) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(ElementTheme.colors.bgCanvasDefault),
+            )
+        } else {
+            // This overlaid view will only be visible when state.displaySearchResults is true
+            RoomListSearchView(
+                state = state.searchState,
+                eventSink = state.eventSink,
+                hideInvitesAvatars = state.hideInvitesAvatars,
+                onRoomClick = { roomId -> if (firstThrottler.canHandle()) onRoomClick(roomId, null) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(ElementTheme.colors.bgCanvasDefault)
+            )
+        }
+
         acceptDeclineInviteView()
     }
 }
@@ -207,8 +225,18 @@ private fun HomeScaffold(
                     selectedNavigationItem = state.currentHomeNavigationBarItem,
                     currentUserAndNeighbors = state.currentUserAndNeighbors,
                 showAvatarIndicator = state.showAvatarIndicator,
-                areSearchResultsDisplayed = roomListState.searchState.isSearchActive,
-                onToggleSearch = { roomListState.eventSink(RoomListEvent.ToggleSearchResults) },
+                areSearchResultsDisplayed = if (roomListState.globalSearchState.isEnabled) {
+                    roomListState.globalSearchState.isSearchActive
+                } else {
+                    roomListState.searchState.isSearchActive
+                },
+                onToggleSearch = {
+                    if (roomListState.globalSearchState.isEnabled) {
+                        roomListState.globalSearchState.eventSink(GlobalSearchEvent.ToggleSearchVisibility)
+                    } else {
+                        roomListState.eventSink(RoomListEvent.ToggleSearchResults)
+                    }
+                },
                 onMenuActionClick = onMenuActionClick,
                 onOpenSettings = onOpenSettings,
                 onAccountSwitch = {
@@ -232,6 +260,9 @@ private fun HomeScaffold(
             val coroutineScope = rememberCoroutineScope()
             if (isBottomBarVisible) {
                 HomeBottomBar(
+                    // The Scaffold uses top-only insets so the scrollable content can go edge-to-edge behind the
+                    // navigation bar, so the floating toolbar has to apply the bottom inset itself to avoid overlapping it.
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
                 currentHomeNavigationBarItem = state.currentHomeNavigationBarItem,
                 onItemClick = { item ->
                     // scroll to top if selecting the Chats tab while already on it
@@ -381,10 +412,10 @@ internal fun RoomListRoomSummary.contentType() = displayType.ordinal
 
 @PreviewsDayNight
 @Composable
-internal fun HomeViewPreview(@PreviewParameter(HomeStateProvider::class) state: HomeState) = ElementPreview {
+internal fun HomeViewPreview(@PreviewParameter(HomeStatePreviewParam::class) state: HomeState) = ElementPreview {
     HomeView(
         homeState = state,
-        onRoomClick = {},
+        onRoomClick = { _, _ -> },
         onSettingsClick = {},
         onSetUpRecoveryClick = {},
         onConfirmRecoveryKeyClick = {},
@@ -405,7 +436,7 @@ internal fun HomeViewPreview(@PreviewParameter(HomeStateProvider::class) state: 
 internal fun HomeViewA11yPreview() = ElementPreview {
     HomeView(
         homeState = aHomeState(),
-        onRoomClick = {},
+        onRoomClick = { _, _ -> },
         onSettingsClick = {},
         onSetUpRecoveryClick = {},
         onConfirmRecoveryKeyClick = {},

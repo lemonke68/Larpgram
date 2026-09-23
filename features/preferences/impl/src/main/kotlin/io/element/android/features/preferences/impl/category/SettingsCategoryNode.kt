@@ -19,7 +19,7 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.features.logout.api.direct.DirectLogoutEvents
+import io.element.android.features.logout.api.direct.DirectLogoutEvent
 import io.element.android.features.logout.api.direct.DirectLogoutView
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsPresenter
 import io.element.android.features.preferences.impl.root.PreferencesRootPresenter
@@ -95,7 +95,7 @@ class SettingsCategoryNode(
             onManageAccountClick = { onManageAccountClick(activity, it, isDark) },
             onSignOutClick = {
                 if (state.directLogoutState.canDoDirectSignOut) {
-                    state.directLogoutState.eventSink(DirectLogoutEvents.Logout(ignoreSdkError = false))
+                    state.directLogoutState.eventSink(DirectLogoutEvent.Logout(ignoreSdkError = false))
                 } else {
                     callback.startSignOutFlow()
                 }

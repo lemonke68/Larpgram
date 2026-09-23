@@ -17,13 +17,13 @@ object BuildTimeConfig {
     const val GOOGLE_APP_ID_NIGHTLY = "1:302452978088:android:c84592dd380565122b2d9d"
 
     val METADATA_HOST_REVERSED: String? = null
+    val OAUTH_CLIENT_URL_PATH: String? = "apps/android"
     val URL_WEBSITE: String? = null
     val URL_LOGO: String? = null
     val URL_COPYRIGHT: String? = null
     val URL_ACCEPTABLE_USE: String? = null
     val URL_PRIVACY: String? = null
     val URL_POLICY: String? = null
-    val OAUTH_CLIENT_URL_PATH: String? = null
     val SERVICES_MAPTILER_BASE_URL: String? = null
     val SERVICES_MAPTILER_APIKEY: String? = null
     val SERVICES_MAPTILER_LIGHT_MAPID: String? = null
@@ -37,6 +37,13 @@ object BuildTimeConfig {
 
     // Пуши через Firebase: без второго приложения на телефоне, ценой зависимости от
     // сервисов Google. UnifiedPush оставлен как запасной вариант для телефонов без них.
-    const val PUSH_CONFIG_INCLUDE_FIREBASE = true
-    const val PUSH_CONFIG_INCLUDE_UNIFIED_PUSH = true
+    const val PUSH_CONFIG_INCLUDE_FIREBASE: Boolean = true
+    const val PUSH_CONFIG_INCLUDE_UNIFIED_PUSH: Boolean = true
+
+    // Правка форка: идентификатор приложения для push-шлюза. Должен совпадать с ключом в конфиге
+    // Sygnal, иначе он не найдёт приложение и уведомление молча пропадёт. У апстрима тут null,
+    // и берётся id Element. Раньше жило в appconfig/PushConfig.kt (апстрим его удалил в 26.09).
+    val PUSHER_APP_ID_RELEASE: String? = "ru.mangokokos.larpgram"
+    val PUSHER_APP_ID_DEBUG: String? = "ru.mangokokos.larpgram"
+    val PUSHER_APP_ID_NIGHTLY: String? = "ru.mangokokos.larpgram"
 }

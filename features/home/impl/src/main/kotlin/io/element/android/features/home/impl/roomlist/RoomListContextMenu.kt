@@ -111,7 +111,7 @@ private fun RoomListModalBottomSheetContent(
             .verticalScroll(rememberScrollState())
     ) {
         ListItem(
-            headlineContent = {
+            content = {
                 Text(
                     text = contextMenu.roomName ?: stringResource(id = CommonStrings.common_no_room_name),
                     style = ElementTheme.typography.fontBodyLgMedium,
@@ -121,7 +121,7 @@ private fun RoomListModalBottomSheetContent(
         )
         if (contextMenu.hasNewContent) {
             ListItem(
-                headlineContent = {
+                content = {
                     Text(
                         text = stringResource(id = CommonStrings.action_mark_as_read),
                         style = MaterialTheme.typography.bodyLarge,
@@ -134,7 +134,7 @@ private fun RoomListModalBottomSheetContent(
             )
         } else {
             ListItem(
-                headlineContent = {
+                content = {
                     Text(
                         text = stringResource(id = R.string.screen_roomlist_mark_as_unread),
                         style = MaterialTheme.typography.bodyLarge,
@@ -148,7 +148,7 @@ private fun RoomListModalBottomSheetContent(
         }
         // Правка форка (роумлесс): пин/анпин чата (свой, через account data).
         ListItem(
-            headlineContent = {
+            content = {
                 Text(
                     text = stringResource(
                         id = if (contextMenu.isPinned) R.string.screen_roomlist_unpin else R.string.screen_roomlist_pin
@@ -169,7 +169,7 @@ private fun RoomListModalBottomSheetContent(
             CommonStrings.common_favourite to CompoundIcons.Favourite()
         }
         ListItem(
-            headlineContent = {
+            content = {
                 Text(
                     text = stringResource(id = textResId),
                     style = MaterialTheme.typography.bodyLarge,
@@ -188,7 +188,7 @@ private fun RoomListModalBottomSheetContent(
             },
         )
         ListItem(
-            headlineContent = {
+            content = {
                 Text(
                     text = stringResource(id = CommonStrings.common_settings),
                     style = MaterialTheme.typography.bodyLarge,
@@ -203,7 +203,7 @@ private fun RoomListModalBottomSheetContent(
         )
         if (canReportRoom) {
             ListItem(
-                headlineContent = {
+                content = {
                     Text(text = stringResource(CommonStrings.action_report_room))
                 },
                 modifier = Modifier.clickable { onReportRoomClick() },
@@ -218,7 +218,7 @@ private fun RoomListModalBottomSheetContent(
         // Правка форка (роумлесс): блок собеседника — только в ЛС (односторонняя TG-стена).
         if (contextMenu.isDm) {
             ListItem(
-                headlineContent = {
+                content = {
                     Text(text = stringResource(R.string.screen_roomlist_block_user))
                 },
                 modifier = Modifier.clickable { onBlockUserClick() },
@@ -237,7 +237,7 @@ private fun RoomListModalBottomSheetContent(
             ChatType.Channel -> R.string.screen_roomlist_leave_channel
         }
         ListItem(
-            headlineContent = {
+            content = {
                 Text(text = stringResource(leaveTextResId))
             },
             modifier = Modifier.clickable { onLeaveRoomClick() },
@@ -254,7 +254,7 @@ private fun RoomListModalBottomSheetContent(
 @PreviewsDayNight
 @Composable
 internal fun RoomListContextMenuPreview(
-    @PreviewParameter(RoomListStateContextMenuShownProvider::class) contextMenu: RoomListState.ContextMenu.Shown
+    @PreviewParameter(RoomListStateContextMenuShownPreviewParam::class) contextMenu: RoomListState.ContextMenu.Shown
 ) = ElementPreview(fillMaxSize = true) {
     RoomListContextMenu(
         contextMenu = contextMenu,

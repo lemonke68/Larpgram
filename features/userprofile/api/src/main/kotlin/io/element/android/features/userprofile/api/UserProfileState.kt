@@ -30,7 +30,7 @@ data class UserProfileState(
     val displayedStatus: DisplayedStatus?,
     // Bio ("О себе"), only ever populated for the current user (stored in private account data).
     val about: String?,
-    val eventSink: (UserProfileEvents) -> Unit
+    val eventSink: (UserProfileEvent) -> Unit
 ) {
     enum class ConfirmationDialog {
         Block,

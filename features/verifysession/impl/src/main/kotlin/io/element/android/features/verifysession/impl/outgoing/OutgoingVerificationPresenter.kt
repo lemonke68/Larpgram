@@ -105,26 +105,26 @@ class OutgoingVerificationPresenter(
             observeVerificationService()
         }
 
-        fun handleEvent(event: OutgoingVerificationViewEvents) {
+        fun handleEvent(event: OutgoingVerificationViewEvent) {
             Timber.d("Verification user action: ${event::class.simpleName}")
             val stateMachineEvent = when (event) {
                 // Just relay the event to the state machine
-                OutgoingVerificationViewEvents.RequestVerification -> StateMachineEvent.RequestVerification(verificationRequest)
-                OutgoingVerificationViewEvents.StartSasVerification -> StateMachineEvent.StartSasVerification
-                OutgoingVerificationViewEvents.ConfirmVerification -> StateMachineEvent.AcceptChallenge
-                OutgoingVerificationViewEvents.DeclineVerification -> StateMachineEvent.DeclineChallenge
-                OutgoingVerificationViewEvents.Cancel -> StateMachineEvent.Cancel
-                OutgoingVerificationViewEvents.Reset -> StateMachineEvent.Reset
+                OutgoingVerificationViewEvent.RequestVerification -> StateMachineEvent.RequestVerification(verificationRequest)
+                OutgoingVerificationViewEvent.StartSasVerification -> StateMachineEvent.StartSasVerification
+                OutgoingVerificationViewEvent.ConfirmVerification -> StateMachineEvent.AcceptChallenge
+                OutgoingVerificationViewEvent.DeclineVerification -> StateMachineEvent.DeclineChallenge
+                OutgoingVerificationViewEvent.Cancel -> StateMachineEvent.Cancel
+                OutgoingVerificationViewEvent.Reset -> StateMachineEvent.Reset
                 // Правка форка: под-флоу почты обрабатываем локально, в SDK-машину не отдаём.
-                OutgoingVerificationViewEvents.StartEmailVerification -> {
+                OutgoingVerificationViewEvent.StartEmailVerification -> {
                     coroutineScope.requestEmailCode { emailStep = it }
                     null
                 }
-                is OutgoingVerificationViewEvents.SubmitEmailCode -> {
+                is OutgoingVerificationViewEvent.SubmitEmailCode -> {
                     coroutineScope.submitEmailCode(event.code, emailStep) { emailStep = it }
                     null
                 }
-                OutgoingVerificationViewEvents.DismissEmailVerification -> {
+                OutgoingVerificationViewEvent.DismissEmailVerification -> {
                     emailStep = EmailVerifyStep.Hidden
                     null
                 }

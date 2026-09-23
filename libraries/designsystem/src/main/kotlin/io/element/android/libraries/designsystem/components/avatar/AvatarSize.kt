@@ -8,9 +8,11 @@
 
 package io.element.android.libraries.designsystem.components.avatar
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+@Immutable
 enum class AvatarSize(val dp: Dp) {
     CurrentUserTopBar(32.dp),
     CurrentRoomTopBar(32.dp),
@@ -21,6 +23,7 @@ enum class AvatarSize(val dp: Dp) {
     // Правка форка: 60dp вместо 52dp. Сперва взяли 56 с концепта 2023 года, 2026-08-16
     // переснято по живому клиенту: там ровно 60.
     RoomListItem(60.dp),
+    SearchRoomListItem(32.dp),
     ThreadsListItem(52.dp),
 
     SpaceListItem(52.dp),

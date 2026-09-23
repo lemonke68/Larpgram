@@ -7,6 +7,7 @@
 
 package io.element.android.features.home.impl.spacefilters
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -23,7 +24,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.animation.core.Animatable
 import kotlinx.coroutines.launch
 
 // Порог горизонтального свайпа для переключения папки. Меньше — легко переключить случайно

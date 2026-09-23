@@ -23,7 +23,7 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.startchat.api.StartDMAction
-import io.element.android.features.userprofile.api.UserProfileEvents
+import io.element.android.features.userprofile.api.UserProfileEvent
 import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileState.ConfirmationDialog
 import io.element.android.features.userprofile.api.UserProfileVerificationState
@@ -106,9 +106,9 @@ class UserProfilePresenter(
             value = if (isCurrentUser) client.getLarpgramBio() else null
         }
 
-        fun handleEvent(event: UserProfileEvents) {
+        fun handleEvent(event: UserProfileEvent) {
             when (event) {
-                is UserProfileEvents.BlockUser -> {
+                is UserProfileEvent.BlockUser -> {
                     if (event.needsConfirmation) {
                         confirmationDialog = ConfirmationDialog.Block
                     } else {
@@ -116,7 +116,7 @@ class UserProfilePresenter(
                         coroutineScope.blockUser(isBlocked)
                     }
                 }
-                is UserProfileEvents.UnblockUser -> {
+                is UserProfileEvent.UnblockUser -> {
                     if (event.needsConfirmation) {
                         confirmationDialog = ConfirmationDialog.Unblock
                     } else {
@@ -124,11 +124,11 @@ class UserProfilePresenter(
                         coroutineScope.unblockUser(isBlocked)
                     }
                 }
-                UserProfileEvents.ClearConfirmationDialog -> confirmationDialog = null
-                UserProfileEvents.ClearBlockUserError -> {
+                UserProfileEvent.ClearConfirmationDialog -> confirmationDialog = null
+                UserProfileEvent.ClearBlockUserError -> {
                     isBlocked.value = AsyncData.Success(isBlocked.value.dataOrNull().orFalse())
                 }
-                UserProfileEvents.StartDM -> {
+                UserProfileEvent.StartDM -> {
                     coroutineScope.launch {
                         startDMAction.execute(
                             matrixUser = userProfile ?: MatrixUser(userId),
@@ -137,12 +137,12 @@ class UserProfilePresenter(
                         )
                     }
                 }
-                UserProfileEvents.ClearStartDMState -> {
+                UserProfileEvent.ClearStartDMState -> {
                     startDmActionState.value = AsyncAction.Uninitialized
                 }
                 // Do nothing for other event as they are handled by the RoomMemberDetailsPresenter if needed
-                UserProfileEvents.WithdrawVerification,
-                is UserProfileEvents.CopyToClipboard -> Unit
+                UserProfileEvent.WithdrawVerification,
+                is UserProfileEvent.CopyToClipboard -> Unit
             }
         }
 

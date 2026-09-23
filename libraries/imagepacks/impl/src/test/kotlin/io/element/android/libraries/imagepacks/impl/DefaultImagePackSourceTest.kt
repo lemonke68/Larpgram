@@ -34,7 +34,7 @@ class DefaultImagePackSourceTest {
     fun `getUserPacks - reads the pack from account data`() = runTest {
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = { eventType ->
+                getAccountDataLambda = { eventType ->
                     assertThat(eventType).isEqualTo(ImagePackEventTypes.USER_EMOTES)
                     Result.success(
                         """{ "images": { "cat": { "url": "mxc://mango-kokos.ru/cat" } }, "pack": { "display_name": "Коты" } }"""
@@ -52,7 +52,7 @@ class DefaultImagePackSourceTest {
 
     @Test
     fun `getUserPacks - no account data means no packs`() = runTest {
-        val source = createSource(FakeMatrixClient(getAccountDataResult = { Result.success(null) }))
+        val source = createSource(FakeMatrixClient(getAccountDataLambda = { Result.success(null) }))
 
         assertThat(source.getUserPacks()).isEmpty()
     }
@@ -61,7 +61,7 @@ class DefaultImagePackSourceTest {
     fun `getUserPacks - a failing request does not blow up the picker`() = runTest {
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = { Result.failure(IllegalStateException("сеть отвалилась")) },
+                getAccountDataLambda = { Result.failure(IllegalStateException("сеть отвалилась")) },
             ),
         )
 
@@ -72,7 +72,7 @@ class DefaultImagePackSourceTest {
     fun `getEmoteRooms - reads the room list from account data`() = runTest {
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = { eventType ->
+                getAccountDataLambda = { eventType ->
                     assertThat(eventType).isEqualTo(ImagePackEventTypes.EMOTE_ROOMS)
                     Result.success("""{ "rooms": { "!room:mango-kokos.ru": { "": {} } } }""")
                 },
@@ -155,8 +155,8 @@ class DefaultImagePackSourceTest {
         var written: Pair<String, String>? = null
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = { Result.success(null) },
-                setAccountDataResult = { type, content ->
+                getAccountDataLambda = { Result.success(null) },
+                setAccountDataLambda = { type, content ->
                     written = type to content
                     Result.success(Unit)
                 },
@@ -176,7 +176,7 @@ class DefaultImagePackSourceTest {
         var written: String? = null
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = { type ->
+                getAccountDataLambda = { type ->
                     if (type == ImagePackEventTypes.SAVED_PACKS) {
                         Result.success(
                             """{"packs":[{"slug":"ryazan","pack":{"display_name":"Старое"},"images":{"a":{"url":"mxc://mango-kokos.ru/a"}}}]}"""
@@ -185,7 +185,7 @@ class DefaultImagePackSourceTest {
                         Result.success(null)
                     }
                 },
-                setAccountDataResult = { _, content ->
+                setAccountDataLambda = { _, content ->
                     written = content
                     Result.success(Unit)
                 },
@@ -205,7 +205,7 @@ class DefaultImagePackSourceTest {
         var written: String? = null
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = { type ->
+                getAccountDataLambda = { type ->
                     if (type == ImagePackEventTypes.SAVED_PACKS) {
                         Result.success(
                             """{"packs":[
@@ -217,7 +217,7 @@ class DefaultImagePackSourceTest {
                         Result.success(null)
                     }
                 },
-                setAccountDataResult = { _, content ->
+                setAccountDataLambda = { _, content ->
                     written = content
                     Result.success(Unit)
                 },
@@ -234,8 +234,8 @@ class DefaultImagePackSourceTest {
         var wrote = false
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = { Result.success(null) },
-                setAccountDataResult = { _, _ ->
+                getAccountDataLambda = { Result.success(null) },
+                setAccountDataLambda = { _, _ ->
                     wrote = true
                     Result.success(Unit)
                 },
@@ -250,7 +250,7 @@ class DefaultImagePackSourceTest {
     fun `getSavedPacks - survives a saved pack without slug`() = runTest {
         val source = createSource(
             FakeMatrixClient(
-                getAccountDataResult = {
+                getAccountDataLambda = {
                     Result.success(
                         """{"packs":[
                             {"images":{"a":{"url":"mxc://mango-kokos.ru/a"}}},
@@ -281,7 +281,7 @@ class DefaultImagePackSourceTest {
                 FakeMatrixClient(
                     homeserverUrl = server.url("/").toString(),
                     getAccessTokenResult = { Result.success("aToken") },
-                    getAccountDataResult = { eventType ->
+                    getAccountDataLambda = { eventType ->
                         when (eventType) {
                             ImagePackEventTypes.USER_EMOTES -> Result.success(
                                 """{ "images": { "a": { "url": "mxc://mango-kokos.ru/a" } }, "pack": { "display_name": "Личный" } }"""

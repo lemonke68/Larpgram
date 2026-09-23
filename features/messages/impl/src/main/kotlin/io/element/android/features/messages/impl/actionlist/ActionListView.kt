@@ -271,7 +271,7 @@ private fun ActionListViewContent(
                         modifier = Modifier.clickable {
                             onActionClick(action)
                         },
-                        headlineContent = {
+                        content = {
                             Text(text = stringResource(id = action.titleRes))
                         },
                         leadingContent = ListItemContent.Icon(IconSource.Resource(action.icon)),
@@ -533,7 +533,7 @@ private fun VerifiedUserSendFailureView(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ErrorSolid())),
         trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
-        headlineContent = {
+        content = {
             Text(
                 text = sendFailure.headline(),
                 style = ElementTheme.typography.fontBodySmMedium,
@@ -586,7 +586,7 @@ private fun EmojiButton(
 @PreviewsDayNight
 @Composable
 internal fun ActionListViewContentPreview(
-    @PreviewParameter(ActionListStateProvider::class) state: ActionListState
+    @PreviewParameter(ActionListStatePreviewParam::class) state: ActionListState
 ) = ElementPreview {
     ActionListViewContent(
         state = state,

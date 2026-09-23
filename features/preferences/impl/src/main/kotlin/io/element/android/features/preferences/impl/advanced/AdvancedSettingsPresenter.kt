@@ -134,18 +134,18 @@ class AdvancedSettingsPresenter(
             }.collect()
         }
 
-        fun handleEvent(event: AdvancedSettingsEvents) {
+        fun handleEvent(event: AdvancedSettingsEvent) {
             when (event) {
-                is AdvancedSettingsEvents.SetDeveloperModeEnabled -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetDeveloperModeEnabled -> sessionCoroutineScope.launch {
                     appPreferencesStore.setDeveloperModeEnabled(event.enabled)
                 }
-                is AdvancedSettingsEvents.SetSharePresenceEnabled -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetSharePresenceEnabled -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setSharePresence(event.enabled)
                 }
-                is AdvancedSettingsEvents.SetCompressMedia -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetCompressMedia -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setOptimizeImages(event.compress)
                 }
-                is AdvancedSettingsEvents.SetTheme -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetTheme -> sessionCoroutineScope.launch {
                     when (event.theme) {
                         ThemeOption.System -> appPreferencesStore.setTheme(Theme.System.name)
                         ThemeOption.Dark -> appPreferencesStore.setTheme(Theme.Dark.name)
@@ -153,35 +153,35 @@ class AdvancedSettingsPresenter(
                         ThemeOption.Light -> appPreferencesStore.setTheme(Theme.Light.name)
                     }
                 }
-                is AdvancedSettingsEvents.SetHideInviteAvatars -> mediaPreviewConfigStateStore.setHideInviteAvatars(event.value)
-                is AdvancedSettingsEvents.SetTimelineMediaPreviewValue -> mediaPreviewConfigStateStore.setTimelineMediaPreviewValue(event.value)
-                is AdvancedSettingsEvents.SetLiveLocationMinimumDistanceUpdate -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetHideInviteAvatars -> mediaPreviewConfigStateStore.setHideInviteAvatars(event.value)
+                is AdvancedSettingsEvent.SetTimelineMediaPreviewValue -> mediaPreviewConfigStateStore.setTimelineMediaPreviewValue(event.value)
+                is AdvancedSettingsEvent.SetLiveLocationMinimumDistanceUpdate -> sessionCoroutineScope.launch {
                     appPreferencesStore.setLiveLocationMinimumDistanceInMetersUpdate(event.value)
                 }
-                is AdvancedSettingsEvents.SetMessageTextSize -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetMessageTextSize -> sessionCoroutineScope.launch {
                     appPreferencesStore.setMessageTextSizeSp(event.sizeSp)
                 }
-                is AdvancedSettingsEvents.SetBubbleCornerRadius -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetBubbleCornerRadius -> sessionCoroutineScope.launch {
                     appPreferencesStore.setBubbleCornerRadiusDp(event.radiusDp)
                 }
-                is AdvancedSettingsEvents.SetChatWallpaper -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetChatWallpaper -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatWallpaperId(event.id)
                 }
-                is AdvancedSettingsEvents.SetChatWallpaperCustomColor -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetChatWallpaperCustomColor -> sessionCoroutineScope.launch {
                     // Сохраняем цвет и переключаем выбор на кастомный маркер-id.
                     appPreferencesStore.setChatWallpaperCustomColorArgb(event.argb)
                     appPreferencesStore.setChatWallpaperId(ChatWallpaperOption.CUSTOM_ID)
                 }
-                is AdvancedSettingsEvents.SetChatBubbleColor -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetChatBubbleColor -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatBubbleColorArgb(event.argb)
                 }
-                is AdvancedSettingsEvents.SetChatAccentColor -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetChatAccentColor -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatAccentColorArgb(event.argb)
                 }
-                is AdvancedSettingsEvents.SetChatListThreeLine -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetChatListThreeLine -> sessionCoroutineScope.launch {
                     appPreferencesStore.setChatListThreeLine(event.enabled)
                 }
-                is AdvancedSettingsEvents.SetChatWallpaperGradient -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetChatWallpaperGradient -> sessionCoroutineScope.launch {
                     // Градиент задан: сохраняем спеку и переводим id обоев на «градиент». Сброс (null)
                     // — очищаем и возвращаем паттерн.
                     appPreferencesStore.setChatWallpaperGradient(event.spec)
@@ -189,7 +189,7 @@ class AdvancedSettingsPresenter(
                         if (event.spec != null) ChatWallpaperOption.CUSTOM_GRADIENT_ID else ChatWallpaperOption.DEFAULT.id
                     )
                 }
-                is AdvancedSettingsEvents.SetChatWallpaperImage -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetChatWallpaperImage -> sessionCoroutineScope.launch {
                     // Фото выбрано: сохраняем URI и переводим маркер обоев на «фото». Сброс (null) —
                     // очищаем URI и возвращаем обои к дефолтному паттерну.
                     appPreferencesStore.setChatWallpaperImageUri(event.uri)
@@ -197,17 +197,17 @@ class AdvancedSettingsPresenter(
                         if (event.uri != null) ChatWallpaperOption.CUSTOM_IMAGE_ID else ChatWallpaperOption.DEFAULT.id
                     )
                 }
-                is AdvancedSettingsEvents.ApplyChatTheme -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.ApplyChatTheme -> sessionCoroutineScope.launch {
                     // Пресет = связка: ставим обои, цвет пузыря и акцент разом, палитра согласована.
                     val theme = ChatThemeOption.entries.first { it.id == event.themeId }
                     appPreferencesStore.setChatWallpaperId(theme.wallpaper.id)
                     appPreferencesStore.setChatBubbleColorArgb(theme.bubbleColor?.toArgb())
                     appPreferencesStore.setChatAccentColorArgb(theme.accentColor?.toArgb())
                 }
-                is AdvancedSettingsEvents.SetCompressImages -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetCompressImages -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setOptimizeImages(event.compress)
                 }
-                is AdvancedSettingsEvents.SetVideoUploadQuality -> sessionCoroutineScope.launch {
+                is AdvancedSettingsEvent.SetVideoUploadQuality -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setVideoCompressionPreset(event.videoPreset)
                 }
             }

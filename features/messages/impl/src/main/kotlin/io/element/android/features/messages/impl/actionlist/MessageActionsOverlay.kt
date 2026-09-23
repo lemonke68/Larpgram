@@ -335,7 +335,7 @@ private fun ActionsMenu(
             // Контейнер у designsystem ListItem прозрачный по умолчанию, поэтому единый грей
             // карточки не рвётся.
             ListItem(
-                headlineContent = { Text(text = stringResource(id = action.titleRes)) },
+                content = { Text(text = stringResource(id = action.titleRes)) },
                 leadingContent = ListItemContent.Icon(IconSource.Resource(action.icon)),
                 style = if (action.destructive) ListItemStyle.Destructive else ListItemStyle.Default,
                 onClick = { onActionClick(action) },

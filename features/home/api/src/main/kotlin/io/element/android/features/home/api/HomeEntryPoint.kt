@@ -24,7 +24,7 @@ interface HomeEntryPoint : FeatureEntryPoint {
     ): Node
 
     interface Callback : Plugin {
-        fun navigateToRoom(roomId: RoomId, joinedRoom: JoinedRoom?)
+        fun navigateToRoom(roomId: RoomId, eventId: EventId?, joinedRoom: JoinedRoom?)
         fun navigateToCreateRoom()
         fun navigateToCreateSpace()
         fun navigateToCreateChannel()

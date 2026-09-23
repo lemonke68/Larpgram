@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
-import io.element.android.features.userprofile.api.UserProfileEvents
+import io.element.android.features.userprofile.api.UserProfileEvent
 import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.features.userprofile.shared.blockuser.BlockUserDialogs
@@ -158,9 +158,9 @@ fun UserProfileView(
                     openAvatarPreview(state.userName ?: state.userId.value, avatarUrl)
                 },
                 onUserIdClick = {
-                    state.eventSink(UserProfileEvents.CopyToClipboard(state.userId.value))
+                    state.eventSink(UserProfileEvent.CopyToClipboard(state.userId.value))
                 },
-                withdrawVerificationClick = { state.eventSink(UserProfileEvents.WithdrawVerification) },
+                withdrawVerificationClick = { state.eventSink(UserProfileEvent.WithdrawVerification) },
             )
             if (state.isCurrentUser) {
                 UserProfileSelfActionsSection(
@@ -173,7 +173,7 @@ fun UserProfileView(
                     userId = state.userId,
                     about = state.about,
                     onHandleClick = {
-                        state.eventSink(UserProfileEvents.CopyToClipboard(state.userId.value))
+                        state.eventSink(UserProfileEvent.CopyToClipboard(state.userId.value))
                     },
                 )
             } else {
@@ -181,7 +181,7 @@ fun UserProfileView(
                     isCurrentUser = false,
                     canCall = state.canCall,
                     onShareUser = onShareUser,
-                    onStartDM = { state.eventSink(UserProfileEvents.StartDM) },
+                    onStartDM = { state.eventSink(UserProfileEvent.StartDM) },
                     onCall = { intent -> state.dmRoomId?.let { onStartCall(it, intent) } }
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -189,7 +189,7 @@ fun UserProfileView(
                     userId = state.userId,
                     about = state.about,
                     onHandleClick = {
-                        state.eventSink(UserProfileEvents.CopyToClipboard(state.userId.value))
+                        state.eventSink(UserProfileEvent.CopyToClipboard(state.userId.value))
                     },
                 )
                 Spacer(modifier = Modifier.height(26.dp))
@@ -205,18 +205,18 @@ fun UserProfileView(
                     },
                     onSuccess = onOpenDm,
                     errorMessage = { stringResource(R.string.screen_start_chat_error_starting_chat) },
-                    onRetry = { state.eventSink(UserProfileEvents.StartDM) },
-                    onErrorDismiss = { state.eventSink(UserProfileEvents.ClearStartDMState) },
+                    onRetry = { state.eventSink(UserProfileEvent.StartDM) },
+                    onErrorDismiss = { state.eventSink(UserProfileEvent.ClearStartDMState) },
                     confirmationDialog = { data ->
                         if (data is ConfirmingStartDmWithMatrixUser) {
                             CreateDmConfirmationBottomSheet(
                                 matrixUser = data.matrixUser,
                                 isUserIdentityUnknown = data.isUserIdentityUnknown,
                                 onSendInvite = {
-                                    state.eventSink(UserProfileEvents.StartDM)
+                                    state.eventSink(UserProfileEvent.StartDM)
                                 },
                                 onDismiss = {
-                                    state.eventSink(UserProfileEvents.ClearStartDMState)
+                                    state.eventSink(UserProfileEvent.ClearStartDMState)
                                 },
                             )
                         }
@@ -234,7 +234,7 @@ private fun VerifyUserSection(
 ) {
     if (state.verificationState == UserProfileVerificationState.UNVERIFIED) {
         ListItem(
-            headlineContent = { Text(stringResource(CommonStrings.common_verify_user)) },
+            content = { Text(stringResource(CommonStrings.common_verify_user)) },
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
             onClick = onVerifyClick,
         )
@@ -280,7 +280,7 @@ private fun UserProfileSelfActionsSection(
 @PreviewsDayNight
 @Composable
 internal fun UserProfileViewPreview(
-    @PreviewParameter(UserProfileStateProvider::class) state: UserProfileState
+    @PreviewParameter(UserProfileStatePreviewParam::class) state: UserProfileState
 ) = ElementPreview {
     UserProfileView(
         state = state,

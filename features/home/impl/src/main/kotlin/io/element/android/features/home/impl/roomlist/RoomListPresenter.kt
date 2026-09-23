@@ -8,6 +8,7 @@
 
 package io.element.android.features.home.impl.roomlist
 
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -27,18 +28,20 @@ import dev.zacsweers.metro.Inject
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.announcement.api.Announcement
 import io.element.android.features.announcement.api.AnnouncementService
+import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.into
 import io.element.android.features.home.impl.model.RoomListRoomSummary
+import io.element.android.features.home.impl.search.GlobalSearchState
 import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.home.impl.search.RoomListSearchState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.into
 import io.element.android.features.home.impl.spacefilters.selectedFilter
 import io.element.android.features.invite.api.SeenInvitesStore
-import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteEvents.AcceptInvite
-import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteEvents.DeclineInvite
+import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteEvent.AcceptInvite
+import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteEvent.DeclineInvite
 import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteState
 import io.element.android.features.leaveroom.api.LeaveRoomEvent
 import io.element.android.features.leaveroom.api.LeaveRoomState
@@ -48,18 +51,13 @@ import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
-import androidx.compose.material3.SnackbarDuration
-import io.element.android.features.home.impl.R
-import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
-import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
-import io.element.android.libraries.ui.strings.CommonStrings
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
@@ -69,6 +67,7 @@ import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
+import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsColdStartWatcher
 import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
@@ -77,6 +76,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -105,6 +106,7 @@ class RoomListPresenter(
     private val announcementService: AnnouncementService,
     private val coldStartWatcher: AnalyticsColdStartWatcher,
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
+    private val globalSearchPresenter: Presenter<GlobalSearchState>,
     private val featureFlagService: FeatureFlagService,
     // Правка форка: баннер с напоминанием привязать почту.
     private val accountEmailStatus: AccountEmailStatus,
@@ -132,6 +134,7 @@ class RoomListPresenter(
         val searchState = searchPresenter.present()
         val spaceFiltersState = spaceFiltersPresenter.present()
         val acceptDeclineInviteState = acceptDeclineInvitePresenter.present()
+        val globalSearchState = globalSearchPresenter.present()
 
         LaunchedEffect(Unit) {
             roomListDataSource.launchIn(this)
@@ -292,6 +295,7 @@ class RoomListPresenter(
             leaveRoomState = leaveRoomState,
             filtersState = filtersState,
             searchState = searchState,
+            globalSearchState = globalSearchState,
             spaceFiltersState = spaceFiltersState,
             contentState = contentState,
             acceptDeclineInviteState = acceptDeclineInviteState,

@@ -94,7 +94,7 @@ class DefaultRoomLatestEventFormatter(
     ): CharSequence? {
         return when (content) {
             is MessageContent -> content.process(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
-            RedactedContent -> {
+            is RedactedContent -> {
                 val message = sp.getString(CommonStrings.common_message_removed)
                 message.prefixIfNeeded(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
             }
@@ -142,7 +142,7 @@ class DefaultRoomLatestEventFormatter(
         val message = when (val messageType: MessageType = type) {
             // Doesn't need a prefix
             is EmoteMessageType -> {
-                return "* $senderDisambiguatedDisplayName ${messageType.body}"
+                return "* ${senderDisambiguatedDisplayName.bidiIsolate()} ${messageType.body}"
             }
             is TextMessageType -> {
                 messageType.toPlainText(permalinkParser)
@@ -242,7 +242,7 @@ class DefaultRoomLatestEventFormatter(
             if (isOutgoing) {
                 sp.getString(CommonStrings.common_you)
             } else {
-                senderDisambiguatedDisplayName
+                senderDisambiguatedDisplayName.bidiIsolate()
             }
         )
     }
