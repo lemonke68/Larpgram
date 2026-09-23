@@ -173,6 +173,9 @@ fun TextComposer(
         stringResource(id = R.string.rich_text_editor_composer_placeholder)
     }
     val canSendTextMessage = markdown.isNotBlank() || composerMode is MessageComposerMode.Attachment
+    // Правка форка: полоса ввода Telegram (TgStandardLayout) везде, кроме подписи к вложению.
+    val useTgLayout = composerMode !is MessageComposerMode.Attachment && composerMode !is MessageComposerMode.EditCaption
+    val sendButtonSize = if (useTgLayout) 44.dp else 36.dp
 
     val textInput: @Composable () -> Unit = when (state) {
         is TextEditorState.Rich -> {
@@ -197,6 +200,7 @@ fun TextComposer(
                         composerMode = composerMode,
                         onResetComposerMode = onResetComposerMode,
                         isTextEmpty = state.richTextEditorState.messageHtml.isEmpty(),
+                        tgStyle = useTgLayout,
                     ) {
                         RichTextEditor(
                             state = state.richTextEditorState,
@@ -223,6 +227,7 @@ fun TextComposer(
                     composerMode = composerMode,
                     onResetComposerMode = onResetComposerMode,
                     isTextEmpty = state.state.text.value().isEmpty(),
+                    tgStyle = useTgLayout,
                 ) {
                     MarkdownTextInput(
                         state = state.state,
@@ -291,6 +296,7 @@ fun TextComposer(
                     SendButtonIcon(
                         canSendMessage = canSendTextMessage,
                         isEditing = true,
+                        size = sendButtonSize,
                     )
                 },
             )
@@ -322,6 +328,7 @@ fun TextComposer(
                                 SendButtonIcon(
                                     canSendMessage = true,
                                     isEditing = composerMode.isEditing,
+                                    size = sendButtonSize,
                                 )
                             },
                         )
@@ -359,6 +366,7 @@ fun TextComposer(
                                 SendButtonIcon(
                                     canSendMessage = true,
                                     isEditing = composerMode.isEditing,
+                                    size = sendButtonSize,
                                 )
                             },
                         )
@@ -373,6 +381,7 @@ fun TextComposer(
                     SendButtonIcon(
                         canSendMessage = true,
                         isEditing = false,
+                        size = sendButtonSize,
                     )
                 },
             )
@@ -393,6 +402,7 @@ fun TextComposer(
                     SendButtonIcon(
                         canSendMessage = canSendTextMessage,
                         isEditing = true,
+                        size = sendButtonSize,
                     )
                 },
             )
@@ -455,42 +465,73 @@ fun TextComposer(
         )
     } else {
         val endButtonParams = rememberEndButtonParams()
-        StandardLayout(
-            composerMode = composerMode,
-            voiceMessageState = voiceMessageState,
-            isRoomEncrypted = state.isRoomEncrypted,
-            modifier = layoutModifier,
-            textInput = textInput,
-            endButtonParams = endButtonParams,
-            voiceRecording = voiceRecording,
-            onStickerClick = onStickerClick,
-            circleRecordGestures = circleRecordGestures,
-            // Кнопка остаётся и во время записи голосового: она обрабатывает жест, и если
-            // убрать её из композиции на старте записи, вместе с ней умрёт обработчик, а
-            // отпускание пальца ловить будет некому — голосовое просто не записывалось
-            // (телефон, 2026-08-15).
-            showRecordModeButton = circleRecordGestures != null &&
-                !canSendTextMessage &&
-                (
-                    voiceMessageState is VoiceMessageState.Idle ||
-                        (voiceMessageState is VoiceMessageState.Recording && !voiceRecordingLocked)
-                    ),
-            onVoiceHoldStop = {
-                autoSendVoiceMessage = true
-                onVoiceRecorderEvent(VoiceMessageRecorderEvent.Stop)
-            },
-            onVoiceHoldCancel = {
-                autoSendVoiceMessage = false
-                onVoiceRecorderEvent(VoiceMessageRecorderEvent.Cancel)
-            },
-            onVoiceHoldLock = {
-                voiceRecordingLocked = true
-            },
-            onAddAttachment = onAddAttachment,
-            onDeleteVoiceMessage = onDeleteVoiceMessage,
-            onVoiceRecorderEvent = onVoiceRecorderEvent,
-            onResetComposerMode = onResetComposerMode,
-        )
+        // Кнопка остаётся и во время записи голосового: она обрабатывает жест, и если
+        // убрать её из композиции на старте записи, вместе с ней умрёт обработчик, а
+        // отпускание пальца ловить будет некому — голосовое просто не записывалось
+        // (телефон, 2026-08-15).
+        val showRecordModeButton = circleRecordGestures != null &&
+            !canSendTextMessage &&
+            (
+                voiceMessageState is VoiceMessageState.Idle ||
+                    (voiceMessageState is VoiceMessageState.Recording && !voiceRecordingLocked)
+                )
+        if (useTgLayout) {
+            TgStandardLayout(
+                composerMode = composerMode,
+                voiceMessageState = voiceMessageState,
+                isTextEmpty = markdown.isEmpty(),
+                modifier = layoutModifier,
+                textInput = textInput,
+                endButtonParams = endButtonParams,
+                voiceRecording = voiceRecording,
+                onStickerClick = onStickerClick,
+                circleRecordGestures = circleRecordGestures,
+                showRecordModeButton = showRecordModeButton,
+                onVoiceHoldStop = {
+                    autoSendVoiceMessage = true
+                    onVoiceRecorderEvent(VoiceMessageRecorderEvent.Stop)
+                },
+                onVoiceHoldCancel = {
+                    autoSendVoiceMessage = false
+                    onVoiceRecorderEvent(VoiceMessageRecorderEvent.Cancel)
+                },
+                onVoiceHoldLock = {
+                    voiceRecordingLocked = true
+                },
+                onAddAttachment = onAddAttachment,
+                onDeleteVoiceMessage = onDeleteVoiceMessage,
+                onVoiceRecorderEvent = onVoiceRecorderEvent,
+                onResetComposerMode = onResetComposerMode,
+            )
+        } else {
+            StandardLayout(
+                composerMode = composerMode,
+                voiceMessageState = voiceMessageState,
+                isRoomEncrypted = state.isRoomEncrypted,
+                modifier = layoutModifier,
+                textInput = textInput,
+                endButtonParams = endButtonParams,
+                voiceRecording = voiceRecording,
+                onStickerClick = onStickerClick,
+                circleRecordGestures = circleRecordGestures,
+                showRecordModeButton = showRecordModeButton,
+                onVoiceHoldStop = {
+                    autoSendVoiceMessage = true
+                    onVoiceRecorderEvent(VoiceMessageRecorderEvent.Stop)
+                },
+                onVoiceHoldCancel = {
+                    autoSendVoiceMessage = false
+                    onVoiceRecorderEvent(VoiceMessageRecorderEvent.Cancel)
+                },
+                onVoiceHoldLock = {
+                    voiceRecordingLocked = true
+                },
+                onAddAttachment = onAddAttachment,
+                onDeleteVoiceMessage = onDeleteVoiceMessage,
+                onVoiceRecorderEvent = onVoiceRecorderEvent,
+                onResetComposerMode = onResetComposerMode,
+            )
+        }
     }
 
     SoftKeyboardEffect(composerMode, onRequestFocus) {
@@ -522,7 +563,7 @@ fun TextComposer(
     }
 }
 
-private data class EndButtonParams(
+internal data class EndButtonParams(
     val endButtonContentDescriptionResId: Int,
     val endButtonClick: () -> Unit,
     val endButtonContent: @Composable () -> Unit,
@@ -798,6 +839,9 @@ private fun TextInputBox(
     onResetComposerMode: () -> Unit,
     isTextEmpty: Boolean,
     modifier: Modifier = Modifier,
+    // Правка форка: поле внутри пилюли Telegram. Плашку ответа/редактирования рисует сама
+    // пилюля (на всю ширину, над кнопками), поле — минимум 44dp и узкие боковые отступы.
+    tgStyle: Boolean = false,
     textInput: @Composable () -> Unit,
 ) {
     // Правка форка: поле ввода без подложки и без рамки. В макете текст лежит прямо на полосе,
@@ -808,11 +852,11 @@ private fun TextInputBox(
     Column(
         modifier = Modifier
             .clip(roundedCorners)
-            .requiredHeightIn(min = 42.dp)
+            .requiredHeightIn(min = if (tgStyle) 44.dp else 42.dp)
             .fillMaxSize()
             .then(modifier),
     ) {
-        if (composerMode is MessageComposerMode.Special) {
+        if (composerMode is MessageComposerMode.Special && !tgStyle) {
             ComposerModeView(
                 composerMode = composerMode,
                 onResetComposerMode = onResetComposerMode,
@@ -824,7 +868,7 @@ private fun TextInputBox(
 
         Box(
             modifier = Modifier
-                .padding(top = 1.dp, bottom = 4.dp, start = 12.dp, end = 12.dp)
+                .padding(top = 1.dp, bottom = 4.dp, start = if (tgStyle) 4.dp else 12.dp, end = if (tgStyle) 4.dp else 12.dp)
                 .then(Modifier.testTag(TestTags.textEditor)),
             contentAlignment = Alignment.CenterStart,
         ) {

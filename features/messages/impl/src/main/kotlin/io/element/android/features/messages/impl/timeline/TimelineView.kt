@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import dev.chrisbanes.haze.hazeSource
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureView
@@ -98,6 +99,8 @@ import io.element.android.features.messages.impl.timeline.protection.aTimelinePr
 import io.element.android.libraries.androidutils.system.copyToClipboard
 import io.element.android.libraries.designsystem.atomic.atoms.UnreadIndicatorAtom
 import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
+import io.element.android.libraries.designsystem.components.glass.LocalChatBottomOverlayHeight
+import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.roundToPx
@@ -194,7 +197,14 @@ fun TimelineView(
     // Animate alpha when timeline is first displayed, to avoid flashes or glitching when viewing rooms
     AnimatedVisibility(visible = true, enter = fadeIn()) {
         // Правка форка: обои переписки. Выбор юзера, см. ChatWallpaper / selectedChatWallpaper.
-        Box(modifier.chatWallpaper(selectedChatWallpaper())) {
+        // Правка форка: лента — источник размытия для стеклянных панелей (поле ввода поверх неё).
+        val chatGlassState = LocalChatGlassState.current
+        val bottomOverlay = LocalChatBottomOverlayHeight.current
+        Box(
+            modifier
+                .chatWallpaper(selectedChatWallpaper())
+                .then(if (chatGlassState != null) Modifier.hazeSource(chatGlassState) else Modifier)
+        ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -202,7 +212,8 @@ fun TimelineView(
                     .testTag(TestTags.timeline),
                 state = lazyListState,
                 reverseLayout = true,
-                contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues() + PaddingValues(top = 64.dp, bottom = 8.dp),
+                contentPadding =
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues() + PaddingValues(top = 64.dp, bottom = 8.dp + bottomOverlay),
             ) {
                 items(
                     items = state.timelineItems,
@@ -442,7 +453,8 @@ private fun BoxScope.TimelineScrollHelper(
     Column(
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(end = 24.dp, bottom = 16.dp)
+            // Правка форка: над плавающим полем ввода.
+            .padding(end = 24.dp, bottom = 16.dp + LocalChatBottomOverlayHeight.current)
     ) {
         JumpToPositionButton(
             icon = CompoundIcons.ChevronUp(),

@@ -32,8 +32,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +70,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
+import dev.chrisbanes.haze.rememberHazeState
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.circles.impl.CircleRecorderEvents
@@ -129,6 +131,8 @@ import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertM
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayoutState
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
+import io.element.android.libraries.designsystem.components.glass.LocalChatBottomOverlayHeight
+import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
 import io.element.android.libraries.designsystem.components.rememberExpandableBottomSheetLayoutState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -201,6 +205,13 @@ fun MessagesView(
 
     var maxComposerHeightPx by remember { mutableIntStateOf(120) }
 
+    // Правка форка: плавающее поле ввода Telegram 12. Лента уходит под него и размывается под
+    // стеклом (haze), поэтому знает высоту панели снизу. В режиме форматирования и подсказок
+    // упоминаний шторка апстримовская — непрозрачная, лента над ней.
+    val chatGlassState = rememberHazeState()
+    var composerOverlayHeight by remember { mutableStateOf(0.dp) }
+    val floatingComposer = !state.composerState.showTextFormatting && state.composerState.suggestions.isEmpty()
+
     // This is needed because the composer is inside an AndroidView that can't be affected by the FocusManager in Compose
     val localView = LocalView.current
 
@@ -256,13 +267,20 @@ fun MessagesView(
         state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
     }
 
-    CompositionLocalProvider(LocalMessageActionsAnchor provides messageActionsAnchor) {
+    CompositionLocalProvider(
+        LocalMessageActionsAnchor provides messageActionsAnchor,
+        LocalChatGlassState provides chatGlassState,
+        LocalChatBottomOverlayHeight provides if (floatingComposer) composerOverlayHeight else 0.dp,
+    ) {
     val expandableState = rememberExpandableBottomSheetLayoutState()
+    val density = LocalDensity.current
     ExpandableBottomSheetLayout(
         modifier = modifier
             .fillMaxSize()
             .imePadding()
-            .systemBarsPadding()
+            // Правка форка: низ не отступаем — обои и лента идут под панель навигации, отступ
+            // от неё берёт поле ввода (navigationBarsPadding в шторке).
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
             .onSizeChanged { size ->
                 // Let the composer takes at max half of the available height.
                 // The value will be different if the soft keyboard is displayed
@@ -374,19 +392,25 @@ fun MessagesView(
                 snackbarHost = {
                     SnackbarHost(
                         snackbarHostState,
-                        modifier = Modifier.navigationBarsPadding()
+                        modifier = Modifier.padding(bottom = LocalChatBottomOverlayHeight.current),
                     )
                 },
             )
         },
         bottomSheetContent = {
-            MessagesViewComposerBottomSheetContents(
-                state = state,
-                onLinkClick = { url, customTab -> onLinkClick(url, customTab) },
-                onRoomSuccessorClick = { roomId ->
-                    state.timelineState.eventSink(TimelineEvent.NavigateToPredecessorOrSuccessorRoom(roomId = roomId))
-                },
-            )
+            Column(
+                modifier = Modifier
+                    .onSizeChanged { composerOverlayHeight = with(density) { it.height.toDp() } }
+                    .navigationBarsPadding()
+            ) {
+                MessagesViewComposerBottomSheetContents(
+                    state = state,
+                    onLinkClick = { url, customTab -> onLinkClick(url, customTab) },
+                    onRoomSuccessorClick = { roomId ->
+                        state.timelineState.eventSink(TimelineEvent.NavigateToPredecessorOrSuccessorRoom(roomId = roomId))
+                    },
+                )
+            }
         },
         sheetDragHandle = @Composable { toggleAction ->
             if (state.composerState.showTextFormatting) {
@@ -423,6 +447,7 @@ fun MessagesView(
             RectangleShape
         },
         maxBottomSheetContentHeight = maxComposerHeightPx.toDp(),
+        contentUnderSheet = floatingComposer,
     )
     } // конец CompositionLocalProvider(LocalMessageActionsAnchor)
 
@@ -614,7 +639,6 @@ private fun MessagesViewContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .navigationBarsPadding()
             .imePadding(),
     ) {
         AttachmentsBottomSheet(

@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -62,6 +63,9 @@ fun InReplyToView(
     contentValidationValue: ContentValidationValue,
     modifier: Modifier = Modifier,
     maxLines: Int = 2,
+    // Правка форка: подложка цитаты. В плашке ответа над полем ввода Telegram она прозрачная
+    // (лежит на стекле пилюли).
+    containerColor: Color = ElementTheme.colors.bgCanvasDefault,
 ) {
     when (inReplyTo) {
         is InReplyToDetails.Ready -> when (contentValidationValue) {
@@ -70,16 +74,17 @@ fun InReplyToView(
                 senderProfile = inReplyTo.senderProfile,
                 metadata = inReplyTo.metadata(hideImage),
                 maxLines = maxLines,
+                containerColor = containerColor,
                 modifier = modifier,
             )
             ContentValidationValue.Invalid -> ReplyToInvalidContent()
             is ContentValidationValue.UnrecoverableError -> ReplyToNotFoundContent()
-            else -> ReplyToLoadingContent(modifier = modifier)
+            else -> ReplyToLoadingContent(containerColor = containerColor, modifier = modifier)
         }
         is InReplyToDetails.Error ->
             ReplyToErrorContent(modifier = modifier)
         is InReplyToDetails.Loading ->
-            ReplyToLoadingContent(modifier = modifier)
+            ReplyToLoadingContent(containerColor = containerColor, modifier = modifier)
     }
 }
 
@@ -89,6 +94,7 @@ private fun ReplyToReadyContent(
     senderProfile: ProfileDetails,
     metadata: InReplyToMetadata?,
     maxLines: Int,
+    containerColor: Color,
     modifier: Modifier = Modifier,
 ) {
     val paddings = if (metadata is InReplyToMetadata.Thumbnail) {
@@ -98,7 +104,7 @@ private fun ReplyToReadyContent(
     }
     Row(
         modifier
-            .background(ElementTheme.colors.bgCanvasDefault)
+            .background(containerColor)
             .padding(paddings)
     ) {
         if (metadata is InReplyToMetadata.Thumbnail) {
@@ -134,11 +140,12 @@ private fun ReplyToReadyContent(
 @Composable
 private fun ReplyToLoadingContent(
     modifier: Modifier = Modifier,
+    containerColor: Color = ElementTheme.colors.bgCanvasDefault,
 ) {
     val paddings = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
     Row(
         modifier
-            .background(ElementTheme.colors.bgCanvasDefault)
+            .background(containerColor)
             .padding(paddings)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

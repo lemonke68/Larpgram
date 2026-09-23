@@ -6,11 +6,13 @@
 
 package io.element.android.libraries.textcomposer
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +20,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
@@ -52,6 +56,8 @@ internal fun LarpgramRecordModeButton(
     onVoiceCancel: () -> Unit,
     onVoiceLock: () -> Unit,
     modifier: Modifier = Modifier,
+    // Правка форка: вид Telegram 12 — круг 44dp цвета акцента с белой иконкой (TgStandardLayout).
+    tgStyle: Boolean = false,
 ) {
     var mode by rememberSaveable { mutableStateOf(RecordMode.Voice) }
     val currentMode by rememberUpdatedState(mode)
@@ -65,11 +71,20 @@ internal fun LarpgramRecordModeButton(
     val lockThresholdPx = with(density) { LOCK_THRESHOLD.toPx() }
     val cancelThresholdPx = with(density) { CANCEL_THRESHOLD.toPx() }
 
-    Icon(
-        modifier = modifier
+    val shapeModifier = if (tgStyle) {
+        modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(ElementTheme.colors.bgAccentRest)
+            .padding(10.dp)
+    } else {
+        modifier
             .padding(bottom = 5.dp, top = 5.dp, end = 6.dp, start = 6.dp)
             .size(48.dp)
             .padding(12.dp)
+    }
+    Icon(
+        modifier = shapeModifier
             .pointerInput(lockThresholdPx, cancelThresholdPx) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -145,7 +160,7 @@ internal fun LarpgramRecordModeButton(
             RecordMode.Voice -> "Записать голосовое, тап — переключить на кружочек"
             RecordMode.Circle -> "Записать кружочек, тап — переключить на голосовое"
         },
-        tint = ElementTheme.colors.iconSecondary,
+        tint = if (tgStyle) Color.White else ElementTheme.colors.iconSecondary,
     )
 }
 

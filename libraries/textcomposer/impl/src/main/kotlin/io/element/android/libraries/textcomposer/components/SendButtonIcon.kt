@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -36,6 +37,8 @@ internal fun SendButtonIcon(
     canSendMessage: Boolean,
     isEditing: Boolean,
     modifier: Modifier = Modifier,
+    // Правка форка: в полосе ввода Telegram круг 44dp, как у кнопки записи рядом.
+    size: Dp = 36.dp,
 ) {
     val iconVector = when {
         isEditing -> CompoundIcons.Check()
@@ -53,7 +56,7 @@ internal fun SendButtonIcon(
     Box(
         modifier = modifier
             .clip(CircleShape)
-            .size(36.dp)
+            .size(size)
             .background(backgroundColor)
     ) {
         Icon(

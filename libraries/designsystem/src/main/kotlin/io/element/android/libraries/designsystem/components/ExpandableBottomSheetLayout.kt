@@ -76,6 +76,9 @@ fun ExpandableBottomSheetLayout(
     modifier: Modifier = Modifier,
     sheetShape: Shape = RectangleShape,
     backgroundColor: Color = Color.Transparent,
+    // Правка форка: контент на всю высоту, шторка поверх него (плавающее поле ввода Telegram,
+    // лента прокручивается под ним). Отступ под шторку контент берёт сам.
+    contentUnderSheet: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     var minBottomContentHeightPx by remember { mutableIntStateOf(0) }
@@ -189,7 +192,7 @@ fun ExpandableBottomSheetLayout(
             }
 
             val contentPlaceable = contentMeasurables.measure(
-                Constraints.fixed(constraints.maxWidth, remainingHeight)
+                Constraints.fixed(constraints.maxWidth, if (contentUnderSheet) constraints.maxHeight else remainingHeight)
             )
 
             layout(constraints.maxWidth, constraints.maxHeight) {

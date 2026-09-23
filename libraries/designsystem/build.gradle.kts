@@ -23,6 +23,8 @@ android {
 
 dependencies {
     api(projects.libraries.compound)
+    // Правка форка: стеклянные панели чата в стиле Telegram 12 (TgGlass.kt).
+    api(libs.haze)
 
     implementation(libs.androidx.compose.material3.windowsizeclass)
     implementation(libs.androidx.compose.material3.adaptive)
