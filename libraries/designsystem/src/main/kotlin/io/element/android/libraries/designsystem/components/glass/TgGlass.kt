@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -42,6 +43,9 @@ val LocalChatGlassState = staticCompositionLocalOf<HazeState?> { null }
  * уходит под них, поэтому добавляет это к нижнему отступу списка и поднимает кнопки прокрутки.
  */
 val LocalChatBottomOverlayHeight = compositionLocalOf { 0.dp }
+
+/** Правка форка: высота плавающей шапки чата сверху (вместе со статус-баром). */
+val LocalChatTopOverlayHeight = compositionLocalOf { 0.dp }
 
 object TgGlassDefaults {
     /** Скругление пилюли поля ввода (`ChatInputViewsContainer.INPUT_BUBBLE_RADIUS`). */
@@ -105,4 +109,32 @@ fun Modifier.tgGlass(shape: Shape): Modifier {
         .clip(shape)
         .then(fillModifier)
         .border(width = 1.dp, brush = stroke, shape = shape)
+}
+
+/**
+ * Правка форка: размытая подложка под статус-баром и шапкой чата — сверху сильнее, к низу
+ * сходит на нет (прогрессивный блюр haze), поверх лёгкая заливка цветом панели. Без источника
+ * размытия — просто градиент цвета панели.
+ */
+@Composable
+fun Modifier.tgTopFade(): Modifier {
+    val hazeState = LocalChatGlassState.current
+    val panel = TgGlassDefaults.panelColor()
+    return if (hazeState != null) {
+        this.hazeEffect(
+            state = hazeState,
+            style = HazeStyle(
+                backgroundColor = panel,
+                tint = HazeTint(panel.copy(alpha = 0.55f)),
+                blurRadius = 20.dp,
+                noiseFactor = 0f,
+            ),
+        ) {
+            progressive = HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
+            // Маска гасит и блюр, и заливку к низу — иначе у подложки была бы видимая граница.
+            mask = Brush.verticalGradient(0.6f to Color.Black, 1f to Color.Transparent)
+        }
+    } else {
+        this.background(Brush.verticalGradient(listOf(panel.copy(alpha = 0.85f), panel.copy(alpha = 0f))))
+    }
 }

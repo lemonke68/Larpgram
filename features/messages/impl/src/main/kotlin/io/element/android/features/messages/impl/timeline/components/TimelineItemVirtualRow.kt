@@ -28,7 +28,6 @@ import io.element.android.features.messages.impl.timeline.model.virtual.Timeline
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemReadMarkerModel
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemRoomBeginningModel
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemTypingNotificationModel
-import io.element.android.features.messages.impl.typing.TypingNotificationView
 import timber.log.Timber
 
 @Composable
@@ -65,9 +64,9 @@ fun TimelineItemVirtualRow(
                 Spacer(modifier = Modifier)
             }
             is TimelineItemTypingNotificationModel -> {
-                TypingNotificationView(
-                    state = timelineRoomInfo.typingNotificationState,
-                )
+                // Правка форка: в Telegram «печатает…» показывается в шапке чата (TgChatHeader),
+                // а не строкой внизу ленты.
+                Spacer(modifier = Modifier)
             }
         }
     }

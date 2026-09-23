@@ -17,6 +17,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -42,6 +43,8 @@ import io.element.android.features.messages.impl.timeline.components.customreact
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.TimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.topbars.DmPresence
+import io.element.android.features.messages.impl.topbars.DmPresenceFetcher
 import io.element.android.features.roommembermoderation.api.ModerationAction
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationEvent
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationRenderer
@@ -85,7 +88,9 @@ import io.element.android.services.analytics.api.finishLongRunningTransaction
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 @ContributesNode(RoomScope::class)
 @AssistedInject
@@ -112,6 +117,8 @@ class MessagesNode(
     emojiPickerPresenterFactory: EmojiPickerPresenter.Factory,
     getRecentEmojis: GetRecentEmojis,
     private val addRecentEmoji: AddRecentEmoji,
+    // Правка форка: «в сети / был(а)» собеседника ЛС для шапки Telegram.
+    private val dmPresenceFetcher: DmPresenceFetcher,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator {
     data class Inputs(
         val focusedEventId: EventId?,
@@ -358,6 +365,7 @@ class MessagesNode(
                 },
                 // Правка форка (фаза 3): тот же рендерер для инлайн-пикера в привязанном оверлее.
                 emojiPickerRenderer = emojiPickerRenderer,
+                dmPresence = rememberDmPresence(state.dmUserId),
                 emojiKeyboard = { keyboardModifier, onEmoji ->
                     val emojiKeyboardState = emojiKeyboardPresenter.present()
                     emojiKeyboardRenderer.Render(
@@ -398,4 +406,19 @@ class MessagesNode(
             }
         }
     }
+
+    /** Правка форка: presence собеседника ЛС, пока экран открыт; опрос раз в 30 секунд. */
+    @Composable
+    private fun rememberDmPresence(dmUserId: UserId?): DmPresence? {
+        val presence by produceState<DmPresence?>(initialValue = null, dmUserId) {
+            val userId = dmUserId ?: return@produceState
+            while (true) {
+                dmPresenceFetcher.fetch(userId)?.let { value = it }
+                delay(DM_PRESENCE_POLL_INTERVAL)
+            }
+        }
+        return presence
+    }
 }
+
+private val DM_PRESENCE_POLL_INTERVAL = 30.seconds

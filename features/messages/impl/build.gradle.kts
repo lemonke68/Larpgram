@@ -75,6 +75,9 @@ dependencies {
     implementation(projects.services.toolbox.api)
     implementation(libs.coil.compose)
     implementation(libs.serialization.json)
+    // Правка форка: «в сети / был(а)» в шапке ЛС — presence Synapse напрямую (TgChatHeader).
+    implementation(platform(libs.network.okhttp.bom))
+    implementation(libs.network.okhttp)
     implementation(libs.datetime)
     implementation(libs.jsoup)
     implementation(libs.androidx.constraintlayout)

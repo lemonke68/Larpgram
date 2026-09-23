@@ -119,7 +119,8 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemGrou
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.sendfailure.SendFailureDialogView
-import io.element.android.features.messages.impl.topbars.MessagesViewTopBar
+import io.element.android.features.messages.impl.topbars.DmPresence
+import io.element.android.features.messages.impl.topbars.TgChatHeader
 import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
@@ -135,6 +136,7 @@ import io.element.android.libraries.designsystem.components.ExpandableBottomShee
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.glass.LocalChatBottomOverlayHeight
 import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
+import io.element.android.libraries.designsystem.components.glass.LocalChatTopOverlayHeight
 import io.element.android.libraries.designsystem.components.rememberExpandableBottomSheetLayoutState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -194,6 +196,8 @@ fun MessagesView(
     emojiPickerRenderer: EmojiPickerRenderer,
     // Правка форка: клавиатура эмодзи для панели Telegram под полем ввода (модификатор, вставка).
     emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)? = null,
+    // Правка форка: «в сети / был(а)» собеседника ЛС для шапки Telegram.
+    dmPresence: DmPresence? = null,
 ) {
     val eventContentValidationState = LocalEventContentValidationState.current
 
@@ -215,6 +219,9 @@ fun MessagesView(
     val chatGlassState = rememberHazeState()
     val mediaPanel = rememberTgMediaPanelController()
     var composerOverlayHeight by remember { mutableStateOf(0.dp) }
+    // Правка форка: шапка Telegram плавает поверх ленты (обои под статус-баром); в треде — апстримовская.
+    val isThreadTimeline = state.timelineState.timelineMode is Timeline.Mode.Thread
+    var headerOverlayHeight by remember { mutableStateOf(0.dp) }
     val floatingComposer = !state.composerState.showTextFormatting && state.composerState.suggestions.isEmpty()
 
     // This is needed because the composer is inside an AndroidView that can't be affected by the FocusManager in Compose
@@ -276,6 +283,7 @@ fun MessagesView(
         LocalMessageActionsAnchor provides messageActionsAnchor,
         LocalChatGlassState provides chatGlassState,
         LocalChatBottomOverlayHeight provides if (floatingComposer) composerOverlayHeight else 0.dp,
+        LocalChatTopOverlayHeight provides if (isThreadTimeline) 0.dp else headerOverlayHeight,
     ) {
     val expandableState = rememberExpandableBottomSheetLayoutState()
     val density = LocalDensity.current
@@ -285,7 +293,11 @@ fun MessagesView(
             .imePadding()
             // Правка форка: низ не отступаем — обои и лента идут под панель навигации, отступ
             // от неё берёт поле ввода (navigationBarsPadding в шторке).
-            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(
+                WindowInsets.systemBars.only(
+                    if (isThreadTimeline) WindowInsetsSides.Top + WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal
+                )
+            )
             .onSizeChanged { size ->
                 // Let the composer takes at max half of the available height.
                 // The value will be different if the soft keyboard is displayed
@@ -294,7 +306,7 @@ fun MessagesView(
             },
         content = {
             Scaffold(
-                contentWindowInsets = scaffoldScrollableContentInsets,
+                contentWindowInsets = if (isThreadTimeline) scaffoldScrollableContentInsets else WindowInsets(0),
                 topBar = {
                     if (state.timelineState.timelineMode is Timeline.Mode.Thread) {
                         ThreadTopBar(
@@ -303,28 +315,6 @@ fun MessagesView(
                             heroes = state.heroes,
                             isTombstoned = state.isTombstoned,
                             onBackClick = onBackClick,
-                        )
-                    } else {
-                        MessagesViewTopBar(
-                            roomName = state.roomName,
-                            roomAvatar = state.roomAvatar,
-                            isTombstoned = state.isTombstoned,
-                            heroes = state.heroes,
-                            dmUserIdentityState = state.dmUserVerificationState,
-                            sharedHistoryIcon = state.topBarSharedHistoryIcon,
-                            dmUserStatus = state.dmUserStatus,
-                            isChannel = state.isChannel,
-                            subscriberCount = state.channelSubscriberCount,
-                            onBackClick = { hidingKeyboard { onBackClick() } },
-                            onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
-                            menuActions = {
-                                MessagesMenuActions(
-                                    displayThreads = state.timelineState.timelineMode !is Timeline.Mode.Thread && state.threads.hasThreads,
-                                    roomCallState = state.roomCallState,
-                                    onJoinCallClick = onJoinCallClick,
-                                    onThreadsListClick = onThreadsListClick
-                                )
-                            }
                         )
                     }
                 },
@@ -377,6 +367,20 @@ fun MessagesView(
                             onViewAllPinnedMessagesClick = onViewAllPinnedMessagesClick,
                             knockRequestsBannerView = knockRequestsBannerView,
                         )
+
+                        if (!isThreadTimeline) {
+                            TgChatHeader(
+                                state = state,
+                                dmPresence = dmPresence,
+                                onBackClick = { hidingKeyboard { onBackClick() } },
+                                onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
+                                onJoinCallClick = onJoinCallClick,
+                                onThreadsListClick = onThreadsListClick,
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .onSizeChanged { headerOverlayHeight = with(density) { it.height.toDp() } },
+                            )
+                        }
 
                         SuggestionsPickerView(
                             modifier = Modifier
@@ -730,7 +734,10 @@ private fun MessagesViewContent(
 
             if (state.timelineState.timelineMode !is Timeline.Mode.Thread) {
                 Column(
-                    modifier = Modifier.onSizeChanged { topBannersHeightDp = with(density) { it.height.toDp() } },
+                    modifier = Modifier
+                        .onSizeChanged { topBannersHeightDp = with(density) { it.height.toDp() } }
+                        // Правка форка: плашки — под плавающей шапкой.
+                        .padding(top = LocalChatTopOverlayHeight.current),
                 ) {
                     AnimatedVisibility(
                         visible = state.pinnedMessagesBannerState is PinnedMessagesBannerState.Visible && scrollBehavior.isVisible,
@@ -757,7 +764,9 @@ private fun MessagesViewContent(
                 }
             }
 
-            knockRequestsBannerView()
+            Box(modifier = Modifier.padding(top = LocalChatTopOverlayHeight.current)) {
+                knockRequestsBannerView()
+            }
         }
     }
 }

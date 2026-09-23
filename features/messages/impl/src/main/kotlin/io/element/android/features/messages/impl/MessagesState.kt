@@ -29,6 +29,7 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
@@ -77,6 +78,12 @@ data class MessagesState(
      * гасим, вместо него полоса «Разблокировать» — своя сторона TG-стены.
      */
     val isUserBlocked: Boolean = false,
+    /**
+     * Правка форка: шапка чата Telegram. Собеседник ЛС (для «в сети / был(а)») и число
+     * участников группы для подзаголовка.
+     */
+    val dmUserId: UserId? = null,
+    val memberCount: Long? = null,
     val eventSink: (MessagesEvent) -> Unit,
     // Правка форка: состояние пикера стикеров. Дефолт null, чтобы не трогать три
     // десятка мест, где апстрим собирает MessagesState (в основном превью и тесты).

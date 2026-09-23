@@ -101,6 +101,7 @@ import io.element.android.libraries.designsystem.atomic.atoms.UnreadIndicatorAto
 import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
 import io.element.android.libraries.designsystem.components.glass.LocalChatBottomOverlayHeight
 import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
+import io.element.android.libraries.designsystem.components.glass.LocalChatTopOverlayHeight
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.roundToPx
@@ -213,7 +214,8 @@ fun TimelineView(
                 state = lazyListState,
                 reverseLayout = true,
                 contentPadding =
-                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues() + PaddingValues(top = 64.dp, bottom = 8.dp + bottomOverlay),
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues() +
+                        PaddingValues(top = 64.dp + LocalChatTopOverlayHeight.current, bottom = 8.dp + bottomOverlay),
             ) {
                 items(
                     items = state.timelineItems,

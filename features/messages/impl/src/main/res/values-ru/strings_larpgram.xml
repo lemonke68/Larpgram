@@ -16,4 +16,36 @@
         <item quantity="many">%1$d комментариев</item>
         <item quantity="other">%1$d комментариев</item>
     </plurals>
+    <string name="larpgram_header_online">в сети</string>
+    <string name="larpgram_header_last_seen_recently">был(а) недавно</string>
+    <string name="larpgram_header_last_seen_just_now">был(а) только что</string>
+    <plurals name="larpgram_header_last_seen_minutes">
+        <item quantity="one">был(а) %1$d минуту назад</item>
+        <item quantity="few">был(а) %1$d минуты назад</item>
+        <item quantity="many">был(а) %1$d минут назад</item>
+        <item quantity="other">был(а) %1$d минут назад</item>
+    </plurals>
+    <string name="larpgram_header_last_seen_at">был(а) в %1$s</string>
+    <string name="larpgram_header_last_seen_yesterday">был(а) вчера в %1$s</string>
+    <string name="larpgram_header_last_seen_date">был(а) %1$s</string>
+    <string name="larpgram_header_typing">печатает…</string>
+    <string name="larpgram_header_typing_one">%1$s печатает…</string>
+    <string name="larpgram_header_typing_two">%1$s и %2$s печатают…</string>
+    <plurals name="larpgram_header_typing_many">
+        <item quantity="one">%1$d человек печатает…</item>
+        <item quantity="few">%1$d человека печатают…</item>
+        <item quantity="many">%1$d человек печатают…</item>
+        <item quantity="other">%1$d человек печатают…</item>
+    </plurals>
+    <plurals name="larpgram_header_members">
+        <item quantity="one">%1$d участник</item>
+        <item quantity="few">%1$d участника</item>
+        <item quantity="many">%1$d участников</item>
+        <item quantity="other">%1$d участников</item>
+    </plurals>
+    <string name="larpgram_header_menu_video_call">Видеозвонок</string>
+    <string name="larpgram_header_menu_mute">Выключить уведомления</string>
+    <string name="larpgram_header_menu_unmute">Включить уведомления</string>
+    <string name="larpgram_header_menu_threads">Треды</string>
+    <string name="larpgram_header_menu_info">Информация</string>
 </resources>

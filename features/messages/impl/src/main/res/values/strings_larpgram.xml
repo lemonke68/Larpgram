@@ -19,4 +19,31 @@
         <item quantity="one">%1$d comment</item>
         <item quantity="other">%1$d comments</item>
     </plurals>
+    <!-- Telegram chat header subtitle (TgChatHeader). -->
+    <string name="larpgram_header_online">online</string>
+    <string name="larpgram_header_last_seen_recently">last seen recently</string>
+    <string name="larpgram_header_last_seen_just_now">last seen just now</string>
+    <plurals name="larpgram_header_last_seen_minutes">
+        <item quantity="one">last seen %1$d minute ago</item>
+        <item quantity="other">last seen %1$d minutes ago</item>
+    </plurals>
+    <string name="larpgram_header_last_seen_at">last seen at %1$s</string>
+    <string name="larpgram_header_last_seen_yesterday">last seen yesterday at %1$s</string>
+    <string name="larpgram_header_last_seen_date">last seen %1$s</string>
+    <string name="larpgram_header_typing">typing…</string>
+    <string name="larpgram_header_typing_one">%1$s is typing…</string>
+    <string name="larpgram_header_typing_two">%1$s and %2$s are typing…</string>
+    <plurals name="larpgram_header_typing_many">
+        <item quantity="one">%1$d person is typing…</item>
+        <item quantity="other">%1$d people are typing…</item>
+    </plurals>
+    <plurals name="larpgram_header_members">
+        <item quantity="one">%1$d member</item>
+        <item quantity="other">%1$d members</item>
+    </plurals>
+    <string name="larpgram_header_menu_video_call">Video call</string>
+    <string name="larpgram_header_menu_mute">Mute</string>
+    <string name="larpgram_header_menu_unmute">Unmute</string>
+    <string name="larpgram_header_menu_threads">Threads</string>
+    <string name="larpgram_header_menu_info">Info</string>
 </resources>

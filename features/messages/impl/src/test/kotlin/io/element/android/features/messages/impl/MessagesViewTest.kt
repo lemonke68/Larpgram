@@ -130,8 +130,9 @@ class MessagesViewTest : RobolectricTest() {
                 state = state,
                 onJoinCallClick = callback,
             )
-            val joinCallContentDescription = activity!!.getString(CommonStrings.a11y_start_call)
-            onNodeWithContentDescription(joinCallContentDescription).performClick()
+            // Правка форка: видеозвонок в шапке Telegram — пункт меню ⋮.
+            onNodeWithContentDescription(activity!!.getString(CommonStrings.action_open_context_menu)).performClick()
+            onNodeWithText("Video call").performClick()
         }
     }
 
@@ -704,7 +705,9 @@ class MessagesViewTest : RobolectricTest() {
             state = state,
             onThreadsListClicked = onThreadsListClicked,
         )
-        onNodeWithContentDescription("Threads").performClick()
+        // Правка форка: треды в шапке Telegram — пункт меню ⋮.
+        onNodeWithContentDescription("Open context menu").performClick()
+        onNodeWithText("Threads").performClick()
         onThreadsListClicked.assertions().isCalledOnce()
     }
 

@@ -202,11 +202,9 @@ class MessagesPresenter(
         val isChannel by remember {
             derivedStateOf { (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L }
         }
+        // Правка форка: состояние звука нужно не только каналу — пункт «Выключить уведомления» в
+        // меню шапки Telegram есть у любого чата. Поле называется по-старому, считается для всех.
         val isChannelMuted by produceState(initialValue = false, isChannel) {
-            if (!isChannel) {
-                value = false
-                return@produceState
-            }
             matrixClient.notificationSettingsService.notificationSettingsChangeFlow
                 .onStart { emit(Unit) }
                 .collect {
@@ -411,6 +409,8 @@ class MessagesPresenter(
             isChannelMuted = isChannelMuted,
             channelSubscriberCount = if (isChannel) roomInfo.joinedMembersCount else null,
             isUserBlocked = isUserBlocked,
+            dmUserId = dmPeerUserId,
+            memberCount = roomInfo.joinedMembersCount,
             eventSink = ::handleEvent,
         )
     }
