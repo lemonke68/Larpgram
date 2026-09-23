@@ -23,10 +23,10 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAll
-import kotlinx.coroutines.withTimeoutOrNull
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.theme.components.Icon
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Что записывает кнопка справа от поля ввода. */
 enum class RecordMode {

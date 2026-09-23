@@ -30,6 +30,7 @@ enum class AvatarSize(val dp: Dp) {
     UserPreference(52.dp),
 
     UserHeader(96.dp),
+
     // Правка форка: аватар профиля в раскрытом виде (тянем вниз — квадрат во всю ширину),
     // берём крупный источник, чтобы не мылило.
     UserHeaderExpanded(400.dp),

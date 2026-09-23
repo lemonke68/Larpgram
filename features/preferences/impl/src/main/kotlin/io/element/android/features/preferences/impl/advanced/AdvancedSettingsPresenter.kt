@@ -14,11 +14,11 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
 import dev.zacsweers.metro.Inject
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
 import io.element.android.libraries.architecture.Presenter
-import androidx.compose.ui.graphics.toArgb
 import io.element.android.libraries.designsystem.theme.ChatThemeOption
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
