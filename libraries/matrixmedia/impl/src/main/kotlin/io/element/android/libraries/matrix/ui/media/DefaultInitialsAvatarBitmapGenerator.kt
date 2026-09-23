@@ -9,8 +9,9 @@
 package io.element.android.libraries.matrix.ui.media
 
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Rect
+import android.graphics.Shader
 import android.graphics.Typeface
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -26,11 +27,8 @@ import androidx.core.graphics.createBitmap
 import coil3.Bitmap
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
-import io.element.android.compound.theme.AvatarColors
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.compound.tokens.generated.SemanticColors
-import io.element.android.compound.tokens.generated.compoundColorsDark
-import io.element.android.compound.tokens.generated.compoundColorsLight
+import io.element.android.libraries.designsystem.colors.TgAvatarPalette
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -39,12 +37,6 @@ import io.element.android.libraries.designsystem.theme.components.Text
 
 @ContributesBinding(AppScope::class)
 class DefaultInitialsAvatarBitmapGenerator : InitialsAvatarBitmapGenerator {
-    // List of predefined avatar colors to use for initials avatars, in light mode
-    private val lightAvatarColors: List<AvatarColors> = compoundColorsLight.buildAvatarColors()
-
-    // List of predefined avatar colors to use for initials avatars, in dark mode
-    private val darkAvatarColors: List<AvatarColors> = compoundColorsDark.buildAvatarColors()
-
     /**
      * Generates a bitmap for an avatar with no URL, using the initials from the [AvatarData].
      * @param size The size of the bitmap to generate, in pixels.
@@ -63,26 +55,34 @@ class DefaultInitialsAvatarBitmapGenerator : InitialsAvatarBitmapGenerator {
             return null
         }
 
-        // Get the color pair to use for the initials avatar
-        val colors = if (useDarkTheme) darkAvatarColors else lightAvatarColors
-        val avatarColors = colors[avatarData.id.sumOf { it.code } % colors.size]
+        // Правка форка: заглушка как в Telegram — вертикальный градиент по id и белые инициалы.
+        val gradient = TgAvatarPalette.gradient(avatarData.id, isDark = useDarkTheme)
 
         val bitmap = createBitmap(size, size)
         Canvas(bitmap).run {
-            drawColor(avatarColors.background.toArgb())
-            val letter = avatarData.initialLetter
+            val backgroundPaint = Paint().apply {
+                shader = LinearGradient(
+                    0f,
+                    0f,
+                    0f,
+                    size.toFloat(),
+                    gradient.top.toArgb(),
+                    gradient.bottom.toArgb(),
+                    Shader.TileMode.CLAMP,
+                )
+            }
+            drawRect(0f, 0f, size.toFloat(), size.toFloat(), backgroundPaint)
+            val letters = avatarData.initials
 
             val textPaint = Paint().apply {
-                color = avatarColors.foreground.toArgb()
+                color = android.graphics.Color.WHITE
                 textSize = size * fontSizePercentage // Adjust text size relative to the avatar size
                 isAntiAlias = true
                 textAlign = Paint.Align.CENTER
-                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             }
-            val bounds = Rect()
-            textPaint.getTextBounds(letter, 0, letter.length, bounds)
             drawText(
-                letter,
+                letters,
                 size / 2f,
                 size.toFloat() / 2 - (textPaint.descent() + textPaint.ascent()) / 2,
                 textPaint
@@ -92,15 +92,6 @@ class DefaultInitialsAvatarBitmapGenerator : InitialsAvatarBitmapGenerator {
         return bitmap
     }
 }
-
-private fun SemanticColors.buildAvatarColors(): List<AvatarColors> = listOf(
-    AvatarColors(background = bgDecorative1, foreground = textDecorative1),
-    AvatarColors(background = bgDecorative2, foreground = textDecorative2),
-    AvatarColors(background = bgDecorative3, foreground = textDecorative3),
-    AvatarColors(background = bgDecorative4, foreground = textDecorative4),
-    AvatarColors(background = bgDecorative5, foreground = textDecorative5),
-    AvatarColors(background = bgDecorative6, foreground = textDecorative6),
-)
 
 @Composable
 @PreviewsDayNight

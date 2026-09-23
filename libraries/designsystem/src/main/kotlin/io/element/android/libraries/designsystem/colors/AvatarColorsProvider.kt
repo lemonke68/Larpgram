@@ -10,14 +10,18 @@ package io.element.android.libraries.designsystem.colors
 
 import androidx.compose.runtime.Composable
 import io.element.android.compound.theme.AvatarColors
-import io.element.android.compound.theme.avatarColors
 
 object AvatarColorsProvider {
+    /**
+     * Правка форка: цвета из палитры Telegram ([TgAvatarPalette]). `background` — верх градиента
+     * заглушки, `foreground` — цвет имени того же индекса (имя отправителя в пузыре, в медиа-деталях).
+     */
     @Composable
     fun provide(id: String): AvatarColors {
-        return avatarColors().let { colors ->
-            colors[id.toHash(colors.size)]
-        }
+        return AvatarColors(
+            background = TgAvatarPalette.gradient(id).top,
+            foreground = TgAvatarPalette.nameColor(id),
+        )
     }
 }
 

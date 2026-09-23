@@ -63,6 +63,32 @@ data class AvatarData(
             }
             .uppercase()
     }
+
+    /**
+     * Правка форка: инициалы как в Telegram (`AvatarDrawable.getAvatarSymbols`) — первая буква имени
+     * и первая буква последнего слова, если слов больше одного. «Иван Петров» → «ИП», «lin» → «L».
+     * Если последнее слово начинается не с буквы или цифры (например, «—»), остаётся одна буква.
+     */
+    val initials by lazy {
+        val words = name?.trim()?.split(WHITESPACE).orEmpty()
+        if (words.size < 2) return@lazy initialLetter
+        val second = words.last().firstGrapheme()
+        if (second == null || !second.first().isLetterOrDigit()) {
+            initialLetter
+        } else {
+            initialLetter + second.uppercase()
+        }
+    }
+}
+
+private val WHITESPACE = Regex("\\s+")
+
+private fun String.firstGrapheme(): String? {
+    if (isEmpty()) return null
+    val iterator = BreakIterator.getCharacterInstance()
+    iterator.setText(this)
+    val end = tryOrNull { iterator.following(0) }?.takeIf { it in 1..length } ?: 1
+    return substring(0, end)
 }
 
 fun AvatarData.getBestName(): String {
