@@ -13,8 +13,11 @@ package io.element.android.features.userprofile
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfileState
@@ -216,7 +219,10 @@ class UserProfileViewTest : RobolectricTest() {
                 state = aUserProfileState(userId = A_USER_ID, verificationState = UserProfileVerificationState.UNVERIFIED),
                 onVerifyClick = callback,
             )
-            clickOn(CommonStrings.common_verify_user)
+            // Правка форка: TG-шапка профиля выше апстримовской, пункт уезжает за экран — докручиваем.
+            onNode(hasText(activity!!.getString(CommonStrings.common_verify_user)) and hasClickAction())
+                .performScrollTo()
+                .performClick()
         }
     }
 }

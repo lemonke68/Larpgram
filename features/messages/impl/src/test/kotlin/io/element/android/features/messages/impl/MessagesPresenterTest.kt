@@ -60,6 +60,8 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatch
 import io.element.android.libraries.emoji.api.recentemojis.AddRecentEmoji
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
+import io.element.android.libraries.imagepacks.api.ImagePack
+import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -1458,6 +1460,20 @@ class MessagesPresenterTest {
             },
             // Правка форка: клиент нужен только ради загрузчика медиа для кружочков.
             matrixClient = matrixClient,
+            imagePackSource = NoPacksImagePackSource,
         )
     }
+}
+
+// Правка форка: паки стикеров этим тестам не нужны — источник без единого пака.
+private object NoPacksImagePackSource : ImagePackSource {
+    override suspend fun getUserPacks(): List<ImagePack> = emptyList()
+    override suspend fun getEmoteRooms(): List<Pair<String, String>> = emptyList()
+    override suspend fun getRoomPack(roomId: String, stateKey: String): ImagePack? = null
+    override suspend fun getSavedPacks(): List<ImagePack> = emptyList()
+    override suspend fun savePack(pack: ImagePack): Boolean = false
+    override suspend fun removeSavedPack(slug: String): Boolean = false
+    override suspend fun getAllPacks(): List<ImagePack> = emptyList()
+    override fun serializePackDescriptor(pack: ImagePack): String = ""
+    override fun parsePackDescriptor(json: String): ImagePack? = null
 }

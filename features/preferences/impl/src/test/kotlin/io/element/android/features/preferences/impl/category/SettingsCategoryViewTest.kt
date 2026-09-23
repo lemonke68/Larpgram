@@ -151,6 +151,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
             onManageAccountClick = onManageAccountClick,
             onSignOutClick = onSignOutClick,
             onDeactivateClick = onDeactivateClick,
+            onOpenChatThemeSettings = {},
         )
     }
 }
