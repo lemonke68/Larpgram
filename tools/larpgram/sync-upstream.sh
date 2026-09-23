@@ -11,7 +11,12 @@
 # Usage:
 #   tools/larpgram/sync-upstream.sh restore        # re-create local grafts (fresh clone, new machine)
 #   tools/larpgram/sync-upstream.sh start <tag>    # e.g. v26.09.2: fetch, squash-merge, stop for conflicts
-#   tools/larpgram/sync-upstream.sh finish         # after resolving conflicts: commit + graft
+#   tools/larpgram/sync-upstream.sh finish [msg]   # after resolving conflicts: commit + graft
+#                                                  # (msg: optional file with the commit message body)
+#   tools/larpgram/sync-upstream.sh check          # before pushing: no Element commit is a real ancestor
+#
+# Never `git commit --amend` a sync commit: with the grafts active, amend copies the grafted upstream
+# parent into the real commit and the next push would upload Element's whole history. Use `finish msg`.
 #
 set -euo pipefail
 
@@ -76,7 +81,11 @@ finish() {
         git diff --name-only --diff-filter=U >&2
         exit 1
     fi
-    git commit --quiet -m "sync: Element X Android $tag" -m "Upstream-Tag: $tag"
+    if [ -n "${1:-}" ]; then
+        { echo "sync: Element X Android $tag"; echo; cat "$1"; echo; echo "Upstream-Tag: $tag"; } | git commit --quiet -F -
+    else
+        git commit --quiet -m "sync: Element X Android $tag" -m "Upstream-Tag: $tag"
+    fi
     local head
     head="$(git rev-parse HEAD)"
     git replace -f --graft "$head" "$(git rev-parse HEAD~1)" "$(git rev-parse "$tag^{commit}")"
@@ -84,9 +93,23 @@ finish() {
     echo "Committed $(git log -1 --format='%h %s') and grafted onto $tag."
 }
 
+# Fails if any upstream release tag is a real (graft-free) ancestor of HEAD.
+check() {
+    local bad=0
+    for tag in $(git --no-replace-objects log --format='%(trailers:key=Upstream-Tag,valueonly,separator=%x20)' | grep -v '^$' | sort -u); do
+        if git --no-replace-objects merge-base --is-ancestor "$tag^{commit}" HEAD 2>/dev/null; then
+            echo "Element history leaked: $tag is a real ancestor of HEAD." >&2
+            bad=1
+        fi
+    done
+    [ "$bad" = 0 ] && echo "OK: no Element history in HEAD."
+    return "$bad"
+}
+
 case "${1:-}" in
     restore) restore_grafts ;;
+    check) check ;;
     start) [ -n "${2:-}" ] || { echo "Usage: $0 start <tag>" >&2; exit 1; }; start "$2" ;;
-    finish) finish ;;
-    *) sed -n '2,15p' "$0"; exit 1 ;;
+    finish) finish "${2:-}" ;;
+    *) sed -n '2,22p' "$0"; exit 1 ;;
 esac
