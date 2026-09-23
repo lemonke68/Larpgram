@@ -3,7 +3,7 @@
 Мессенджер для сервера mango-kokos.ru: то же, к чему все привыкли в Telegram, но на своём
 Matrix-сервере. Стикеры, гифки, кружочки, работающие уведомления и вход без выбора сервера.
 
-Форк [Element X Android](https://github.com/element-hq/element-x-android).
+Основан на [Element X Android](https://github.com/element-hq/element-x-android) (AGPL-3.0).
 
 ## Чем отличается от Element X
 
@@ -33,8 +33,8 @@ APK появится в `app/build/outputs/apk/gplay/debug/`, для телеф�
 
 ## Лицензия
 
-AGPL-3.0-only, как и у исходного Element X. Исходный код обязан оставаться открытым,
+AGPL-3.0-only, как и у Element X, на котором основан проект. Исходный код открыт,
 уведомления об авторстве сохранены в [LICENSE](LICENSE) и [AUTHORS.md](AUTHORS.md).
 
 Copyright © 2025 Element Creations Ltd, New Vector Ltd и участники Element X.
-Изменения этого форка — 2026.
+Изменения Larpgram © 2026 lemonke67.
