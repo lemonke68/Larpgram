@@ -46,4 +46,5 @@
     <string name="larpgram_header_menu_unmute">Unmute</string>
     <string name="larpgram_header_menu_threads">Threads</string>
     <string name="larpgram_header_menu_info">Info</string>
+    <string name="larpgram_pinned_message_title">Pinned message</string>
 </resources>

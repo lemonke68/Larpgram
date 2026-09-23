@@ -13,15 +13,14 @@ package io.element.android.features.messages.impl.pinned.banner
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.libraries.matrix.api.core.EventId
-import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EnsureNeverCalled
 import io.element.android.tests.testutils.EnsureNeverCalledWithParam
 import io.element.android.tests.testutils.EventsRecorder
-import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.ensureCalledOnce
 import io.element.android.tests.testutils.ensureCalledOnceWithParam
 import io.element.android.tests.testutils.robolectric.RobolectricTest
@@ -56,7 +55,8 @@ class PinnedMessagesBannerViewTest : RobolectricTest() {
                 state = state,
                 onViewAllClick = callback
             )
-            clickOn(CommonStrings.screen_room_pinned_banner_view_all_button_title)
+            // Правка форка: «Посмотреть все» — значок списка в пилюле Telegram.
+            onNodeWithContentDescription("View All").performClick()
         }
     }
 }

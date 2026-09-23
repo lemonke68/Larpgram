@@ -48,4 +48,5 @@
     <string name="larpgram_header_menu_unmute">Включить уведомления</string>
     <string name="larpgram_header_menu_threads">Треды</string>
     <string name="larpgram_header_menu_info">Информация</string>
+    <string name="larpgram_pinned_message_title">Закреплённое сообщение</string>
 </resources>

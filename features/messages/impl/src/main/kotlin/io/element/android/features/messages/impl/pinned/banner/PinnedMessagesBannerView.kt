@@ -8,7 +8,6 @@
 
 package io.element.android.features.messages.impl.pinned.banner
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement.spacedBy
@@ -25,8 +24,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -35,8 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -49,12 +46,15 @@ import androidx.compose.ui.unit.dp
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.messages.impl.R
+import io.element.android.libraries.designsystem.components.glass.TgGlassDefaults
+import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.pinnedMessageBannerBorder
 import io.element.android.libraries.designsystem.theme.pinnedMessageBannerIndicator
 import io.element.android.libraries.designsystem.utils.annotatedTextWithBold
 import io.element.android.libraries.matrix.api.core.EventId
@@ -90,49 +90,53 @@ private fun PinnedMessagesBannerRow(
     modifier: Modifier = Modifier,
 ) {
     val analyticsService = LocalAnalyticsService.current
-    val borderColor = ElementTheme.colors.pinnedMessageBannerBorder
+    // Правка форка: закреплённое сообщение — стеклянная пилюля под шапкой, как в Telegram 12
+    // (`chat_header_pill.jpg`): черта-индикатор, заголовок цветом акцента и текст, справа — список.
     Row(
         modifier = modifier
-            .background(color = ElementTheme.colors.bgCanvasDefault)
+            .padding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues())
+            .padding(horizontal = 8.dp, vertical = 2.dp)
             .fillMaxWidth()
-            .drawBorder(borderColor)
-            .heightIn(min = 64.dp)
+            .heightIn(min = 48.dp)
+            .tgGlass(RoundedCornerShape(TgGlassDefaults.inputRadius))
             .clickable {
                 if (state is PinnedMessagesBannerState.Loaded) {
                     analyticsService.captureInteraction(Interaction.Name.PinnedMessageBannerClick)
                     onClick(state.currentPinnedMessage.eventId)
                     state.eventSink(PinnedMessagesBannerEvent.MoveToNextPinned)
                 }
-            }
-            .padding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()),
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Spacer(modifier = Modifier.width(26.dp))
+        Spacer(modifier = Modifier.width(14.dp))
         PinIndicators(
             pinIndex = state.currentPinnedMessageIndex(),
             pinsCount = state.pinnedMessagesCount(),
-        )
-        Icon(
-            imageVector = CompoundIcons.PinSolid(),
-            contentDescription = null,
-            tint = ElementTheme.colors.iconSecondary,
-            modifier = Modifier
-                .padding(horizontal = 10.dp)
-                .size(20.dp)
         )
         PinnedMessageItem(
             index = state.currentPinnedMessageIndex(),
             totalCount = state.pinnedMessagesCount(),
             message = state.formattedMessage(),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 10.dp, top = 5.dp, bottom = 5.dp)
         )
-        ViewAllButton(
-            state = state,
-            onViewAllClick = {
-                onViewAllClick()
-                analyticsService.captureInteraction(Interaction.Name.PinnedMessageBannerViewAllButton)
-            },
-        )
+        if (state is PinnedMessagesBannerState.Loading) {
+            ViewAllButton(state = state, onViewAllClick = {})
+        } else {
+            IconButton(
+                onClick = {
+                    onViewAllClick()
+                    analyticsService.captureInteraction(Interaction.Name.PinnedMessageBannerViewAllButton)
+                },
+            ) {
+                Icon(
+                    imageVector = CompoundIcons.ListBulleted(),
+                    contentDescription = stringResource(id = CommonStrings.screen_room_pinned_banner_view_all_button_title),
+                    tint = TgGlassDefaults.iconColor(),
+                )
+            }
+        }
     }
 }
 
@@ -153,27 +157,6 @@ private fun ViewAllButton(
         onClick = onViewAllClick,
         modifier = modifier,
     )
-}
-
-private fun Modifier.drawBorder(borderColor: Color): Modifier {
-    return this
-        .drawBehind {
-            val strokeWidth = 0.5.dp.toPx()
-            val y = size.height - strokeWidth / 2
-            drawLine(
-                borderColor,
-                Offset(0f, y),
-                Offset(size.width, y),
-                strokeWidth
-            )
-            drawLine(
-                borderColor,
-                Offset(0f, 0f),
-                Offset(size.width, 0f),
-                strokeWidth
-            )
-        }
-        .shadow(elevation = 5.dp, spotColor = Color.Transparent)
 }
 
 @Composable
@@ -240,7 +223,8 @@ private fun PinnedMessageItem(
     val countMessage = stringResource(id = CommonStrings.screen_room_pinned_banner_indicator, index + 1, totalCount)
     val fullCountMessage = stringResource(id = CommonStrings.screen_room_pinned_banner_indicator_description, countMessage)
     Column(modifier = modifier) {
-        AnimatedVisibility(totalCount > 1) {
+        // Правка форка: заголовок есть всегда, как в Telegram; номер — только если закреплённых несколько.
+        if (totalCount > 1) {
             Text(
                 text = annotatedTextWithBold(
                     text = fullCountMessage,
@@ -250,6 +234,13 @@ private fun PinnedMessageItem(
                 color = ElementTheme.colors.textActionAccent,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        } else {
+            Text(
+                text = stringResource(id = R.string.larpgram_pinned_message_title),
+                style = ElementTheme.typography.fontBodySmMedium,
+                color = ElementTheme.colors.textActionAccent,
+                maxLines = 1,
             )
         }
         if (message != null) {
