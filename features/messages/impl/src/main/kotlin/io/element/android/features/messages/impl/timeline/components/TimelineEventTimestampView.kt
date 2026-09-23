@@ -71,7 +71,10 @@ fun TimelineEventTimestampView(
         contentColor ?: bubbleContentColor ?: ElementTheme.colors.textSecondary
     }
 
-    val shield = event.messageShield
+    // Правка форка: в Telegram у сообщений нет значков шифрования. Серый ⓘ (непроверенное устройство,
+    // ключ из бэкапа и т.п.) не рисуем и не делаем кликабельным; остаётся только критичный красный
+    // щит — реальный сигнал безопасности. Подробности по-прежнему есть в меню сообщения.
+    val shield = event.messageShield?.takeIf { it.isCritical }
     val isVerifiedUserSendFailure = event.localSendState is LocalEventSendState.Failed.VerifiedUser
     val onClickLabel = when {
         shield != null -> stringResource(CommonStrings.a11y_view_details)

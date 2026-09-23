@@ -109,11 +109,12 @@ import kotlinx.coroutines.launch
 import uniffi.wysiwyg_composer.MenuAction
 import kotlin.time.Duration.Companion.seconds
 
+// Правка форка: размер иконок полосы ввода, замер по макету редизайна 2023.
+private val COMPOSER_ICON_SIZE = 28.dp
+
 /**
  * https://www.figma.com/design/G1xy0HDZKJf5TCRFmKb5d5/Compound-Android-Components?node-id=2012-39036
  */
-// Правка форка: размер иконок полосы ввода, замер по макету редизайна 2023.
-private val COMPOSER_ICON_SIZE = 28.dp
 
 @Composable
 fun TextComposer(
@@ -552,7 +553,9 @@ private fun StandardLayout(
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     Column(modifier = modifier) {
-        if (isRoomEncrypted == false) {
+        // Правка форка: в Telegram над полем ввода нет плашки «Не зашифровано» (каналы и группы
+        // без шифрования — норма), см. SHOW_NOT_ENCRYPTED_BADGE.
+        if (SHOW_NOT_ENCRYPTED_BADGE && isRoomEncrypted == false) {
             Spacer(Modifier.height(16.dp))
             NotEncryptedBadge()
             Spacer(Modifier.height(4.dp))
@@ -707,6 +710,9 @@ private fun StandardLayout(
     }
 }
 
+// Правка форка: плашку «Не зашифровано» не показываем, как в Telegram.
+private const val SHOW_NOT_ENCRYPTED_BADGE = false
+
 @Composable
 private fun NotEncryptedBadge() {
     Row(
@@ -742,7 +748,7 @@ private fun TextFormattingLayout(
         modifier = modifier.padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (isRoomEncrypted == false) {
+        if (SHOW_NOT_ENCRYPTED_BADGE && isRoomEncrypted == false) {
             NotEncryptedBadge()
             Spacer(Modifier.height(8.dp))
         }
