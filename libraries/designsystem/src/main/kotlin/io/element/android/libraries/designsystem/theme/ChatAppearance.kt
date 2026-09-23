@@ -9,6 +9,7 @@ package io.element.android.libraries.designsystem.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,24 @@ val LocalOutgoingBubbleContentColor = staticCompositionLocalOf<Color?> { null }
  */
 fun contentColorForBubble(bubbleColor: Color): Color =
     if (bubbleColor.luminance() > 0.5f) Color(0xFF111116) else Color.White
+
+/**
+ * Link color inside the outgoing bubble. `null` means "use the theme link color". Provided together
+ * with [LocalOutgoingBubbleContentColor]: the themed link is the accent, and on an accent-colored
+ * bubble (the dark theme default) it was purple on purple and unreadable.
+ */
+val LocalOutgoingBubbleLinkColor = staticCompositionLocalOf<Color?> { null }
+
+/**
+ * Readable link color for [bubbleColor]: on a dark bubble a pale tint of the bubble itself (stays
+ * distinct from the white text), on a light one the theme link darkened a bit.
+ */
+fun linkColorForBubble(bubbleColor: Color, themeLinkColor: Color): Color =
+    if (bubbleColor.luminance() > 0.5f) {
+        lerp(themeLinkColor, Color.Black, 0.25f)
+    } else {
+        lerp(bubbleColor, Color.White, 0.75f)
+    }
 
 /** Bounds shared by the settings sliders and the value mapping, kept in one place. */
 object ChatAppearanceDefaults {

@@ -62,9 +62,9 @@ fun TimelineEventTimestampView(
     val isMessageEdited = event.content.isEdited()
     val isMessageRedacted = event.content.isRedacted()
     // Larpgram: на цветном исходящем пузыре берём контраст-локал (тот же, что у текста), иначе
-    // серый textSecondary сливается — например время на оранжевом пузыре. Дефолтный пузырь без
-    // кастома оставляет локал null, поэтому там время серое как прежде.
-    val bubbleContentColor = LocalOutgoingBubbleContentColor.current
+    // серый textSecondary сливается — например время на оранжевом пузыре. Локал теперь задан на любом
+    // исходящем пузыре (и на дефолтном фиолетовом тоже); время чуть приглушено, как в Telegram.
+    val bubbleContentColor = LocalOutgoingBubbleContentColor.current?.copy(alpha = 0.75f)
     val tint = if (hasError || hasEncryptionCritical && !isMessageRedacted) {
         ElementTheme.colors.textCriticalPrimary
     } else {

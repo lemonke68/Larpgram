@@ -11,6 +11,7 @@ package io.element.android.libraries.textcomposer
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -38,13 +39,14 @@ object ElementRichTextEditorStyle {
         )
     }
 
+    // Правка форка: linkColor — цвет ссылок внутри исходящего пузыря (null = цвет темы).
     @Composable
-    fun textStyle(): RichTextEditorStyle {
-        return common()
+    fun textStyle(linkColor: Color? = null): RichTextEditorStyle {
+        return common(linkColor)
     }
 
     @Composable
-    private fun common(): RichTextEditorStyle {
+    private fun common(linkColor: Color? = null): RichTextEditorStyle {
         val colors = ElementTheme.colors
         val codeCornerRadius = 4.dp
         val codeBorderWidth = 1.dp
@@ -62,7 +64,7 @@ object ElementRichTextEditorStyle {
                 color = colors.iconAccentTertiary,
             ),
             link = RichTextEditorDefaults.linkStyle(
-                color = colors.textLinkExternal,
+                color = linkColor ?: colors.textLinkExternal,
             ),
             codeBlock = RichTextEditorDefaults.codeBlockStyle(
                 leadingMargin = 8.dp,

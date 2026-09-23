@@ -32,6 +32,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.LocalMessageTextScale
 import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleLinkColor
 import io.element.android.libraries.designsystem.utils.LocalUiTestMode
 import io.element.android.libraries.textcomposer.ElementRichTextEditorStyle
 import io.element.android.libraries.textcomposer.mentions.LocalMentionSpanUpdater
@@ -76,7 +77,7 @@ fun TimelineItemTextView(
                 text = text,
                 onLinkClickedListener = onLinkClick,
                 onLinkLongClickedListener = onLinkLongClick,
-                style = ElementRichTextEditorStyle.textStyle(),
+                style = ElementRichTextEditorStyle.textStyle(linkColor = LocalOutgoingBubbleLinkColor.current),
                 onTextLayout = ContentAvoidingLayout.measureLegacyLastTextLine(onContentLayoutChange = onContentLayoutChange),
                 releaseOnDetach = false,
             )

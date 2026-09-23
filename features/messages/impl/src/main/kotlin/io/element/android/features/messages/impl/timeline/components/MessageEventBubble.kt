@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -34,8 +34,8 @@ import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
@@ -51,8 +51,10 @@ import io.element.android.libraries.designsystem.text.toPx
 import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
 import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleColor
 import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
-import io.element.android.libraries.designsystem.theme.contentColorForBubble
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleLinkColor
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.theme.contentColorForBubble
+import io.element.android.libraries.designsystem.theme.linkColorForBubble
 import io.element.android.libraries.designsystem.theme.messageFromMeBackground
 import io.element.android.libraries.designsystem.theme.messageFromOtherBackground
 import io.element.android.libraries.testtags.TestTags
@@ -175,14 +177,15 @@ fun MessageEventBubble(
                 )
                 .then(clickableModifier),
         ) {
-            // Larpgram: when an outgoing bubble color is active, override the text color for contrast.
-            val contentColorOverride = if (showBubble && state.isMine) {
-                outgoingBubbleColor?.let { contentColorForBubble(it) }
-            } else {
-                null
-            }
-            if (contentColorOverride != null) {
-                CompositionLocalProvider(LocalOutgoingBubbleContentColor provides contentColorOverride) {
+            // Larpgram: text, time and link colors of an outgoing bubble are derived from the bubble
+            // itself for contrast. Earlier this only kicked in for a user-chosen bubble color, and the
+            // dark theme default (accent purple) kept a grey timestamp and a purple link on it.
+            if (showBubble && state.isMine) {
+                val themeLinkColor = ElementTheme.colors.textLinkExternal
+                CompositionLocalProvider(
+                    LocalOutgoingBubbleContentColor provides contentColorForBubble(backgroundBubbleColor),
+                    LocalOutgoingBubbleLinkColor provides linkColorForBubble(backgroundBubbleColor, themeLinkColor),
+                ) {
                     content()
                 }
             } else {
