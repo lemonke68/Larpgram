@@ -56,8 +56,9 @@ start() {
     fi
     # Keep the upstream files we removed deleted.
     for path in "${DROPPED_PATHS[@]}"; do
-        if [ -e "$path" ] && ! git cat-file -e "HEAD:$path" 2>/dev/null; then
-            git rm -r -q --force -- "$path"
+        if ! git cat-file -e "HEAD:$path" 2>/dev/null; then
+            git rm -r -q --force --ignore-unmatch -- "$path"
+            rm -rf -- "$path"
         fi
     done
     git status --short | grep -E '^(UU|AA|DU|UD|AU|UA|DD) ' || true
