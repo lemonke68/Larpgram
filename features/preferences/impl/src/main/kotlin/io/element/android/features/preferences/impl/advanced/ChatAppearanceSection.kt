@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,15 +62,15 @@ import io.element.android.libraries.designsystem.theme.ChatThemeOption
 import io.element.android.libraries.designsystem.theme.ChatWallpaperGradient
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.chatWallpaperBackground
-import io.element.android.libraries.designsystem.theme.contentColorForBubble
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Slider
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.theme.contentColorForBubble
 import io.element.android.libraries.designsystem.theme.messageFromMeBackground
 import io.element.android.libraries.designsystem.theme.messageFromOtherBackground
 import kotlin.math.roundToInt
 
-/**
+/*
  * Larpgram: «Настройки чатов» разбито на два экрана в духе Telegram.
  *
  * [ChatAppearanceSection] — главный экран (размер текста, углы блоков, обои, переход в редактор темы).
@@ -160,6 +161,7 @@ fun ColumnScope.ChatAppearanceSection(
     }
 
     TgSettingsGroup {
+        SectionLabel(stringResource(R.string.screen_chat_appearance_wallpaper_title))
         WallpaperRow(
             selected = selectedWallpaper,
             isCustomSelected = isCustomSelected,
@@ -558,25 +560,39 @@ private fun ColumnScope.SliderRow(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        // Заголовок и значение в одну строку, как в TG.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
+                modifier = Modifier.weight(1f),
                 text = title,
                 style = ElementTheme.typography.fontBodyLgRegular,
                 color = ElementTheme.colors.textPrimary,
             )
             Text(
-                modifier = Modifier.fillMaxWidth(),
                 text = value.toString(),
                 textAlign = TextAlign.End,
                 style = ElementTheme.typography.fontBodyMdMedium,
                 color = ElementTheme.colors.textActionAccent,
             )
         }
+        // Дефолтные цвета Material давали чёрный трек с точками на каждом шаге — выбивалось из
+        // палитры. Как в TG: трек и ползунок цвета акцента, шаги не рисуем.
+        val accent = ElementTheme.colors.bgAccentRest
         Slider(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.roundToInt()) },
             valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
             steps = (valueRange.last - valueRange.first - 1).coerceAtLeast(0),
+            colors = SliderDefaults.colors(
+                thumbColor = accent,
+                activeTrackColor = accent,
+                inactiveTrackColor = ElementTheme.colors.bgSubtlePrimary,
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent,
+            ),
         )
     }
 }

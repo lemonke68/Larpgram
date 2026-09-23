@@ -9,10 +9,7 @@
 package io.element.android.features.userprofile.shared
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -29,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -40,11 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import io.element.android.libraries.designsystem.components.avatar.AvatarSize
-import kotlinx.coroutines.launch
-import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.libraries.designsystem.components.button.MainActionButton
 import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.features.userprofile.api.UserProfileEvents
 import io.element.android.features.userprofile.api.UserProfileState
@@ -53,7 +44,9 @@ import io.element.android.features.userprofile.shared.blockuser.BlockUserDialogs
 import io.element.android.features.userprofile.shared.blockuser.BlockUserSection
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.components.async.AsyncActionViewDefaults
+import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.button.BackButton
+import io.element.android.libraries.designsystem.components.button.MainActionButton
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -69,6 +62,7 @@ import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.ui.components.CreateDmConfirmationBottomSheet
 import io.element.android.libraries.ui.strings.CommonStrings
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -271,7 +265,7 @@ private fun UserProfileSelfActionsSection(
             onClick = onSetPhoto,
         )
         MainActionButton(
-            title = stringResource(CommonStrings.action_edit),
+            title = stringResource(CommonStrings.larpgram_action_edit_profile),
             imageVector = CompoundIcons.Edit(),
             onClick = onEdit,
         )

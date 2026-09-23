@@ -10,6 +10,9 @@
     <string name="larpgram_video_message">"Video message"</string>
     <!-- Кнопка на своём профиле (TG-стиль): выбрать/сменить фото аватара. -->
     <string name="larpgram_action_set_photo">"Set photo"</string>
+    <!-- Кнопка на своём профиле: изменить профиль. Короткое слово, как в TG: «Редактировать» не
+         влезало в плитку и переносилось по слогам. -->
+    <string name="larpgram_action_edit_profile">"Edit"</string>
     <!-- Подпись строки описания (bio) в карточке профиля. Не путать с common_about («О приложении»). -->
     <string name="larpgram_profile_about_label">"About"</string>
 </resources>

@@ -96,7 +96,7 @@
   <string name="action_copy">"Копировать"</string>
   <string name="action_copy_caption">"Скопировать подпись"</string>
   <string name="action_copy_link">"Скопировать ссылку"</string>
-  <string name="action_copy_link_to_message">"Скопировать ссылку в сообщение"</string>
+  <string name="action_copy_link_to_message">"Копировать ссылку на сообщение"</string>
   <string name="action_copy_text">"Копировать текст"</string>
   <string name="action_create">"Создать"</string>
   <string name="action_create_room">"Создать комнату"</string>

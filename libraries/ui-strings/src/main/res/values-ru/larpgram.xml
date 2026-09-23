@@ -3,5 +3,6 @@
 <resources>
     <string name="larpgram_video_message">"Кружочек"</string>
     <string name="larpgram_action_set_photo">"Выбрать фото"</string>
+    <string name="larpgram_action_edit_profile">"Изменить"</string>
     <string name="larpgram_profile_about_label">"О себе"</string>
 </resources>
