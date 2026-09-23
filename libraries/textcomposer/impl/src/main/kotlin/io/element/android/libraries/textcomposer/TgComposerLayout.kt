@@ -88,6 +88,7 @@ internal fun TgStandardLayout(
     endButtonParams: EndButtonParams,
     onAddAttachment: () -> Unit,
     onStickerClick: (() -> Unit)?,
+    isMediaPanelOpen: Boolean,
     circleRecordGestures: CircleRecordGestures?,
     showRecordModeButton: Boolean,
     onVoiceHoldStop: () -> Unit,
@@ -129,8 +130,9 @@ internal fun TgStandardLayout(
                 // To avoid loosing keyboard focus, the IconButton has to be always enabled.
                 if (voiceMessageState is VoiceMessageState.Idle) {
                     TgComposerIconButton(
-                        imageVector = CompoundIcons.Reaction(),
-                        contentDescription = "Эмодзи и стикеры",
+                        // Панель открыта — кнопка возвращает клавиатуру, как в Telegram.
+                        imageVector = if (isMediaPanelOpen) CompoundIcons.Keyboard() else CompoundIcons.Reaction(),
+                        contentDescription = if (isMediaPanelOpen) "Клавиатура" else "Эмодзи и стикеры",
                         tint = iconTint,
                         onClick = { onStickerClick?.invoke() },
                         modifier = Modifier.padding(start = 2.dp),

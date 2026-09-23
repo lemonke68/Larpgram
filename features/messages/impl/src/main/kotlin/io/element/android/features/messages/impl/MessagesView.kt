@@ -38,9 +38,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -48,7 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +90,10 @@ import io.element.android.features.messages.impl.messagecomposer.AttachmentsBott
 import io.element.android.features.messages.impl.messagecomposer.DisabledComposerView
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerView
+import io.element.android.features.messages.impl.messagecomposer.TgMediaPanel
+import io.element.android.features.messages.impl.messagecomposer.TgMediaPanelController
+import io.element.android.features.messages.impl.messagecomposer.TgMediaPanelTab
+import io.element.android.features.messages.impl.messagecomposer.rememberTgMediaPanelController
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsPickerView
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerView
@@ -124,9 +125,10 @@ import io.element.android.features.messages.impl.voicemessages.composer.VoiceMes
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.stickers.impl.StickerPickerEvents
-import io.element.android.features.stickers.impl.StickerPickerView
 import io.element.android.features.stickers.impl.StickerSendErrorDialog
+import io.element.android.features.stickers.impl.TgStickerPanel
 import io.element.android.libraries.androidutils.ui.hideKeyboard
+import io.element.android.libraries.androidutils.ui.showKeyboard
 import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertMolecule
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayoutState
@@ -140,7 +142,6 @@ import io.element.android.libraries.designsystem.text.toAnnotatedString
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.theme.components.BottomSheetDragHandle
 import io.element.android.libraries.designsystem.theme.components.Icon
-import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.HideKeyboardWhenDisposed
@@ -167,6 +168,7 @@ import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.wysiwyg.link.Link
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -190,6 +192,8 @@ fun MessagesView(
     customReactionBottomSheet: @Composable () -> Unit,
     // Правка форка (фаза 3): рендерер пикера эмодзи для инлайн-разворота по «+» в оверлее.
     emojiPickerRenderer: EmojiPickerRenderer,
+    // Правка форка: клавиатура эмодзи для панели Telegram под полем ввода (модификатор, вставка).
+    emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)? = null,
 ) {
     val eventContentValidationState = LocalEventContentValidationState.current
 
@@ -209,6 +213,7 @@ fun MessagesView(
     // стеклом (haze), поэтому знает высоту панели снизу. В режиме форматирования и подсказок
     // упоминаний шторка апстримовская — непрозрачная, лента над ней.
     val chatGlassState = rememberHazeState()
+    val mediaPanel = rememberTgMediaPanelController()
     var composerOverlayHeight by remember { mutableStateOf(0.dp) }
     val floatingComposer = !state.composerState.showTextFormatting && state.composerState.suggestions.isEmpty()
 
@@ -401,10 +406,13 @@ fun MessagesView(
             Column(
                 modifier = Modifier
                     .onSizeChanged { composerOverlayHeight = with(density) { it.height.toDp() } }
-                    .navigationBarsPadding()
+                    // Открытая панель эмодзи сама доходит до низа экрана, полосу навигации учитывает она.
+                    .then(if (mediaPanel.isVisible) Modifier else Modifier.navigationBarsPadding())
             ) {
                 MessagesViewComposerBottomSheetContents(
                     state = state,
+                    mediaPanel = mediaPanel,
+                    emojiKeyboard = emojiKeyboard,
                     onLinkClick = { url, customTab -> onLinkClick(url, customTab) },
                     onRoomSuccessorClick = { roomId ->
                         state.timelineState.eventSink(TimelineEvent.NavigateToPredecessorOrSuccessorRoom(roomId = roomId))
@@ -760,72 +768,24 @@ private fun MessagesViewComposerBottomSheetContents(
     state: MessagesState,
     onRoomSuccessorClick: (RoomId) -> Unit,
     onLinkClick: (String, Boolean) -> Unit,
+    mediaPanel: TgMediaPanelController,
+    emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)?,
 ) {
     val contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
 
-    // Правка форка: пикер стикеров. Показывается только если состояние доехало из
-    // презентера, иначе (превью, тесты) экран ведёт себя как в апстриме.
-    var showStickerPicker by rememberSaveable { mutableStateOf(false) }
-    var showGifTab by rememberSaveable { mutableStateOf(false) }
+    // Правка форка: стикеры и гифки — вкладки панели Telegram под полем ввода (TgMediaPanel).
     val stickerPickerState = state.stickerPickerState
     val gifPickerState = state.gifPickerState
-    // Правка форка: пикер живёт дольше шторки, поэтому при открытии просим перечитать
-    // данные. Иначе список недавних гифок остаётся таким, каким был при первом показе.
-    LaunchedEffect(showStickerPicker, showGifTab) {
-        if (showStickerPicker && showGifTab) {
+    val localView = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+    // Панель живёт дольше вкладки, поэтому при открытии GIF просим перечитать данные. Иначе
+    // список недавних гифок остаётся таким, каким был при первом показе.
+    LaunchedEffect(mediaPanel.isVisible, mediaPanel.tab) {
+        if (mediaPanel.isVisible && mediaPanel.tab == TgMediaPanelTab.Gif) {
             gifPickerState?.eventSink(GifPickerEvents.Retry)
         }
     }
-
-    if (stickerPickerState != null && showStickerPicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showStickerPicker = false },
-            // Сетки внутри скроллятся сами, шторке скролл не нужен.
-            scrollable = false,
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                if (gifPickerState != null) {
-                    SingleChoiceSegmentedButtonRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                    ) {
-                        SegmentedButton(
-                            selected = !showGifTab,
-                            onClick = { showGifTab = false },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        ) {
-                            Text("Стикеры")
-                        }
-                        SegmentedButton(
-                            selected = showGifTab,
-                            onClick = { showGifTab = true },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        ) {
-                            Text("GIF")
-                        }
-                    }
-                }
-                if (showGifTab && gifPickerState != null) {
-                    GifPickerView(
-                        state = gifPickerState,
-                        onGifClick = { gif ->
-                            gifPickerState.eventSink(GifPickerEvents.SendGif(gif))
-                            showStickerPicker = false
-                        },
-                    )
-                } else {
-                    StickerPickerView(
-                        state = stickerPickerState,
-                        onStickerClick = { image ->
-                            stickerPickerState.eventSink(StickerPickerEvents.SendSticker(image))
-                            showStickerPicker = false
-                        },
-                    )
-                }
-            }
-        }
-    }
+    val markdownState = (state.composerState.textEditorState as? TextEditorState.Markdown)?.state
 
     // Правка форка: сообщение о неудачной отправке стикера живёт СНАРУЖИ шторки. Внутри
     // его бы никто не увидел: шторка закрывается в тот же момент, когда стикер уходит.
@@ -879,13 +839,25 @@ private fun MessagesViewComposerBottomSheetContents(
                     MessageComposerView(
                         state = state.composerState,
                         voiceMessageState = state.voiceMessageComposerState,
-                        modifier = Modifier.fillMaxWidth(),
-                        // Правка форка: открываем пикер стикеров.
-                        onStickerClick = if (stickerPickerState != null) {
-                            { showStickerPicker = true }
-                        } else {
-                            null
+                        // Правка форка: вес без заполнения — панель эмодзи под полем меряется первой,
+                        // иначе поле ввода (fillMaxSize внутри) забирает всю высоту шторки.
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false),
+                        // Правка форка: кнопка слева открывает панель эмодзи/GIF/стикеров вместо
+                        // клавиатуры, а при открытой панели возвращает клавиатуру.
+                        onStickerClick = {
+                            if (mediaPanel.isVisible) {
+                                coroutineScope.launch {
+                                    state.composerState.textEditorState.requestFocus()
+                                    localView.showKeyboard()
+                                }
+                            } else {
+                                mediaPanel.open()
+                                localView.hideKeyboard()
+                            }
                         },
+                        isMediaPanelOpen = mediaPanel.isVisible,
                         // Правка форка: запись кружочка жестами, как в Telegram.
                         // Держишь — пишется, отпустил — улетело, свайп вверх фиксирует,
                         // свайп влево отменяет.
@@ -902,6 +874,33 @@ private fun MessagesViewComposerBottomSheetContents(
                         },
                     )
                 }
+                TgMediaPanel(
+                    controller = mediaPanel,
+                    onBackspace = { markdownState?.deleteBeforeCursor() },
+                    emojiContent = { modifier ->
+                        emojiKeyboard?.invoke(modifier) { emoji -> markdownState?.insertAtCursor(emoji) }
+                    },
+                    gifContent = gifPickerState?.let { gifState ->
+                        @Composable { modifier ->
+                            GifPickerView(
+                                state = gifState,
+                                onGifClick = { gif -> gifState.eventSink(GifPickerEvents.SendGif(gif)) },
+                                modifier = modifier,
+                                fillHeight = true,
+                                onSearchFocusChange = { mediaPanel.isSearchFocused = it },
+                            )
+                        }
+                    },
+                    stickerContent = stickerPickerState?.let { stickerState ->
+                        @Composable { modifier ->
+                            TgStickerPanel(
+                                state = stickerState,
+                                onStickerClick = { image -> stickerState.eventSink(StickerPickerEvents.SendSticker(image)) },
+                                modifier = modifier,
+                            )
+                        }
+                    },
+                )
             }
         }
         state.isChannel -> {

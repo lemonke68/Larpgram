@@ -13,8 +13,8 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
-import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.di.CacheDirectory
+import io.element.android.libraries.di.annotations.ApplicationContext
 import okhttp3.OkHttpClient
 import java.io.File
 

@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,8 +39,13 @@ fun GifPickerView(
     state: GifPickerState,
     onGifClick: (Gif) -> Unit,
     modifier: Modifier = Modifier,
+    // Правка форка: вкладка «GIF» панели Telegram — сетка тянется на всю высоту панели, а фокус
+    // поиска сообщается наверх (пока ищем, панель не закрывается от поднятой клавиатуры).
+    fillHeight: Boolean = false,
+    onSearchFocusChange: (Boolean) -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
+        val contentModifier = if (fillHeight) Modifier.weight(1f) else Modifier.height(PICKER_HEIGHT)
         TextField(
             value = state.query,
             onValueChange = { state.eventSink(GifPickerEvents.QueryChanged(it)) },
@@ -47,12 +53,13 @@ fun GifPickerView(
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .onFocusChanged { onSearchFocusChange(it.isFocused) },
         )
 
         when {
-            state.isLoading -> CenteredBox { CircularProgressIndicator() }
-            state.hasFailed -> CenteredBox {
+            state.isLoading -> CenteredBox(contentModifier) { CircularProgressIndicator() }
+            state.hasFailed -> CenteredBox(contentModifier) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "Не получилось загрузить гифки",
@@ -65,7 +72,7 @@ fun GifPickerView(
                     )
                 }
             }
-            state.isEmpty -> CenteredBox {
+            state.isEmpty -> CenteredBox(contentModifier) {
                 Text(
                     text = if (state.query.isBlank()) "Тут появятся отправленные гифки" else "Ничего не нашлось",
                     color = ElementTheme.colors.textSecondary,
@@ -79,18 +86,20 @@ fun GifPickerView(
                         modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                     )
                 }
-                GifGrid(state = state, onGifClick = onGifClick)
+                GifGrid(state = state, onGifClick = onGifClick, modifier = contentModifier)
             }
         }
     }
 }
 
 @Composable
-private fun CenteredBox(content: @Composable () -> Unit) {
+private fun CenteredBox(
+    modifier: Modifier,
+    content: @Composable () -> Unit,
+) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(PICKER_HEIGHT),
+        modifier = modifier
+            .fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ) {
         content()
@@ -101,12 +110,12 @@ private fun CenteredBox(content: @Composable () -> Unit) {
 private fun GifGrid(
     state: GifPickerState,
     onGifClick: (Gif) -> Unit,
+    modifier: Modifier,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(GRID_COLUMNS),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(PICKER_HEIGHT),
+        modifier = modifier
+            .fillMaxWidth(),
         contentPadding = PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),

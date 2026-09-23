@@ -143,6 +143,8 @@ fun TextComposer(
     // прочие места апстрима продолжали работать без изменений.
     onStickerClick: (() -> Unit)? = null,
     circleRecordGestures: CircleRecordGestures? = null,
+    // Правка форка: открыта панель эмодзи Telegram (вместо клавиатуры).
+    isMediaPanelOpen: Boolean = false,
 ) {
     val markdown = when (state) {
         is TextEditorState.Markdown -> state.state.text.value()
@@ -485,6 +487,7 @@ fun TextComposer(
                 endButtonParams = endButtonParams,
                 voiceRecording = voiceRecording,
                 onStickerClick = onStickerClick,
+                isMediaPanelOpen = isMediaPanelOpen,
                 circleRecordGestures = circleRecordGestures,
                 showRecordModeButton = showRecordModeButton,
                 onVoiceHoldStop = {

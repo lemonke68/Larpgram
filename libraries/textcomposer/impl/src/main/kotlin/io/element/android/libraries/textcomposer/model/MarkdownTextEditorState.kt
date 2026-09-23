@@ -31,6 +31,7 @@ import io.element.android.libraries.textcomposer.mentions.MentionType
 import io.element.android.libraries.textcomposer.mentions.ResolvedSuggestion
 import io.element.android.libraries.textcomposer.mentions.getMentionSpans
 import kotlinx.parcelize.Parcelize
+import java.text.BreakIterator
 
 @Stable
 class MarkdownTextEditorState(
@@ -86,6 +87,41 @@ class MarkdownTextEditorState(
                 selection = IntRange(length, length)
             }
         }
+    }
+
+    /**
+     * Правка форка: вставка с панели эмодзи Telegram в позицию курсора (выделение заменяется),
+     * курсор встаёт после вставленного.
+     */
+    fun insertAtCursor(value: String) {
+        val current = SpannableStringBuilder(text.value())
+        val start = minOf(selection.first, selection.last).coerceIn(0, current.length)
+        val end = maxOf(selection.first, selection.last).coerceIn(start, current.length)
+        current.replace(start, end, value)
+        text.update(current, true)
+        val cursor = start + value.length
+        selection = cursor..cursor
+    }
+
+    /**
+     * Правка форка: кнопка «стереть» панели эмодзи. Стирает выделение или один символ перед
+     * курсором целиком, вместе с составными эмодзи (флаги, семьи, оттенки кожи).
+     */
+    fun deleteBeforeCursor() {
+        val current = SpannableStringBuilder(text.value())
+        val start = minOf(selection.first, selection.last).coerceIn(0, current.length)
+        val end = maxOf(selection.first, selection.last).coerceIn(start, current.length)
+        val deleteFrom = if (start != end) {
+            start
+        } else {
+            if (start == 0) return
+            val iterator = BreakIterator.getCharacterInstance()
+            iterator.setText(current.toString())
+            iterator.preceding(start).takeIf { it != BreakIterator.DONE } ?: (start - 1)
+        }
+        current.delete(deleteFrom, end)
+        text.update(current, true)
+        selection = deleteFrom..deleteFrom
     }
 
     fun getMessageMarkdown(permalinkBuilder: PermalinkBuilder): String {

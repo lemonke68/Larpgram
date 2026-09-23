@@ -55,7 +55,11 @@ import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
+import io.element.android.libraries.emoji.api.picker.EmojiKeyboardRenderer
+import io.element.android.libraries.emoji.api.picker.EmojiPickerPresenter
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.emoji.api.recentemojis.AddRecentEmoji
+import io.element.android.libraries.emoji.api.recentemojis.GetRecentEmojis
 import io.element.android.libraries.matrix.api.analytics.toAnalyticsViewRoom
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -103,6 +107,11 @@ class MessagesNode(
     private val roomMemberModerationRenderer: RoomMemberModerationRenderer,
     private val eventContentValidationCache: EventContentValidationCache,
     private val emojiPickerRenderer: EmojiPickerRenderer,
+    // Правка форка: клавиатура эмодзи в панели Telegram под полем ввода.
+    private val emojiKeyboardRenderer: EmojiKeyboardRenderer,
+    emojiPickerPresenterFactory: EmojiPickerPresenter.Factory,
+    getRecentEmojis: GetRecentEmojis,
+    private val addRecentEmoji: AddRecentEmoji,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator {
     data class Inputs(
         val focusedEventId: EventId?,
@@ -112,6 +121,7 @@ class MessagesNode(
     private val callback: Callback = callback()
 
     private val timelineController = TimelineController(room, room.liveTimeline)
+    private val emojiKeyboardPresenter = emojiPickerPresenterFactory.create(getRecentEmojis)
     private val presenter = presenterFactory.create(
         navigator = this,
         composerPresenter = messageComposerPresenterFactory.create(timelineController, this, threadRoot = null),
@@ -348,6 +358,17 @@ class MessagesNode(
                 },
                 // Правка форка (фаза 3): тот же рендерер для инлайн-пикера в привязанном оверлее.
                 emojiPickerRenderer = emojiPickerRenderer,
+                emojiKeyboard = { keyboardModifier, onEmoji ->
+                    val emojiKeyboardState = emojiKeyboardPresenter.present()
+                    emojiKeyboardRenderer.Render(
+                        state = emojiKeyboardState,
+                        onSelectEmoji = { emoji ->
+                            onEmoji(emoji.unicode)
+                            sessionCoroutineScope.launch { addRecentEmoji(emoji.unicode) }
+                        },
+                        modifier = keyboardModifier,
+                    )
+                },
                 onThreadsListClick = callback::navigateToThreadsList,
             )
             roomMemberModerationRenderer.Render(

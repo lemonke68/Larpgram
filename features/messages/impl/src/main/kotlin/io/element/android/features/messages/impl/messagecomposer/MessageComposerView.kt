@@ -39,6 +39,8 @@ internal fun MessageComposerView(
     modifier: Modifier = Modifier,
     // Правка форка: открытие пикера стикеров.
     onStickerClick: (() -> Unit)? = null,
+    // Правка форка: открыта панель эмодзи Telegram — кнопка слева показывает клавиатуру.
+    isMediaPanelOpen: Boolean = false,
     circleRecordGestures: CircleRecordGestures? = null,
 ) {
     val view = LocalView.current
@@ -102,6 +104,7 @@ internal fun MessageComposerView(
     TextComposer(
         modifier = modifier,
         onStickerClick = onStickerClick,
+        isMediaPanelOpen = isMediaPanelOpen,
         circleRecordGestures = circleRecordGestures,
         state = state.textEditorState,
         voiceMessageState = voiceMessageState.voiceMessageState,

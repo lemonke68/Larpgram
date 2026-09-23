@@ -145,7 +145,7 @@ fun StickerSendErrorDialog(state: StickerPickerState) {
 
 /** Окно добавления пака: ввод имени, ход импорта и результат. */
 @Composable
-private fun ImportDialog(state: StickerPickerState) {
+internal fun ImportDialog(state: StickerPickerState) {
     val importState = state.importState
     if (importState is ImportState.Hidden) return
 
