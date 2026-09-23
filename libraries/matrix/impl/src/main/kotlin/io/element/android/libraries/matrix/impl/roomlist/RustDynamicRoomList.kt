@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.matrix.rustcomponents.sdk.RoomListDynamicEntriesController
+import timber.log.Timber
 
 private const val DEFAULT_ADD_PAGES_COUNT = 3
 
@@ -34,27 +35,35 @@ internal class RustDynamicRoomList(
     }
 
     override suspend fun updateFilter(filter: RoomListFilter) {
-        mutex.withLock {
-            dynamicController()?.let { controller ->
-                // Reset pagination when filter changes
-                controller.resetToOnePage()
-                val rustFilter = RoomListFilterMapper.toRustFilter(filter)
-                controller.setFilter(rustFilter)
-                // Then preload some pages
-                controller.addPages(addPagesCount)
-            }
+        withController { controller ->
+            // Reset pagination when filter changes
+            controller.resetToOnePage()
+            val rustFilter = RoomListFilterMapper.toRustFilter(filter)
+            controller.setFilter(rustFilter)
+            // Then preload some pages
+            controller.addPages(addPagesCount)
         }
     }
 
     override suspend fun loadMore() {
-        mutex.withLock {
-            dynamicController()?.addPages(addPagesCount)
-        }
+        withController { it.addPages(addPagesCount) }
     }
 
     override suspend fun reset() {
+        withController { it.resetToOnePage() }
+    }
+
+    // Правка форка: контроллер уничтожается в awaitClose потока записей (выход из сессии, сбой
+    // потока), и это может случиться между чтением ссылки и вызовом. Мёртвый объект uniffi бросает
+    // IllegalStateException — глотаем его: списка уже нет, пагинировать нечего.
+    private suspend fun withController(block: (RoomListDynamicEntriesController) -> Unit) {
         mutex.withLock {
-            dynamicController()?.resetToOnePage()
+            val controller = dynamicController() ?: return
+            try {
+                block(controller)
+            } catch (e: IllegalStateException) {
+                Timber.w(e, "Room list controller already destroyed")
+            }
         }
     }
 

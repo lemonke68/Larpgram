@@ -58,6 +58,7 @@ internal fun RoomListInterface.entriesFlow(
     pageSize: Int,
     initialFilterKind: RoomListEntriesDynamicFilterKind,
     onControllerCreated: (RoomListDynamicEntriesController) -> Unit,
+    onControllerDestroyed: () -> Unit = {},
 ): Flow<List<RoomListEntriesUpdate>> =
     callbackFlow {
         val listener = object : RoomListEntriesListener {
@@ -73,6 +74,9 @@ internal fun RoomListInterface.entriesFlow(
         controller.setFilter(initialFilterKind)
         onControllerCreated(controller)
         awaitClose {
+            // Правка форка: сначала отдаём ссылку на контроллер, потом уничтожаем его — иначе
+            // RustDynamicRoomList.loadMore() зовёт addOnePage() у мёртвого объекта и приложение падает.
+            onControllerDestroyed()
             result.entriesStream().cancelAndDestroy()
             controller.destroy()
             result.destroy()
