@@ -9,6 +9,7 @@
 package io.element.android.features.messages.impl.messagecomposer
 
 import android.net.Uri
+import io.element.android.features.messages.impl.attachments.tgattach.GalleryMedia
 import io.element.android.libraries.textcomposer.mentions.ResolvedSuggestion
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.textcomposer.model.Suggestion
@@ -29,6 +30,10 @@ sealed interface MessageComposerEvent {
         data object Location : PickAttachmentSource
         data object Poll : PickAttachmentSource
     }
+
+    // Правка форка: меню вложений Telegram — отправка выбранного прямо из шторки и предпросмотр.
+    data class SendGalleryMedia(val media: List<GalleryMedia>, val caption: String?, val compress: Boolean) : MessageComposerEvent
+    data class PreviewGalleryMedia(val media: List<GalleryMedia>) : MessageComposerEvent
 
     data class ToggleTextFormatting(val enabled: Boolean) : MessageComposerEvent
     data class Error(val error: Throwable) : MessageComposerEvent

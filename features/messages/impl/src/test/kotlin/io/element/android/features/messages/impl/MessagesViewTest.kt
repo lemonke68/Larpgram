@@ -316,7 +316,7 @@ class MessagesViewTest : RobolectricTest() {
                 state = state,
                 onSendLocationClick = callback,
             )
-            clickOn(R.string.screen_room_attachment_source_location)
+            clickOn(R.string.larpgram_attach_tab_location)
         }
     }
 
@@ -335,7 +335,7 @@ class MessagesViewTest : RobolectricTest() {
                 onCreatePollClick = callback,
             )
             // Then click on the poll action
-            clickOn(R.string.screen_room_attachment_source_poll)
+            clickOn(R.string.larpgram_attach_tab_poll)
         }
     }
 

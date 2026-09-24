@@ -88,6 +88,10 @@ dependencies {
     implementation(libs.sigpwned.emoji4j)
     implementation(libs.vanniktech.blurhash)
     implementation(libs.telephoto.zoomableimage)
+    // Правка форка: живой кадр камеры первой плиткой меню вложений.
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.camera2)
     implementation(libs.matrix.emojibase.bindings)
     implementation(projects.features.knockrequests.api)
     implementation(projects.features.roommembermoderation.api)

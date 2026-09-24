@@ -36,6 +36,8 @@ import io.element.android.features.location.api.LocationService
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.error.sendAttachmentError
+import io.element.android.features.messages.impl.attachments.tgattach.UncompressedMediaConfig
+import io.element.android.features.messages.impl.attachments.tgattach.sendGalleryMediaNow
 import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.RoomAliasSuggestionsDataSource
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
@@ -134,7 +136,7 @@ class MessageComposerPresenter(
     private val mediaPickerProvider: PickerProvider,
     private val sessionPreferencesStore: SessionPreferencesStore,
     private val localMediaFactory: LocalMediaFactory,
-    mediaSenderFactory: MediaSenderFactory,
+    private val mediaSenderFactory: MediaSenderFactory,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val analyticsService: AnalyticsService,
     private val locationService: LocationService,
@@ -357,6 +359,28 @@ class MessageComposerPresenter(
                 MessageComposerEvent.PickAttachmentSource.Poll -> {
                     showAttachmentSourcePicker = false
                     // Navigation to the create poll screen is done at the view layer
+                }
+                is MessageComposerEvent.SendGalleryMedia -> {
+                    // Правка форка: отправка из меню вложений Telegram без экрана предпросмотра.
+                    showAttachmentSourcePicker = false
+                    val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
+                    sessionCoroutineScope.launch {
+                        sendGalleryMediaNow(
+                            media = event.media,
+                            caption = event.caption,
+                            inReplyToEventId = inReplyToEventId,
+                            mediaOptimizationConfig = if (event.compress) mediaOptimizationConfigProvider.get() else UncompressedMediaConfig,
+                            mediaSender = mediaSenderFactory.create(timelineMode = timelineController.mainTimelineMode()),
+                            room = room,
+                            matrixClient = matrixClient,
+                            snackbarDispatcher = snackbarDispatcher,
+                        )
+                    }
+                    resetComposerModeAfterAttaching()
+                }
+                is MessageComposerEvent.PreviewGalleryMedia -> {
+                    showAttachmentSourcePicker = false
+                    handlePickedMediaList(event.media.map { it.uri })
                 }
                 is MessageComposerEvent.ToggleTextFormatting -> {
                     showAttachmentSourcePicker = false

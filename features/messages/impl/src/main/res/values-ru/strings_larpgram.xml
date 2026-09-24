@@ -49,4 +49,38 @@
     <string name="larpgram_header_menu_threads">Треды</string>
     <string name="larpgram_header_menu_info">Информация</string>
     <string name="larpgram_pinned_message_title">Закреплённое сообщение</string>
+    <!-- Меню вложений Telegram -->
+    <string name="larpgram_attach_tab_gallery">Галерея</string>
+    <string name="larpgram_attach_tab_file">Файл</string>
+    <string name="larpgram_attach_tab_location">Геопозиция</string>
+    <string name="larpgram_attach_tab_poll">Опрос</string>
+    <string name="larpgram_attach_tab_format">Формат</string>
+    <string name="larpgram_attach_caption_hint">Добавить подпись…</string>
+    <plurals name="larpgram_attach_selected_photos">
+        <item quantity="one">Выбрана %1$d фотография</item>
+        <item quantity="few">Выбрано %1$d фотографии</item>
+        <item quantity="many">Выбрано %1$d фотографий</item>
+        <item quantity="other">Выбрано %1$d фотографии</item>
+    </plurals>
+    <plurals name="larpgram_attach_selected_videos">
+        <item quantity="one">Выбрано %1$d видео</item>
+        <item quantity="few">Выбрано %1$d видео</item>
+        <item quantity="many">Выбрано %1$d видео</item>
+        <item quantity="other">Выбрано %1$d видео</item>
+    </plurals>
+    <plurals name="larpgram_attach_selected_media">
+        <item quantity="one">Выбран %1$d файл</item>
+        <item quantity="few">Выбрано %1$d файла</item>
+        <item quantity="many">Выбрано %1$d файлов</item>
+        <item quantity="other">Выбрано %1$d файла</item>
+    </plurals>
+    <string name="larpgram_attach_send_uncompressed">Отправить без сжатия</string>
+    <string name="larpgram_attach_access_title">Доступ к фото и видео</string>
+    <string name="larpgram_attach_access_text">Разрешите доступ к галерее, чтобы выбирать фото и видео прямо здесь.</string>
+    <string name="larpgram_attach_access_allow">Разрешить доступ</string>
+    <string name="larpgram_attach_access_settings">Открыть настройки</string>
+    <string name="larpgram_attach_system_gallery">Системная галерея</string>
+    <string name="larpgram_attach_partial_access">Открыт доступ только к части фото и видео.</string>
+    <string name="larpgram_attach_partial_manage">Изменить</string>
+    <string name="larpgram_attach_camera">Камера. Тап — фото, удержание — видео</string>
 </resources>

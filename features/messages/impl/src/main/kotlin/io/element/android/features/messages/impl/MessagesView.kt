@@ -83,10 +83,11 @@ import io.element.android.features.messages.impl.actionlist.LocalMessageActionsA
 import io.element.android.features.messages.impl.actionlist.MessageActionsAnchor
 import io.element.android.features.messages.impl.actionlist.MessageActionsOverlay
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachAction
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheet
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeStateView
 import io.element.android.features.messages.impl.link.LinkEvent
 import io.element.android.features.messages.impl.link.LinkView
-import io.element.android.features.messages.impl.messagecomposer.AttachmentsBottomSheet
 import io.element.android.features.messages.impl.messagecomposer.DisabledComposerView
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerView
@@ -287,8 +288,10 @@ fun MessagesView(
     ) {
     val expandableState = rememberExpandableBottomSheetLayoutState()
     val density = LocalDensity.current
+    // Правка форка: меню вложений Telegram рисуется поверх всего экрана чата, поэтому корень — Box.
+    Box(modifier = modifier.fillMaxSize()) {
     ExpandableBottomSheetLayout(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .imePadding()
             // Правка форка: низ не отступаем — обои и лента идут под панель навигации, отступ
@@ -357,8 +360,6 @@ fun MessagesView(
                             onReadReceiptClick = { event ->
                                 state.readReceiptBottomSheetState.eventSink(ReadReceiptBottomSheetEvent.EventSelected(event))
                             },
-                            onSendLocationClick = onSendLocationClick,
-                            onCreatePollClick = onCreatePollClick,
                             onSwipeToReply = { targetEvent ->
                                 state.eventSink(MessagesEvent.HandleAction(TimelineItemAction.Reply, targetEvent))
                             },
@@ -461,6 +462,42 @@ fun MessagesView(
         maxBottomSheetContentHeight = maxComposerHeightPx.toDp(),
         contentUnderSheet = floatingComposer,
     )
+
+    val showAttachSheet = state.composerState.showAttachmentSourcePicker
+    LaunchedEffect(showAttachSheet) {
+        if (showAttachSheet) {
+            // Клавиатура — Android View, FocusManager Compose её не прячет.
+            localView.hideKeyboard()
+            mediaPanel.close()
+        }
+    }
+    TgAttachSheet(
+        isVisible = showAttachSheet,
+        canShareLocation = state.composerState.canShareLocation,
+        enableTextFormatting = state.enableTextFormatting,
+        onAction = { action ->
+            val composerSink = state.composerState.eventSink
+            when (action) {
+                TgAttachAction.Dismiss -> composerSink(MessageComposerEvent.DismissAttachmentMenu)
+                is TgAttachAction.Send -> composerSink(MessageComposerEvent.SendGalleryMedia(action.media, action.caption, action.compress))
+                is TgAttachAction.Preview -> composerSink(MessageComposerEvent.PreviewGalleryMedia(action.media))
+                TgAttachAction.CameraPhoto -> composerSink(MessageComposerEvent.PickAttachmentSource.PhotoFromCamera)
+                TgAttachAction.CameraVideo -> composerSink(MessageComposerEvent.PickAttachmentSource.VideoFromCamera)
+                TgAttachAction.SystemGallery -> composerSink(MessageComposerEvent.PickAttachmentSource.FromGallery)
+                TgAttachAction.Files -> composerSink(MessageComposerEvent.PickAttachmentSource.FromFiles)
+                TgAttachAction.Location -> {
+                    composerSink(MessageComposerEvent.PickAttachmentSource.Location)
+                    onSendLocationClick()
+                }
+                TgAttachAction.Poll -> {
+                    composerSink(MessageComposerEvent.PickAttachmentSource.Poll)
+                    onCreatePollClick()
+                }
+                TgAttachAction.TextFormatting -> composerSink(MessageComposerEvent.ToggleTextFormatting(enabled = true))
+            }
+        },
+    )
+    } // конец Box меню вложений
     } // конец CompositionLocalProvider(LocalMessageActionsAnchor)
 
     var endPollConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
@@ -639,8 +676,6 @@ private fun MessagesViewContent(
     onReadReceiptClick: (TimelineItem.Event) -> Unit,
     onMessageLongClick: (TimelineItem.Event) -> Unit,
     onGalleryItemClick: ((TimelineItem.Event, Int) -> Unit),
-    onSendLocationClick: () -> Unit,
-    onCreatePollClick: () -> Unit,
     onViewAllPinnedMessagesClick: () -> Unit,
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
     forceJumpToBottomVisibility: Boolean,
@@ -653,13 +688,6 @@ private fun MessagesViewContent(
             .fillMaxSize()
             .imePadding(),
     ) {
-        AttachmentsBottomSheet(
-            state = state.composerState,
-            onSendLocationClick = onSendLocationClick,
-            onCreatePollClick = onCreatePollClick,
-            enableTextFormatting = state.enableTextFormatting,
-        )
-
         if (state.voiceMessageComposerState.showPermissionRationaleDialog) {
             VoiceMessagePermissionRationaleDialog(
                 onContinue = {

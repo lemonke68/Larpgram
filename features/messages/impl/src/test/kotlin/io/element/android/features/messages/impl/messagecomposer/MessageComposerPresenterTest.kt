@@ -24,6 +24,7 @@ import io.element.android.features.location.test.FakeLocationService
 import io.element.android.features.messages.impl.FakeMessagesNavigator
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.attachments.Attachment
+import io.element.android.features.messages.impl.attachments.tgattach.GalleryMedia
 import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.draft.FakeComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
@@ -39,7 +40,9 @@ import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
+import io.element.android.libraries.matrix.api.media.GalleryItemInfo
 import io.element.android.libraries.matrix.api.media.ImageInfo
+import io.element.android.libraries.matrix.api.media.MediaUploadHandler
 import io.element.android.libraries.matrix.api.media.VideoInfo
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
@@ -697,6 +700,75 @@ class MessageComposerPresenterTest : RobolectricTest() {
             assertThat(awaitItem().showAttachmentSourcePicker).isFalse()
         }
     }
+
+    @Test
+    fun `present - Preview gallery media from the Telegram attach sheet opens the preview`() = runTest {
+        val onPreviewAttachmentLambda = lambdaRecorder { _: ImmutableList<Attachment>, _: EventId? -> }
+        val presenter = createPresenter(
+            navigator = FakeMessagesNavigator(onPreviewAttachmentLambda = onPreviewAttachmentLambda),
+        )
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.AddAttachment)
+            assertThat(awaitItem().showAttachmentSourcePicker).isTrue()
+            initialState.eventSink(MessageComposerEvent.PreviewGalleryMedia(listOf(aGalleryMedia(1))))
+            assertThat(awaitItem().showAttachmentSourcePicker).isFalse()
+            onPreviewAttachmentLambda.assertions().isCalledOnce()
+        }
+    }
+
+    @Test
+    fun `present - Send gallery media from the Telegram attach sheet sends one album with the caption`() = runTest {
+        val sendGalleryLambda = lambdaRecorder<List<GalleryItemInfo>, String?, String?, EventId?, Result<MediaUploadHandler>> { _, _, _, _ ->
+            Result.success(FakeMediaUploadHandler())
+        }
+        val room = FakeJoinedRoom(
+            typingNoticeResult = { Result.success(Unit) },
+            liveTimeline = FakeTimeline().apply { this.sendGalleryLambda = sendGalleryLambda },
+        )
+        val presenter = createPresenter(room = room)
+        mediaPreProcessor.givenResult(Result.success(anImageUploadInfo()))
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(MessageComposerEvent.AddAttachment)
+            assertThat(awaitItem().showAttachmentSourcePicker).isTrue()
+            initialState.eventSink(
+                MessageComposerEvent.SendGalleryMedia(
+                    media = listOf(aGalleryMedia(1), aGalleryMedia(2)),
+                    caption = "album",
+                    compress = true,
+                )
+            )
+            assertThat(awaitItem().showAttachmentSourcePicker).isFalse()
+            advanceUntilIdle()
+            assert(sendGalleryLambda)
+                .isCalledOnce()
+                .with(any(), value("album"), value(null), value(null))
+            assertThat(mediaPreProcessor.processCallCount).isEqualTo(2)
+        }
+    }
+
+    private fun aGalleryMedia(id: Long) = GalleryMedia(
+        id = id,
+        uri = Uri.parse("content://media/external/images/media/$id"),
+        mimeType = MimeTypes.Jpeg,
+        isVideo = false,
+        durationMs = 0,
+    )
+
+    private fun anImageUploadInfo() = MediaUploadInfo.Image(
+        file = File("/some/path"),
+        imageInfo = ImageInfo(
+            width = null,
+            height = null,
+            mimetype = null,
+            size = null,
+            thumbnailInfo = null,
+            thumbnailSource = null,
+            blurhash = null,
+        ),
+        thumbnailFile = null,
+    )
 
     @Test
     fun `present - Pick image from gallery`() = runTest {
