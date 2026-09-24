@@ -9,6 +9,26 @@
 package io.element.android.features.preferences.impl.root
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.libraries.designsystem.components.avatar.Avatar
+import io.element.android.libraries.designsystem.components.avatar.AvatarSize
+import io.element.android.libraries.designsystem.components.avatar.AvatarType
+import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.ui.model.getAvatarData
+import io.element.android.libraries.matrix.ui.model.getBestName
+import io.element.android.libraries.ui.strings.CommonStrings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -99,4 +119,65 @@ fun TgSettingsItem(
         style = style,
         onClick = onClick,
     )
+}
+
+/**
+ * Шапка корня настроек как в TG (`SettingsActivity`): крупный аватар по центру с кнопкой камеры,
+ * имя и @имя пользователя. Тап — в редактирование профиля.
+ */
+@Composable
+fun TgSettingsProfileHeader(
+    matrixUser: MatrixUser,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(top = 8.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(modifier = Modifier.size(AvatarSize.UserHeader.dp)) {
+            Avatar(
+                avatarData = matrixUser.getAvatarData(size = AvatarSize.UserHeader),
+                avatarType = AvatarType.User,
+                contentDescription = stringResource(CommonStrings.a11y_user_avatar),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(ElementTheme.colors.bgCanvasDefault)
+                    .padding(2.dp)
+                    .clip(CircleShape)
+                    .background(ElementTheme.colors.iconSecondary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    modifier = Modifier.size(18.dp),
+                    imageVector = CompoundIcons.TakePhotoSolid(),
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            modifier = Modifier.padding(horizontal = 24.dp),
+            text = matrixUser.getBestName(),
+            style = ElementTheme.typography.fontHeadingSmMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = matrixUser.userId.value.substringBefore(":"),
+            style = ElementTheme.typography.fontBodyMdRegular,
+            color = ElementTheme.colors.textSecondary,
+        )
+    }
 }

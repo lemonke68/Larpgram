@@ -24,7 +24,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.preferences.impl.user.UserPreferences
 import io.element.android.features.preferences.impl.userstatus.UserStatusState
 import io.element.android.features.preferences.impl.userstatus.UserStatusView
 import io.element.android.libraries.architecture.AsyncAction
@@ -73,11 +72,10 @@ fun PreferencesRootView(
             title = stringResource(id = CommonStrings.common_settings),
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) {
-            UserPreferences(
-                modifier = Modifier.clickable {
-                    onOpenUserProfile(state.myUser)
-                },
+            // Правка форка: шапка TG — крупный аватар с камерой, имя и @имя по центру.
+            TgSettingsProfileHeader(
                 matrixUser = state.myUser,
+                onClick = { onOpenUserProfile(state.myUser) },
             )
             if (state.isMultiAccountEnabled) {
                 MultiAccountSection(

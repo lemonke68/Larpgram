@@ -147,11 +147,14 @@ private fun NotificationSettingsContentView(
         )
     }
 
-    PreferenceSwitch(
-        title = stringResource(id = R.string.screen_notification_settings_enable_notifications),
-        isChecked = systemSettings.appNotificationsEnabled,
-        onCheckedChange = onNotificationsEnabledChange
-    )
+    // Правка форка: главный тумблер — тоже карточка, как остальные секции.
+    PreferenceCategory {
+        PreferenceSwitch(
+            title = stringResource(id = R.string.screen_notification_settings_enable_notifications),
+            isChecked = systemSettings.appNotificationsEnabled,
+            onCheckedChange = onNotificationsEnabledChange
+        )
+    }
 
     if (systemSettings.appNotificationsEnabled) {
         if (!state.fullScreenIntentPermissionsState.permissionGranted) {
