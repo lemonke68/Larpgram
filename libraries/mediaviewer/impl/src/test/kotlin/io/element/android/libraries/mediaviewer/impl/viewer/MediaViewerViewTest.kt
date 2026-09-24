@@ -28,6 +28,7 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.mediaviewer.impl.R
 import io.element.android.libraries.mediaviewer.impl.details.aMediaBottomSheetStateDetails
 import io.element.android.libraries.mediaviewer.test.viewer.aLocalMedia
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -99,7 +100,7 @@ class MediaViewerViewTest : RobolectricTest() {
         )
         testMenuAction(
             data,
-            CommonStrings.a11y_view_details,
+            R.string.larpgram_viewer_info,
             MediaViewerEvent.OpenInfo(data),
         )
     }
@@ -111,7 +112,7 @@ class MediaViewerViewTest : RobolectricTest() {
         )
         testMenuAction(
             data,
-            CommonStrings.action_share,
+            R.string.larpgram_viewer_share,
             MediaViewerEvent.Share(data),
         )
     }
@@ -123,14 +124,14 @@ class MediaViewerViewTest : RobolectricTest() {
         )
         testMenuAction(
             data,
-            CommonStrings.action_download,
+            R.string.larpgram_viewer_save,
             MediaViewerEvent.SaveOnDisk(data),
         )
     }
 
     private fun testMenuAction(
         data: MediaViewerPageData.MediaViewerData,
-        @StringRes contentDescriptionRes: Int,
+        @StringRes menuItemRes: Int,
         expectedEvent: MediaViewerEvent,
     ) = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<MediaViewerEvent>()
@@ -147,8 +148,9 @@ class MediaViewerViewTest : RobolectricTest() {
         // Wait for enough time for the onVisibilityChanged modifier to trigger
         mainClock.advanceTimeBy(200)
 
-        val contentDescription = activity!!.getString(contentDescriptionRes)
-        onNodeWithContentDescription(contentDescription).performClick()
+        // Правка форка: действия шапки в меню ⋮, как в Telegram.
+        onNodeWithContentDescription(activity!!.getString(CommonStrings.action_open_context_menu)).performClick()
+        clickOn(menuItemRes)
         eventsRecorder.assertList(
             listOf(
                 MediaViewerEvent.LoadMedia(data),
@@ -207,7 +209,7 @@ class MediaViewerViewTest : RobolectricTest() {
 
         // Ensure that the action are visible
         val resources = activity!!.resources
-        val contentDescription = resources.getString(CommonStrings.action_share)
+        val contentDescription = resources.getString(CommonStrings.action_open_context_menu)
         onNodeWithContentDescription(contentDescription)
             .assertExists()
             .assertHasClickAction()

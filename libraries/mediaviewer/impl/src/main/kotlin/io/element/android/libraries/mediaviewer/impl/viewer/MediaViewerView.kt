@@ -49,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,11 +63,9 @@ import androidx.compose.ui.layout.onVisibilityChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -74,7 +73,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.text.toSpannable
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.viewfolder.api.TextFileViewer
 import io.element.android.libraries.androidutils.text.safeLinkify
 import io.element.android.libraries.architecture.AsyncData
@@ -88,8 +86,6 @@ import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.RetryDialog
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
-import io.element.android.libraries.designsystem.theme.components.Icon
-import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
@@ -112,6 +108,7 @@ import io.element.android.libraries.textcomposer.ElementRichTextEditorStyle
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.wysiwyg.compose.EditorStyledText
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.saket.telephoto.zoomable.OverzoomEffect
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
@@ -147,8 +144,10 @@ fun MediaViewerView(
             ) {
                 when (currentData) {
                     is MediaViewerPageData.MediaViewerData -> {
-                        MediaViewerTopBar(
+                        // Правка форка: шапка Telegram со счётчиком «N из M» и действиями в меню ⋮.
+                        TgMediaViewerTopBar(
                             data = currentData,
+                            position = tgMediaPosition(state.listData, state.currentIndex),
                             canShowInfo = state.canShowInfo,
                             onBackClick = onBackClick,
                             onShareClick = {
@@ -197,6 +196,10 @@ fun MediaViewerView(
                 state.eventSink(MediaViewerEvent.OnNavigateTo(pagerState.targetPage))
             }
         }
+        // Правка форка: лента миниатюр Telegram внизу, над ней подпись.
+        val showThumbStrip = tgShowThumbStrip(state.listData)
+        val coroutineScope = rememberCoroutineScope()
+        Box(modifier = Modifier.fillMaxSize()) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier,
@@ -286,7 +289,9 @@ fun MediaViewerView(
                             visible = showOverlay,
                             enter = fadeIn(),
                             exit = fadeOut(),
-                            modifier = Modifier.align(Alignment.BottomCenter),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = if (showThumbStrip) TG_THUMB_STRIP_HEIGHT else 0.dp),
                         ) {
                             MediaViewerBottomBar(
                                 showDivider = dataForPage.mediaInfo.mimeType.isMimeTypeVideo(),
@@ -299,6 +304,23 @@ fun MediaViewerView(
                 }
             }
         }
+        if (showThumbStrip) {
+            AnimatedVisibility(
+                visible = showOverlay,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding(),
+            ) {
+                TgMediaViewerThumbStrip(
+                    listData = state.listData,
+                    currentIndex = state.currentIndex,
+                    onClick = { index -> coroutineScope.launch { pagerState.animateScrollToPage(index) } },
+                )
+            }
+        }
+        } // конец Box ленты миниатюр
     }
 
     when (val bottomSheetState = state.mediaBottomSheetState) {
@@ -546,91 +568,6 @@ private fun rememberShowProgress(downloadedMedia: AsyncData<LocalMedia>): Boolea
         }
     }
     return showProgress
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MediaViewerTopBar(
-    data: MediaViewerPageData.MediaViewerData,
-    canShowInfo: Boolean,
-    onBackClick: () -> Unit,
-    onShareClick: () -> Unit,
-    onSaveClick: () -> Unit,
-    onInfoClick: () -> Unit,
-) {
-    val downloadedMedia by data.downloadedMedia
-    val actionsEnabled = downloadedMedia.isSuccess()
-    val senderName = data.mediaInfo.senderName
-    val dateSent = data.mediaInfo.dateSent
-    TopAppBar(
-        title = {
-            if (senderName != null && dateSent != null) {
-                val description = stringResource(
-                    CommonStrings.a11y_sent_by_sender_at_date,
-                    senderName,
-                    dateSent,
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clearAndSetSemantics {
-                            heading()
-                            contentDescription = description
-                        },
-                ) {
-                    Text(
-                        text = senderName,
-                        style = ElementTheme.typography.fontBodyMdMedium,
-                        color = ElementTheme.colors.textPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = dateSent,
-                        style = ElementTheme.typography.fontBodySmRegular,
-                        color = ElementTheme.colors.textPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = bgCanvasWithTransparency,
-        ),
-        navigationIcon = { BackButton(onClick = onBackClick) },
-        actions = {
-            IconButton(
-                onClick = onShareClick,
-                enabled = actionsEnabled,
-            ) {
-                Icon(
-                    imageVector = CompoundIcons.ShareAndroid(),
-                    contentDescription = stringResource(id = CommonStrings.action_share),
-                )
-            }
-            IconButton(
-                onClick = onSaveClick,
-                enabled = actionsEnabled,
-            ) {
-                Icon(
-                    imageVector = CompoundIcons.Download(),
-                    contentDescription = stringResource(id = CommonStrings.action_download),
-                )
-            }
-            if (canShowInfo) {
-                IconButton(
-                    onClick = onInfoClick,
-                    enabled = actionsEnabled,
-                ) {
-                    Icon(
-                        imageVector = CompoundIcons.Info(),
-                        contentDescription = stringResource(id = CommonStrings.a11y_view_details),
-                    )
-                }
-            }
-        }
-    )
 }
 
 @Composable

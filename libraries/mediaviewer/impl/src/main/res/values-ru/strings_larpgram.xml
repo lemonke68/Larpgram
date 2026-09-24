@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="larpgram_viewer_counter">%1$d из %2$d</string>
+    <string name="larpgram_viewer_save">Сохранить в галерею</string>
+    <string name="larpgram_viewer_share">Поделиться</string>
+    <string name="larpgram_viewer_info">Подробнее</string>
+</resources>
