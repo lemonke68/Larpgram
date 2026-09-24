@@ -11,8 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
-import io.element.android.libraries.designsystem.components.Announcement
-import io.element.android.libraries.designsystem.components.AnnouncementType
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 
@@ -54,15 +52,13 @@ private fun ConnectEmailBannerView(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Announcement(
-        modifier = modifier.roomListBannerPadding(),
+    // Правка форка: компактная подсказка TG вместо карточки с кнопкой.
+    TgHintBanner(
+        modifier = modifier,
         title = "Привяжите почту",
-        description = "Без неё восстановить доступ к аккаунту нечем: забытый пароль сбросить не получится.",
-        type = AnnouncementType.Actionable(
-            actionText = "Привязать",
-            onActionClick = onContinueClick,
-            onDismissClick = onDismissClick,
-        ),
+        message = "Без неё не восстановить доступ, если забудете пароль. Нажмите, чтобы привязать.",
+        onClick = onContinueClick,
+        onDismissClick = onDismissClick,
     )
 }
 

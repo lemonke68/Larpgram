@@ -62,7 +62,6 @@ import io.element.android.appconfig.RoomListConfig
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.HomeNavigationBarItem
-import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.aRoomListFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
@@ -137,7 +136,8 @@ fun HomeTopBar(
                 // This top bar only renders on the Chats tab; Settings/Profile host their own.
                 val displayTitle = when (spaceFiltersState) {
                     is SpaceFiltersState.Selected -> spaceFiltersState.selectedFilter.spaceRoom.displayName
-                    else -> stringResource(HomeNavigationBarItem.Chats.labelRes)
+                    // Правка форка: как в TG, над списком чатов — имя приложения.
+                    else -> "Larpgram"
                 }
                 Text(
                     modifier = Modifier.semantics {
@@ -155,8 +155,6 @@ fun HomeTopBar(
                         onToggleSearch = onToggleSearch,
                         onMenuActionClick = onMenuActionClick,
                         canReportBug = canReportBug,
-                        onCreateChat = onCreateChat,
-                        onCreateChannel = onCreateChannel,
                     )
                 }
             },
@@ -184,8 +182,6 @@ private fun RowScope.RoomListMenuItems(
     onToggleSearch: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     canReportBug: Boolean,
-    onCreateChat: () -> Unit,
-    onCreateChannel: () -> Unit,
 ) {
     IconButton(
         onClick = onToggleSearch,
@@ -195,48 +191,7 @@ private fun RowScope.RoomListMenuItems(
             contentDescription = stringResource(CommonStrings.action_search),
         )
     }
-    // "New" menu (Telegram-style compose action): create a chat/group or a channel.
-    var showCreateMenu by remember { mutableStateOf(false) }
-    IconButton(onClick = { showCreateMenu = true }) {
-        Icon(
-            imageVector = CompoundIcons.Compose(),
-            contentDescription = stringResource(R.string.screen_home_new_chat),
-        )
-    }
-    DropdownMenu(
-        expanded = showCreateMenu,
-        onDismissRequest = { showCreateMenu = false },
-    ) {
-        DropdownMenuItem(
-            onClick = {
-                showCreateMenu = false
-                onCreateChat()
-            },
-            text = { Text(stringResource(R.string.screen_home_new_chat)) },
-            leadingIcon = {
-                Icon(
-                    imageVector = CompoundIcons.Compose(),
-                    tint = ElementTheme.colors.iconSecondary,
-                    contentDescription = null,
-                )
-            },
-        )
-        DropdownMenuItem(
-            onClick = {
-                showCreateMenu = false
-                onCreateChannel()
-            },
-            text = { Text(stringResource(R.string.screen_home_new_channel)) },
-            leadingIcon = {
-                Icon(
-                    // Placeholder channel icon; refined in the design pass.
-                    imageVector = CompoundIcons.Public(),
-                    tint = ElementTheme.colors.iconSecondary,
-                    contentDescription = null,
-                )
-            },
-        )
-    }
+    // Правка форка: «Новое сообщение» переехало в плавающую кнопку над вкладками (как в TG).
     if (RoomListConfig.HAS_DROP_DOWN_MENU) {
         var showMenu by remember { mutableStateOf(false) }
         IconButton(

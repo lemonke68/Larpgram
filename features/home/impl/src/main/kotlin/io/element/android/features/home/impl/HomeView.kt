@@ -13,23 +13,25 @@ package io.element.android.features.home.impl
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -40,7 +42,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -50,6 +51,8 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.home.impl.components.HomeTopBar
 import io.element.android.features.home.impl.components.RoomListContentView
 import io.element.android.features.home.impl.components.RoomListMenuAction
+import io.element.android.features.home.impl.components.TgHomeTabBar
+import io.element.android.features.home.impl.components.TgNewMessageFab
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListContextMenu
 import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
@@ -63,11 +66,9 @@ import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersView
 import io.element.android.features.home.impl.spacefilters.SpaceFolderSwipe
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
+import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbar
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarItem
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarSeparator
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.lazyColumnContentPadding
@@ -259,32 +260,48 @@ private fun HomeScaffold(
         floatingActionButton = {
             val coroutineScope = rememberCoroutineScope()
             if (isBottomBarVisible) {
-                HomeBottomBar(
-                    // The Scaffold uses top-only insets so the scrollable content can go edge-to-edge behind the
-                    // navigation bar, so the floating toolbar has to apply the bottom inset itself to avoid overlapping it.
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
-                currentHomeNavigationBarItem = state.currentHomeNavigationBarItem,
-                onItemClick = { item ->
-                    // scroll to top if selecting the Chats tab while already on it
-                    if (item == state.currentHomeNavigationBarItem) {
-                        if (item == HomeNavigationBarItem.Chats) {
-                            coroutineScope.launch {
-                                if (roomsLazyListState.firstVisibleItemIndex > 10) {
-                                    roomsLazyListState.scrollToItem(10)
-                                }
-                                // Also reset the scrollBehavior height offset as it's not triggered by programmatic scrolls
-                                scrollBehavior.state.heightOffset = 0f
-                                roomsLazyListState.animateScrollToItem(0)
-                            }
+                // Правка форка: вкладки TG 12 с подписями и кнопка «Новое сообщение» над ними.
+                CompositionLocalProvider(LocalChatGlassState provides hazeState) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // Scaffold даёт контенту уйти под полосу навигации, отступ снизу ставим сами.
+                            .windowInsetsPadding(WindowInsets.navigationBars),
+                    ) {
+                        if (isChatsTab) {
+                            TgNewMessageFab(
+                                onCreateChat = onStartChatClick,
+                                onCreateChannel = onCreateChannelClick,
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .padding(end = 16.dp),
+                            )
                         }
-                    } else {
-                        state.eventSink(HomeEvent.SelectHomeNavigationBarItem(item))
+                        TgHomeTabBar(
+                            selectedItem = state.currentHomeNavigationBarItem,
+                            currentUser = state.currentUserAndNeighbors.let { users ->
+                                if (users.size == 3) users[1] else users.firstOrNull()
+                            },
+                            onItemClick = { item ->
+                                // scroll to top if selecting the Chats tab while already on it
+                                if (item == state.currentHomeNavigationBarItem) {
+                                    if (item == HomeNavigationBarItem.Chats) {
+                                        coroutineScope.launch {
+                                            if (roomsLazyListState.firstVisibleItemIndex > 10) {
+                                                roomsLazyListState.scrollToItem(10)
+                                            }
+                                            // Also reset the scrollBehavior height offset as it's not triggered by programmatic scrolls
+                                            scrollBehavior.state.heightOffset = 0f
+                                            roomsLazyListState.animateScrollToItem(0)
+                                        }
+                                    }
+                                } else {
+                                    state.eventSink(HomeEvent.SelectHomeNavigationBarItem(item))
+                                }
+                            },
+                        )
                     }
-                },
-                // No FAB in the bar: it unbalanced the panel. Creating a chat will move to the
-                // top of the screen later (⋮ / pencil); for now the bar is just the tabs, centred.
-                floatingActionButton = null,
-                )
+                }
             }
         },
         floatingActionButtonPosition = FabPosition.Center,
@@ -375,34 +392,6 @@ private fun HomeTabContent(
                 text = placeholderLabel,
                 style = ElementTheme.typography.fontHeadingMdBold,
                 color = ElementTheme.colors.textSecondary,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun HomeBottomBar(
-    currentHomeNavigationBarItem: HomeNavigationBarItem,
-    onItemClick: (HomeNavigationBarItem) -> Unit,
-    modifier: Modifier = Modifier,
-    floatingActionButton: (@Composable () -> Unit)?,
-) {
-    HorizontalFloatingToolbar(
-        floatingActionButton = floatingActionButton,
-        modifier = modifier
-            .zIndex(1f),
-    ) {
-        HomeNavigationBarItem.entries.forEachIndexed { index, item ->
-            if (index > 0) {
-                HorizontalFloatingToolbarSeparator()
-            }
-            val isSelected = currentHomeNavigationBarItem == item
-            HorizontalFloatingToolbarItem(
-                icon = item.icon(isSelected),
-                tooltipLabel = stringResource(item.labelRes),
-                isSelected = isSelected,
-                onClick = { onItemClick(item) },
             )
         }
     }

@@ -97,4 +97,7 @@ enum class AvatarSize(val dp: Dp) {
 
     // Правка форка: строка участника во вкладке «Участники» профиля группы (UserCell TG).
     ProfileMember(46.dp),
+
+    // Правка форка: свой аватар на вкладке «Профиль» нижней панели (GlassTabView TG).
+    TgTabAvatar(24.dp),
 }

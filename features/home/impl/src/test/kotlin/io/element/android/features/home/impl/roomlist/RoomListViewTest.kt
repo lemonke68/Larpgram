@@ -230,7 +230,8 @@ class RoomListViewTest : RobolectricTest() {
             // Remove automatic initial events
             eventsRecorder.clear()
 
-            clickOn(CommonStrings.common_settings)
+            // Правка форка: «Настройки» есть и в подписи нижней вкладки — жмём пункт меню.
+            clickOn(CommonStrings.common_settings, inDialog = true)
         }
 
         eventsRecorder.assertSingle(RoomListEvent.HideContextMenu)

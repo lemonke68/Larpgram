@@ -11,8 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
-import io.element.android.libraries.designsystem.components.Announcement
-import io.element.android.libraries.designsystem.components.AnnouncementType
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 
@@ -50,15 +48,13 @@ private fun UpdateBannerView(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Announcement(
-        modifier = modifier.roomListBannerPadding(),
-        title = "Вышло обновление",
-        description = "Доступна свежая версия Larpgram. Откройте страницу и обновитесь, чтобы не пропустить исправления.",
-        type = AnnouncementType.Actionable(
-            actionText = "Обновить",
-            onActionClick = onContinueClick,
-            onDismissClick = onDismissClick,
-        ),
+    // Правка форка: компактная подсказка TG вместо карточки с кнопкой.
+    TgHintBanner(
+        modifier = modifier,
+        title = "Вышло обновление Larpgram",
+        message = "Нажмите, чтобы скачать свежую версию.",
+        onClick = onContinueClick,
+        onDismissClick = onDismissClick,
     )
 }
 

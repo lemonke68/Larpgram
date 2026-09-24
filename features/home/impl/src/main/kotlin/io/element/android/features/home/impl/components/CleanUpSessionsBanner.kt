@@ -11,8 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
-import io.element.android.libraries.designsystem.components.Announcement
-import io.element.android.libraries.designsystem.components.AnnouncementType
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 
@@ -49,16 +47,13 @@ private fun CleanUpSessionsBannerView(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Announcement(
-        modifier = modifier.roomListBannerPadding(),
+    // Правка форка: компактная подсказка TG вместо карточки с кнопкой.
+    TgHintBanner(
+        modifier = modifier,
         title = "Проверьте свои сессии",
-        description = "Похоже, кроме этого устройства есть и другие входы. Старые лучше завершить: " +
-            "новые сообщения на них не приходят, а лишний вход — это лишний доступ к переписке.",
-        type = AnnouncementType.Actionable(
-            actionText = "Управление сессиями",
-            onActionClick = onContinueClick,
-            onDismissClick = onDismissClick,
-        ),
+        message = "Есть и другие входы в аккаунт. Нажмите, чтобы завершить лишние.",
+        onClick = onContinueClick,
+        onDismissClick = onDismissClick,
     )
 }
 

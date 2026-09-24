@@ -50,7 +50,6 @@ import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
-import io.element.android.features.home.impl.model.ChatType
 import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomListRoomSummaryPreviewParam
@@ -165,7 +164,6 @@ internal fun RoomSummaryRow(
                         timestamp = room.timestamp,
                         isHighlighted = room.isHighlighted,
                         dmUserStatus = room.dmUserStatus,
-                        chatType = room.chatType,
                         deliveryState = room.latestEvent.deliveryState(),
                         isMuted = room.userDefinedNotificationMode == RoomNotificationMode.MUTE,
                     )
@@ -262,7 +260,6 @@ private fun NameAndTimestampRow(
     isHighlighted: Boolean,
     dmUserStatus: DisplayedStatus?,
     modifier: Modifier = Modifier,
-    chatType: ChatType = ChatType.Group,
     deliveryState: MessageDeliveryState? = null,
     isMuted: Boolean = false,
 ) {
@@ -276,9 +273,7 @@ private fun NameAndTimestampRow(
             horizontalArrangement = spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Правка форка (роумлесс): маленькая иконка типа перед именем. Канал — вещание
-            // (Public), группа — Group; в ЛС метки нет (аватар собеседника и так говорит сам).
-            ChatTypeIcon(chatType)
+            // Правка форка: как в TG 12, перед именем ничего — ни глобуса канала, ни значка группы.
             DisplayNameWithStatus(
                 name = displayName,
                 status = dmUserStatus,
@@ -544,21 +539,6 @@ private fun MentionIndicatorAtom() {
 }
 
 // Правка форка (роумлесс): значок типа перед именем. ЛС метки не несёт.
-@Composable
-private fun ChatTypeIcon(chatType: ChatType) {
-    val icon = when (chatType) {
-        ChatType.Channel -> CompoundIcons.Public()
-        ChatType.Group -> CompoundIcons.Group()
-        ChatType.Dm -> return
-    }
-    Icon(
-        modifier = Modifier.size(16.dp),
-        imageVector = icon,
-        contentDescription = null,
-        tint = ElementTheme.colors.iconSecondary,
-    )
-}
-
 // Правка форка (роумлесс): значок закрепления в строке (когда нет бейджа непрочитанных).
 @Composable
 private fun PinIndicatorAtom(tint: Color) {
