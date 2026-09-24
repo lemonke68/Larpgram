@@ -57,7 +57,7 @@ private const val versionReleaseNumber = 0
  * Меняй по мере готовности плана: 0.7 ≈ ядро готово и раздаётся, впереди кастом-эмодзи,
  * инлайн-реакции, веб/iOS и харднинг.
  */
-private const val larpgramVersionName = "0.2.9"
+private const val larpgramVersionName = "0.3.0-beta"
 
 object Versions {
     /**
