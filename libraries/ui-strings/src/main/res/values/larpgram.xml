@@ -53,4 +53,12 @@
     <string name="larpgram_profile_copy_room_id">"Copy room ID"</string>
     <string name="larpgram_profile_menu_block">"Block"</string>
     <string name="larpgram_profile_menu_unblock">"Unblock"</string>
+    <!-- Прошедший звонок в ленте, как в TG. -->
+    <string name="larpgram_call_outgoing">"Outgoing call"</string>
+    <string name="larpgram_call_incoming">"Incoming call"</string>
+    <string name="larpgram_call_outgoing_video">"Outgoing video call"</string>
+    <string name="larpgram_call_incoming_video">"Incoming video call"</string>
+    <string name="larpgram_call_cancelled">"Cancelled call"</string>
+    <string name="larpgram_call_declined">"Declined call"</string>
+    <string name="larpgram_call_group_started">"%1$s started a call at %2$s"</string>
 </resources>

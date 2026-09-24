@@ -42,4 +42,11 @@
     <string name="larpgram_profile_copy_room_id">"Скопировать ID комнаты"</string>
     <string name="larpgram_profile_menu_block">"Заблокировать"</string>
     <string name="larpgram_profile_menu_unblock">"Разблокировать"</string>
+    <string name="larpgram_call_outgoing">"Исходящий звонок"</string>
+    <string name="larpgram_call_incoming">"Входящий звонок"</string>
+    <string name="larpgram_call_outgoing_video">"Исходящий видеозвонок"</string>
+    <string name="larpgram_call_incoming_video">"Входящий видеозвонок"</string>
+    <string name="larpgram_call_cancelled">"Отменённый звонок"</string>
+    <string name="larpgram_call_declined">"Отклонённый звонок"</string>
+    <string name="larpgram_call_group_started">"%1$s начал(а) звонок в %2$s"</string>
 </resources>

@@ -147,15 +147,15 @@ internal fun TimelineItemRow(
                                 onReadReceiptsClick = onReadReceiptClick,
                                 onJoinCallClick = onJoinCallClick,
                             )
+                            // Правка форка: звонок — пузырь TG (в группе — служебная таблетка).
                             is RtcNotificationState.Started, is RtcNotificationState.Declined ->
-                                TimelineItemCallNotifyView(
+                                TgCallNotifyView(
                                     timelineRoomInfo = timelineRoomInfo,
                                     event = timelineItem,
                                     content = timelineItem.content,
                                     state = timelineItem.content.state,
-                                    isLastOutgoingMessage = isLastOutgoingMessage,
                                     onLongClick = onLongClick,
-                                    onReadReceiptsClick = onReadReceiptClick,
+                                    onCallBackClick = onJoinCallClick,
                                 )
                         }
                     }
