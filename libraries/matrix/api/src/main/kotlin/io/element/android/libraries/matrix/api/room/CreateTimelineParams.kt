@@ -16,5 +16,8 @@ sealed interface CreateTimelineParams {
     data object MediaOnly : CreateTimelineParams
     data class MediaOnlyFocused(val focusedEventId: EventId) : CreateTimelineParams
     data object PinnedOnly : CreateTimelineParams
+
+    /** Правка форка: только текстовые сообщения — вкладка «Ссылки» в профиле чата. */
+    data object TextOnly : CreateTimelineParams
     data class Threaded(val threadRootEventId: ThreadId) : CreateTimelineParams
 }

@@ -27,4 +27,30 @@
     <string name="larpgram_presence_last_seen_at">last seen at %1$s</string>
     <string name="larpgram_presence_last_seen_yesterday">last seen yesterday at %1$s</string>
     <string name="larpgram_presence_last_seen_date">last seen %1$s</string>
+    <!-- Вкладки общих медиа в профиле чата: пустая вкладка. -->
+    <string name="larpgram_profile_empty_media">"Photos and videos from this chat will be shown here."</string>
+    <string name="larpgram_profile_empty_files">"Files from this chat will be shown here."</string>
+    <string name="larpgram_profile_empty_links">"Links from this chat will be shown here."</string>
+    <string name="larpgram_profile_empty_voice">"Voice messages from this chat will be shown here."</string>
+    <!-- Профиль в стиле TG: плитки действий (короткие, влезают в плитку), вкладки, карточки. -->
+    <string name="larpgram_profile_action_chat">"Message"</string>
+    <string name="larpgram_profile_action_mute">"Mute"</string>
+    <string name="larpgram_profile_action_unmute">"Unmute"</string>
+    <string name="larpgram_profile_action_call">"Call"</string>
+    <string name="larpgram_profile_action_leave">"Leave"</string>
+    <string name="larpgram_profile_tab_members">"Members"</string>
+    <string name="larpgram_profile_tab_media">"Media"</string>
+    <string name="larpgram_profile_tab_files">"Files"</string>
+    <string name="larpgram_profile_tab_links">"Links"</string>
+    <string name="larpgram_profile_tab_voice">"Voice"</string>
+    <string name="larpgram_profile_description_label">"Description"</string>
+    <string name="larpgram_profile_link_label">"Link"</string>
+    <string name="larpgram_profile_add_members">"Add members"</string>
+    <string name="larpgram_profile_add_subscribers">"Add subscribers"</string>
+    <string name="larpgram_profile_role_owner">"owner"</string>
+    <string name="larpgram_profile_role_admin">"admin"</string>
+    <string name="larpgram_profile_role_moderator">"moderator"</string>
+    <string name="larpgram_profile_copy_room_id">"Copy room ID"</string>
+    <string name="larpgram_profile_menu_block">"Block"</string>
+    <string name="larpgram_profile_menu_unblock">"Unblock"</string>
 </resources>
