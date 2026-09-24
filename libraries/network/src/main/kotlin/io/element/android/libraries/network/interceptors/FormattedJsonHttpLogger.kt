@@ -20,6 +20,16 @@ internal class FormattedJsonHttpLogger(
 ) : HttpLoggingInterceptor.Logger {
     companion object {
         private const val INDENT_SPACE = 2
+
+        // Правка форка: тела запросов в debug-логе не должны нести секреты — ключ восстановления
+        // (escrow), пароли, токены, код с почты. Логи уходят в rageshake-файлы.
+        private val SECRET_JSON_FIELD = Regex("""("(?:recovery_key|password|access_token|refresh_token|code)"\s*:\s*)"[^"]*"""")
+
+        private val AUTHORIZATION_HEADER = Regex("""^(Authorization:\s*).+""", RegexOption.IGNORE_CASE)
+
+        internal fun redactSecrets(message: String): String = SECRET_JSON_FIELD
+            .replace(message) { "${it.groupValues[1]}\"***\"" }
+            .replace(AUTHORIZATION_HEADER) { "${it.groupValues[1]}***" }
     }
 
     /**
@@ -30,30 +40,31 @@ internal class FormattedJsonHttpLogger(
      */
     @Synchronized
     override fun log(message: String) {
-        Timber.d(message.ellipsize(200_000))
+        val redacted = redactSecrets(message)
+        Timber.d(redacted.ellipsize(200_000))
 
         // Try to log formatted Json only if there is a chance that [message] contains Json.
         // It can be only the case if we log the bodies of Http requests.
         if (level != HttpLoggingInterceptor.Level.BODY) return
 
-        if (message.length > 100_000) {
-            Timber.d("Content is too long (${message.length} chars) to be formatted as JSON")
+        if (redacted.length > 100_000) {
+            Timber.d("Content is too long (${redacted.length} chars) to be formatted as JSON")
             return
         }
 
-        if (message.startsWith("{")) {
+        if (redacted.startsWith("{")) {
             // JSON Detected
             try {
-                val o = JSONObject(message)
+                val o = JSONObject(redacted)
                 logJson(o.toString(INDENT_SPACE))
             } catch (e: JSONException) {
                 // Finally this is not a JSON string...
                 Timber.e(e)
             }
-        } else if (message.startsWith("[")) {
+        } else if (redacted.startsWith("[")) {
             // JSON Array detected
             try {
-                val o = JSONArray(message)
+                val o = JSONArray(redacted)
                 logJson(o.toString(INDENT_SPACE))
             } catch (e: JSONException) {
                 // Finally not JSON...
