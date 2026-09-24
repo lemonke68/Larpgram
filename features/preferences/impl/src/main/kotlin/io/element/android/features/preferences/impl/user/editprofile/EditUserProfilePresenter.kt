@@ -32,9 +32,8 @@ import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.matrix.api.user.getLarpgramBio
-import io.element.android.libraries.matrix.api.user.setLarpgramBio
 import io.element.android.libraries.matrix.ui.media.AvatarAction
+import io.element.android.libraries.matrix.ui.profile.PublicBio
 import io.element.android.libraries.mediapickers.api.PickerProvider
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
 import io.element.android.libraries.mediaupload.api.MediaPreProcessor
@@ -54,6 +53,8 @@ class EditUserProfilePresenter(
     private val mediaPreProcessor: MediaPreProcessor,
     private val temporaryUriDeleter: TemporaryUriDeleter,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
+    // Правка форка: «О себе» пишется в публичное поле профиля.
+    private val publicBio: PublicBio,
     permissionsPresenterFactory: PermissionsPresenter.Factory,
 ) : Presenter<EditUserProfileState> {
     private val cameraPermissionPresenter: PermissionsPresenter = permissionsPresenterFactory.create(android.Manifest.permission.CAMERA)
@@ -75,7 +76,7 @@ class EditUserProfilePresenter(
         // Bio is fetched async from account data. Initial value "" so a no-bio account emits no extra
         // state (produceState skips equal values); key the editable copy on it so it re-seeds once a
         // real bio loads, without clobbering later edits.
-        val initialBio by produceState("") { value = matrixClient.getLarpgramBio().orEmpty() }
+        val initialBio by produceState("") { value = publicBio.ownBio().orEmpty() }
         var userBio by rememberSaveable(initialBio) { mutableStateOf(initialBio) }
         val cameraPhotoPicker = mediaPickerProvider.registerCameraPhotoPicker(
             onResult = { uri ->
@@ -226,7 +227,7 @@ class EditUserProfilePresenter(
                 })
             }
             if (hasBioChanged(bio, initialBio)) {
-                results.add(matrixClient.setLarpgramBio(bio).onFailure {
+                results.add(publicBio.setBio(bio).onFailure {
                     Timber.e(it, "Failed to set user's bio")
                 })
             }

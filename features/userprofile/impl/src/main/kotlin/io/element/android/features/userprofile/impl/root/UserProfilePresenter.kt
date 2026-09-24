@@ -37,7 +37,7 @@ import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.powerlevels.canCall
 import io.element.android.libraries.matrix.api.room.powerlevels.use
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.matrix.api.user.getLarpgramBio
+import io.element.android.libraries.matrix.ui.profile.PublicBio
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
@@ -51,6 +51,8 @@ class UserProfilePresenter(
     private val client: MatrixClient,
     private val startDMAction: StartDMAction,
     private val sessionEnterpriseService: SessionEnterpriseService,
+    // Правка форка: «О себе» из публичного поля профиля — видно всем, как в TG.
+    private val publicBio: PublicBio,
 ) : Presenter<UserProfileState> {
     @AssistedFactory
     interface Factory {
@@ -101,9 +103,8 @@ class UserProfilePresenter(
                 .launchIn(this)
         }
         val userProfile by produceState<MatrixUser?>(null) { value = client.getProfile(userId).getOrNull() }
-        // Bio is private account data, so it only exists for the current user.
         val about by produceState<String?>(null, isCurrentUser) {
-            value = if (isCurrentUser) client.getLarpgramBio() else null
+            value = if (isCurrentUser) publicBio.ownBio() else publicBio.bio(userId)
         }
 
         fun handleEvent(event: UserProfileEvent) {

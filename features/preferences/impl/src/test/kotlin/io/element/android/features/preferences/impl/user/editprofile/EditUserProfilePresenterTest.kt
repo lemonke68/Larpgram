@@ -19,6 +19,7 @@ import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 import io.element.android.libraries.matrix.ui.media.AvatarAction
+import io.element.android.libraries.matrix.ui.profile.NoOpPublicBio
 import io.element.android.libraries.mediapickers.test.FakePickerProvider
 import io.element.android.libraries.mediaupload.api.MediaUploadInfo
 import io.element.android.libraries.mediaupload.test.FakeMediaOptimizationConfigProvider
@@ -90,6 +91,7 @@ class EditUserProfilePresenterTest {
             temporaryUriDeleter = temporaryUriDeleter,
             permissionsPresenterFactory = FakePermissionsPresenterFactory(permissionsPresenter),
             mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
+            publicBio = NoOpPublicBio(),
         )
     }
 

@@ -395,6 +395,14 @@ private fun LazyListScope.infoCard(state: RoomDetailsState) {
         Spacer(Modifier.height(TgProfileDefaults.cardGap))
         TgProfileCard {
             if (dm != null) {
+                // «О себе» собеседника — публичное поле профиля (см. PublicBio).
+                state.dmOtherMemberDetailsState?.about?.takeIf { it.isNotBlank() }?.let { about ->
+                    TgProfileInfoRow(
+                        value = about,
+                        label = stringResource(CommonStrings.larpgram_profile_about_label),
+                        onLongClick = { state.eventSink(RoomDetailsEvent.CopyToClipboard(about)) },
+                    )
+                }
                 val userId = dm.otherMember.userId.value
                 TgProfileInfoRow(
                     value = userId.substringBefore(":"),
