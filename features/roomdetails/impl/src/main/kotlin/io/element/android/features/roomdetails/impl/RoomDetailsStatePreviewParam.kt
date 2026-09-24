@@ -130,6 +130,7 @@ fun aRoomDetailsState(
     showDebugInfo: Boolean = false,
     roomHistoryVisibility: RoomHistoryVisibility = RoomHistoryVisibility.Shared,
     hasNewContent: Boolean = false,
+    members: List<RoomMember> = emptyList(),
     eventSink: (RoomDetailsEvent) -> Unit = {},
 ) = RoomDetailsState(
     roomId = roomId,
@@ -163,6 +164,7 @@ fun aRoomDetailsState(
     roomVersion = "12",
     roomHistoryVisibility = roomHistoryVisibility,
     hasNewContent = hasNewContent,
+    members = members.toImmutableList(),
     eventSink = eventSink,
 )
 

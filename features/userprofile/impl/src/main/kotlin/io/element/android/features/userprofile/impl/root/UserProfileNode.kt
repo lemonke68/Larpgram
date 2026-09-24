@@ -27,6 +27,8 @@ import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
+import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
+import io.element.android.libraries.matrix.ui.presence.rememberPresence
 import io.element.android.services.analytics.api.AnalyticsService
 
 @ContributesNode(SessionScope::class)
@@ -37,6 +39,8 @@ class UserProfileNode(
     private val analyticsService: AnalyticsService,
     private val permalinkBuilder: PermalinkBuilder,
     presenterFactory: UserProfilePresenter.Factory,
+    // Правка форка: «в сети» / «был(а) …» в шапке TG-профиля.
+    private val userPresenceFetcher: UserPresenceFetcher,
 ) : Node(buildContext, plugins = plugins) {
     data class UserProfileInputs(
         val userId: UserId
@@ -78,6 +82,7 @@ class UserProfileNode(
             onStartCall = callback::startCall,
             openAvatarPreview = callback::navigateToAvatarPreview,
             onVerifyClick = callback::startVerifyUserFlow,
+            presence = userPresenceFetcher.rememberPresence(inputs.userId.takeIf { !state.isCurrentUser }),
             onOpenSettings = callback::navigateToSettings,
             onEditProfile = callback::navigateToEditProfile,
         )

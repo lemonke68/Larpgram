@@ -93,5 +93,8 @@ enum class AvatarSize(val dp: Dp) {
     SelectParentSpace(32.dp),
     AccountItem(32.dp),
     LocationPin(32.dp),
-    ActiveCallItem(20.dp)
+    ActiveCallItem(20.dp),
+
+    // Правка форка: строка участника во вкладке «Участники» профиля группы (UserCell TG).
+    ProfileMember(46.dp),
 }

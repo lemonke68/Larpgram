@@ -272,7 +272,8 @@ class RoomDetailsViewTest : RobolectricTest() {
         eventsRecorder.assertSingle(RoomDetailsEvent.UnmuteNotification)
     }
 
-    @Config(qualifiers = "h1024dp")
+    // Правка форка: секции настроек стали карточками с полями — пункт уехал ниже.
+    @Config(qualifiers = "h1500dp")
     @Test
     fun `click on favorite emit expected Event`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<RoomDetailsEvent>()

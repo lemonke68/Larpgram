@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
@@ -86,6 +87,7 @@ class UserProfileViewTest : RobolectricTest() {
             setUserProfileView(
                 onShareUser = callback,
             )
+            openMenu()
             clickOn(CommonStrings.action_share)
         }
     }
@@ -99,7 +101,7 @@ class UserProfileViewTest : RobolectricTest() {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(CommonStrings.action_message)
+        clickOn(CommonStrings.larpgram_profile_action_chat)
         eventsRecorder.assertSingle(UserProfileEvent.StartDM)
     }
 
@@ -113,7 +115,7 @@ class UserProfileViewTest : RobolectricTest() {
                 ),
                 onStartCall = callback,
             )
-            clickOn(CommonStrings.action_call)
+            clickOn(CommonStrings.larpgram_profile_action_call)
         }
     }
 
@@ -140,7 +142,8 @@ class UserProfileViewTest : RobolectricTest() {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(R.string.screen_dm_details_block_user)
+        openMenu()
+        clickOn(CommonStrings.larpgram_profile_menu_block)
         eventsRecorder.assertSingle(UserProfileEvent.BlockUser(needsConfirmation = true))
     }
 
@@ -180,7 +183,8 @@ class UserProfileViewTest : RobolectricTest() {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(R.string.screen_dm_details_unblock_user)
+        openMenu()
+        clickOn(CommonStrings.larpgram_profile_menu_unblock)
         eventsRecorder.assertSingle(UserProfileEvent.UnblockUser(needsConfirmation = true))
     }
 
@@ -219,12 +223,15 @@ class UserProfileViewTest : RobolectricTest() {
                 state = aUserProfileState(userId = A_USER_ID, verificationState = UserProfileVerificationState.UNVERIFIED),
                 onVerifyClick = callback,
             )
-            // Правка форка: TG-шапка профиля выше апстримовской, пункт уезжает за экран — докручиваем.
-            onNode(hasText(activity!!.getString(CommonStrings.common_verify_user)) and hasClickAction())
-                .performScrollTo()
-                .performClick()
+            // Правка форка: подтверждение переехало в меню ⋮.
+            openMenu()
+            clickOn(CommonStrings.common_verify_user)
         }
     }
+}
+
+private fun AndroidComposeUiTest<ComponentActivity>.openMenu() {
+    onNode(hasContentDescription(activity!!.getString(CommonStrings.action_open_context_menu))).performClick()
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setUserProfileView(

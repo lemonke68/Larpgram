@@ -43,6 +43,10 @@ import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMember
+import io.element.android.libraries.matrix.api.room.RoomMembersState
+import io.element.android.libraries.matrix.api.room.RoomMembershipState
+import io.element.android.libraries.matrix.api.room.roomMembers
+import kotlinx.collections.immutable.toImmutableList
 import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.api.room.powerlevels.canEditRolesAndPermissions
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
@@ -189,6 +193,17 @@ class RoomDetailsPresenter(
 
         val canReportRoom by produceState(false) { value = client.canReportRoom() }
 
+        // Правка форка: список участников для вкладки «Участники» TG-профиля группы.
+        LaunchedEffect(isDm) {
+            if (!isDm && membersState is RoomMembersState.Unknown) room.updateMembers()
+        }
+        val members = remember(membersState) {
+            membersState.roomMembers().orEmpty()
+                .filter { it.membership == RoomMembershipState.JOIN }
+                .sortedWith(compareByDescending<RoomMember> { it.powerLevel }.thenBy { it.displayNameOrDefault.lowercase() })
+                .toImmutableList()
+        }
+
         return RoomDetailsState(
             roomId = room.roomId,
             roomName = roomName,
@@ -221,6 +236,7 @@ class RoomDetailsPresenter(
             roomVersion = roomInfo.roomVersion,
             roomHistoryVisibility = roomInfo.historyVisibility,
             hasNewContent = hasNewContent,
+            members = members,
             eventSink = ::handleEvent,
         )
     }

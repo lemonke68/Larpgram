@@ -8,10 +8,7 @@
 
 package io.element.android.features.userprofile.shared
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,52 +16,58 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.features.userprofile.api.UserProfileEvent
 import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.features.userprofile.shared.blockuser.BlockUserDialogs
-import io.element.android.features.userprofile.shared.blockuser.BlockUserSection
+import io.element.android.features.userprofile.shared.tg.TgProfileAction
+import io.element.android.features.userprofile.shared.tg.TgProfileActions
+import io.element.android.features.userprofile.shared.tg.TgProfileDefaults
+import io.element.android.features.userprofile.shared.tg.TgProfileHeader
+import io.element.android.features.userprofile.shared.tg.TgProfileMenu
+import io.element.android.features.userprofile.shared.tg.TgProfileMenuItem
+import io.element.android.features.userprofile.shared.tg.TgProfileTopBar
+import io.element.android.features.userprofile.shared.tg.rememberTgAvatarExpandState
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.components.async.AsyncActionViewDefaults
+import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
-import io.element.android.libraries.designsystem.components.button.BackButton
-import io.element.android.libraries.designsystem.components.button.MainActionButton
-import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListItem
+import io.element.android.libraries.designsystem.theme.components.ButtonSize
+import io.element.android.libraries.designsystem.theme.components.OutlinedButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.ui.components.CreateDmConfirmationBottomSheet
+import io.element.android.libraries.matrix.ui.presence.UserPresence
+import io.element.android.libraries.matrix.ui.presence.presenceText
+import io.element.android.libraries.testtags.TestTags
+import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.strings.CommonStrings
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Правка форка: профиль человека в стиле Telegram 12 (`ProfileActivity`). Чужой профиль — шапка с
+ * присутствием, плитки Чат / Звонок / Видео, инфо-карточка, остальное в меню ⋮. Свой профиль
+ * (вкладка нижней навигации) — плитки Выбрать фото / Изменить / Настройки, без «назад».
+ */
 @Composable
 fun UserProfileView(
     state: UserProfileState,
@@ -79,60 +82,30 @@ fun UserProfileView(
     // don't have to provide them.
     onOpenSettings: () -> Unit = {},
     onEditProfile: () -> Unit = {},
+    presence: UserPresence? = null,
+    // Свой профиль открыт вкладкой нижней навигации — возвращаться некуда. Из списка участников
+    // группы свой профиль открывается поверх, там «назад» нужна, а плитки своего профиля — нет.
+    isNavigationTab: Boolean = state.isCurrentUser,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
-    // Pull-down-to-expand avatar (TG-style). Fraction 0 = circle, 1 = full-width square.
-    val expandFraction = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val maxDragPx = remember(density, screenWidthDp) {
-        with(density) { (screenWidthDp.dp - AvatarSize.UserHeader.dp).toPx() }.coerceAtLeast(1f)
-    }
-    val avatarNestedScroll = remember(maxDragPx) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // Finger moving up: collapse the avatar before the content scrolls.
-                val delta = available.y
-                if (delta < 0f && expandFraction.value > 0f) {
-                    val newFraction = (expandFraction.value + delta / maxDragPx).coerceIn(0f, 1f)
-                    val consumed = (newFraction - expandFraction.value) * maxDragPx
-                    scope.launch { expandFraction.snapTo(newFraction) }
-                    return Offset(0f, consumed)
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                // Content already at top and finger still moving down: pull the avatar open.
-                val delta = available.y
-                if (delta > 0f) {
-                    val newFraction = (expandFraction.value + delta / maxDragPx).coerceIn(0f, 1f)
-                    scope.launch { expandFraction.snapTo(newFraction) }
-                    return Offset(0f, delta)
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                // Settle to the nearer end so the avatar never rests half-open.
-                if (expandFraction.value > 0f && expandFraction.value < 1f) {
-                    val target = if (expandFraction.value > 0.5f) 1f else 0f
-                    expandFraction.animateTo(target)
-                }
-                return Velocity.Zero
-            }
-        }
-    }
+    val avatarExpand = rememberTgAvatarExpandState()
+    val scrollState = rememberScrollState()
+    val headerHeightPx = with(LocalDensity.current) { HEADER_COLLAPSE_OFFSET.toPx() }
+    val showTitle by remember { derivedStateOf { scrollState.value > headerHeightPx } }
+    val title = state.userName ?: state.userId.value
+    val subtitle = if (state.isCurrentUser) null else presenceText(presence)
     Scaffold(
         modifier = modifier,
+        containerColor = TgProfileDefaults.pageColor,
         topBar = {
-            TopAppBar(
-                title = { },
-                // Self-profile is a bottom-nav tab (no back stack to pop), so no back arrow.
-                navigationIcon = {
+            TgProfileTopBar(
+                title = title,
+                subtitle = subtitle?.text,
+                showTitle = showTitle,
+                onBackClick = goBack.takeIf { !isNavigationTab },
+                actions = {
                     if (!state.isCurrentUser) {
-                        BackButton(onClick = goBack)
+                        TgProfileMenu(items = otherUserMenuItems(state, onShareUser, onVerifyClick))
                     }
                 },
             )
@@ -141,60 +114,60 @@ fun UserProfileView(
     ) { padding ->
         Column(
             modifier = Modifier
-                    .padding(padding)
-                    .consumeWindowInsets(padding)
-                    .nestedScroll(avatarNestedScroll)
-                    .verticalScroll(rememberScrollState())
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .nestedScroll(avatarExpand.connection)
+                .verticalScroll(scrollState)
         ) {
-            UserProfileHeaderSection(
-                avatarUrl = state.avatarUrl,
+            TgProfileHeader(
+                title = title,
+                subtitle = subtitle?.text,
+                subtitleIsAccent = subtitle?.isOnline == true,
+            ) {
+                CollapsingAvatar(
+                    avatarData = AvatarData(state.userId.value, state.userName, state.avatarUrl, AvatarSize.UserHeader),
+                    userName = state.userName,
+                    expandFraction = avatarExpand.fraction,
+                    onClick = { state.avatarUrl?.let { openAvatarPreview(title, it) } },
+                    modifier = Modifier.testTag(TestTags.memberDetailAvatar),
+                )
+            }
+            if (state.verificationState == UserProfileVerificationState.VERIFICATION_VIOLATION) {
+                VerificationViolation(state)
+            }
+            if (state.isCurrentUser && isNavigationTab) {
+                TgProfileActions(
+                    actions = listOf(
+                        TgProfileAction(stringResource(CommonStrings.larpgram_action_set_photo), CompoundIcons.TakePhotoSolid(), onEditProfile),
+                        TgProfileAction(stringResource(CommonStrings.larpgram_action_edit_profile), CompoundIcons.EditSolid(), onEditProfile),
+                        TgProfileAction(stringResource(CommonStrings.common_settings), CompoundIcons.SettingsSolid(), onOpenSettings),
+                    )
+                )
+            } else if (!state.isCurrentUser) {
+                TgProfileActions(
+                    actions = listOfNotNull(
+                        TgProfileAction(stringResource(CommonStrings.larpgram_profile_action_chat), CompoundIcons.ChatSolid()) {
+                            state.eventSink(UserProfileEvent.StartDM)
+                        },
+                        TgProfileAction(stringResource(CommonStrings.larpgram_profile_action_call), CompoundIcons.VoiceCallSolid()) {
+                            state.dmRoomId?.let { onStartCall(it, CallIntent.AUDIO) }
+                        }.takeIf { state.canCall },
+                        TgProfileAction(stringResource(CommonStrings.common_video), CompoundIcons.VideoCallSolid()) {
+                            state.dmRoomId?.let { onStartCall(it, CallIntent.VIDEO) }
+                        }.takeIf { state.canCall },
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.height(TgProfileDefaults.cardGap))
+            UserProfileInfoCard(
                 userId = state.userId,
-                userName = state.userName,
-                verificationState = state.verificationState,
-                displayedStatus = state.displayedStatus,
-                avatarExpandFraction = expandFraction.value,
-                showId = !state.isCurrentUser,
-                openAvatarPreview = { avatarUrl ->
-                    openAvatarPreview(state.userName ?: state.userId.value, avatarUrl)
-                },
-                onUserIdClick = {
+                about = state.about,
+                onHandleClick = {
                     state.eventSink(UserProfileEvent.CopyToClipboard(state.userId.value))
                 },
-                withdrawVerificationClick = { state.eventSink(UserProfileEvent.WithdrawVerification) },
             )
-            if (state.isCurrentUser) {
-                UserProfileSelfActionsSection(
-                    onSetPhoto = onEditProfile,
-                    onEdit = onEditProfile,
-                    onSettings = onOpenSettings,
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                UserProfileInfoCard(
-                    userId = state.userId,
-                    about = state.about,
-                    onHandleClick = {
-                        state.eventSink(UserProfileEvent.CopyToClipboard(state.userId.value))
-                    },
-                )
-            } else {
-                UserProfileMainActionsSection(
-                    isCurrentUser = false,
-                    canCall = state.canCall,
-                    onShareUser = onShareUser,
-                    onStartDM = { state.eventSink(UserProfileEvent.StartDM) },
-                    onCall = { intent -> state.dmRoomId?.let { onStartCall(it, intent) } }
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                UserProfileInfoCard(
-                    userId = state.userId,
-                    about = state.about,
-                    onHandleClick = {
-                        state.eventSink(UserProfileEvent.CopyToClipboard(state.userId.value))
-                    },
-                )
-                Spacer(modifier = Modifier.height(26.dp))
-                VerifyUserSection(state, onVerifyClick = { onVerifyClick(state.userId) })
-                BlockUserSection(state)
+            Spacer(modifier = Modifier.height(24.dp))
+            if (!state.isCurrentUser) {
                 BlockUserDialogs(state)
                 AsyncActionView(
                     async = state.startDmActionState,
@@ -227,52 +200,57 @@ fun UserProfileView(
     }
 }
 
+/** Когда шапка уехала вверх на столько, на панели проявляются имя и статус. */
+private val HEADER_COLLAPSE_OFFSET = 150.dp
+
 @Composable
-private fun VerifyUserSection(
+private fun otherUserMenuItems(
     state: UserProfileState,
-    onVerifyClick: () -> Unit,
-) {
-    if (state.verificationState == UserProfileVerificationState.UNVERIFIED) {
-        ListItem(
-            content = { Text(stringResource(CommonStrings.common_verify_user)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
-            onClick = onVerifyClick,
+    onShareUser: () -> Unit,
+    onVerifyClick: (UserId) -> Unit,
+): List<TgProfileMenuItem> {
+    val isBlocked = state.isBlocked.dataOrNull() == true
+    return buildList {
+        add(TgProfileMenuItem(stringResource(CommonStrings.action_share), CompoundIcons.ShareAndroid(), onShareUser))
+        // Подтверждение личности — возможность Matrix, в TG её нет: убрана с экрана в меню.
+        if (state.verificationState == UserProfileVerificationState.UNVERIFIED) {
+            add(TgProfileMenuItem(stringResource(CommonStrings.common_verify_user), CompoundIcons.Lock(), onClick = { onVerifyClick(state.userId) }))
+        }
+        add(
+            TgProfileMenuItem(
+                title = stringResource(if (isBlocked) CommonStrings.larpgram_profile_menu_unblock else CommonStrings.larpgram_profile_menu_block),
+                icon = CompoundIcons.Block(),
+                destructive = !isBlocked,
+                onClick = {
+                    state.eventSink(
+                        if (isBlocked) UserProfileEvent.UnblockUser(needsConfirmation = true) else UserProfileEvent.BlockUser(needsConfirmation = true)
+                    )
+                },
+            )
         )
     }
 }
 
-/**
- * TG-style row of three actions on your own profile: set photo, edit, settings.
- * No dedicated edit-profile/avatar screens yet, so set-photo and edit both route
- * to [onEdit] (Settings) for now.
- */
+/** Ключи собеседника сменились: предупреждение Element оставляем, это про безопасность. */
 @Composable
-private fun UserProfileSelfActionsSection(
-    onSetPhoto: () -> Unit,
-    onEdit: () -> Unit,
-    onSettings: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier
+private fun VerificationViolation(state: UserProfileState) {
+    Column(
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp),
     ) {
-        MainActionButton(
-            title = stringResource(CommonStrings.larpgram_action_set_photo),
-            imageVector = CompoundIcons.TakePhoto(),
-            onClick = onSetPhoto,
+        Text(
+            text = stringResource(CommonStrings.crypto_identity_change_profile_pin_violation, state.userName ?: state.userId.value),
+            color = ElementTheme.colors.textCriticalPrimary,
+            style = ElementTheme.typography.fontBodyMdMedium,
         )
-        MainActionButton(
-            title = stringResource(CommonStrings.larpgram_action_edit_profile),
-            imageVector = CompoundIcons.Edit(),
-            onClick = onEdit,
-        )
-        MainActionButton(
-            title = stringResource(CommonStrings.common_settings),
-            imageVector = CompoundIcons.Settings(),
-            onClick = onSettings,
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            size = ButtonSize.MediumLowPadding,
+            text = stringResource(CommonStrings.crypto_identity_change_withdraw_verification_action),
+            onClick = { state.eventSink(UserProfileEvent.WithdrawVerification) },
         )
     }
 }

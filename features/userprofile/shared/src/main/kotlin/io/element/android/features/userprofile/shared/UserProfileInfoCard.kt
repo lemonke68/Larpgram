@@ -8,19 +8,11 @@
 
 package io.element.android.features.userprofile.shared
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import io.element.android.compound.theme.ElementTheme
-import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.features.userprofile.shared.tg.TgProfileCard
+import io.element.android.features.userprofile.shared.tg.TgProfileInfoRow
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.ui.strings.CommonStrings
 
@@ -38,50 +30,18 @@ fun UserProfileInfoCard(
     modifier: Modifier = Modifier,
 ) {
     val handle = userId.value.substringBefore(":")
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(ElementTheme.colors.bgSubtleSecondary),
-    ) {
+    TgProfileCard(modifier = modifier) {
         // Bio row is shown only when set; TG order puts it above the handle.
         if (!about.isNullOrBlank()) {
-            UserProfileInfoCardRow(
+            TgProfileInfoRow(
                 value = about,
                 label = stringResource(CommonStrings.larpgram_profile_about_label),
             )
         }
-        UserProfileInfoCardRow(
+        TgProfileInfoRow(
             value = handle,
             label = stringResource(CommonStrings.common_username),
             onClick = onHandleClick,
-        )
-    }
-}
-
-@Composable
-private fun UserProfileInfoCardRow(
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = value,
-            style = ElementTheme.typography.fontBodyLgRegular,
-            color = ElementTheme.colors.textPrimary,
-        )
-        Text(
-            text = label,
-            style = ElementTheme.typography.fontBodySmRegular,
-            color = ElementTheme.colors.textSecondary,
         )
     }
 }

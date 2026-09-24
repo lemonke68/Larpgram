@@ -52,6 +52,8 @@ import io.element.android.libraries.architecture.overlay.operation.show
 import io.element.android.libraries.designsystem.utils.OpenUrlInTabView
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.media.MediaSource
+import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.core.toRoomIdOrAlias
@@ -128,6 +130,17 @@ class RoomDetailsFlowNode(
 
         @Parcelize
         data object MediaGallery : NavTarget
+
+        // Правка форка: тап по фото/файлу во вкладках общих медиа TG-профиля.
+        @Parcelize
+        data class SharedMediaViewer(
+            val mode: MediaViewerEntryPoint.MediaViewerMode,
+            val eventId: EventId?,
+            val mediaInfo: MediaInfo,
+            val mediaSource: MediaSource,
+            val thumbnailSource: MediaSource?,
+            val blurHash: String?,
+        ) : NavTarget
 
         @Parcelize
         data object AdminSettings : NavTarget
@@ -245,6 +258,20 @@ class RoomDetailsFlowNode(
                     override fun navigateToSelectNewOwnersWhenLeaving() {
                         backstack.push(NavTarget.SelectNewOwnersWhenLeaving)
                     }
+
+                    override fun navigateToSharedMedia(params: MediaViewerEntryPoint.Params) {
+                        val roomMedia = params as? MediaViewerEntryPoint.Params.RoomMedia ?: return
+                        overlay.show(
+                            NavTarget.SharedMediaViewer(
+                                mode = roomMedia.mode,
+                                eventId = roomMedia.eventId,
+                                mediaInfo = roomMedia.mediaInfo,
+                                mediaSource = roomMedia.mediaSource,
+                                thumbnailSource = roomMedia.thumbnailSource,
+                                blurHash = roomMedia.blurHash,
+                            )
+                        )
+                    }
                 }
                 createNode<RoomDetailsNode>(buildContext, listOf(roomDetailsCallback))
             }
@@ -346,6 +373,38 @@ class RoomDetailsFlowNode(
                     parentNode = this,
                     buildContext = buildContext,
                     params = params,
+                    callback = callback,
+                )
+            }
+            is NavTarget.SharedMediaViewer -> {
+                val callback = object : MediaViewerEntryPoint.Callback {
+                    override fun onDone() {
+                        overlay.hide()
+                    }
+
+                    override fun viewInTimeline(eventId: EventId) {
+                        val permalinkData = PermalinkData.RoomLink(
+                            roomIdOrAlias = room.roomId.toRoomIdOrAlias(),
+                            eventId = eventId,
+                        )
+                        callback.handlePermalinkClick(permalinkData, pushToBackstack = false)
+                    }
+
+                    override fun forwardEvent(eventId: EventId, fromPinnedEvents: Boolean) {
+                        callback.startForwardEventFlow(eventId, fromPinnedEvents)
+                    }
+                }
+                mediaViewerEntryPoint.createNode(
+                    parentNode = this,
+                    buildContext = buildContext,
+                    params = MediaViewerEntryPoint.Params.RoomMedia(
+                        mode = navTarget.mode,
+                        eventId = navTarget.eventId,
+                        mediaInfo = navTarget.mediaInfo,
+                        mediaSource = navTarget.mediaSource,
+                        thumbnailSource = navTarget.thumbnailSource,
+                        blurHash = navTarget.blurHash,
+                    ),
                     callback = callback,
                 )
             }

@@ -31,6 +31,10 @@ import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.room.BaseRoom
+import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
+import io.element.android.libraries.matrix.ui.presence.rememberPresence
+import io.element.android.libraries.mediaviewer.api.MediaViewerEntryPoint
+import io.element.android.libraries.mediaviewer.api.ProfileSharedMedia
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -46,6 +50,9 @@ class RoomDetailsNode(
     private val room: BaseRoom,
     private val analyticsService: AnalyticsService,
     private val leaveRoomRenderer: LeaveRoomRenderer,
+    // Правка форка: TG-профиль — вкладки общих медиа и присутствие собеседника ЛС.
+    private val profileSharedMedia: ProfileSharedMedia,
+    private val userPresenceFetcher: UserPresenceFetcher,
 ) : Node(buildContext, plugins = plugins), RoomDetailsNavigator {
     interface Callback : Plugin {
         fun navigateBack()
@@ -64,6 +71,7 @@ class RoomDetailsNode(
         fun navigateToRoomCall(callIntent: CallIntent)
         fun navigateToReportRoom()
         fun navigateToSelectNewOwnersWhenLeaving()
+        fun navigateToSharedMedia(params: MediaViewerEntryPoint.Params)
     }
 
     private val presenter = presenterFactory.create(this)
@@ -118,24 +126,26 @@ class RoomDetailsNode(
             }
         }
 
-        RoomDetailsView(
+        // Правка форка: профиль в стиле TG вместо элементовского RoomDetailsView.
+        val sharedMedia = profileSharedMedia.rememberSection(onOpenMedia = callback::navigateToSharedMedia)
+        val dmUserId = (state.roomType as? RoomDetailsType.Dm)?.otherMember?.userId
+        TgRoomDetailsView(
             state = state,
+            sharedMedia = sharedMedia,
+            presence = userPresenceFetcher.rememberPresence(dmUserId),
             modifier = modifier,
             goBack = ::navigateUp,
-            onActionClick = ::onActionClick,
+            onEditClick = { onActionClick(RoomDetailsAction.Edit) },
             onShareRoom = ::onShareRoom,
             openRoomMemberList = callback::navigateToRoomMemberList,
             openRoomNotificationSettings = callback::navigateToRoomNotificationSettings,
             invitePeople = callback::navigateToInviteMembers,
             openAvatarPreview = callback::navigateToAvatarPreview,
-            openPollHistory = callback::navigateToPollHistory,
-            openMediaGallery = callback::navigateToMediaGallery,
             openAdminSettings = callback::navigateToAdminSettings,
             onJoinCallClick = callback::navigateToRoomCall,
-            onPinnedMessagesClick = callback::navigateToPinnedMessagesList,
             onKnockRequestsClick = callback::navigateToKnockRequestsList,
             onSecurityAndPrivacyClick = callback::navigateToSecurityAndPrivacy,
-            onProfileClick = callback::navigateToRoomMemberDetails,
+            onMemberClick = callback::navigateToRoomMemberDetails,
             onReportRoomClick = callback::navigateToReportRoom,
             leaveRoomView = {
                 leaveRoomRenderer.Render(

@@ -47,13 +47,14 @@ fun CollapsingAvatar(
     expandFraction: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    avatarType: AvatarType = AvatarType.User,
 ) {
     val hasImage = !avatarData.url.isNullOrBlank()
     if (!hasImage) {
         Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Avatar(
                 avatarData = avatarData.copy(size = AvatarSize.UserHeader),
-                avatarType = AvatarType.User,
+                avatarType = avatarType,
                 contentDescription = stringResource(CommonStrings.a11y_user_avatar),
             )
         }
@@ -84,7 +85,7 @@ fun CollapsingAvatar(
                 is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
                 else -> Avatar(
                     avatarData = avatarData.copy(size = AvatarSize.UserHeader),
-                    avatarType = AvatarType.User,
+                    avatarType = avatarType,
                     contentDescription = null,
                 )
             }

@@ -28,6 +28,8 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
+import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
+import io.element.android.libraries.matrix.ui.presence.rememberPresence
 import io.element.android.services.analytics.api.AnalyticsService
 
 @ContributesNode(RoomScope::class)
@@ -38,6 +40,8 @@ class RoomMemberDetailsNode(
     private val analyticsService: AnalyticsService,
     private val permalinkBuilder: PermalinkBuilder,
     presenterFactory: RoomMemberDetailsPresenter.Factory,
+    // Правка форка: «в сети» / «был(а) …» в шапке TG-профиля.
+    private val userPresenceFetcher: UserPresenceFetcher,
 ) : Node(buildContext, plugins = plugins) {
     data class RoomMemberDetailsInput(
         val roomMemberId: UserId,
@@ -83,6 +87,8 @@ class RoomMemberDetailsNode(
             onStartCall = ::onStartCall,
             openAvatarPreview = callback::navigateToAvatarPreview,
             onVerifyClick = callback::startVerifyUserFlow,
+            presence = userPresenceFetcher.rememberPresence(inputs.roomMemberId.takeIf { !state.isCurrentUser }),
+            isNavigationTab = false,
         )
     }
 }

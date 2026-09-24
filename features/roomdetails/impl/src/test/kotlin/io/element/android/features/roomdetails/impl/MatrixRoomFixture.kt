@@ -51,8 +51,11 @@ fun aFakeBaseRoom(
     userRoleResult: () -> Result<RoomMember.Role> = { lambdaError() },
     setIsFavoriteResult: (Boolean) -> Result<Unit> = { lambdaError() },
     markAsReadResult: (ReceiptType) -> Result<Unit> = { lambdaError() },
+    // Правка форка: TG-профиль группы подгружает участников для вкладки «Участники».
+    updateMembersResult: () -> Unit = {},
 ) = FakeBaseRoom(
     sessionId = sessionId,
+    updateMembersResult = updateMembersResult,
     roomId = roomId,
     userDisplayNameResult = userDisplayNameResult,
     userAvatarUrlResult = userAvatarUrlResult,
