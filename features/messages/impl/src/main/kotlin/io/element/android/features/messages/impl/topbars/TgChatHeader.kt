@@ -7,7 +7,6 @@
 
 package io.element.android.features.messages.impl.topbars
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -59,9 +57,9 @@ import io.element.android.libraries.designsystem.components.glass.tgTopFade
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.matrix.ui.presence.UserPresence
+import io.element.android.libraries.matrix.ui.presence.presenceText
 import io.element.android.libraries.ui.strings.CommonStrings
-import java.util.Calendar
-import java.util.Date
 
 /**
  * Правка форка: шапка чата Telegram 12 — стеклянные пилюли поверх обоев (`ChatActivity`,
@@ -71,7 +69,7 @@ import java.util.Date
 @Composable
 internal fun TgChatHeader(
     state: MessagesState,
-    dmPresence: DmPresence?,
+    dmPresence: UserPresence?,
     onBackClick: () -> Unit,
     onRoomDetailsClick: () -> Unit,
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
@@ -276,7 +274,7 @@ internal data class HeaderSubtitle(val text: String, val isAccent: Boolean)
  * подписчики, ЛС — «в сети» / «был(а) …», группа — участники.
  */
 @Composable
-private fun headerSubtitle(state: MessagesState, dmPresence: DmPresence?): HeaderSubtitle? {
+private fun headerSubtitle(state: MessagesState, dmPresence: UserPresence?): HeaderSubtitle? {
     val typing = state.timelineState.timelineRoomInfo.typingNotificationState
     if (typing.renderTypingNotifications && typing.typingMembers.isNotEmpty()) {
         val names = typing.typingMembers.map { it.disambiguatedDisplayName }
@@ -293,53 +291,10 @@ private fun headerSubtitle(state: MessagesState, dmPresence: DmPresence?): Heade
         return HeaderSubtitle(pluralStringResource(R.plurals.channel_subscriber_count, count.toInt(), count.toInt()), isAccent = false)
     }
     if (state.dmUserId != null) {
-        return dmPresenceSubtitle(dmPresence)
+        return presenceText(dmPresence).let { HeaderSubtitle(it.text, isAccent = it.isOnline) }
     }
     val members = state.memberCount ?: return null
     return HeaderSubtitle(pluralStringResource(R.plurals.larpgram_header_members, members.toInt(), members.toInt()), isAccent = false)
-}
-
-@Composable
-private fun dmPresenceSubtitle(presence: DmPresence?): HeaderSubtitle {
-    if (presence?.isOnline == true) {
-        return HeaderSubtitle(stringResource(R.string.larpgram_header_online), isAccent = true)
-    }
-    val lastActive = presence?.lastActiveAtMillis
-        ?: return HeaderSubtitle(stringResource(R.string.larpgram_header_last_seen_recently), isAccent = false)
-    val context = LocalContext.current
-    val now = System.currentTimeMillis()
-    val minutes = ((now - lastActive) / 60_000L).coerceAtLeast(0)
-    val text = when {
-        minutes < 1 -> stringResource(R.string.larpgram_header_last_seen_just_now)
-        minutes < 60 -> pluralStringResource(R.plurals.larpgram_header_last_seen_minutes, minutes.toInt(), minutes.toInt())
-        else -> {
-            val time = DateFormat.getTimeFormat(context).format(Date(lastActive))
-            val daysAgo = daysBetween(lastActive, now)
-            when (daysAgo) {
-                0 -> stringResource(R.string.larpgram_header_last_seen_at, time)
-                1 -> stringResource(R.string.larpgram_header_last_seen_yesterday, time)
-                else -> stringResource(
-                    R.string.larpgram_header_last_seen_date,
-                    java.text.SimpleDateFormat("dd.MM.yy", java.util.Locale.getDefault()).format(Date(lastActive)),
-                )
-            }
-        }
-    }
-    return HeaderSubtitle(text, isAccent = false)
-}
-
-/** Сколько календарных дней между двумя моментами по местному времени. */
-private fun daysBetween(from: Long, to: Long): Int {
-    fun dayIndex(millis: Long): Long {
-        val calendar = Calendar.getInstance().apply { timeInMillis = millis }
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis
-    }
-    // Округление, а не деление нацело: сутки с переводом часов длятся 23 или 25 часов.
-    return Math.round((dayIndex(to) - dayIndex(from)) / 86_400_000.0).toInt()
 }
 
 /** Высота пилюль шапки, как у поля ввода. */

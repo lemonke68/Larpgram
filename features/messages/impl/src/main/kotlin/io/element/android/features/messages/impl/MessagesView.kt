@@ -120,7 +120,6 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemGrou
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.sendfailure.SendFailureDialogView
-import io.element.android.features.messages.impl.topbars.DmPresence
 import io.element.android.features.messages.impl.topbars.TgChatHeader
 import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
@@ -159,6 +158,7 @@ import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.ui.presence.UserPresence
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
@@ -198,7 +198,7 @@ fun MessagesView(
     // Правка форка: клавиатура эмодзи для панели Telegram под полем ввода (модификатор, вставка).
     emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)? = null,
     // Правка форка: «в сети / был(а)» собеседника ЛС для шапки Telegram.
-    dmPresence: DmPresence? = null,
+    dmPresence: UserPresence? = null,
 ) {
     val eventContentValidationState = LocalEventContentValidationState.current
 

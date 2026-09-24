@@ -38,6 +38,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.matrix.richtexteditor)
     implementation(projects.libraries.previewutils)
+    // Правка форка: запрос presence к Synapse (UserPresenceFetcher).
+    implementation(platform(libs.network.okhttp.bom))
+    implementation(libs.network.okhttp)
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)

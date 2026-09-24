@@ -5,4 +5,17 @@
     <string name="larpgram_action_set_photo">"Выбрать фото"</string>
     <string name="larpgram_action_edit_profile">"Изменить"</string>
     <string name="larpgram_profile_about_label">"О себе"</string>
+
+    <string name="larpgram_presence_online">в сети</string>
+    <string name="larpgram_presence_last_seen_recently">был(а) недавно</string>
+    <string name="larpgram_presence_last_seen_just_now">был(а) только что</string>
+    <plurals name="larpgram_presence_last_seen_minutes">
+        <item quantity="one">был(а) %1$d минуту назад</item>
+        <item quantity="few">был(а) %1$d минуты назад</item>
+        <item quantity="many">был(а) %1$d минут назад</item>
+        <item quantity="other">был(а) %1$d минут назад</item>
+    </plurals>
+    <string name="larpgram_presence_last_seen_at">был(а) в %1$s</string>
+    <string name="larpgram_presence_last_seen_yesterday">был(а) вчера в %1$s</string>
+    <string name="larpgram_presence_last_seen_date">был(а) %1$s</string>
 </resources>
