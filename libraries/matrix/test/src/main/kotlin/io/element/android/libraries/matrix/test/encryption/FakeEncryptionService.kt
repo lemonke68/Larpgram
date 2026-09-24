@@ -77,7 +77,12 @@ class FakeEncryptionService(
         return doesBackupExistOnServerResult
     }
 
+    // Правка форка: каким ключом восстанавливались (тест авто-разблокировки через escrow).
+    var lastRecoveryKey: String? = null
+        private set
+
     override suspend fun recover(recoveryKey: String): Result<Unit> = simulateLongTask {
+        lastRecoveryKey = recoveryKey
         recoverFailure?.let { return Result.failure(it) }
         return Result.success(Unit)
     }

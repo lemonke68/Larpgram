@@ -268,7 +268,10 @@ class ConfigureRoomPresenter(
                         isEncrypted = !sessionEnterpriseService.isEncryptionDisabledByHomeserver(),
                         isDirect = false,
                         visibility = RoomVisibility.Private,
-                        historyVisibilityOverride = RoomHistoryVisibility.Invited,
+                        // Правка форка: как в TG, новый участник группы видит всю историю. При
+                        // `shared` rust SDK при приглашении передаёт ему ключи прошлых сообщений
+                        // (MSC4268, enableShareHistoryOnInvite), шифрование при этом остаётся.
+                        historyVisibilityOverride = RoomHistoryVisibility.Shared,
                         joinRuleOverride = config.visibilityState.joinRuleItem.toJoinRule()
                             // No need to specify the Invite join rule override, since the preset is already PRIVATE_CHAT
                             .takeIf { it != JoinRule.Invite },

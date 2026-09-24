@@ -9,7 +9,7 @@ package io.element.android.libraries.keyescrow.test
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 
 class FakeRecoveryKeyAutoProvisioner(
-    private val ensureProvisionedLambda: () -> Unit = {},
+    private val ensureProvisionedLambda: suspend () -> Unit = {},
 ) : RecoveryKeyAutoProvisioner {
     override suspend fun ensureProvisioned() {
         ensureProvisionedLambda()

@@ -51,7 +51,8 @@ class DefaultPinnedMessagesBannerFormatter(
                 text.prefixWith(CommonStrings.common_sticker)
             }
             is UnableToDecryptContent -> {
-                sp.getString(CommonStrings.common_waiting_for_decryption_key)
+                // Правка форка: без «Ожидание ключа расшифровки», см. DefaultRoomLatestEventFormatter.
+                sp.getString(CommonStrings.common_message)
             }
             is PollContent -> {
                 content.question.prefixWith(CommonStrings.a11y_poll)

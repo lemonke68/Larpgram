@@ -24,6 +24,7 @@ import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import io.element.android.libraries.matrix.api.timeline.item.event.EventTimelineItem
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageContent
 import io.element.android.libraries.matrix.api.timeline.item.event.OtherMessageType
+import io.element.android.libraries.matrix.api.timeline.item.event.UnableToDecryptContent
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.Flow
@@ -113,7 +114,11 @@ class TimelineItemsFactory(
     ): TimelineItem? {
         val timelineItem =
             when (val currentTimelineItem = timelineItems[index]) {
-                is MatrixTimelineItem.Event -> if (currentTimelineItem.event.isKeyVerificationRequest()) {
+                // Правка форка: нерасшифрованные сообщения («Ожидание ключа расшифровки») не
+                // показываем. Если ключ придёт позже (бэкап, escrow), SDK заменит элемент уже
+                // расшифрованным, и сообщение появится на своём месте.
+                is MatrixTimelineItem.Event -> if (currentTimelineItem.event.isKeyVerificationRequest() ||
+                    currentTimelineItem.event.content is UnableToDecryptContent) {
                     null
                 } else {
                     eventItemFactory.create(currentTimelineItem, index, timelineItems, roomMembers, renderReadReceipts)

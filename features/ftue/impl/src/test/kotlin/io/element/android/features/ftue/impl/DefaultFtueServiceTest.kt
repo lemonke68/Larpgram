@@ -17,6 +17,8 @@ import io.element.android.features.ftue.impl.state.FtueStep
 import io.element.android.features.ftue.impl.state.InternalFtueState
 import io.element.android.features.lockscreen.api.LockScreenService
 import io.element.android.features.lockscreen.test.FakeLockScreenService
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
+import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.verification.SessionVerificationService
 import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
 import io.element.android.libraries.matrix.test.verification.FakeSessionVerificationService
@@ -28,6 +30,7 @@ import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.noop.NoopAnalyticsService
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.services.toolbox.test.sdk.FakeBuildVersionSdkIntProvider
+import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -96,6 +99,46 @@ class DefaultFtueServiceTest {
         service.state.test {
             assertThat(awaitItem()).isEqualTo(FtueState.Unknown)
             assertThat(awaitItem()).isEqualTo(FtueState.Complete)
+        }
+    }
+
+    @Test
+    fun `a new session unlocked with the escrowed key skips session verification`() = runTest {
+        val sessionVerificationService = FakeSessionVerificationService().apply {
+            emitVerifiedStatus(SessionVerifiedStatus.NotVerified)
+        }
+        val analyticsService = FakeAnalyticsService()
+        val permissionStateProvider = FakePermissionStateProvider(permissionGranted = true)
+        val lockScreenService = FakeLockScreenService()
+        val service = createDefaultFtueService(
+            sessionVerificationService = sessionVerificationService,
+            analyticsService = analyticsService,
+            permissionStateProvider = permissionStateProvider,
+            lockScreenService = lockScreenService,
+            recoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner {
+                sessionVerificationService.emitVerifiedStatus(SessionVerifiedStatus.Verified)
+            },
+        )
+        analyticsService.setDidAskUserConsent()
+        lockScreenService.setIsPinSetup(true)
+
+        service.ftueStepStateFlow.test {
+            val states = consumeItemsUntilPredicate { it is InternalFtueState.Complete }
+            assertThat(states).doesNotContain(InternalFtueState.Incomplete(FtueStep.SessionVerification))
+            assertThat(states.last()).isEqualTo(InternalFtueState.Complete)
+        }
+    }
+
+    @Test
+    fun `a new session without an escrowed key still goes to session verification`() = runTest {
+        val sessionVerificationService = FakeSessionVerificationService().apply {
+            emitVerifiedStatus(SessionVerifiedStatus.NotVerified)
+        }
+        val service = createDefaultFtueService(sessionVerificationService = sessionVerificationService)
+
+        service.ftueStepStateFlow.test {
+            val states = consumeItemsUntilPredicate { it == InternalFtueState.Incomplete(FtueStep.SessionVerification) }
+            assertThat(states.last()).isEqualTo(InternalFtueState.Incomplete(FtueStep.SessionVerification))
         }
     }
 
@@ -198,6 +241,7 @@ internal fun TestScope.createDefaultFtueService(
     permissionStateProvider: PermissionStateProvider = FakePermissionStateProvider(permissionGranted = false),
     lockScreenService: LockScreenService = FakeLockScreenService(),
     sessionPreferencesStore: SessionPreferencesStore = InMemorySessionPreferencesStore(),
+    recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
     // First version where notification permission is required
     sdkIntVersion: Int = Build.VERSION_CODES.TIRAMISU,
 ) = DefaultFtueService(
@@ -208,4 +252,5 @@ internal fun TestScope.createDefaultFtueService(
     permissionStateProvider = permissionStateProvider,
     lockScreenService = lockScreenService,
     sessionPreferencesStore = sessionPreferencesStore,
+    recoveryKeyAutoProvisioner = recoveryKeyAutoProvisioner,
 )

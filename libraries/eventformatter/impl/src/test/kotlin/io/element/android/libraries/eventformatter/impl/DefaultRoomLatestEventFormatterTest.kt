@@ -183,7 +183,7 @@ class DefaultRoomLatestEventFormatterTest : RobolectricTest() {
     @Test
     @Config(qualifiers = "en")
     fun `Unable to decrypt content`() {
-        val expected = "Waiting for this message"
+        val expected = "Message"
         val senderName = "Someone"
         sequenceOf(false, true).forEach { isDm ->
             val message = createLatestEvent(

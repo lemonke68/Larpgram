@@ -48,6 +48,7 @@ dependencies {
     implementation(projects.libraries.permissions.noop)
     implementation(projects.services.toolbox.api)
     implementation(projects.appconfig)
+    implementation(projects.libraries.keyescrow.api)
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
@@ -57,4 +58,5 @@ dependencies {
     testImplementation(projects.libraries.preferences.test)
     testImplementation(projects.features.lockscreen.test)
     testImplementation(projects.services.toolbox.test)
+    testImplementation(projects.libraries.keyescrow.test)
 }

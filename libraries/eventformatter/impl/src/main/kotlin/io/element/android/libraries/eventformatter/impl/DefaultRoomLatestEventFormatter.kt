@@ -104,7 +104,9 @@ class DefaultRoomLatestEventFormatter(
                     .prefixIfNeeded(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
             }
             is UnableToDecryptContent -> {
-                val message = sp.getString(CommonStrings.common_waiting_for_decryption_key)
+                // Правка форка: ключ ещё не пришёл — нейтральное «Сообщение», как у TG для
+                // неподдерживаемого; пугающее «Ожидание ключа расшифровки» не показываем.
+                val message = sp.getString(CommonStrings.common_message)
                 message.prefixIfNeeded(senderDisambiguatedDisplayName, isDmRoom, isOutgoing)
             }
             is RoomMembershipContent -> {

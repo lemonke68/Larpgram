@@ -130,6 +130,21 @@ class DefaultKeyEscrowService(
         } ?: RedeemResult.NetworkError
     }
 
+    override suspend fun fetchSessionKey(): String? {
+        val token = accessToken() ?: return null
+        val request = Request.Builder()
+            .url("$BASE_URL/key/session")
+            .header(HEADER_AUTH, "Bearer $token")
+            .get()
+            .build()
+        return execute(request) { response ->
+            if (response.code != 200) return@execute null
+            runCatching { json.decodeFromString<RecoveryKeyResponse>(response.body.string()).recoveryKey }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+        }
+    }
+
     override suspend fun deleteDmForBoth(roomId: RoomId): Boolean {
         val token = accessToken() ?: return false
         val body = json.encodeToString(DeleteRoomRequest(roomId.value)).toRequestBody(JSON_MEDIA_TYPE)

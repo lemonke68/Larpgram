@@ -31,4 +31,5 @@ dependencies {
     testCommonDependencies(libs)
     testImplementation(libs.network.mockwebserver)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.libraries.keyescrow.test)
 }

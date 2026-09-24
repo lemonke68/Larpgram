@@ -18,6 +18,7 @@ import io.element.android.features.lockscreen.api.LockScreenService
 import io.element.android.libraries.core.coroutine.mapState
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.verification.SessionVerificationService
 import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
 import io.element.android.libraries.permissions.api.PermissionStateProvider
@@ -25,6 +26,8 @@ import io.element.android.libraries.preferences.api.store.SessionPreferencesStor
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.toolbox.api.sdk.BuildVersionSdkIntProvider
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -32,6 +35,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 
 @ContributesBinding(SessionScope::class)
 @SingleIn(SessionScope::class)
@@ -43,8 +48,19 @@ class DefaultFtueService(
     private val lockScreenService: LockScreenService,
     private val sessionVerificationService: SessionVerificationService,
     private val sessionPreferencesStore: SessionPreferencesStore,
+    private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
 ) : FtueService {
     private val userNeedsToConfirmSessionVerificationSuccess = MutableStateFlow(false)
+
+    // Правка форка (решение юзера 2026-09-24): вошёл в аккаунт — значит, это ты. Новую сессию
+    // молча открываем ключом из escrow, экран «Подтвердите личность» остаётся только запасным путём,
+    // если ключа в escrow нет или сервер недоступен. Один раз на сессию, пока висит заглушка FTUE.
+    private val autoUnlock = sessionCoroutineScope.async(start = CoroutineStart.LAZY) {
+        withTimeoutOrNull(AUTO_UNLOCK_TIMEOUT) {
+            recoveryKeyAutoProvisioner.ensureProvisioned()
+            sessionVerificationService.sessionVerifiedStatus.first { it == SessionVerifiedStatus.Verified }
+        } != null
+    }
 
     val ftueStepStateFlow = MutableStateFlow<InternalFtueState>(InternalFtueState.Unknown)
 
@@ -88,7 +104,7 @@ class DefaultFtueService(
             } else {
                 getNextStep(FtueStep.WaitingForInitialState)
             }
-            FtueStep.WaitingForInitialState -> if (isSessionNotVerified() || userNeedsToConfirmSessionVerificationSuccess.value) {
+            FtueStep.WaitingForInitialState -> if ((isSessionNotVerified() && !autoUnlocked()) || userNeedsToConfirmSessionVerificationSuccess.value) {
                 FtueStep.SessionVerification
             } else {
                 getNextStep(FtueStep.SessionVerification)
@@ -119,6 +135,13 @@ class DefaultFtueService(
         return sessionVerificationService.sessionVerifiedStatus.value == SessionVerifiedStatus.NotVerified && !canSkipVerification()
     }
 
+    private suspend fun autoUnlocked(): Boolean {
+        val unlocked = autoUnlock.await()
+        // Экран «Сессия подтверждена» показывать не за что — человек ничего не подтверждал.
+        if (unlocked) userNeedsToConfirmSessionVerificationSuccess.value = false
+        return unlocked
+    }
+
     private suspend fun canSkipVerification(): Boolean {
         return sessionPreferencesStore.isSessionVerificationSkipped().first()
     }
@@ -146,6 +169,8 @@ class DefaultFtueService(
         userNeedsToConfirmSessionVerificationSuccess.value = false
     }
 }
+
+private val AUTO_UNLOCK_TIMEOUT = 30.seconds
 
 sealed interface FtueStep {
     data object WaitingForInitialState : FtueStep
