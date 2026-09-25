@@ -26,6 +26,9 @@ sealed interface RoomListEvent {
 
     /** Правка форка: «потом» на баннере обновления, молчим до следующей версии. */
     data object DismissUpdateBanner : RoomListEvent
+
+    // Правка форка: тап по баннеру обновления — скачать и поставить.
+    data object InstallUpdate : RoomListEvent
     data object ToggleSearchResults : RoomListEvent
     data class ShowContextMenu(val roomSummary: RoomListRoomSummary) : RoomListEvent
 

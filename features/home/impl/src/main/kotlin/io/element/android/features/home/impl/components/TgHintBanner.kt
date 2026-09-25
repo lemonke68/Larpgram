@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
+import io.element.android.libraries.designsystem.theme.components.LinearProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.ui.strings.CommonStrings
 
@@ -39,6 +41,8 @@ internal fun TgHintBanner(
     onDismissClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
+    // Полоса хода вместо разделителя снизу: 0..1, [INDETERMINATE_PROGRESS] — без процентов.
+    progress: Float? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -71,9 +75,19 @@ internal fun TgHintBanner(
                 }
             }
         }
-        HorizontalDivider()
+        when {
+            progress == null -> HorizontalDivider()
+            progress < 0f -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
+            else -> LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(2.dp),
+            )
+        }
     }
 }
+
+/** Для [TgHintBanner]: крутить полосу хода, не зная процентов. */
+internal const val INDETERMINATE_PROGRESS = -1f
 
 @PreviewsDayNight
 @Composable

@@ -10,3 +10,7 @@ plugins {
 android {
     namespace = "io.element.android.libraries.appupdate.api"
 }
+
+dependencies {
+    api(libs.coroutines.core)
+}

@@ -48,6 +48,8 @@ import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.appupdate.api.UpdateChecker
+import io.element.android.libraries.appupdate.api.UpdateInstallState
+import io.element.android.libraries.appupdate.api.UpdateInstaller
 import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
@@ -112,6 +114,8 @@ class RoomListPresenter(
     private val accountEmailStatus: AccountEmailStatus,
     // Правка форка: баннер с предложением обновиться.
     private val updateChecker: UpdateChecker,
+    // Правка форка: скачать и поставить обновление по тапу на баннер.
+    private val updateInstaller: UpdateInstaller,
     // Правка форка: молча заводим ключ восстановления + escrow свежему аккаунту, чтобы новые/
     // сброшенные сессии восстанавливались кодом с почты и не ловили UTD.
     private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
@@ -185,14 +189,18 @@ class RoomListPresenter(
             }
         }
 
-        // Правка форка: баннер обновления. Спрашиваем манифест один раз за показ экрана,
-        // как и почту: версия сама собой не меняется, а обновление всё равно уводит человека
-        // в браузер и назад. check() уже отсекает старые и отклонённые версии, поэтому здесь
-        // достаточно проверить, что вернулось Available.
+        // Правка форка: баннер обновления. Спрашиваем манифест один раз за показ экрана, как и
+        // почту. check() уже отсекает старые и отклонённые версии, поэтому здесь достаточно
+        // проверить, что вернулось Available. Ход загрузки и установки — из UpdateInstaller.
         var updateBannerDismissed by rememberSaveable { mutableStateOf(false) }
         val updateStatus by produceState<UpdateStatus>(UpdateStatus.Unknown) {
             value = updateChecker.check()
         }
+        val updateInstallState by updateInstaller.state.collectAsState()
+        val updateBanner = (updateStatus as? UpdateStatus.Available)
+            // Пока идёт установка, баннер не прячем, даже если его закрыли раньше.
+            ?.takeIf { !updateBannerDismissed || updateInstallState != UpdateInstallState.Idle }
+            ?.let { UpdateBannerState(versionName = it.versionName, installState = updateInstallState) }
 
         val showNewNotificationSoundBanner by remember {
             announcementService.announcementsToShowFlow().map { announcements ->
@@ -230,6 +238,9 @@ class RoomListPresenter(
                     (updateStatus as? UpdateStatus.Available)?.let { available ->
                         coroutineScope.launch { updateChecker.dismiss(available.versionCode) }
                     }
+                }
+                RoomListEvent.InstallUpdate -> {
+                    (updateStatus as? UpdateStatus.Available)?.let(updateInstaller::install)
                 }
                 RoomListEvent.ToggleSearchResults -> searchState.eventSink(RoomListSearchEvent.ToggleSearchVisibility)
                 is RoomListEvent.ShowContextMenu -> {
@@ -284,7 +295,7 @@ class RoomListPresenter(
             // То же и с сессиями: без адреса страницы управления вести некуда.
             showCleanUpSessionsBanner = hasOtherSessions && !cleanUpSessionsBannerDismissed && manageSessionsUrl != null,
             manageSessionsUrl = manageSessionsUrl,
-            showUpdateBanner = updateStatus is UpdateStatus.Available && !updateBannerDismissed,
+            updateBanner = updateBanner,
             showNewNotificationSoundBanner,
             showUnreadCount,
         )
@@ -347,6 +358,12 @@ class RoomListPresenter(
             }
         }
 
+        // Правка форка: обновление важнее почты и сессий (решение 2026-09-25): иначе у кого висит
+        // баннер про сессии, тот так и не узнает о новой версии. Ставится в один тап.
+        if (showUpdateBanner) {
+            return SecurityBannerState.UpdateAvailable
+        }
+
         // Правка форка: почта живёт своей жизнью и своим «скрыть». Закрытый баннер про
         // ключи не должен заодно прятать напоминание про почту, это разные проблемы.
         // Показываем вторым: ключи важнее, а два баннера разом это уже свалка.
@@ -356,12 +373,6 @@ class RoomListPresenter(
 
         if (showCleanUpSessionsBanner) {
             return SecurityBannerState.CleanUpSessions
-        }
-
-        // Правка форка: обновление — самый низкий приоритет. Безопасность аккаунта важнее,
-        // а обновиться человек успеет и после того, как разберётся с ключами и сессиями.
-        if (showUpdateBanner) {
-            return SecurityBannerState.UpdateAvailable
         }
 
         return SecurityBannerState.None
@@ -374,7 +385,7 @@ class RoomListPresenter(
         accountManagementUrl: String?,
         showCleanUpSessionsBanner: Boolean,
         manageSessionsUrl: String?,
-        showUpdateBanner: Boolean,
+        updateBanner: UpdateBannerState?,
         showNewNotificationSoundBanner: Boolean,
         showUnreadCount: Boolean,
     ): RoomListContentState {
@@ -397,12 +408,18 @@ class RoomListPresenter(
             }
         }
         val seenRoomInvites by remember { seenInvitesStore.seenRoomIds() }.collectAsState(emptySet())
-        val securityBannerState by rememberSecurityBannerState(securityBannerDismissed, showConnectEmailBanner, showCleanUpSessionsBanner, showUpdateBanner)
+        val securityBannerState by rememberSecurityBannerState(
+            securityBannerDismissed,
+            showConnectEmailBanner,
+            showCleanUpSessionsBanner,
+            showUpdateBanner = updateBanner != null,
+        )
         return when {
             showEmpty -> RoomListContentState.Empty(
                 securityBannerState = securityBannerState,
                 accountManagementUrl = accountManagementUrl,
                 manageSessionsUrl = manageSessionsUrl,
+                updateBanner = updateBanner,
             )
             showSkeleton -> RoomListContentState.Skeleton(count = 16)
             else -> {
@@ -412,6 +429,7 @@ class RoomListPresenter(
                     securityBannerState = securityBannerState,
                     accountManagementUrl = accountManagementUrl,
                     manageSessionsUrl = manageSessionsUrl,
+                    updateBanner = updateBanner,
                     showNewNotificationSoundBanner = showNewNotificationSoundBanner,
                     showUnreadCount = showUnreadCount,
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),

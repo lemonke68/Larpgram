@@ -19,6 +19,7 @@ setupDependencyInjection()
 
 dependencies {
     api(projects.libraries.appupdate.api)
+    implementation(libs.androidx.corektx)
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)
     implementation(platform(libs.network.okhttp.bom))

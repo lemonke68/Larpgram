@@ -8,7 +8,10 @@ package io.element.android.features.home.impl.roomlist
 
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.appupdate.api.UpdateChecker
+import io.element.android.libraries.appupdate.api.UpdateInstallState
+import io.element.android.libraries.appupdate.api.UpdateInstaller
 import io.element.android.libraries.appupdate.api.UpdateStatus
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * По умолчанию почта есть и баннер не нужен: в тестах про другое он только мешал бы.
@@ -35,4 +38,12 @@ class FakeUpdateChecker(
     override suspend fun check(): UpdateStatus = checkResult()
 
     override suspend fun dismiss(versionCode: Long) = onDismiss(versionCode)
+}
+
+class FakeUpdateInstaller(
+    private val installLambda: (UpdateStatus.Available) -> Unit = {},
+) : UpdateInstaller {
+    override val state = MutableStateFlow<UpdateInstallState>(UpdateInstallState.Idle)
+
+    override fun install(update: UpdateStatus.Available) = installLambda(update)
 }

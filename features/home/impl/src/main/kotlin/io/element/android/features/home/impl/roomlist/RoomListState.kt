@@ -17,6 +17,7 @@ import io.element.android.features.home.impl.search.RoomListSearchState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteState
 import io.element.android.features.leaveroom.api.LeaveRoomState
+import io.element.android.libraries.appupdate.api.UpdateInstallState
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
@@ -85,6 +86,13 @@ enum class SecurityBannerState {
     UpdateAvailable,
 }
 
+/** Правка форка: что показывать в баннере обновления — версию и ход установки. */
+@Immutable
+data class UpdateBannerState(
+    val versionName: String,
+    val installState: UpdateInstallState,
+)
+
 @Immutable
 sealed interface RoomListContentState {
     data class Skeleton(val count: Int) : RoomListContentState
@@ -96,6 +104,8 @@ sealed interface RoomListContentState {
         // Правка форка: адрес страницы управления сессиями (MAS DevicesList), туда ведёт
         // баннер про очистку старых сессий.
         val manageSessionsUrl: String? = null,
+        // Правка форка: баннер обновления (null — не показываем).
+        val updateBanner: UpdateBannerState? = null,
     ) : RoomListContentState
 
     data class Rooms(
@@ -103,6 +113,7 @@ sealed interface RoomListContentState {
         // Правка форка: см. комменты у Empty выше.
         val accountManagementUrl: String? = null,
         val manageSessionsUrl: String? = null,
+        val updateBanner: UpdateBannerState? = null,
         val fullScreenIntentPermissionsState: FullScreenIntentPermissionsState,
         val batteryOptimizationState: BatteryOptimizationState,
         val showNewNotificationSoundBanner: Boolean,

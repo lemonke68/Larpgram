@@ -36,6 +36,9 @@ import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
 import io.element.android.features.rageshake.test.logs.FakeAnnouncementService
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.appupdate.api.UpdateChecker
+import io.element.android.libraries.appupdate.api.UpdateInstallState
+import io.element.android.libraries.appupdate.api.UpdateInstaller
+import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.test.FakeDateFormatter
@@ -233,6 +236,33 @@ class RoomListPresenterTest {
         syncService = FakeSyncService(initialSyncState = SyncState.Running),
         accountManagementUrlResult = { accountManagementUrl },
     )
+
+    @Test
+    fun `present - update beats the email banner and a tap installs it in the app`() = runTest {
+        val available = UpdateStatus.Available(
+            versionName = "0.3.1",
+            versionCode = 202609022,
+            apkUrl = "https://larpgram.mango-kokos.ru/larpgram.apk",
+        )
+        var installed: UpdateStatus.Available? = null
+        val presenter = createRoomListPresenter(
+            client = clientWithRoomsAndRecoveryEnabled(),
+            accountEmailStatus = FakeAccountEmailStatus(hasEmailResult = { false }),
+            updateChecker = FakeUpdateChecker(checkResult = { available }),
+            updateInstaller = FakeUpdateInstaller(installLambda = { installed = it }),
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate {
+                it.contentState is RoomListContentState.Rooms &&
+                    it.contentAsRooms().securityBannerState == SecurityBannerState.UpdateAvailable
+            }.last()
+            assertThat(state.contentAsRooms().updateBanner)
+                .isEqualTo(UpdateBannerState(versionName = "0.3.1", installState = UpdateInstallState.Idle))
+            state.eventSink(RoomListEvent.InstallUpdate)
+            assertThat(installed).isEqualTo(available)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
     fun `present - no email on the account shows the connect email banner`() = runTest {
@@ -829,6 +859,7 @@ class RoomListPresenterTest {
         markRoomAsRead: MarkRoomAsRead? = null,
         accountEmailStatus: AccountEmailStatus = FakeAccountEmailStatus(),
         updateChecker: UpdateChecker = FakeUpdateChecker(),
+        updateInstaller: UpdateInstaller = FakeUpdateInstaller(),
         recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
         keyEscrowService: KeyEscrowService = FakeKeyEscrowService(),
         snackbarDispatcher: SnackbarDispatcher = SnackbarDispatcher(),
@@ -872,6 +903,7 @@ class RoomListPresenterTest {
         // Зависимости форка: почта и обновления для баннеров.
         accountEmailStatus = accountEmailStatus,
         updateChecker = updateChecker,
+        updateInstaller = updateInstaller,
         recoveryKeyAutoProvisioner = recoveryKeyAutoProvisioner,
         pinnedChatsStore = PinnedChatsStore(
             client = client,

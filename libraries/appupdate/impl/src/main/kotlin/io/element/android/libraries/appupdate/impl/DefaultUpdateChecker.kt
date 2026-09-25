@@ -24,11 +24,8 @@ import timber.log.Timber
 /**
  * Тянет манифест версии с сайта раздачи и сравнивает с установленной сборкой.
  *
- * Манифест это маленький JSON на официальной странице Larpgram: последняя версия и её
- * versionCode. Сам APK там же, но качать его отсюда не надо — баннер обновления открывает
- * страницу в браузере, где человек скачивает файл ровно так же, как ставил в первый раз.
- * Так не нужно право REQUEST_INSTALL_PACKAGES и свой установщик, а UX установки уже
- * знаком по странице раздачи.
+ * Манифест это маленький JSON на официальной странице Larpgram: последняя версия, её
+ * versionCode, адрес APK и его sha256. Качает и ставит APK [DefaultUpdateInstaller].
  *
  * Сравниваем по versionCode, а не по имени: имя косметическое, а монотонно растёт именно
  * код (см. `applicationVariants` в app/build.gradle.kts).
@@ -61,6 +58,8 @@ class DefaultUpdateChecker(
         return UpdateStatus.Available(
             versionName = manifest.versionName,
             versionCode = manifest.versionCode,
+            apkUrl = manifest.apkUrl.ifBlank { DEFAULT_APK_URL },
+            sha256 = manifest.sha256?.lowercase()?.takeIf { it.isNotBlank() },
         )
     }
 
@@ -70,7 +69,10 @@ class DefaultUpdateChecker(
     }
 
     private suspend fun fetchManifest(): ManifestJson? {
-        val request = Request.Builder().url(MANIFEST_URL).build()
+        // Debug-сборка (другой пакет, `.debug`) смотрит свой манифест: так обновление из
+        // приложения проверяется на эмуляторе, не трогая то, что видят друзья.
+        val url = if (buildMeta.isDebuggable) DEBUG_MANIFEST_URL else MANIFEST_URL
+        val request = Request.Builder().url(url).build()
         val body = withContext(coroutineDispatchers.io) {
             runCatching {
                 okHttpClient.newCall(request).execute().use { response ->
@@ -103,6 +105,10 @@ class DefaultUpdateChecker(
     private companion object {
         /** Манифест на официальной странице Larpgram. Домен захардкожен, как и homeserver. */
         const val MANIFEST_URL = "https://larpgram.mango-kokos.ru/latest.json"
+        const val DEBUG_MANIFEST_URL = "https://larpgram.mango-kokos.ru/latest-debug.json"
+
+        /** APK по умолчанию, если в манифесте нет apkUrl. */
+        const val DEFAULT_APK_URL = "https://larpgram.mango-kokos.ru/larpgram.apk"
 
         /** Тип события в account data. Тот же неймспейс, что у паков и баннера почты. */
         const val DISMISSED_EVENT_TYPE = "ru.mangokokos.larpgram.update_dismissed"
@@ -113,6 +119,8 @@ class DefaultUpdateChecker(
 private data class ManifestJson(
     @SerialName("versionCode") val versionCode: Long = 0L,
     @SerialName("versionName") val versionName: String = "",
+    @SerialName("apkUrl") val apkUrl: String = "",
+    @SerialName("sha256") val sha256: String? = null,
 )
 
 @Serializable

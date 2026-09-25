@@ -41,5 +41,9 @@ sealed interface UpdateStatus {
     data class Available(
         val versionName: String,
         val versionCode: Long,
+        /** Откуда качать APK (из манифеста). */
+        val apkUrl: String = "",
+        /** sha256 APK в hex из манифеста; null — сервер не указал, сверяем только подпись (это делает Android). */
+        val sha256: String? = null,
     ) : UpdateStatus
 }

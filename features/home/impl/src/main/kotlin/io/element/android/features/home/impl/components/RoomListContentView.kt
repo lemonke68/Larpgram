@@ -176,8 +176,10 @@ private fun EmptyView(
                     )
                 }
                 // Правка форка: предложение обновиться.
-                SecurityBannerState.UpdateAvailable -> {
+                SecurityBannerState.UpdateAvailable -> state.updateBanner?.let { updateBanner ->
                     UpdateBanner(
+                        state = updateBanner,
+                        onClick = { eventSink(RoomListEvent.InstallUpdate) },
                         onDismissClick = { eventSink(RoomListEvent.DismissUpdateBanner) },
                     )
                 }
@@ -280,9 +282,11 @@ private fun RoomsViewList(
                 }
             }
             // Правка форка: предложение обновиться.
-            SecurityBannerState.UpdateAvailable -> {
+            SecurityBannerState.UpdateAvailable -> state.updateBanner?.let { updateBanner ->
                 item {
                     UpdateBanner(
+                        state = updateBanner,
+                        onClick = { eventSink(RoomListEvent.InstallUpdate) },
                         onDismissClick = { eventSink(RoomListEvent.DismissUpdateBanner) },
                     )
                 }

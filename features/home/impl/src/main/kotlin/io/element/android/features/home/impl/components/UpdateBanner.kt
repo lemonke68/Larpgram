@@ -6,68 +6,69 @@
 
 package io.element.android.features.home.impl.components
 
-import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import io.element.android.compound.theme.ElementTheme
-import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import io.element.android.features.home.impl.roomlist.UpdateBannerState
+import io.element.android.libraries.appupdate.api.UpdateInstallState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 
 /**
- * Баннер «вышло обновление» для раздачи мимо магазина.
- *
- * Кнопка открывает страницу раздачи в браузере, а не качает APK сама: так не нужно право
- * REQUEST_INSTALL_PACKAGES и свой установщик, а человек ставит файл ровно тем же путём,
- * что и в первый раз. Адрес захардкожен, как homeserver: клиент всё равно только наш.
+ * Баннер «вышло обновление» для раздачи мимо магазина. Тап качает APK прямо в приложении и
+ * открывает системное окно «Обновить?» (см. `UpdateInstaller`); пока идёт загрузка, баннер
+ * показывает проценты и не закрывается.
  *
  * Текст в коде, а не в ресурсах: свои строки в файлах Localazy затирает при обновлении
  * переводов, а аудитория у нас русскоязычная.
  */
 @Composable
 internal fun UpdateBanner(
+    state: UpdateBannerState,
+    onClick: () -> Unit,
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val activity = LocalActivity.current
-    val isDark = !ElementTheme.isLightTheme
-    UpdateBannerView(
-        onContinueClick = {
-            if (activity != null) {
-                activity.openUrlInChromeCustomTab(null, darkTheme = isDark, url = DOWNLOAD_PAGE_URL)
-            }
-        },
-        onDismissClick = onDismissClick,
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun UpdateBannerView(
-    onContinueClick: () -> Unit,
-    onDismissClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // Правка форка: компактная подсказка TG вместо карточки с кнопкой.
+    val install = state.installState
+    val (title, message) = when (install) {
+        UpdateInstallState.Idle -> "Вышло обновление Larpgram ${state.versionName}" to "Нажмите, чтобы обновить."
+        is UpdateInstallState.Downloading -> {
+            val percent = install.progress?.let { " ${(it * 100).toInt()}%" }.orEmpty()
+            "Загружаем обновление…$percent" to "После установки приложение откроется заново."
+        }
+        UpdateInstallState.WaitingForConfirmation -> "Подтвердите установку" to "Нажмите «Обновить» в окне Android."
+        UpdateInstallState.NeedsPermission -> "Разрешите установку обновлений" to "Включите «Разрешить из этого источника», вернитесь и нажмите сюда."
+        UpdateInstallState.Failed -> "Не удалось обновиться" to "Проверьте интернет и нажмите, чтобы попробовать снова."
+    }
+    val isBusy = install is UpdateInstallState.Downloading
     TgHintBanner(
         modifier = modifier,
-        title = "Вышло обновление Larpgram",
-        message = "Нажмите, чтобы скачать свежую версию.",
-        onClick = onContinueClick,
-        onDismissClick = onDismissClick,
+        title = title,
+        message = message,
+        onClick = { if (!isBusy) onClick() },
+        // Загрузку не прячем: крестик вернётся, когда она закончится.
+        onDismissClick = onDismissClick.takeIf { !isBusy },
+        isError = install == UpdateInstallState.Failed,
+        progress = (install as? UpdateInstallState.Downloading)?.let { it.progress ?: INDETERMINATE_PROGRESS },
     )
 }
 
-// Страница раздачи Larpgram, там же лежит манифест версии для проверки обновлений.
-private const val DOWNLOAD_PAGE_URL = "https://larpgram.mango-kokos.ru"
-
-// Превью зовёт именно UpdateBannerView: у обёртки выше внутри браузер, а имя превью по
-// правилам konsist должно совпадать с тем, что оно рисует.
 @PreviewsDayNight
 @Composable
-internal fun UpdateBannerViewPreview() = ElementPreview {
-    UpdateBannerView(
-        onContinueClick = {},
+internal fun UpdateBannerPreview(@PreviewParameter(UpdateBannerStateProvider::class) state: UpdateBannerState) = ElementPreview {
+    UpdateBanner(
+        state = state,
+        onClick = {},
         onDismissClick = {},
     )
+}
+
+internal class UpdateBannerStateProvider : PreviewParameterProvider<UpdateBannerState> {
+    override val values = sequenceOf(
+        UpdateInstallState.Idle,
+        UpdateInstallState.Downloading(progress = 0.42f),
+        UpdateInstallState.WaitingForConfirmation,
+        UpdateInstallState.Failed,
+    ).map { UpdateBannerState(versionName = "0.3.1", installState = it) }
 }
