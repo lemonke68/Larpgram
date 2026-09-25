@@ -111,16 +111,25 @@ fun ConfigureRoomView(
         ) {
             RoomNameWithAvatar(
                 isSpace = isSpace,
+                // Правка форка: подсказка как в TG вместо подписи «Имя» над полем.
+                namePlaceholder = when {
+                    isSpace -> stringResource(R.string.screen_create_room_name_placeholder)
+                    state.isChannel -> stringResource(CommonStrings.larpgram_channel_name_placeholder)
+                    else -> stringResource(CommonStrings.larpgram_group_name_placeholder)
+                },
                 modifier = Modifier.padding(horizontal = 16.dp),
                 avatarUri = state.config.avatarUri,
                 roomName = state.config.roomName.orEmpty(),
                 onAvatarClick = ::onAvatarClick,
                 onChangeRoomName = { state.eventSink(ConfigureRoomEvent.RoomNameChanged(it)) },
             )
+            // Правка форка: в TG у новой группы только фото и название; описание — у канала.
+            if (!state.isChannel && !isSpace) return@Column
             Spacer(modifier = Modifier.height(16.dp))
             RoomTopic(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 topic = state.config.topic.orEmpty(),
+                isChannel = state.isChannel,
                 onTopicChange = { state.eventSink(ConfigureRoomEvent.TopicChanged(it)) },
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -207,6 +216,7 @@ private fun RoomNameWithAvatar(
     isSpace: Boolean,
     avatarUri: String?,
     roomName: String,
+    namePlaceholder: String,
     onAvatarClick: () -> Unit,
     onChangeRoomName: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -242,9 +252,8 @@ private fun RoomNameWithAvatar(
 
         TextField(
             modifier = Modifier.padding(bottom = 18.dp),
-            label = stringResource(CommonStrings.common_name),
             value = roomName,
-            placeholder = stringResource(R.string.screen_create_room_name_placeholder),
+            placeholder = namePlaceholder,
             singleLine = true,
             onValueChange = onChangeRoomName,
         )
@@ -254,16 +263,23 @@ private fun RoomNameWithAvatar(
 @Composable
 private fun RoomTopic(
     topic: String,
+    isChannel: Boolean,
     onTopicChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TextField(
         modifier = modifier,
-        label = stringResource(R.string.screen_create_room_topic_label),
+        label = if (isChannel) null else stringResource(R.string.screen_create_room_topic_label),
         value = topic,
         onValueChange = onTopicChange,
         maxLines = 3,
-        placeholder = stringResource(R.string.screen_create_room_topic_placeholder),
+        // Правка форка: у канала — «Описание» и пояснение под полем, как в TG.
+        placeholder = if (isChannel) {
+            stringResource(CommonStrings.larpgram_profile_description_label)
+        } else {
+            stringResource(R.string.screen_create_room_topic_placeholder)
+        },
+        supportingText = if (isChannel) stringResource(CommonStrings.larpgram_channel_description_hint) else null,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Sentences,
         ),

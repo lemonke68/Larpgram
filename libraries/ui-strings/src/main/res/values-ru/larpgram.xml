@@ -65,4 +65,7 @@
     <string name="larpgram_saved_messages_empty_forward">"Пересылайте сюда сообщения, чтобы сохранить их"</string>
     <string name="larpgram_saved_messages_empty_files">"Отправляйте медиа и файлы, чтобы хранить их"</string>
     <string name="larpgram_saved_messages_empty_devices">"Открывайте этот чат с любого устройства"</string>
+    <string name="larpgram_group_name_placeholder">"Название группы"</string>
+    <string name="larpgram_channel_name_placeholder">"Название канала"</string>
+    <string name="larpgram_channel_description_hint">"Можете указать дополнительное описание канала."</string>
 </resources>
