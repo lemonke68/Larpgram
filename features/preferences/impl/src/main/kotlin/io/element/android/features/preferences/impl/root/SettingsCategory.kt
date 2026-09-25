@@ -8,6 +8,7 @@
 
 package io.element.android.features.preferences.impl.root
 
+import android.os.Build
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -83,6 +84,18 @@ enum class SettingsCategory(
             Devices -> CompoundIcons.Devices()
             Power -> CompoundIcons.Settings()
             Language -> CompoundIcons.Keyboard()
+        }
+
+    /**
+     * Правка форка (ф4): показываем только то, что работает. Папок и энергосбережения пока нет —
+     * пустой экран «Скоро» TG не показывает. Язык — системный экран языка приложения, он есть
+     * только с Android 13.
+     */
+    val isAvailable: Boolean
+        get() = when (this) {
+            Folders, Power -> false
+            Language -> Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            else -> true
         }
 
     /**

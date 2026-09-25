@@ -8,6 +8,11 @@
 
 package io.element.android.features.preferences.impl.root
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -18,6 +23,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -48,6 +54,7 @@ import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.components.MatrixUserRow
 import io.element.android.libraries.ui.strings.CommonStrings
+import timber.log.Timber
 
 @Composable
 fun PreferencesRootView(
@@ -121,18 +128,33 @@ fun PreferencesRootView(
 private fun ColumnScope.CategoriesSection(
     onOpenCategory: (SettingsCategory) -> Unit,
 ) {
+    val context = LocalContext.current
     TgSettingsGroup {
-        SettingsCategory.entries.forEach { category ->
+        SettingsCategory.entries.filter { it.isAvailable }.forEach { category ->
             TgSettingsItem(
                 title = category.title,
                 subtitle = category.subtitle,
                 color = category.color,
                 iconVector = category.icon,
                 trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
-                onClick = { onOpenCategory(category) },
+                onClick = {
+                    if (category == SettingsCategory.Language) {
+                        openAppLanguageSettings(context)
+                    } else {
+                        onOpenCategory(category)
+                    }
+                },
             )
         }
     }
+}
+
+/** Правка форка: системный выбор языка приложения (Android 13+), как «Язык» в TG. */
+private fun openAppLanguageSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
+    runCatching { context.startActivity(intent) }
+        .onFailure { Timber.w(it, "Не открылся системный выбор языка") }
 }
 
 @Composable

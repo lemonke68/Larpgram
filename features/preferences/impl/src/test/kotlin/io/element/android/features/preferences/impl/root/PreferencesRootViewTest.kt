@@ -84,17 +84,20 @@ class PreferencesRootViewTest : RobolectricTest() {
     }
 
     @Test
-    fun `all category rows are shown`() = runAndroidComposeUiTest {
+    fun `only available category rows are shown`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         setView(
             aPreferencesRootState(
                 eventSink = eventsRecorder,
             ),
         )
-        SettingsCategory.entries.forEach { category ->
+        SettingsCategory.entries.filter { it.isAvailable }.forEach { category ->
             // performScrollTo() throws if the node does not exist.
             onNodeWithText(category.title).performScrollTo()
         }
+        // Заглушек «Скоро» в списке нет.
+        onNodeWithText(SettingsCategory.Folders.title).assertDoesNotExist()
+        onNodeWithText(SettingsCategory.Power.title).assertDoesNotExist()
     }
 
     @Test
