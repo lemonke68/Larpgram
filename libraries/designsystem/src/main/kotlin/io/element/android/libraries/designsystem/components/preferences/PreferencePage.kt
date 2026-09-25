@@ -38,7 +38,8 @@ import io.element.android.libraries.designsystem.utils.scaffoldScrollableContent
 @Composable
 fun PreferencePage(
     title: String,
-    onBackClick: () -> Unit,
+    // Правка форка: null — без стрелки назад (корень вкладки).
+    onBackClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
@@ -72,11 +73,11 @@ fun PreferencePage(
 @Composable
 private fun PreferenceTopAppBar(
     title: String,
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)?,
 ) {
     TopAppBar(
         navigationIcon = {
-            BackButton(onClick = onBackClick)
+            if (onBackClick != null) BackButton(onClick = onBackClick)
         },
         title = {
             Text(

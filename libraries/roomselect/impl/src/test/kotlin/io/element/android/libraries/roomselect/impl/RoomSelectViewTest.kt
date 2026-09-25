@@ -29,26 +29,27 @@ import org.robolectric.annotation.Config
 class RoomSelectViewTest : RobolectricTest() {
     @Config(qualifiers = "h1024dp")
     @Test
-    fun `a room with a canonical alias renders the alias`() = runAndroidComposeUiTest {
+    fun `a room with a canonical alias shows only its name`() = runAndroidComposeUiTest {
         setRoomSelectView(
             aRoomSelectState(
                 resultState = SearchBarResultState.Results(aRoomSelectRoomList()),
             ),
         )
         onNodeWithText("Room with alias").assertIsDisplayed()
-        onNodeWithText("#alias:example.org").assertIsDisplayed()
+        // Правка форка: адреса Matrix под именем не показываем (TG).
+        onNodeWithText("#alias:example.org").assertDoesNotExist()
     }
 
     @Config(qualifiers = "h1024dp")
     @Test
-    fun `a direct message without alias renders the matrix id of the other user`() = runAndroidComposeUiTest {
+    fun `a direct message shows only the name of the other user`() = runAndroidComposeUiTest {
         setRoomSelectView(
             aRoomSelectState(
                 resultState = SearchBarResultState.Results(aRoomSelectRoomList()),
             ),
         )
         onNodeWithText("Alice").assertIsDisplayed()
-        onNodeWithText("@alice:example.org").assertIsDisplayed()
+        onNodeWithText("@alice:example.org").assertDoesNotExist()
     }
 
     @Config(qualifiers = "h1024dp")

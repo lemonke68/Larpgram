@@ -343,7 +343,7 @@ class HomeFlowNode(
                 preferencesEntryPoint.createNode(
                     parentNode = this,
                     buildContext = buildContext,
-                    params = PreferencesEntryPoint.Params(PreferencesEntryPoint.InitialTarget.Root),
+                    params = PreferencesEntryPoint.Params(PreferencesEntryPoint.InitialTarget.Root, isTab = true),
                     callback = settingsCallback,
                 )
             }

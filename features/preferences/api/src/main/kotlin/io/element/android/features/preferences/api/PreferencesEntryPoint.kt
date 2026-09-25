@@ -37,7 +37,8 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
         data object EditProfile : InitialTarget
     }
 
-    data class Params(val initialElement: InitialTarget) : NodeInputs
+    // Правка форка: [isTab] — настройки открыты вкладкой внизу, стрелки «назад» у корня нет (TG).
+    data class Params(val initialElement: InitialTarget, val isTab: Boolean = false) : NodeInputs
 
     fun createNode(
         parentNode: Node,

@@ -44,6 +44,9 @@ class PreferencesRootNode(
         fun navigateToAdvancedSettings()
         fun navigateToUserProfile(matrixUser: MatrixUser)
         fun navigateToRoom(roomId: RoomId)
+
+        // Правка форка: во вкладке «Настройки» стрелки назад нет.
+        val showBackButton: Boolean get() = true
     }
 
     private val callback: Callback = callback()
@@ -56,7 +59,7 @@ class PreferencesRootNode(
             state = state,
             emojiPickerRenderer = emojiPickerRenderer,
             modifier = modifier,
-            onBackClick = this::navigateUp,
+            onBackClick = if (callback.showBackButton) this::navigateUp else null,
             onAddAccountClick = callback::navigateToAddAccount,
             onOpenCategory = callback::navigateToCategory,
             onOpenUserProfile = callback::navigateToUserProfile,

@@ -165,6 +165,9 @@ class PreferencesFlowNode(
                         callback.navigateToRoom(roomId)
                     }
 
+                    override val showBackButton: Boolean =
+                        !plugins.filterIsInstance<PreferencesEntryPoint.Params>().first().isTab
+
                     override fun navigateToBugReport() {
                         callback.navigateToBugReport()
                     }

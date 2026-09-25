@@ -344,6 +344,8 @@ private fun HomeScaffold(
                         content = settingsContent,
                         placeholderLabel = stringResource(HomeNavigationBarItem.Settings.labelRes),
                         outerPadding = outerPadding,
+                        // Правка форка: вкладка — тоже источник размытия для стеклянной панели вкладок.
+                        modifier = Modifier.hazeSource(state = hazeState),
                     )
                 }
                 HomeNavigationBarItem.Profile -> {
@@ -351,6 +353,8 @@ private fun HomeScaffold(
                         content = profileContent,
                         placeholderLabel = stringResource(HomeNavigationBarItem.Profile.labelRes),
                         outerPadding = outerPadding,
+                        // Правка форка: вкладка — тоже источник размытия для стеклянной панели вкладок.
+                        modifier = Modifier.hazeSource(state = hazeState),
                     )
                 }
             }

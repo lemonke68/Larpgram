@@ -50,7 +50,6 @@ import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Checkbox
-import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.SearchBar
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
@@ -183,7 +182,6 @@ fun RoomSelectView(
                                 },
                                 canBeSelected = state.canSelectMoreRooms,
                             )
-                            HorizontalDivider(modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
@@ -209,8 +207,7 @@ fun RoomSelectView(
                                     },
                                     canBeSelected = state.canSelectMoreRooms,
                                 )
-                                HorizontalDivider(modifier = Modifier.fillMaxWidth())
-                            }
+                                }
                         }
                     }
                 }
@@ -274,17 +271,7 @@ private fun RoomSummaryView(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            val otherUserId = roomInfo.heroes.singleOrNull()?.userId?.takeIf { roomInfo.isDm }
-            val subtitle = roomInfo.canonicalAlias?.value ?: otherUserId?.value
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    color = ElementTheme.colors.textSecondary,
-                    style = ElementTheme.typography.fontBodySmRegular,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            // Правка форка: без «@ник:сервер» и «#адрес:сервер» под именем — в TG их нет.
         }
         Checkbox(
             checked = isSelected,

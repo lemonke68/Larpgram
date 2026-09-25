@@ -62,7 +62,7 @@ import timber.log.Timber
 fun PreferencesRootView(
     state: PreferencesRootState,
     emojiPickerRenderer: EmojiPickerRenderer,
-    onBackClick: () -> Unit,
+    onBackClick: (() -> Unit)?,
     onAddAccountClick: () -> Unit,
     onOpenCategory: (SettingsCategory) -> Unit,
     onOpenUserProfile: (MatrixUser) -> Unit,
