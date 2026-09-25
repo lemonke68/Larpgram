@@ -33,6 +33,7 @@ import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
 import io.element.android.libraries.matrix.ui.presence.rememberPresence
+import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.mediaviewer.api.MediaViewerEntryPoint
 import io.element.android.libraries.mediaviewer.api.ProfileSharedMedia
 import io.element.android.services.analytics.api.AnalyticsService
@@ -53,6 +54,7 @@ class RoomDetailsNode(
     // Правка форка: TG-профиль — вкладки общих медиа и присутствие собеседника ЛС.
     private val profileSharedMedia: ProfileSharedMedia,
     private val userPresenceFetcher: UserPresenceFetcher,
+    private val savedMessages: SavedMessages,
 ) : Node(buildContext, plugins = plugins), RoomDetailsNavigator {
     interface Callback : Plugin {
         fun navigateBack()
@@ -129,8 +131,10 @@ class RoomDetailsNode(
         // Правка форка: профиль в стиле TG вместо элементовского RoomDetailsView.
         val sharedMedia = profileSharedMedia.rememberSection(onOpenMedia = callback::navigateToSharedMedia)
         val dmUserId = (state.roomType as? RoomDetailsType.Dm)?.otherMember?.userId
+        val savedMessagesRoomId by savedMessages.roomId.collectAsState()
         TgRoomDetailsView(
             state = state,
+            isSavedMessages = state.roomId == savedMessagesRoomId,
             sharedMedia = sharedMedia,
             presence = userPresenceFetcher.rememberPresence(dmUserId),
             modifier = modifier,

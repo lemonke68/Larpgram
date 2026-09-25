@@ -110,11 +110,13 @@ fun TgRoomDetailsView(
     onMemberClick: (UserId) -> Unit,
     onReportRoomClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Правка форка: профиль «Избранного» в TG — только общие медиа, без участников и действий.
+    isSavedMessages: Boolean = false,
     leaveRoomView: @Composable () -> Unit = {},
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val dm = state.roomType as? RoomDetailsType.Dm
-    val isGroup = dm == null && !state.isChannel
+    val isGroup = dm == null && !state.isChannel && !isSavedMessages
     val tabs = remember(isGroup) {
         if (isGroup) TgRoomTab.entries.toList() else TgRoomTab.entries.filter { it != TgRoomTab.Members }
     }
@@ -124,7 +126,7 @@ fun TgRoomDetailsView(
     val showTitle by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
     val avatarExpand = rememberTgAvatarExpandState()
 
-    val subtitle = roomSubtitle(state = state, presence = presence)
+    val subtitle = if (isSavedMessages) null else roomSubtitle(state = state, presence = presence)
 
     Scaffold(
         modifier = modifier,
@@ -136,7 +138,8 @@ fun TgRoomDetailsView(
                 showTitle = showTitle,
                 onBackClick = goBack,
                 actions = {
-                    if (state.canEdit) {
+                    // «Избранное» не переименовывают и не меняют ему аватар — как в TG.
+                    if (state.canEdit && !isSavedMessages) {
                         IconButton(onClick = onEditClick) {
                             Icon(
                                 imageVector = CompoundIcons.Edit(),
@@ -175,7 +178,7 @@ fun TgRoomDetailsView(
                     RoomAvatar(state = state, expandFraction = avatarExpand.fraction, openAvatarPreview = openAvatarPreview)
                 }
             }
-            item(key = "actions") {
+            if (!isSavedMessages) item(key = "actions") {
                 TgProfileActions(
                     actions = actions(
                         state = state,
@@ -185,8 +188,8 @@ fun TgRoomDetailsView(
                     )
                 )
             }
-            infoCard(state = state)
-            manageCard(
+            if (!isSavedMessages) infoCard(state = state)
+            if (!isSavedMessages) manageCard(
                 state = state,
                 openRoomMemberList = openRoomMemberList,
                 invitePeople = invitePeople,
