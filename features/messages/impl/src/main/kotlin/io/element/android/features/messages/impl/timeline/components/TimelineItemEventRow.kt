@@ -245,6 +245,20 @@ fun TimelineItemEventRow(
         inReplyToClick(inReplyToEventId)
     }
 
+    // Larpgram: in a channel comment thread the first item is the post (its mirror). Mark it as
+    // a header by separating it from the comments below with a "Комментарии" divider, like
+    // Telegram's "Discussion started". Detected: thread mode, this event is the root, and it
+    // carries our mirror marker.
+    val threadMode = timelineMode as? Timeline.Mode.Thread
+    val isChannelCommentRoot = threadMode != null &&
+        event.eventId?.value == threadMode.threadRootId.value &&
+        remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentIdFromMirror(it) != null } ?: false
+        }
+    // Правка форка: пост наверху обсуждения рисуем как пост канала — слева, без аватара и имени
+    // того, кто его зеркалил, как пересланный пост канала в TG.
+    val rowRoomInfo = if (isChannelCommentRoot) timelineRoomInfo.copy(isChannel = true) else timelineRoomInfo
+
     val canReply = timelineRoomInfo.userHasPermissionToSendMessage && event.canBeRepliedTo
     val accessibilityActions = rememberTimelineItemAccessibilityActions(
         canReply = canReply,
@@ -276,7 +290,7 @@ fun TimelineItemEventRow(
                         event = event,
                         timelineMode = timelineMode,
                         timelineProtectionState = timelineProtectionState,
-                        timelineRoomInfo = timelineRoomInfo,
+                        timelineRoomInfo = rowRoomInfo,
                         interactionSource = interactionSource,
                         onContentClick = onContentClick,
                         onLongClick = onLongClick,
@@ -310,7 +324,7 @@ fun TimelineItemEventRow(
                 event = event,
                 timelineMode = timelineMode,
                 timelineProtectionState = timelineProtectionState,
-                timelineRoomInfo = timelineRoomInfo,
+                timelineRoomInfo = rowRoomInfo,
                 interactionSource = interactionSource,
                 onContentClick = onContentClick,
                 onLongClick = onLongClick,
@@ -344,16 +358,6 @@ fun TimelineItemEventRow(
             )
         }
 
-        // Larpgram: in a channel comment thread the first item is the post (its mirror). Mark it as
-        // a header by separating it from the comments below with a "Комментарии" divider, like
-        // Telegram's "Discussion started". Detected: thread mode, this event is the root, and it
-        // carries our mirror marker.
-        val threadMode = timelineMode as? Timeline.Mode.Thread
-        val isChannelCommentRoot = threadMode != null &&
-            event.eventId?.value == threadMode.threadRootId.value &&
-            remember(event.id) {
-                event.debugInfo.originalJson?.let { ChannelDiscussion.commentIdFromMirror(it) != null } ?: false
-            }
         if (isChannelCommentRoot) {
             ChannelCommentsDivider()
         }
@@ -663,7 +667,10 @@ private fun TimelineItemEventRowContent(
         onDispose { messageActionsAnchor?.unregister(eventKey) }
     }
 
-    fun ConstrainScope.linkStartOrEnd(event: TimelineItem.Event) = if (event.isMine) {
+    // Правка форка: посты канала всегда слева и в «чужом» цвете — и у автора тоже, как в TG.
+    val isMineLayout = event.isMine && !timelineRoomInfo.isChannel
+
+    fun ConstrainScope.linkStartOrEnd() = if (isMineLayout) {
         end.linkTo(parent.end)
     } else {
         start.linkTo(parent.start)
@@ -685,7 +692,8 @@ private fun TimelineItemEventRowContent(
         // Правка форка: аватар больше не наезжает на угол пузыря сверху, а стоит слева от него
         // и прижат к низу группы, как в макете. Имя отправителя переехало внутрь пузыря, см.
         // MessageEventBubbleContent.
-        if (event.showSenderAvatar && !timelineRoomInfo.isDm) {
+        // Правка форка: в канале TG посты пишет сам канал — ни аватара, ни имени автора.
+        if (event.showSenderAvatar && !timelineRoomInfo.isDm && !timelineRoomInfo.isChannel) {
             MessageSenderAvatar(
                 event.senderAvatar,
                 onUserDataClick,
@@ -747,7 +755,7 @@ private fun TimelineItemEventRowContent(
         // Message bubble
         val bubbleState = BubbleState(
             groupPosition = event.groupPosition,
-            isMine = event.isMine,
+            isMine = isMineLayout,
             timelineRoomInfo = timelineRoomInfo,
         )
         MessageEventBubble(
@@ -757,10 +765,10 @@ private fun TimelineItemEventRowContent(
                     // Правка форка: пузырь больше не привязан к низу блока отправителя, аватар
                     // теперь стоит сбоку. Место под аватар держится отступом слева.
                     top.linkTo(parent.top)
-                    if (event.isMine) {
+                    if (isMineLayout) {
                         end.linkTo(parent.end, margin = 16.dp)
                     } else {
-                        val startMargin = if (timelineRoomInfo.isDm) 16.dp else BUBBLE_INCOMING_OFFSET
+                        val startMargin = if (timelineRoomInfo.isDm || timelineRoomInfo.isChannel) 16.dp else BUBBLE_INCOMING_OFFSET
                         start.linkTo(parent.start, margin = startMargin)
                     }
                 },
@@ -782,6 +790,7 @@ private fun TimelineItemEventRowContent(
                 eventSink = eventSink,
                 showSenderName = event.showSenderInformation &&
                     !timelineRoomInfo.isDm &&
+                    !timelineRoomInfo.isChannel &&
                     !event.content.isBubbleless,
                 onSenderNameClick = onUserDataClick,
                 isChannel = timelineRoomInfo.isChannel,
@@ -804,7 +813,7 @@ private fun TimelineItemEventRowContent(
                     .size(16.dp)
                     .constrainAs(pinIcon) {
                         top.linkTo(message.top)
-                        if (event.isMine) {
+                        if (isMineLayout) {
                             end.linkTo(message.start, margin = 8.dp)
                         } else {
                             start.linkTo(message.end, margin = 8.dp)
@@ -823,7 +832,7 @@ private fun TimelineItemEventRowContent(
                 modifier = Modifier
                     .constrainAs(channelComments) {
                         bottom.linkTo(message.bottom)
-                        if (event.isMine) {
+                        if (isMineLayout) {
                             end.linkTo(message.start, margin = 8.dp)
                         } else {
                             start.linkTo(message.end, margin = 8.dp)
@@ -838,22 +847,22 @@ private fun TimelineItemEventRowContent(
             TimelineItemReactionsView(
                 reactionsState = event.reactionsState,
                 userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
-                isOutgoing = event.isMine,
+                isOutgoing = isMineLayout,
                 onReactionClick = onReactionClick,
                 onReactionLongClick = onReactionLongClick,
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
                 modifier = Modifier
                     .constrainAs(reactions) {
                         top.linkTo(message.bottom, margin = (-4).dp)
-                        linkStartOrEnd(event)
+                        linkStartOrEnd()
                     }
                     .zIndex(1f)
                     .padding(
                         // Note: due to the applied constraints, start is left for other's message and right for mine
                         // In design we want a offset of 6.dp compare to the bubble, so start is 22.dp (16 + 6)
                         start = when {
-                            event.isMine -> 22.dp
-                            timelineRoomInfo.isDm -> 22.dp
+                            isMineLayout -> 22.dp
+                            timelineRoomInfo.isDm || timelineRoomInfo.isChannel -> 22.dp
                             else -> 22.dp + BUBBLE_INCOMING_OFFSET
                         },
                         end = 16.dp
