@@ -92,6 +92,7 @@ fun ConfigureRoomView(
         topBar = {
             ConfigureRoomToolbar(
                 isSpace = isSpace,
+                isChannel = state.isChannel,
                 isNextActionEnabled = state.isValid,
                 onBackClick = onBackClick,
                 onNextClick = {
@@ -123,13 +124,8 @@ fun ConfigureRoomView(
                 onTopicChange = { state.eventSink(ConfigureRoomEvent.TopicChanged(it)) },
             )
             Spacer(modifier = Modifier.height(16.dp))
-            if (!state.isSpace && state.spaces.isNotEmpty()) {
-                SelectParentSpaceOptions(
-                    spaces = state.spaces,
-                    selectedSpace = state.config.parentSpace,
-                    onSelectSpace = { state.eventSink(ConfigureRoomEvent.SetParentSpace(it)) },
-                )
-            }
+            // Правка форка: выбор пространства убран — это понятие Matrix, в TG группу никуда не
+            // вкладывают. Остальной экран пока Element, TG-поток создания — фаза 5.
             RoomJoinRuleOptions(
                 options = state.availableJoinRules,
                 selected = state.config.visibilityState.joinRuleItem,
@@ -183,12 +179,18 @@ fun ConfigureRoomView(
 @Composable
 private fun ConfigureRoomToolbar(
     isSpace: Boolean,
+    isChannel: Boolean,
     isNextActionEnabled: Boolean,
     onBackClick: () -> Unit,
     onNextClick: () -> Unit,
 ) {
     TopAppBar(
-        titleStr = stringResource(if (isSpace) R.string.screen_create_room_new_space_title else R.string.screen_create_room_new_room_title),
+        // Правка форка: «Новая группа» / «Новый канал», как в TG, вместо «Новая комната».
+        titleStr = when {
+            isSpace -> stringResource(R.string.screen_create_room_new_space_title)
+            isChannel -> stringResource(CommonStrings.larpgram_new_channel)
+            else -> stringResource(CommonStrings.larpgram_new_group)
+        },
         navigationIcon = { BackButton(onClick = onBackClick) },
         actions = {
             TextButton(

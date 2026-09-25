@@ -8,7 +8,6 @@
 
 package io.element.android.features.startchat.impl.root
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -34,10 +35,11 @@ import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.features.startchat.impl.R
 import io.element.android.features.startchat.impl.components.UserListView
 import io.element.android.libraries.androidutils.ui.hideKeyboardAndAwaitAnimation
+import io.element.android.libraries.designsystem.atomic.atoms.RoundedIconAtom
+import io.element.android.libraries.designsystem.atomic.atoms.RoundedIconAtomSize
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.components.async.AsyncActionViewDefaults
 import io.element.android.libraries.designsystem.components.button.BackButton
-import io.element.android.libraries.designsystem.icons.CompoundDrawables
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
@@ -59,10 +61,9 @@ fun StartChatView(
     state: StartChatState,
     onCloseClick: () -> Unit,
     onNewRoomClick: () -> Unit,
+    onNewChannelClick: () -> Unit,
     onOpenDM: (RoomId) -> Unit,
     onInviteFriendsClick: () -> Unit,
-    onJoinByAddressClick: () -> Unit,
-    onRoomDirectorySearchClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -104,9 +105,8 @@ fun StartChatView(
                 CreateRoomActionButtonsList(
                     state = state,
                     onNewRoomClick = onNewRoomClick,
+                    onNewChannelClick = onNewChannelClick,
                     onInvitePeopleClick = onInviteFriendsClick,
-                    onJoinByAddressClick = onJoinByAddressClick,
-                    onRoomDirectorySearchClick = onRoomDirectorySearchClick,
                     onDmClick = onOpenDM,
                 )
             }
@@ -152,60 +152,50 @@ private fun CreateRoomRootViewTopBar(
     onCloseClick: () -> Unit,
 ) {
     TopAppBar(
-        titleStr = stringResource(id = CommonStrings.action_start_chat),
+        // Правка форка: «Новое сообщение» со стрелкой назад, как в TG.
+        titleStr = stringResource(id = CommonStrings.larpgram_new_message),
         navigationIcon = {
-            BackButton(
-                imageVector = CompoundIcons.Close(),
-                onClick = onCloseClick,
-            )
+            BackButton(onClick = onCloseClick)
         }
     )
 }
 
+/**
+ * Правка форка: экран «Новое сообщение» TG (`ContactsAdapter`): сверху «Новая группа» и «Новый
+ * канал» с цветными иконками, ниже недавние собеседники, в конце — пригласить друзей. Каталог
+ * комнат и вход по адресу — понятия Matrix, в TG их нет.
+ */
 @Composable
 private fun CreateRoomActionButtonsList(
     state: StartChatState,
     onNewRoomClick: () -> Unit,
+    onNewChannelClick: () -> Unit,
     onInvitePeopleClick: () -> Unit,
-    onJoinByAddressClick: () -> Unit,
-    onRoomDirectorySearchClick: () -> Unit,
     onDmClick: (RoomId) -> Unit,
 ) {
     LazyColumn(
         contentPadding = lazyColumnContentPadding,
     ) {
         item {
-            CreateRoomActionButton(
-                iconRes = CompoundDrawables.ic_compound_plus,
-                text = stringResource(id = R.string.screen_create_room_action_create_room),
+            NewMessageActionRow(
+                imageVector = CompoundIcons.Group(),
+                color = NEW_GROUP_COLOR,
+                text = stringResource(id = CommonStrings.larpgram_new_group),
                 onClick = onNewRoomClick,
             )
         }
         item {
-            CreateRoomActionButton(
-                iconRes = CompoundDrawables.ic_compound_list_bulleted,
-                text = stringResource(id = R.string.screen_room_directory_search_title),
-                onClick = onRoomDirectorySearchClick,
-            )
-        }
-        item {
-            CreateRoomActionButton(
-                iconRes = CompoundDrawables.ic_compound_share_android,
-                text = stringResource(id = CommonStrings.action_invite_friends_to_app, state.applicationName),
-                onClick = onInvitePeopleClick,
-            )
-        }
-        item {
-            CreateRoomActionButton(
-                iconRes = CompoundDrawables.ic_compound_room,
-                text = stringResource(R.string.screen_start_chat_join_room_by_address_action),
-                onClick = onJoinByAddressClick,
+            NewMessageActionRow(
+                imageVector = CompoundIcons.Public(),
+                color = NEW_CHANNEL_COLOR,
+                text = stringResource(id = CommonStrings.larpgram_new_channel),
+                onClick = onNewChannelClick,
             )
         }
         if (state.userListState.recentDirectRooms.isNotEmpty()) {
             item {
                 ListSectionHeader(
-                    title = stringResource(id = CommonStrings.common_suggestions),
+                    title = stringResource(id = CommonStrings.larpgram_recent_chats),
                     hasDivider = false,
                 )
             }
@@ -222,12 +212,21 @@ private fun CreateRoomActionButtonsList(
                 }
             }
         }
+        item {
+            NewMessageActionRow(
+                imageVector = CompoundIcons.ShareAndroid(),
+                color = INVITE_COLOR,
+                text = stringResource(id = CommonStrings.action_invite_friends_to_app, state.applicationName),
+                onClick = onInvitePeopleClick,
+            )
+        }
     }
 }
 
 @Composable
-private fun CreateRoomActionButton(
-    @DrawableRes iconRes: Int,
+private fun NewMessageActionRow(
+    imageVector: ImageVector,
+    color: Color,
     text: String,
     onClick: () -> Unit,
 ) {
@@ -240,11 +239,11 @@ private fun CreateRoomActionButton(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            modifier = Modifier.size(24.dp),
-            tint = ElementTheme.colors.iconSecondary,
-            resourceId = iconRes,
-            contentDescription = null,
+        RoundedIconAtom(
+            size = RoundedIconAtomSize.Medium,
+            imageVector = imageVector,
+            tint = Color.White,
+            backgroundTint = color,
         )
         Text(
             text = text,
@@ -252,6 +251,11 @@ private fun CreateRoomActionButton(
         )
     }
 }
+
+// Цвета иконок из TG (`setTextAndValueAndColorfulIcon`): группа — синяя, канал — зелёный.
+private val NEW_GROUP_COLOR = Color(0xFF1CA5ED)
+private val NEW_CHANNEL_COLOR = Color(0xFF55CA47)
+private val INVITE_COLOR = Color(0xFFF3A33B)
 
 @PreviewsDayNight
 @Composable
@@ -261,9 +265,8 @@ internal fun StartChatViewPreview(@PreviewParameter(StartChatStatePreviewParam::
             state = state,
             onCloseClick = {},
             onNewRoomClick = {},
+            onNewChannelClick = {},
             onOpenDM = {},
-            onJoinByAddressClick = {},
             onInviteFriendsClick = {},
-            onRoomDirectorySearchClick = {},
         )
     }

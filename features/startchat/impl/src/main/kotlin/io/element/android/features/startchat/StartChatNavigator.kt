@@ -20,6 +20,7 @@ import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
 interface StartChatNavigator : Plugin {
     fun onRoomCreated(roomIdOrAlias: RoomIdOrAlias, serverNames: List<String>)
     fun onCreateNewRoom()
+    fun onCreateNewChannel()
     fun onShowJoinRoomByAddress()
     fun onDismissJoinRoomByAddress()
     fun onOpenRoomDirectory()
@@ -38,6 +39,10 @@ class DefaultStartChatNavigator(
 
     override fun onCreateNewRoom() {
         backstack.push(NavTarget.NewRoom)
+    }
+
+    override fun onCreateNewChannel() {
+        backstack.push(NavTarget.NewChannel)
     }
 
     override fun onShowJoinRoomByAddress() {

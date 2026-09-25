@@ -55,4 +55,9 @@
     <string name="larpgram_typing_one">"%1$s печатает…"</string>
     <string name="larpgram_typing_two">"%1$s и %2$s печатают…"</string>
     <string name="larpgram_typing_many">"%1$s и ещё %2$d печатают…"</string>
+    <!-- «Новое сообщение» (TG): экран по карандашу в списке чатов. -->
+    <string name="larpgram_new_message">"Новое сообщение"</string>
+    <string name="larpgram_new_group">"Новая группа"</string>
+    <string name="larpgram_new_channel">"Новый канал"</string>
+    <string name="larpgram_recent_chats">"Недавние"</string>
 </resources>

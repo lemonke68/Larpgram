@@ -67,4 +67,9 @@
     <string name="larpgram_typing_one">"%1$s is typing…"</string>
     <string name="larpgram_typing_two">"%1$s and %2$s are typing…"</string>
     <string name="larpgram_typing_many">"%1$s and %2$d more are typing…"</string>
+    <!-- «Новое сообщение» (TG): экран по карандашу в списке чатов. -->
+    <string name="larpgram_new_message">"New message"</string>
+    <string name="larpgram_new_group">"New group"</string>
+    <string name="larpgram_new_channel">"New channel"</string>
+    <string name="larpgram_recent_chats">"Recent"</string>
 </resources>

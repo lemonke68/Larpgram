@@ -14,6 +14,7 @@ import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
 class FakeStartChatNavigator(
     private val openRoomLambda: (roomIdOrAlias: RoomIdOrAlias, serverNames: List<String>) -> Unit = { _, _ -> },
     private val createNewRoomLambda: () -> Unit = {},
+    private val createNewChannelLambda: () -> Unit = {},
     private val showJoinRoomByAddressLambda: () -> Unit = {},
     private val dismissJoinRoomByAddressLambda: () -> Unit = {},
     private val openRoomDirectoryLambda: () -> Unit = {},
@@ -24,6 +25,10 @@ class FakeStartChatNavigator(
 
     override fun onCreateNewRoom() {
         createNewRoomLambda()
+    }
+
+    override fun onCreateNewChannel() {
+        createNewChannelLambda()
     }
 
     override fun onShowJoinRoomByAddress() {

@@ -88,7 +88,6 @@ fun HomeView(
     onConfirmRecoveryKeyClick: () -> Unit,
     onStartChatClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
-    onCreateChannelClick: () -> Unit,
     onRoomSettingsClick: (roomId: RoomId) -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     onReportRoomClick: (roomId: RoomId) -> Unit,
@@ -135,7 +134,6 @@ fun HomeView(
             onOpenSettings = { if (firstThrottler.canHandle()) onSettingsClick() },
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
-            onCreateChannelClick = { if (firstThrottler.canHandle()) onCreateChannelClick() },
             onMenuActionClick = onMenuActionClick,
             settingsTabAtRoot = settingsTabAtRoot,
             settingsContent = settingsContent,
@@ -177,7 +175,6 @@ private fun HomeScaffold(
     onOpenSettings: () -> Unit,
     onStartChatClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
-    onCreateChannelClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     modifier: Modifier = Modifier,
     settingsTabAtRoot: Boolean = true,
@@ -243,8 +240,6 @@ private fun HomeScaffold(
                 onAccountSwitch = {
                     state.eventSink(HomeEvent.SwitchToAccount(it))
                 },
-                onCreateChat = onStartChatClick,
-                onCreateChannel = onCreateChannelClick,
                 scrollBehavior = scrollBehavior,
                 displayFilters = state.displayRoomListFilters,
                 filtersState = roomListState.filtersState,
@@ -270,8 +265,7 @@ private fun HomeScaffold(
                     ) {
                         if (isChatsTab) {
                             TgNewMessageFab(
-                                onCreateChat = onStartChatClick,
-                                onCreateChannel = onCreateChannelClick,
+                                onClick = onStartChatClick,
                                 modifier = Modifier
                                     .align(Alignment.End)
                                     .padding(end = 16.dp),
@@ -410,7 +404,6 @@ internal fun HomeViewPreview(@PreviewParameter(HomeStatePreviewParam::class) sta
         onConfirmRecoveryKeyClick = {},
         onStartChatClick = {},
         onCreateSpaceClick = {},
-        onCreateChannelClick = {},
         onRoomSettingsClick = {},
         onReportRoomClick = {},
         onMenuActionClick = {},
@@ -431,7 +424,6 @@ internal fun HomeViewA11yPreview() = ElementPreview {
         onConfirmRecoveryKeyClick = {},
         onStartChatClick = {},
         onCreateSpaceClick = {},
-        onCreateChannelClick = {},
         onRoomSettingsClick = {},
         onReportRoomClick = {},
         onMenuActionClick = {},

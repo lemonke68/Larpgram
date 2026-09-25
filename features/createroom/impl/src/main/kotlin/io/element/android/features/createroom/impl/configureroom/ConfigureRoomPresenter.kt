@@ -232,6 +232,7 @@ class ConfigureRoomPresenter(
             availableJoinRules = availableJoinRules,
             spaces = spaces,
             isSpace = isSpace,
+            isChannel = isChannel,
             eventSink = ::handleEvent,
         )
     }

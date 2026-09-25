@@ -25,18 +25,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -131,52 +125,27 @@ private fun RowScope.TgTab(
     }
 }
 
-/** Круглая кнопка «Новое сообщение» с меню: новый чат или новый канал. */
+/**
+ * Круглая кнопка «Новое сообщение», как карандаш TG: открывает экран нового сообщения, где сверху
+ * «Новая группа» и «Новый канал», ниже — недавние собеседники.
+ */
 @Composable
 internal fun TgNewMessageFab(
-    onCreateChat: () -> Unit,
-    onCreateChannel: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    Box(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .size(FAB_SIZE)
-                .tgGlass(CircleShape)
-                .clip(CircleShape)
-                .clickable { showMenu = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = CompoundIcons.Compose(),
-                contentDescription = stringResource(R.string.screen_home_new_chat),
-                tint = ElementTheme.colors.iconPrimary,
-            )
-        }
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            shape = RoundedCornerShape(12.dp),
-            containerColor = ElementTheme.colors.bgCanvasDefault,
-        ) {
-            FabMenuItem(stringResource(R.string.screen_home_new_chat), CompoundIcons.Chat()) {
-                showMenu = false
-                onCreateChat()
-            }
-            FabMenuItem(stringResource(R.string.screen_home_new_channel), CompoundIcons.Public()) {
-                showMenu = false
-                onCreateChannel()
-            }
-        }
+    Box(
+        modifier = modifier
+            .size(FAB_SIZE)
+            .tgGlass(CircleShape)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = CompoundIcons.Compose(),
+            contentDescription = stringResource(R.string.screen_home_new_chat),
+            tint = ElementTheme.colors.iconPrimary,
+        )
     }
-}
-
-@Composable
-private fun FabMenuItem(text: String, icon: ImageVector, onClick: () -> Unit) {
-    DropdownMenuItem(
-        leadingIcon = { Icon(imageVector = icon, contentDescription = null, tint = ElementTheme.colors.iconSecondary) },
-        text = { Text(text = text, style = ElementTheme.typography.fontBodyLgRegular, color = ElementTheme.colors.textPrimary) },
-        onClick = onClick,
-    )
 }

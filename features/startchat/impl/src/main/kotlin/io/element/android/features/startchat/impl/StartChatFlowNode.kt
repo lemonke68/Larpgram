@@ -59,6 +59,10 @@ class StartChatFlowNode(
 
         @Parcelize
         data object JoinByAddress : NavTarget
+
+        // Правка форка: «Новый канал» с экрана нового сообщения, как в TG.
+        @Parcelize
+        data object NewChannel : NavTarget
     }
 
     private val callback: StartChatEntryPoint.Callback = callback()
@@ -87,6 +91,21 @@ class StartChatFlowNode(
                         callback = callback,
                     )
                     .setIsSpace(false)
+                    .build()
+            }
+            NavTarget.NewChannel -> {
+                val callback = object : CreateRoomEntryPoint.Callback {
+                    override fun onRoomCreated(roomId: RoomId) {
+                        navigator.onRoomCreated(roomId.toRoomIdOrAlias(), emptyList())
+                    }
+                }
+                createRoomEntryPoint
+                    .builder(
+                        parentNode = this,
+                        buildContext = buildContext,
+                        callback = callback,
+                    )
+                    .setIsChannel(true)
                     .build()
             }
             NavTarget.JoinByAddress -> {
