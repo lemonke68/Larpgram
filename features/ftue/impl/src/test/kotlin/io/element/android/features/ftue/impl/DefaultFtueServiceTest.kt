@@ -31,9 +31,11 @@ import io.element.android.services.analytics.noop.NoopAnalyticsService
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.services.toolbox.test.sdk.FakeBuildVersionSdkIntProvider
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import kotlin.time.Duration.Companion.seconds
 
 class DefaultFtueServiceTest {
     @Test
@@ -117,6 +119,35 @@ class DefaultFtueServiceTest {
             lockScreenService = lockScreenService,
             recoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner {
                 sessionVerificationService.emitVerifiedStatus(SessionVerifiedStatus.Verified)
+            },
+        )
+        analyticsService.setDidAskUserConsent()
+        lockScreenService.setIsPinSetup(true)
+
+        service.ftueStepStateFlow.test {
+            val states = consumeItemsUntilPredicate { it is InternalFtueState.Complete }
+            assertThat(states).doesNotContain(InternalFtueState.Incomplete(FtueStep.SessionVerification))
+            assertThat(states.last()).isEqualTo(InternalFtueState.Complete)
+        }
+    }
+
+    @Test
+    fun `no verification screen flashes while the auto-unlock is finishing`() = runTest {
+        val sessionVerificationService = FakeSessionVerificationService().apply {
+            emitVerifiedStatus(SessionVerifiedStatus.NotVerified)
+        }
+        val analyticsService = FakeAnalyticsService()
+        val lockScreenService = FakeLockScreenService()
+        val service = createDefaultFtueService(
+            sessionVerificationService = sessionVerificationService,
+            analyticsService = analyticsService,
+            permissionStateProvider = FakePermissionStateProvider(permissionGranted = true),
+            lockScreenService = lockScreenService,
+            recoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner {
+                // Статус меняется раньше, чем разблокировка вернётся — пересчёт шагов успевает
+                // пройти в промежутке.
+                sessionVerificationService.emitVerifiedStatus(SessionVerifiedStatus.Verified)
+                delay(1.seconds)
             },
         )
         analyticsService.setDidAskUserConsent()

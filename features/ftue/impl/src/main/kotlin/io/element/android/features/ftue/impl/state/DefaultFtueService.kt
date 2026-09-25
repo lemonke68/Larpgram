@@ -104,7 +104,7 @@ class DefaultFtueService(
             } else {
                 getNextStep(FtueStep.WaitingForInitialState)
             }
-            FtueStep.WaitingForInitialState -> if ((isSessionNotVerified() && !autoUnlocked()) || userNeedsToConfirmSessionVerificationSuccess.value) {
+            FtueStep.WaitingForInitialState -> if (needsSessionVerificationStep()) {
                 FtueStep.SessionVerification
             } else {
                 getNextStep(FtueStep.SessionVerification)
@@ -133,6 +133,15 @@ class DefaultFtueService(
 
     private suspend fun isSessionNotVerified(): Boolean {
         return sessionVerificationService.sessionVerifiedStatus.value == SessionVerifiedStatus.NotVerified && !canSkipVerification()
+    }
+
+    private suspend fun needsSessionVerificationStep(): Boolean {
+        if (isSessionNotVerified()) return !autoUnlocked()
+        // Сессия уже подтверждена. Если это сделала авто-разблокировка, дождаться, пока она снимет
+        // флаг «покажи экран успеха»: иначе пересчёт по смене статуса успевает мелькнуть экраном
+        // подтверждения раньше неё.
+        if (autoUnlock.isActive || autoUnlock.isCompleted) autoUnlocked()
+        return userNeedsToConfirmSessionVerificationSuccess.value
     }
 
     private suspend fun autoUnlocked(): Boolean {
