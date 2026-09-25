@@ -41,8 +41,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -54,6 +57,7 @@ import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomListRoomSummaryPreviewParam
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
+import io.element.android.features.home.impl.model.TypingPreview
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.libraries.core.extensions.orEmpty
 import io.element.android.libraries.core.extensions.toSafeLength
@@ -164,7 +168,8 @@ internal fun RoomSummaryRow(
                         timestamp = room.timestamp,
                         isHighlighted = room.isHighlighted,
                         dmUserStatus = room.dmUserStatus,
-                        deliveryState = room.latestEvent.deliveryState(),
+                        // Под черновиком галочки последнего сообщения не показываем, как в TG.
+                        deliveryState = if (room.draft == null) room.latestEvent.deliveryState() else null,
                         isMuted = room.userDefinedNotificationMode == RoomNotificationMode.MUTE,
                     )
                     MessagePreviewAndIndicatorRow(room = room, showUnreadCount = showUnreadCount)
@@ -374,6 +379,32 @@ private fun MessagePreviewAndIndicatorRow(
                     maxLines = previewMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
+            } else if (room.typing != null) {
+                // Правка форка: «печатает…» цветом акцента вместо последнего сообщения (TG).
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = typingText(room.typing),
+                    color = ElementTheme.colors.textActionAccent,
+                    style = ElementTheme.typography.fontBodyMdRegular,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else if (room.draft != null) {
+                // Правка форка: «Черновик:» красным, дальше текст черновика (TG `key_chats_draft`).
+                val draftLabel = stringResource(CommonStrings.larpgram_chat_draft)
+                val criticalColor = ElementTheme.colors.textCriticalPrimary
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = criticalColor)) { append(draftLabel) }
+                        append(' ')
+                        append(room.draft.replace('\n', ' '))
+                    },
+                    color = ElementTheme.colors.roomListRoomMessage,
+                    style = ElementTheme.typography.fontBodyMdRegular,
+                    maxLines = previewMaxLines,
+                    overflow = TextOverflow.Ellipsis,
+                )
             } else {
                 // Правка форка: часиков перед текстом больше нет, отправку показывают галочки
                 // рядом со временем, а два индикатора одного и того же это шум.
@@ -435,6 +466,17 @@ private fun MessagePreviewAndIndicatorRow(
                 PinIndicatorAtom(tint = ElementTheme.colors.iconQuaternary)
             }
         }
+    }
+}
+
+@Composable
+private fun typingText(typing: TypingPreview): String {
+    val names = typing.names
+    return when (names.size) {
+        0 -> stringResource(CommonStrings.larpgram_typing)
+        1 -> stringResource(CommonStrings.larpgram_typing_one, names[0])
+        2 -> stringResource(CommonStrings.larpgram_typing_two, names[0], names[1])
+        else -> stringResource(CommonStrings.larpgram_typing_many, names[0], names.size - 1)
     }
 }
 

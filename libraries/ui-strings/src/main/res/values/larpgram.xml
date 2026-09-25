@@ -61,4 +61,10 @@
     <string name="larpgram_call_cancelled">"Cancelled call"</string>
     <string name="larpgram_call_declined">"Declined call"</string>
     <string name="larpgram_call_group_started">"%1$s started a call at %2$s"</string>
+    <!-- Список чатов: черновик и «печатает…» (TG DialogCell). -->
+    <string name="larpgram_chat_draft">"Draft:"</string>
+    <string name="larpgram_typing">"typing…"</string>
+    <string name="larpgram_typing_one">"%1$s is typing…"</string>
+    <string name="larpgram_typing_two">"%1$s and %2$s are typing…"</string>
+    <string name="larpgram_typing_many">"%1$s and %2$d more are typing…"</string>
 </resources>

@@ -49,4 +49,10 @@
     <string name="larpgram_call_cancelled">"Отменённый звонок"</string>
     <string name="larpgram_call_declined">"Отклонённый звонок"</string>
     <string name="larpgram_call_group_started">"%1$s начал(а) звонок в %2$s"</string>
+    <!-- Список чатов: черновик и «печатает…» (TG DialogCell). -->
+    <string name="larpgram_chat_draft">"Черновик:"</string>
+    <string name="larpgram_typing">"печатает…"</string>
+    <string name="larpgram_typing_one">"%1$s печатает…"</string>
+    <string name="larpgram_typing_two">"%1$s и %2$s печатают…"</string>
+    <string name="larpgram_typing_many">"%1$s и ещё %2$d печатают…"</string>
 </resources>

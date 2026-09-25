@@ -51,6 +51,7 @@ class RoomListRoomSummaryFactory(
                 useRelative = true,
             ),
             latestEvent = computeLatestEvent(roomSummary.latestEvent, roomInfo.hasOnlyTwoMembers()),
+            latestEventTimestampMillis = roomSummary.latestEventTimestamp,
             avatarData = avatarData,
             userDefinedNotificationMode = roomInfo.userDefinedNotificationMode,
             hasRoomCall = roomInfo.hasRoomCall,

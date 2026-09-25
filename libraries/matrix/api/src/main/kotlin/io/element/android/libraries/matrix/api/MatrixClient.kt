@@ -51,6 +51,7 @@ import io.element.android.libraries.matrix.api.verification.SessionVerificationS
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Optional
 
@@ -153,6 +154,12 @@ interface MatrixClient : ClientUrlContentFetcher {
      * @return the room, or `null` if it is unknown to the client.
      */
     suspend fun getRoom(roomId: RoomId): BaseRoom?
+
+    /**
+     * Правка форка: кто сейчас печатает в комнате (без нас) — для «печатает…» в списке чатов.
+     * В отличие от [JoinedRoom.roomTypingMembersFlow] не поднимает живую ленту комнаты.
+     */
+    fun roomTypingMembersFlow(roomId: RoomId): Flow<List<UserId>> = emptyFlow()
 
     /**
      * Looks for an existing direct message room shared with [userId].

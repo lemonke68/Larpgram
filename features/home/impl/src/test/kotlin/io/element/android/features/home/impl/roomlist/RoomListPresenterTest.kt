@@ -76,6 +76,9 @@ import io.element.android.libraries.matrix.test.roomlist.FakeDynamicRoomList
 import io.element.android.libraries.matrix.test.roomlist.FakeRoomListService
 import io.element.android.libraries.matrix.test.sync.FakeSyncService
 import io.element.android.libraries.matrix.test.verification.FakeSessionVerificationService
+import io.element.android.libraries.matrix.ui.drafts.DraftPreview
+import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
+import io.element.android.libraries.matrix.ui.drafts.NoOpDraftPreviews
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.libraries.push.api.battery.aBatteryOptimizationState
@@ -140,7 +143,7 @@ class RoomListPresenterTest {
                     numberOfUnreadMentions = 1,
                     numberOfUnreadMessages = 2,
                     timestamp = "0 TimeOrDate true",
-                )
+                ).copy(latestEventTimestampMillis = 0L)
             )
             assertThat(withRoomsState.contentAsRooms().seenRoomInvites).containsExactly(A_ROOM_ID, A_ROOM_ID_2, A_ROOM_ID_3)
             cancelAndIgnoreRemainingEvents()
@@ -236,6 +239,31 @@ class RoomListPresenterTest {
         syncService = FakeSyncService(initialSyncState = SyncState.Running),
         accountManagementUrlResult = { accountManagementUrl },
     )
+
+    @Test
+    fun `present - a saved draft replaces the last message in the row`() = runTest {
+        val drafts = MutableStateFlow(mapOf(A_ROOM_ID to DraftPreview(text = "дописать потом", savedAtMillis = 1L)))
+        val roomList = FakeDynamicRoomList()
+        val presenter = createRoomListPresenter(
+            client = FakeMatrixClient(roomListService = FakeRoomListService(createRoomListLambda = { roomList })),
+            draftPreviews = object : DraftPreviews {
+                override val drafts = drafts
+                override fun set(roomId: RoomId, text: String?) = Unit
+            },
+        )
+        presenter.test {
+            roomList.loadingState.emit(RoomList.LoadingState.Loaded(1))
+            roomList.summaries.emit(listOf(aRoomSummary()))
+            val state = consumeItemsUntilPredicate {
+                it.contentState is RoomListContentState.Rooms && it.contentAsRooms().summaries.isNotEmpty()
+            }.last()
+            val row = state.contentAsRooms().summaries.first()
+            assertThat(row.draft).isEqualTo("дописать потом")
+            // Черновик новее последнего события (у фейка оно в 0) — время строки берётся у черновика.
+            assertThat(row.timestamp).isEqualTo("1 TimeOrDate true")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
     fun `present - update beats the email banner and a tap installs it in the app`() = runTest {
@@ -863,6 +891,7 @@ class RoomListPresenterTest {
         recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
         keyEscrowService: KeyEscrowService = FakeKeyEscrowService(),
         snackbarDispatcher: SnackbarDispatcher = SnackbarDispatcher(),
+        draftPreviews: DraftPreviews = NoOpDraftPreviews(),
     ) = RoomListPresenter(
         client = client,
         leaveRoomPresenter = { leaveRoomState },
@@ -911,5 +940,8 @@ class RoomListPresenterTest {
         ),
         keyEscrowService = keyEscrowService,
         snackbarDispatcher = snackbarDispatcher,
+        draftPreviews = draftPreviews,
+        typingTracker = RoomListTypingTracker(client),
+        dateFormatter = FakeDateFormatter(),
     )
 }

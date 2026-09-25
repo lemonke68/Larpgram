@@ -53,6 +53,12 @@ data class RoomListRoomSummary(
     val heroes: ImmutableList<AvatarData>,
     val isSpace: Boolean,
     val dmUserStatus: DisplayedStatus?,
+    // Правка форка: время последнего события в мс — сравнить с черновиком (правило TG).
+    val latestEventTimestampMillis: Long? = null,
+    // Правка форка: «Черновик: …» вместо последнего сообщения. Проставляет пресентер.
+    val draft: String? = null,
+    // Правка форка: «печатает…» / «Аня печатает…» вместо последнего сообщения. Проставляет пресентер.
+    val typing: TypingPreview? = null,
 ) {
     val isMuted = userDefinedNotificationMode == RoomNotificationMode.MUTE
 
@@ -71,3 +77,7 @@ data class RoomListRoomSummary(
         isDm = isDm,
     )
 }
+
+/** Правка форка: кто печатает. В ЛС имён не пишем — список пустой, строка «печатает…». */
+@Immutable
+data class TypingPreview(val names: ImmutableList<String>)

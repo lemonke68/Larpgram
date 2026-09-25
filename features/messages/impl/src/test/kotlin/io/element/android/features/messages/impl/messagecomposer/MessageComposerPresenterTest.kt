@@ -80,6 +80,8 @@ import io.element.android.libraries.matrix.test.room.aRoomInfo
 import io.element.android.libraries.matrix.test.room.aRoomMember
 import io.element.android.libraries.matrix.test.room.powerlevels.FakeRoomPermissions
 import io.element.android.libraries.matrix.test.timeline.FakeTimeline
+import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
+import io.element.android.libraries.matrix.ui.drafts.NoOpDraftPreviews
 import io.element.android.libraries.matrix.ui.media.contentvalidation.InMemoryEventContentValidationCache
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
 import io.element.android.libraries.mediapickers.api.PickerProvider
@@ -1746,6 +1748,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
         textPillificationHelper: TextPillificationHelper = FakeTextPillificationHelper(),
         isRichTextEditorEnabled: Boolean = true,
         draftService: ComposerDraftService = FakeComposerDraftService(),
+        draftPreviews: DraftPreviews = NoOpDraftPreviews(),
         mediaOptimizationConfigProvider: FakeMediaOptimizationConfigProvider = FakeMediaOptimizationConfigProvider(),
         threadRoot: ThreadId? = null,
         slashCommandService: SlashCommandService = FakeSlashCommandService(),
@@ -1783,6 +1786,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
         permalinkBuilder = permalinkBuilder,
         timelineController = TimelineController(room, timeline),
         draftService = draftService,
+        draftPreviews = draftPreviews,
         mentionSpanProvider = mentionSpanProvider,
         pillificationHelper = textPillificationHelper,
         suggestionsProcessor = SuggestionsProcessor(slashCommandService = slashCommandService),

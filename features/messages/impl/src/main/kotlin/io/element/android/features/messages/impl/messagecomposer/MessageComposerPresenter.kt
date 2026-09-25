@@ -69,6 +69,7 @@ import io.element.android.libraries.matrix.api.room.powerlevels.use
 import io.element.android.libraries.matrix.api.timeline.TimelineException
 import io.element.android.libraries.matrix.api.timeline.item.event.mediaSources
 import io.element.android.libraries.matrix.api.timeline.item.event.toEventOrTransactionId
+import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
 import io.element.android.libraries.matrix.ui.media.contentvalidation.EventContentValidationCache
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
 import io.element.android.libraries.matrix.ui.messages.reply.content
@@ -147,6 +148,8 @@ class MessageComposerPresenter(
     private val permalinkBuilder: PermalinkBuilder,
     permissionsPresenterFactory: PermissionsPresenter.Factory,
     private val draftService: ComposerDraftService,
+    // Правка форка: копия текста черновика для «Черновик:» в списке чатов.
+    private val draftPreviews: DraftPreviews,
     private val mentionSpanProvider: MentionSpanProvider,
     private val pillificationHelper: TextPillificationHelper,
     private val suggestionsProcessor: SuggestionsProcessor,
@@ -432,6 +435,11 @@ class MessageComposerPresenter(
                 MessageComposerEvent.SaveDraft -> {
                     val draft = createDraftFromState(markdownTextEditorState, richTextEditorState)
                     sessionCoroutineScope.updateDraft(draft, isVolatile = false)
+                    // В TG «Черновик:» — только для нового сообщения или ответа в самом чате;
+                    // незаконченная правка старого сообщения черновиком не считается.
+                    if (threadRoot == null) {
+                        draftPreviews.set(room.roomId, draft?.takeIf { it.draftType !is ComposerDraftType.Edit }?.plainText)
+                    }
                 }
                 MessageComposerEvent.ClearSlashError -> {
                     slashCommandAction.value = AsyncAction.Uninitialized

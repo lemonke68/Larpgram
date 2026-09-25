@@ -33,6 +33,7 @@ import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.into
 import io.element.android.features.home.impl.model.RoomListRoomSummary
+import io.element.android.features.home.impl.model.TypingPreview
 import io.element.android.features.home.impl.search.GlobalSearchState
 import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.home.impl.search.RoomListSearchState
@@ -53,6 +54,8 @@ import io.element.android.libraries.appupdate.api.UpdateInstaller
 import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.dateformatter.api.DateFormatter
+import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -67,6 +70,8 @@ import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
+import io.element.android.libraries.matrix.ui.drafts.DraftPreview
+import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -80,9 +85,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -124,6 +132,10 @@ class RoomListPresenter(
     // Правка форка: «удалить у обоих» для ЛС через наш серверный Synapse purge.
     private val keyEscrowService: KeyEscrowService,
     private val snackbarDispatcher: SnackbarDispatcher,
+    // Правка форка: «Черновик:» и «печатает…» в строке чата.
+    private val draftPreviews: DraftPreviews,
+    private val typingTracker: RoomListTypingTracker,
+    private val dateFormatter: DateFormatter,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -193,6 +205,8 @@ class RoomListPresenter(
         // почту. check() уже отсекает старые и отклонённые версии, поэтому здесь достаточно
         // проверить, что вернулось Available. Ход загрузки и установки — из UpdateInstaller.
         var updateBannerDismissed by rememberSaveable { mutableStateOf(false) }
+        // Не compose-состояние: смена видимого диапазона не должна пересобирать экран.
+        val visibleRangeFlow = remember { MutableStateFlow(IntRange.EMPTY) }
         val updateStatus by produceState<UpdateStatus>(UpdateStatus.Unknown) {
             value = updateChecker.check()
         }
@@ -216,8 +230,9 @@ class RoomListPresenter(
 
         fun handleEvent(event: RoomListEvent) {
             when (event) {
-                is RoomListEvent.UpdateVisibleRange -> coroutineScope.launch {
-                    roomListDataSource.updateVisibleRange(event.range)
+                is RoomListEvent.UpdateVisibleRange -> {
+                    visibleRangeFlow.value = event.range
+                    coroutineScope.launch { roomListDataSource.updateVisibleRange(event.range) }
                 }
                 RoomListEvent.DismissRequestVerificationPrompt -> securityBannerDismissed = true
                 RoomListEvent.DismissBanner -> securityBannerDismissed = true
@@ -298,6 +313,7 @@ class RoomListPresenter(
             updateBanner = updateBanner,
             showNewNotificationSoundBanner,
             showUnreadCount,
+            visibleRangeFlow = visibleRangeFlow,
         )
 
         return RoomListState(
@@ -388,13 +404,30 @@ class RoomListPresenter(
         updateBanner: UpdateBannerState?,
         showNewNotificationSoundBanner: Boolean,
         showUnreadCount: Boolean,
+        visibleRangeFlow: StateFlow<IntRange>,
     ): RoomListContentState {
         // Правка форка (роумлесс): помеченные пином комнаты поднимаем наверх списка в порядке
         // пина. Сортировкой SDK и diff-кэшем не рулим — переставляем уже готовый список здесь.
         val roomSummaries by produceState(initialValue = AsyncData.Loading()) {
-            combine(roomListDataSource.roomSummariesFlow, pinnedChatsStore.pinnedFlow) { summaries, pinnedIds ->
+            combine(
+                roomListDataSource.roomSummariesFlow,
+                pinnedChatsStore.pinnedFlow,
+                draftPreviews.drafts,
+                typingTracker.typing,
+            ) { summaries, pinnedIds, drafts, typing ->
                 applyPins(summaries, pinnedIds)
+                    .map { it.withDraftAndTyping(drafts[it.roomId], typing[it.roomId]) }
+                    .toImmutableList()
             }.collect { value = AsyncData.Success(it) }
+        }
+        // Правка форка: «печатает…» слушаем только у видимых строк.
+        LaunchedEffect(Unit) {
+            val scope = this
+            combine(visibleRangeFlow, snapshotFlow { roomSummaries.dataOrNull().orEmpty() }) { range, summaries ->
+                range.mapNotNull { summaries.getOrNull(it) }.associate { it.roomId to it.isDm }
+            }
+                .distinctUntilChangedBy { it.keys }
+                .collect { rooms -> typingTracker.track(scope, rooms) }
         }
         val loadingState by roomListDataSource.loadingState.collectAsState()
         val showEmpty by remember {
@@ -485,6 +518,26 @@ class RoomListPresenter(
 
     // Правка форка (роумлесс), ф2 пин: закреплённые комнаты наверх, в порядке пина; помечаем
     // isPinned для строки/меню. Пин ставится только на ROOM, поэтому инвайты не трогаются.
+    /**
+     * Правка форка: черновик и «печатает…» поверх строки. Правило TG (`DialogCell`): черновик
+     * прячется, если после него пришло непрочитанное сообщение; время у строки — время черновика,
+     * если он новее последнего сообщения.
+     */
+    private fun RoomListRoomSummary.withDraftAndTyping(draft: DraftPreview?, typing: TypingPreview?): RoomListRoomSummary {
+        val lastEventAt = latestEventTimestampMillis ?: 0L
+        val shownDraft = draft?.takeUnless { hasNewContent && lastEventAt > it.savedAtMillis }
+        if (shownDraft == null && typing == null) return this
+        return copy(
+            draft = shownDraft?.text,
+            typing = typing,
+            timestamp = if (shownDraft != null && shownDraft.savedAtMillis > lastEventAt) {
+                dateFormatter.format(timestamp = shownDraft.savedAtMillis, mode = DateFormatterMode.TimeOrDate, useRelative = true)
+            } else {
+                timestamp
+            },
+        )
+    }
+
     private fun applyPins(
         summaries: ImmutableList<RoomListRoomSummary>,
         pinnedIds: List<RoomId>,

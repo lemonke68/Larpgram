@@ -107,6 +107,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -130,6 +131,7 @@ import org.matrix.rustcomponents.sdk.ProfileListener
 import org.matrix.rustcomponents.sdk.RoomInfoListener
 import org.matrix.rustcomponents.sdk.SendQueueRoomErrorListener
 import org.matrix.rustcomponents.sdk.TaskHandle
+import org.matrix.rustcomponents.sdk.TypingNotificationsListener
 import org.matrix.rustcomponents.sdk.UserProfile
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
@@ -367,6 +369,16 @@ class RustMatrixClient(
     override suspend fun getRoom(roomId: RoomId): BaseRoom? = withContext(sessionDispatcher) {
         roomFactory.getBaseRoom(roomId)
     }
+
+    override fun roomTypingMembersFlow(roomId: RoomId): Flow<List<UserId>> = mxCallbackFlow {
+        channel.trySend(emptyList())
+        val room = innerClient.getRoom(roomId.value) ?: error("Unknown room $roomId")
+        room.subscribeToTypingNotifications(object : TypingNotificationsListener {
+            override fun call(typingUserIds: List<String>) {
+                channel.trySend(typingUserIds.filter { it != sessionId.value }.map(::UserId))
+            }
+        })
+    }.catch { Timber.w(it, "Typing notifications unavailable for $roomId") }
 
     override suspend fun getJoinedRoom(roomId: RoomId): JoinedRoom? = withContext(sessionDispatcher) {
         (roomFactory.getJoinedRoomOrPreview(roomId, emptyList()) as? GetRoomResult.Joined)?.joinedRoom
