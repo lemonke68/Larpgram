@@ -16,6 +16,7 @@ import io.element.android.features.messages.impl.timeline.factories.event.Timeli
 import io.element.android.features.messages.impl.timeline.factories.virtual.TimelineItemVirtualFactory
 import io.element.android.features.messages.impl.timeline.groups.TimelineItemGrouper
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemDaySeparatorModel
 import io.element.android.libraries.androidutils.diff.DiffCacheUpdater
 import io.element.android.libraries.androidutils.diff.MutableListDiffCache
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -102,7 +103,9 @@ class TimelineItemsFactory(
                 newTimelineItemStates.add(updatedItem)
             }
         }
-        val result = timelineItemGrouper.group(newTimelineItemStates).toImmutableList()
+        val result = timelineItemGrouper.group(newTimelineItemStates)
+            .dropEmptyDaySeparators()
+            .toImmutableList()
         this._timelineItems.emit(result)
     }
 
@@ -135,3 +138,18 @@ private fun EventTimelineItem.isKeyVerificationRequest(): Boolean {
     val messageType = (content as? MessageContent)?.type
     return messageType is OtherMessageType && messageType.isKeyVerificationRequest
 }
+
+/**
+ * Правка форка: плашка дня без единого сообщения под ней (все сообщения дня скрыты — например,
+ * нерасшифрованные) не нужна. Список идёт от новых к старым, поэтому сообщения дня стоят в списке
+ * перед его плашкой: если перед плашкой не событие, день пустой.
+ */
+private fun List<TimelineItem>.dropEmptyDaySeparators(): List<TimelineItem> =
+    filterIndexed { index, item ->
+        val isDaySeparator = item is TimelineItem.Virtual && item.model is TimelineItemDaySeparatorModel
+        if (!isDaySeparator) return@filterIndexed true
+        val previous = (index - 1 downTo 0).asSequence()
+            .map { this[it] }
+            .firstOrNull { it !is TimelineItem.Virtual || it.model is TimelineItemDaySeparatorModel }
+        previous is TimelineItem.Event || previous is TimelineItem.GroupedEvents
+    }
