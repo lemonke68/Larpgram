@@ -17,6 +17,8 @@ import io.element.android.libraries.matrix.test.room.aRoomSummary
 import io.element.android.libraries.matrix.test.roomlist.FakeDynamicRoomList
 import io.element.android.libraries.matrix.test.roomlist.FakeRoomListService
 import io.element.android.libraries.matrix.ui.model.toSelectRoomInfo
+import io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages
+import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.roomselect.api.RoomSelectEntryPoint
 import io.element.android.libraries.roomselect.api.RoomSelectMode
 import io.element.android.tests.testutils.WarmUpRule
@@ -157,6 +159,7 @@ internal fun TestScope.createRoomSelectPresenter(
     mode: RoomSelectMode = RoomSelectMode.Forward,
     maxNumberOfRooms: Int = RoomSelectEntryPoint.DEFAULT_MAX_NUMBER_OF_ROOMS,
     roomListService: RoomListService = FakeRoomListService(),
+    savedMessages: SavedMessages = NoOpSavedMessages(),
 ) = RoomSelectPresenter(
     mode = mode,
     maxNumberOfRooms = maxNumberOfRooms,
@@ -168,5 +171,6 @@ internal fun TestScope.createRoomSelectPresenter(
                 coroutineDispatchers = testCoroutineDispatchers(),
             )
         }
-    }
+    },
+    savedMessages = savedMessages,
 )

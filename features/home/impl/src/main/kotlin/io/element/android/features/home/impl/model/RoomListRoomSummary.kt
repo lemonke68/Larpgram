@@ -59,6 +59,8 @@ data class RoomListRoomSummary(
     val draft: String? = null,
     // Правка форка: «печатает…» / «Аня печатает…» вместо последнего сообщения. Проставляет пресентер.
     val typing: TypingPreview? = null,
+    // Правка форка: последнее событие служебное (вход, смена имени…) — в «Избранном» его не показываем.
+    val isLatestEventService: Boolean = false,
 ) {
     val isMuted = userDefinedNotificationMode == RoomNotificationMode.MUTE
 

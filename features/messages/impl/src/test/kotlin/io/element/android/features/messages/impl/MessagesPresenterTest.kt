@@ -106,6 +106,7 @@ import io.element.android.libraries.matrix.test.room.threads.FakeThreadsListServ
 import io.element.android.libraries.matrix.test.timeline.FakeTimeline
 import io.element.android.libraries.matrix.test.timeline.aTimelineItemDebugInfo
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
+import io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.textcomposer.model.aTextEditorStateMarkdown
@@ -1539,6 +1540,7 @@ class MessagesPresenterTest {
             },
             // Правка форка: клиент нужен только ради загрузчика медиа для кружочков.
             matrixClient = matrixClient,
+            savedMessages = NoOpSavedMessages(),
             imagePackSource = NoPacksImagePackSource,
         )
     }

@@ -518,6 +518,10 @@ class LoggedInFlowNode(
                         callback.navigateToAddAccount()
                     }
 
+                    override fun navigateToRoom(roomId: RoomId) {
+                        backstack.push(NavTarget.Room(roomIdOrAlias = roomId.toRoomIdOrAlias(), serverNames = emptyList()))
+                    }
+
                     override fun navigateToLinkNewDevice() {
                         backstack.push(NavTarget.LinkNewDevice)
                     }

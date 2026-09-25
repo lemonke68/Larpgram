@@ -73,6 +73,7 @@ import io.element.android.libraries.matrix.test.timeline.aRedactedContent
 import io.element.android.libraries.matrix.test.timeline.anEventTimelineItem
 import io.element.android.libraries.matrix.test.timeline.item.event.aRoomMembershipContent
 import io.element.android.libraries.matrix.ui.components.aMatrixUserList
+import io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages
 import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.WarmUpRule
@@ -1917,6 +1918,7 @@ class TimelinePresenterTest {
             liveLocationShareManager = liveLocationShareManager,
             markAsFullyRead = markAsFullyRead,
             timelineProtectionPresenter = timelineProtectionPresenter,
+            savedMessages = NoOpSavedMessages(),
         )
     }
 }

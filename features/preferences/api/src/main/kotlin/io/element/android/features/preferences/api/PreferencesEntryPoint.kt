@@ -54,6 +54,9 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
         fun navigateToRoomNotificationSettings(roomId: RoomId)
         fun navigateToEvent(roomId: RoomId, eventId: EventId)
 
+        // Правка форка: открыть чат из настроек («Избранное»).
+        fun navigateToRoom(roomId: RoomId) = Unit
+
         /**
          * Fired when the settings flow moves between its root screen and a deeper screen.
          * Larpgram hosts settings as a bottom-bar tab; the host uses this to hide the persistent

@@ -34,6 +34,7 @@ import io.element.android.features.messages.impl.timeline.factories.TimelineItem
 import io.element.android.features.messages.impl.timeline.groups.canBeGrouped
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemDaySeparatorModel
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemReadMarkerModel
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemTypingNotificationModel
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionEvent
@@ -65,6 +66,7 @@ import io.element.android.libraries.matrix.api.timeline.ReceiptType
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.matrix.api.timeline.item.event.TimelineItemEventOrigin
+import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.services.analytics.api.AnalyticsLongRunningTransaction.DisplayFirstTimelineItems
 import io.element.android.services.analytics.api.AnalyticsLongRunningTransaction.NotificationToMessage
@@ -115,6 +117,8 @@ class TimelinePresenter(
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
     private val markAsFullyRead: MarkAsFullyRead,
     private val timelineProtectionPresenter: Presenter<TimelineProtectionState>,
+    // Правка форка: в «Избранном» нет служебных строк и есть пустой экран TG.
+    private val savedMessages: SavedMessages,
 ) : Presenter<TimelineState> {
     private val tag = "TimelinePresenter"
 
@@ -335,10 +339,19 @@ class TimelinePresenter(
                     // Larpgram: a channel hides membership/state service messages (Telegram-style —
                     // no "joined"/"invited"/"changed name" noise in the broadcast feed).
                     val isChannelRoom = (room.info().roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
-                    val rendered = if (isChannelRoom) {
+                    // «Избранное»: «создал комнату», «вошёл» и прочий шум создания тоже прячем.
+                    val isSavedMessages = room.roomId == savedMessages.roomId.value
+                    val rendered = if (isChannelRoom || isSavedMessages) {
                         newTimelineItems.filterNot(::isChannelServiceItem)
                     } else {
                         newTimelineItems
+                    }.let { items ->
+                        // В пустом «Избранном» не оставляем одинокую плашку даты.
+                        if (isSavedMessages && items.none { it is TimelineItem.Event }) {
+                            items.filterNot { it is TimelineItem.Virtual && it.model is TimelineItemDaySeparatorModel }
+                        } else {
+                            items
+                        }
                     }
                     timelineItemIndexer.process(rendered)
                     timelineItems = rendered.toImmutableList()
@@ -504,7 +517,8 @@ class TimelinePresenter(
                 }
             }
         }
-        val timelineRoomInfo by remember(typingNotificationState, roomCallState, roomInfo, channelDiscussionRoomId, channelCommentCounts) {
+        val savedMessagesRoomId by savedMessages.roomId.collectAsState()
+        val timelineRoomInfo by remember(typingNotificationState, roomCallState, roomInfo, channelDiscussionRoomId, channelCommentCounts, savedMessagesRoomId) {
             derivedStateOf {
                 TimelineRoomInfo(
                     name = roomInfo.name,
@@ -519,6 +533,7 @@ class TimelinePresenter(
                     pinnedEventIds = roomInfo.pinnedEventIds,
                     typingNotificationState = typingNotificationState,
                     predecessorRoom = room.predecessorRoom(),
+                    isSavedMessages = room.roomId == savedMessagesRoomId,
                 )
             }
         }

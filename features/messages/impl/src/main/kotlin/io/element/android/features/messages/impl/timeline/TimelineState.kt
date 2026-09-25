@@ -96,6 +96,8 @@ data class TimelineRoomInfo(
     val pinnedEventIds: ImmutableList<EventId>,
     val typingNotificationState: TypingNotificationState,
     val predecessorRoom: PredecessorRoom?,
+    // Правка форка: это «Избранное» (чат с собой) — пустой экран TG вместо пустой ленты.
+    val isSavedMessages: Boolean = false,
 )
 
 /**

@@ -79,6 +79,7 @@ import io.element.android.libraries.matrix.test.verification.FakeSessionVerifica
 import io.element.android.libraries.matrix.ui.drafts.DraftPreview
 import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
 import io.element.android.libraries.matrix.ui.drafts.NoOpDraftPreviews
+import io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.libraries.push.api.battery.aBatteryOptimizationState
@@ -943,5 +944,6 @@ class RoomListPresenterTest {
         draftPreviews = draftPreviews,
         typingTracker = RoomListTypingTracker(client),
         dateFormatter = FakeDateFormatter(),
+        savedMessages = NoOpSavedMessages(),
     )
 }

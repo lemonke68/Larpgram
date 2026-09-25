@@ -334,6 +334,8 @@ class HomeFlowNode(
                         callback.navigateToRoomNotificationSettings(roomId)
                     override fun navigateToEvent(roomId: RoomId, eventId: EventId) =
                         callback.navigateToEvent(roomId, eventId)
+                    override fun navigateToRoom(roomId: RoomId) =
+                        callback.navigateToRoom(roomId = roomId, eventId = null, joinedRoom = null)
                     override fun onNestedNavigationStateChanged(isAtRoot: Boolean) {
                         settingsTabAtRoot.value = isAtRoot
                     }
@@ -370,6 +372,8 @@ class HomeFlowNode(
                         callback.navigateToRoomNotificationSettings(roomId)
                     override fun navigateToEvent(roomId: RoomId, eventId: EventId) =
                         callback.navigateToEvent(roomId, eventId)
+                    override fun navigateToRoom(roomId: RoomId) =
+                        callback.navigateToRoom(roomId = roomId, eventId = null, joinedRoom = null)
                 }
                 preferencesEntryPoint.createNode(
                     parentNode = this,

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +54,7 @@ import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.components.MatrixUserRow
+import io.element.android.libraries.matrix.ui.saved.SavedMessagesAvatar
 import io.element.android.libraries.ui.strings.CommonStrings
 import timber.log.Timber
 
@@ -70,6 +72,7 @@ fun PreferencesRootView(
     onOpenDeveloperSettings: () -> Unit,
     onOpenAdvancedSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenSavedMessages: () -> Unit = {},
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
 
@@ -95,6 +98,16 @@ fun PreferencesRootView(
                     userStatusState = state.userStatusState,
                     emojiPickerRenderer = emojiPickerRenderer,
                     showTopDivider = !state.isMultiAccountEnabled,
+                )
+            }
+            // Правка форка: «Избранное» отдельной карточкой над категориями, как в TG.
+            TgSettingsGroup {
+                TgSettingsItem(
+                    title = stringResource(CommonStrings.larpgram_saved_messages),
+                    color = SAVED_MESSAGES_COLOR,
+                    iconVector = SavedMessagesAvatar.icon,
+                    trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
+                    onClick = onOpenSavedMessages,
                 )
             }
             // TG-категории (Ф2): один верхнеуровневый список, каждая строка ведёт в свой под-экран.
@@ -148,6 +161,9 @@ private fun ColumnScope.CategoriesSection(
         }
     }
 }
+
+// Цвет иконки «Избранного» в настройках TG.
+private val SAVED_MESSAGES_COLOR = Color(0xFF3D9DE0)
 
 /** Правка форка: системный выбор языка приложения (Android 13+), как «Язык» в TG. */
 private fun openAppLanguageSettings(context: Context) {

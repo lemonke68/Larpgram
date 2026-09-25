@@ -72,4 +72,9 @@
     <string name="larpgram_new_group">"New group"</string>
     <string name="larpgram_new_channel">"New channel"</string>
     <string name="larpgram_recent_chats">"Recent"</string>
+    <string name="larpgram_saved_messages">"Saved Messages"</string>
+    <string name="larpgram_saved_messages_empty_title">"Your Saved Messages"</string>
+    <string name="larpgram_saved_messages_empty_forward">"Forward messages here to save them"</string>
+    <string name="larpgram_saved_messages_empty_files">"Send media and files to store them"</string>
+    <string name="larpgram_saved_messages_empty_devices">"Access this chat from any device"</string>
 </resources>

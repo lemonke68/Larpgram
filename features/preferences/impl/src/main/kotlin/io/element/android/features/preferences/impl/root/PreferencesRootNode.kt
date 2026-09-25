@@ -9,6 +9,7 @@
 package io.element.android.features.preferences.impl.root
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -19,7 +20,10 @@ import io.element.android.annotations.ContributesNode
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.ui.saved.SavedMessages
+import kotlinx.coroutines.launch
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
@@ -28,6 +32,7 @@ class PreferencesRootNode(
     @Assisted plugins: List<Plugin>,
     private val presenter: PreferencesRootPresenter,
     private val emojiPickerRenderer: EmojiPickerRenderer,
+    private val savedMessages: SavedMessages,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : Plugin {
         fun navigateToCategory(category: SettingsCategory)
@@ -38,6 +43,7 @@ class PreferencesRootNode(
         fun navigateToLabs()
         fun navigateToAdvancedSettings()
         fun navigateToUserProfile(matrixUser: MatrixUser)
+        fun navigateToRoom(roomId: RoomId)
     }
 
     private val callback: Callback = callback()
@@ -45,6 +51,7 @@ class PreferencesRootNode(
     @Composable
     override fun View(modifier: Modifier) {
         val state = presenter.present()
+        val coroutineScope = rememberCoroutineScope()
         PreferencesRootView(
             state = state,
             emojiPickerRenderer = emojiPickerRenderer,
@@ -58,6 +65,12 @@ class PreferencesRootNode(
             onOpenLabs = callback::navigateToLabs,
             onOpenDeveloperSettings = callback::navigateToDeveloperSettings,
             onOpenAdvancedSettings = callback::navigateToAdvancedSettings,
+            // Правка форка: «Избранное» создаётся при первом открытии.
+            onOpenSavedMessages = {
+                coroutineScope.launch {
+                    savedMessages.getOrCreate().onSuccess(callback::navigateToRoom)
+                }
+            },
         )
     }
 }

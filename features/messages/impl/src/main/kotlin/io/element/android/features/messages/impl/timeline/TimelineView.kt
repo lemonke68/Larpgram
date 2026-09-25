@@ -83,6 +83,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureView
 import io.element.android.features.messages.impl.timeline.components.FloatingDateBadgeOverlay
+import io.element.android.features.messages.impl.timeline.components.SavedMessagesEmptyView
 import io.element.android.features.messages.impl.timeline.components.TimelineItemRow
 import io.element.android.features.messages.impl.timeline.components.chatWallpaper
 import io.element.android.features.messages.impl.timeline.components.selectedChatWallpaper
@@ -274,6 +275,11 @@ fun TimelineView(
                 onMarkAllAsRead = ::onMarkAllAsRead,
                 onFocusOnEvent = ::onFocusOnEvent,
             )
+
+            // Правка форка: пустое «Избранное» — подсказка TG посередине ленты.
+            if (state.timelineRoomInfo.isSavedMessages && state.timelineItems.none { it is TimelineItem.Event }) {
+                SavedMessagesEmptyView(modifier = Modifier.align(Alignment.Center))
+            }
 
             FloatingDateBadgeOverlay(
                 lazyListState = lazyListState,

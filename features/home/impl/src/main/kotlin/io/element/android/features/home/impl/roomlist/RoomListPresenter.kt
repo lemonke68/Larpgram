@@ -32,6 +32,7 @@ import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.into
+import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.TypingPreview
 import io.element.android.features.home.impl.search.GlobalSearchState
@@ -73,6 +74,7 @@ import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
 import io.element.android.libraries.matrix.ui.drafts.DraftPreview
 import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
+import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
@@ -136,6 +138,7 @@ class RoomListPresenter(
     private val draftPreviews: DraftPreviews,
     private val typingTracker: RoomListTypingTracker,
     private val dateFormatter: DateFormatter,
+    private val savedMessages: SavedMessages,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -414,9 +417,12 @@ class RoomListPresenter(
                 pinnedChatsStore.pinnedFlow,
                 draftPreviews.drafts,
                 typingTracker.typing,
-            ) { summaries, pinnedIds, drafts, typing ->
+                savedMessages.roomId,
+            ) { summaries, pinnedIds, drafts, typing, savedRoomId ->
                 applyPins(summaries, pinnedIds)
                     .map { it.withDraftAndTyping(drafts[it.roomId], typing[it.roomId]) }
+                    // «Избранное»: «Вы присоединились к комнате» — шум создания, строку оставляем пустой.
+                    .map { if (it.roomId == savedRoomId && it.isLatestEventService) it.copy(latestEvent = LatestEvent.None) else it }
                     .toImmutableList()
             }.collect { value = AsyncData.Success(it) }
         }

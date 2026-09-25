@@ -60,4 +60,9 @@
     <string name="larpgram_new_group">"Новая группа"</string>
     <string name="larpgram_new_channel">"Новый канал"</string>
     <string name="larpgram_recent_chats">"Недавние"</string>
+    <string name="larpgram_saved_messages">"Избранное"</string>
+    <string name="larpgram_saved_messages_empty_title">"Ваше Избранное"</string>
+    <string name="larpgram_saved_messages_empty_forward">"Пересылайте сюда сообщения, чтобы сохранить их"</string>
+    <string name="larpgram_saved_messages_empty_files">"Отправляйте медиа и файлы, чтобы хранить их"</string>
+    <string name="larpgram_saved_messages_empty_devices">"Открывайте этот чат с любого устройства"</string>
 </resources>

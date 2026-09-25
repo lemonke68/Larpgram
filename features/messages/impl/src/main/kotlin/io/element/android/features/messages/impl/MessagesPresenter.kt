@@ -94,6 +94,7 @@ import io.element.android.libraries.matrix.ui.messages.reply.map
 import io.element.android.libraries.matrix.ui.model.dmUserStatus
 import io.element.android.libraries.matrix.ui.model.getAvatarData
 import io.element.android.libraries.matrix.ui.room.getDirectRoomMember
+import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
@@ -146,6 +147,8 @@ class MessagesPresenter(
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     // Правка форка: загрузчик медиа для проигрывания кружочков прямо в таймлайне.
     private val matrixClient: MatrixClient,
+    // Правка форка: в «Избранном» подзаголовка «1 участник» нет, как в TG.
+    private val savedMessages: SavedMessages,
 ) : Presenter<MessagesState> {
     @AssistedFactory
     interface Factory {
@@ -170,6 +173,7 @@ class MessagesPresenter(
 
         val coroutineScope = rememberCoroutineScope()
         val roomInfo by room.roomInfoFlow.collectAsState()
+        val savedMessagesRoomId by savedMessages.roomId.collectAsState()
         val localCoroutineScope = rememberCoroutineScope()
         val composerState = composerPresenter.present()
         val voiceMessageComposerState = voiceMessageComposerPresenter.present()
@@ -410,7 +414,7 @@ class MessagesPresenter(
             channelSubscriberCount = if (isChannel) roomInfo.joinedMembersCount else null,
             isUserBlocked = isUserBlocked,
             dmUserId = dmPeerUserId,
-            memberCount = roomInfo.joinedMembersCount,
+            memberCount = roomInfo.joinedMembersCount.takeUnless { room.roomId == savedMessagesRoomId },
             eventSink = ::handleEvent,
         )
     }

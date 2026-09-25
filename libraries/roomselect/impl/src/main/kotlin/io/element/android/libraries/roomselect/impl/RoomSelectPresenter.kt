@@ -25,6 +25,7 @@ import dev.zacsweers.metro.AssistedInject
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.designsystem.theme.components.SearchBarResultState
 import io.element.android.libraries.matrix.ui.model.SelectRoomInfo
+import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.roomselect.api.RoomSelectMode
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -36,6 +37,8 @@ class RoomSelectPresenter(
     @Assisted private val mode: RoomSelectMode,
     @Assisted private val maxNumberOfRooms: Int,
     private val dataSourceFactory: RoomSelectSearchDataSource.Factory,
+    // Правка форка: «Избранное» первым в списке, как при пересылке в TG.
+    private val savedMessages: SavedMessages,
 ) : Presenter<RoomSelectState> {
     @AssistedFactory
     fun interface Factory {
@@ -59,7 +62,14 @@ class RoomSelectPresenter(
             dataSource.setSearchQuery(searchQuery)
         }
 
-        val roomSummaryDetailsList by dataSource.roomInfoList.collectAsState(initial = persistentListOf())
+        val roomInfoList by dataSource.roomInfoList.collectAsState(initial = persistentListOf())
+        val savedMessagesRoomId by savedMessages.roomId.collectAsState()
+        val roomSummaryDetailsList by remember {
+            derivedStateOf {
+                val (saved, others) = roomInfoList.partition { it.roomId == savedMessagesRoomId }
+                saved + others
+            }
+        }
 
         val searchResults by remember<State<SearchBarResultState<ImmutableList<SelectRoomInfo>>>> {
             derivedStateOf {

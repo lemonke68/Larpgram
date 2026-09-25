@@ -161,6 +161,10 @@ class PreferencesFlowNode(
                         callback.navigateToAddAccount()
                     }
 
+                    override fun navigateToRoom(roomId: RoomId) {
+                        callback.navigateToRoom(roomId)
+                    }
+
                     override fun navigateToBugReport() {
                         callback.navigateToBugReport()
                     }
