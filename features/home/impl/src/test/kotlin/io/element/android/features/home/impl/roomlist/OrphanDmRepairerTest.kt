@@ -10,12 +10,14 @@ package io.element.android.features.home.impl.roomlist
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.room.RoomMembershipState
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID_2
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.test.room.aRoomInfo
+import io.element.android.libraries.matrix.test.room.aRoomMember
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import org.json.JSONObject
 import org.junit.Test
@@ -35,13 +37,25 @@ class OrphanDmRepairerTest : RobolectricTest() {
         isPublic = isPublic,
         activeMembersCount = activeMembersCount,
         canonicalAlias = canonicalAlias,
-        heroes = listOf(MatrixUser(A_USER_ID_2)),
+        // Героев у «сироты» SDK не отдаёт (только у ЛС), поэтому их нет и в фикстуре.
+        heroes = emptyList(),
     )
 
     @Test
     fun `an unnamed two-person room missing from m direct is an orphan DM`() {
-        val result = findOrphanDms(listOf(aTwoPersonRoom()), me = A_USER_ID)
-        assertThat(result).containsExactly(A_ROOM_ID, A_USER_ID_2)
+        val result = findOrphanDmCandidates(listOf(aTwoPersonRoom()))
+        assertThat(result).containsExactly(A_ROOM_ID)
+    }
+
+    @Test
+    fun `the other member is the single active member besides us`() {
+        val members = listOf(
+            aRoomMember(userId = A_USER_ID),
+            aRoomMember(userId = A_USER_ID_2),
+            aRoomMember(userId = UserId("@gone:server.org"), membership = RoomMembershipState.LEAVE),
+        )
+        assertThat(otherActiveMember(members, me = A_USER_ID)).isEqualTo(A_USER_ID_2)
+        assertThat(otherActiveMember(listOf(aRoomMember(userId = A_USER_ID)), me = A_USER_ID)).isNull()
     }
 
     @Test
@@ -53,7 +67,7 @@ class OrphanDmRepairerTest : RobolectricTest() {
             aTwoPersonRoom(activeMembersCount = 3),
             aTwoPersonRoom(isDirect = true),
         )
-        assertThat(findOrphanDms(rooms, me = A_USER_ID)).isEmpty()
+        assertThat(findOrphanDmCandidates(rooms)).isEmpty()
     }
 
     @Test

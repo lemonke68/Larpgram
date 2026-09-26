@@ -17,12 +17,14 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.CurrentUserMembership
 import io.element.android.libraries.matrix.api.room.RoomInfo
+import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.sync.Mutex
@@ -64,15 +66,28 @@ class OrphanDmRepairer(
             roomListService.allRooms.summaries,
             roomListService.allRooms.loadingState,
         ) { summaries, loadingState -> summaries.takeIf { loadingState is RoomList.LoadingState.Loaded } }
-            .debounce(3.seconds)
-            .filter { it != null }
+            .filterNotNull()
+            // Список обновляется на каждый чих синхронизации, debounce при живом аккаунте мог не
+            // сработать вовсе. conflate + пауза после прохода — не чаще раза в CHECK_INTERVAL.
+            .conflate()
             .onEach { summaries ->
-                val infos = summaries.orEmpty().map { it.info }
-                val orphans = findOrphanDms(infos, client.sessionId).filterKeys { it !in repaired }
-                if (orphans.isNotEmpty()) repair(orphans, hasKnownDms = infos.any { it.isDirect })
+                val candidates = findOrphanDmCandidates(summaries.map { it.info }).filter { it !in repaired }
+                if (candidates.isNotEmpty()) {
+                    val orphans = candidates.mapNotNull { roomId -> otherMemberOf(roomId)?.let { roomId to it } }.toMap()
+                    if (orphans.isNotEmpty()) repair(orphans, hasKnownDms = summaries.any { it.info.isDirect })
+                }
+                delay(CHECK_INTERVAL)
             }
             .launchIn(sessionCoroutineScope)
     }
+
+    /**
+     * Собеседник в комнате на двоих. Из RoomInfo его не взять: SDK отдаёт героев только для
+     * комнат, которые уже ЛС (`elementHeroes`), а у «сироты» их нет — поэтому спрашиваем участников.
+     */
+    private suspend fun otherMemberOf(roomId: RoomId): UserId? =
+        client.getRoom(roomId)?.use { room -> room.getMembers(limit = 5).getOrNull() }
+            ?.let { otherActiveMember(it, client.sessionId) }
 
     private suspend fun repair(orphans: Map<RoomId, UserId>, hasKnownDms: Boolean) = mutex.withLock {
         val current = client.getAccountData(M_DIRECT).getOrElse {
@@ -94,15 +109,14 @@ class OrphanDmRepairer(
 
     companion object {
         const val M_DIRECT = "m.direct"
+        private val CHECK_INTERVAL = 10.seconds
     }
 }
 
-/** Комнаты-«сироты»: по сути лички, но без записи в `m.direct`. Значение — собеседник. */
-internal fun findOrphanDms(rooms: List<RoomInfo>, me: UserId): Map<RoomId, UserId> =
-    rooms.mapNotNull { info ->
-        val other = info.heroes.singleOrNull { it.userId != me }?.userId
-        val isOrphanDm = other != null &&
-            info.currentUserMembership == CurrentUserMembership.JOINED &&
+/** Комнаты-«сироты»: по сути лички, но без записи в `m.direct`. Собеседника ищет [otherActiveMember]. */
+internal fun findOrphanDmCandidates(rooms: List<RoomInfo>): List<RoomId> =
+    rooms.filter { info ->
+        info.currentUserMembership == CurrentUserMembership.JOINED &&
             !info.isDirect &&
             !info.isSpace &&
             info.isPublic != true &&
@@ -110,8 +124,11 @@ internal fun findOrphanDms(rooms: List<RoomInfo>, me: UserId): Map<RoomId, UserI
             info.canonicalAlias == null &&
             info.activeMembersCount == 2L &&
             (info.roomPowerLevels?.values?.eventsDefault ?: 0L) <= 0L
-        if (isOrphanDm) info.id to other else null
-    }.toMap()
+    }.map { it.id }
+
+/** Единственный, кроме нас, участник (вошёл или приглашён); null — если их не ровно один. */
+internal fun otherActiveMember(members: List<RoomMember>, me: UserId): UserId? =
+    members.filter { it.membership.isActive() && it.userId != me }.singleOrNull()?.userId
 
 /**
  * Добавляет [orphans] в содержимое `m.direct` ([current] — сырой JSON или null, если его нет).
