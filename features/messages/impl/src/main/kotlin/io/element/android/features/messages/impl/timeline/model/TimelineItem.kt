@@ -91,6 +91,12 @@ sealed interface TimelineItem {
         val groupPosition: TimelineItemGroupPosition = TimelineItemGroupPosition.None,
         val reactionsState: TimelineItemReactions,
         val readReceiptState: TimelineItemReadReceipts,
+        /**
+         * Правка форка: квитанция Matrix лежит только на последнем прочитанном событии и значит
+         * «прочитано всё до него». Своё сообщение старше чьей-то квитанции тоже прочитано —
+         * две галочки, как в Telegram. Считается в `TimelineItemsFactory`.
+         */
+        val isReadByOthers: Boolean = false,
         val localSendState: LocalEventSendState?,
         val inReplyTo: InReplyToDetails?,
         val threadInfo: TimelineItemThreadInfo?,

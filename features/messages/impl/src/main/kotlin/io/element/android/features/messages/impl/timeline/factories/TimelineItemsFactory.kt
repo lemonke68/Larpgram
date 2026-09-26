@@ -105,6 +105,7 @@ class TimelineItemsFactory(
         }
         val result = timelineItemGrouper.group(newTimelineItemStates)
             .mergeLarpgramAlbums()
+            .markReadUpToLatestReceipt()
             .dropEmptyDaySeparators()
             .toImmutableList()
         this._timelineItems.emit(result)
@@ -138,6 +139,26 @@ class TimelineItemsFactory(
 private fun EventTimelineItem.isKeyVerificationRequest(): Boolean {
     val messageType = (content as? MessageContent)?.type
     return messageType is OtherMessageType && messageType.isKeyVerificationRequest
+}
+
+/**
+ * Правка форка: квитанция о прочтении стоит только на последнем прочитанном событии, но значит
+ * «прочитано всё до него». Список идёт от новых к старым: всё своё после первой встреченной
+ * квитанции помечаем прочитанным ([TimelineItem.Event.isReadByOthers]).
+ */
+internal fun List<TimelineItem>.markReadUpToLatestReceipt(): List<TimelineItem> {
+    var seenReceipt = false
+    return map { item ->
+        when (item) {
+            is TimelineItem.Event -> when {
+                item.readReceiptState.receipts.isNotEmpty() -> item.also { seenReceipt = true }
+                seenReceipt && item.isMine && !item.isReadByOthers -> item.copy(isReadByOthers = true)
+                else -> item
+            }
+            is TimelineItem.GroupedEvents -> item.also { if (item.aggregatedReadReceipts.isNotEmpty()) seenReceipt = true }
+            is TimelineItem.Virtual -> item
+        }
+    }
 }
 
 /**

@@ -330,7 +330,7 @@ internal fun DeliveryStatusRow(
  */
 internal fun TimelineItem.Event.deliveryStateForMenu(): MessageDeliveryState? = when {
     localSendState is LocalEventSendState.Sending -> MessageDeliveryState.Sending
-    readReceiptState.receipts.isNotEmpty() -> MessageDeliveryState.Read
+    readReceiptState.receipts.isNotEmpty() || isReadByOthers -> MessageDeliveryState.Read
     isRemote -> MessageDeliveryState.Sent
     else -> null
 }

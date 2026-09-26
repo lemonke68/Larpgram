@@ -157,7 +157,7 @@ fun TimelineEventTimestampView(
             MessageDeliveryTicks(
                 state = when {
                     event.localSendState is LocalEventSendState.Sending -> MessageDeliveryState.Sending
-                    event.readReceiptState.receipts.isNotEmpty() -> MessageDeliveryState.Read
+                    event.readReceiptState.receipts.isNotEmpty() || event.isReadByOthers -> MessageDeliveryState.Read
                     event.isRemote -> MessageDeliveryState.Sent
                     else -> MessageDeliveryState.Sending
                 }
