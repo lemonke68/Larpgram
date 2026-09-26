@@ -33,7 +33,6 @@ import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.media.AudioInfo
 import io.element.android.libraries.matrix.api.media.FileInfo
-import io.element.android.libraries.matrix.api.media.GalleryItemInfo
 import io.element.android.libraries.matrix.api.media.ImageInfo
 import io.element.android.libraries.matrix.api.media.VideoInfo
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
@@ -888,8 +887,9 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
 
     @Test
     fun `present - sending gallery after image edits restarts preprocessing`() = runTest {
-        val sendGalleryResult =
-            lambdaRecorder<List<GalleryItemInfo>, String?, String?, EventId?, Result<FakeMediaUploadHandler>> { _, _, _, _ ->
+        // Правка форка: альбом уходит отдельными фото (см. LarpgramAlbum).
+        val sendFileResult =
+            lambdaRecorder { _: File, _: FileInfo, _: String?, _: String?, _: EventId? ->
                 Result.success(FakeMediaUploadHandler())
             }
         val firstLocalMedia = aLocalMedia(uri = Uri.parse("file:///tmp/original-1.jpeg"))
@@ -899,7 +899,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
         val presenter = createAttachmentsPreviewPresenter(
             room = FakeJoinedRoom(
                 liveTimeline = FakeTimeline().apply {
-                    sendGalleryLambda = sendGalleryResult
+                    sendFileLambda = sendFileResult
                 },
             ),
             attachments = persistentListOf(
@@ -929,7 +929,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             appliedState.eventSink(AttachmentsPreviewEvent.SendAttachment)
             consumeItemsUntilPredicate { it.sendActionState == SendActionState.Done }
 
-            sendGalleryResult.assertions().isCalledOnce()
+            sendFileResult.assertions().isCalledExactly(2)
             onDoneListener.assertions().isCalledOnce()
         }
     }

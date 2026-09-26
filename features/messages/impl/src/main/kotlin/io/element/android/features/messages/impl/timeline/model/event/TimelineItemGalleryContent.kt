@@ -8,8 +8,10 @@
 package io.element.android.features.messages.impl.timeline.model.event
 
 import io.element.android.libraries.matrix.api.media.MediaSource
+import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlin.time.Duration
 
 data class TimelineItemGalleryContent(
@@ -19,6 +21,11 @@ data class TimelineItemGalleryContent(
     val htmlCaption: String? = null,
     override val isEdited: Boolean,
     val items: ImmutableList<GalleryItem>,
+    /**
+     * Правка форка: у альбома Larpgram (несколько обычных медиа-сообщений, см. `LarpgramAlbum`) —
+     * все его события по порядку частей. Удаление убирает альбом целиком. Пусто у галереи MSC4274.
+     */
+    val albumParts: ImmutableList<EventOrTransactionId> = persistentListOf(),
 ) : TimelineItemEventContent, TimelineItemEventMutableContent {
     override val type: String = "TimelineItemGalleryContent"
 

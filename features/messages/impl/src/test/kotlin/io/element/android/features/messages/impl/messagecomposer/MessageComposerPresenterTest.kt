@@ -40,9 +40,7 @@ import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
-import io.element.android.libraries.matrix.api.media.GalleryItemInfo
 import io.element.android.libraries.matrix.api.media.ImageInfo
-import io.element.android.libraries.matrix.api.media.MediaUploadHandler
 import io.element.android.libraries.matrix.api.media.VideoInfo
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
@@ -721,15 +719,17 @@ class MessageComposerPresenterTest : RobolectricTest() {
 
     @Test
     fun `present - Send gallery media from the Telegram attach sheet sends one album with the caption`() = runTest {
-        val sendGalleryLambda = lambdaRecorder<List<GalleryItemInfo>, String?, String?, EventId?, Result<MediaUploadHandler>> { _, _, _, _ ->
+        // Правка форка: альбом уходит отдельными фото с меткой альбома, подпись — у первого.
+        val sendImageLambda = lambdaRecorder { _: File, _: File?, _: ImageInfo, _: String?, _: String?, _: EventId? ->
             Result.success(FakeMediaUploadHandler())
         }
         val room = FakeJoinedRoom(
             typingNoticeResult = { Result.success(Unit) },
-            liveTimeline = FakeTimeline().apply { this.sendGalleryLambda = sendGalleryLambda },
+            liveTimeline = FakeTimeline().apply { this.sendImageLambda = sendImageLambda },
         )
         val presenter = createPresenter(room = room)
-        mediaPreProcessor.givenResult(Result.success(anImageUploadInfo()))
+        val photo = File.createTempFile("photo", ".jpg").apply { deleteOnExit() }
+        mediaPreProcessor.givenResult(Result.success(anImageUploadInfo().copy(file = photo)))
         presenter.test {
             val initialState = awaitFirstItem()
             initialState.eventSink(MessageComposerEvent.AddAttachment)
@@ -743,9 +743,12 @@ class MessageComposerPresenterTest : RobolectricTest() {
             )
             assertThat(awaitItem().showAttachmentSourcePicker).isFalse()
             advanceUntilIdle()
-            assert(sendGalleryLambda)
-                .isCalledOnce()
-                .with(any(), value("album"), value(null), value(null))
+            assert(sendImageLambda)
+                .isCalledExactly(2)
+                .withSequence(
+                    listOf(any(), any(), any(), value("album"), value(null), value(null)),
+                    listOf(any(), any(), any(), value(null), value(null), value(null)),
+                )
             assertThat(mediaPreProcessor.processCallCount).isEqualTo(2)
         }
     }

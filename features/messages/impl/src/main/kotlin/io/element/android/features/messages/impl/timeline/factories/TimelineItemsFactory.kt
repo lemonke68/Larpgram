@@ -104,6 +104,7 @@ class TimelineItemsFactory(
             }
         }
         val result = timelineItemGrouper.group(newTimelineItemStates)
+            .mergeLarpgramAlbums()
             .dropEmptyDaySeparators()
             .toImmutableList()
         this._timelineItems.emit(result)

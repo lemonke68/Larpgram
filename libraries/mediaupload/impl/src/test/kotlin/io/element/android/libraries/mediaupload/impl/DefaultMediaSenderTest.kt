@@ -16,15 +16,19 @@ import io.element.android.libraries.matrix.api.media.FileInfo
 import io.element.android.libraries.matrix.api.media.ImageInfo
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.timeline.item.event.LarpgramAlbum
 import io.element.android.libraries.matrix.test.media.FakeMediaUploadHandler
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
 import io.element.android.libraries.matrix.test.timeline.FakeTimeline
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfig
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
 import io.element.android.libraries.mediaupload.api.MediaPreProcessor
+import io.element.android.libraries.mediaupload.api.MediaUploadInfo
 import io.element.android.libraries.mediaupload.test.FakeMediaPreProcessor
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
+import io.element.android.tests.testutils.lambda.any
 import io.element.android.tests.testutils.lambda.lambdaRecorder
+import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -33,6 +37,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 
 class DefaultMediaSenderTest : RobolectricTest() {
     private val mediaOptimizationConfig = MediaOptimizationConfig(
@@ -155,6 +160,55 @@ class DefaultMediaSenderTest : RobolectricTest() {
         assertThat(sender.hasOngoingMediaUploads).isFalse()
         sendFileResult.assertions().isCalledOnce()
     }
+
+    @Test
+    fun `an album is sent as ordinary media, caption and reply only on the first part`() = runTest {
+        val dir = Files.createTempDirectory("album").toFile()
+        val originals = (1..3).map { File(dir, "photo$it.jpg").apply { writeText("x") } }
+        val sentNames = mutableListOf<String>()
+        val sendImageResult =
+            lambdaRecorder { file: File, _: File?, _: ImageInfo, _: String?, _: String?, _: EventId? ->
+                sentNames.add(file.name)
+                assertThat(file.exists()).isTrue()
+                Result.success(FakeMediaUploadHandler())
+            }
+        val room = FakeJoinedRoom(
+            liveTimeline = FakeTimeline().apply { sendImageLambda = sendImageResult },
+        )
+        val sender = createDefaultMediaSender(room = room)
+        val replyTo = EventId("\$reply")
+
+        val result = sender.sendGallery(
+            mediaUploadInfos = originals.map { MediaUploadInfo.Image(file = it, imageInfo = anImageInfo(), thumbnailFile = null) },
+            caption = "Отпуск",
+            formattedCaption = null,
+            inReplyToEventId = replyTo,
+        )
+
+        assertThat(result.isSuccess).isTrue()
+        val parts = sentNames.map { LarpgramAlbum.parse(it) }
+        assertThat(parts.map { it?.index }).containsExactly(0, 1, 2).inOrder()
+        assertThat(parts.map { it?.albumId }.distinct()).hasSize(1)
+        sendImageResult.assertions().isCalledExactly(3).withSequence(
+            listOf(any(), any(), any(), value("Отпуск"), any(), value(replyTo)),
+            listOf(any(), any(), any(), value(null), any(), value(null)),
+            listOf(any(), any(), any(), value(null), any(), value(null)),
+        )
+        // Исходники остаются (повторная отправка с предпросмотра), временные части удалены.
+        assertThat(originals.all { it.exists() }).isTrue()
+        assertThat(dir.listFiles()!!.map { it.name }).containsExactly("photo1.jpg", "photo2.jpg", "photo3.jpg")
+        dir.deleteRecursively()
+    }
+
+    private fun anImageInfo() = ImageInfo(
+        height = 100,
+        width = 100,
+        mimetype = MimeTypes.Jpeg,
+        size = 1000,
+        thumbnailInfo = null,
+        thumbnailSource = null,
+        blurhash = null,
+    )
 
     private fun createDefaultMediaSender(
         preProcessor: MediaPreProcessor = FakeMediaPreProcessor(),

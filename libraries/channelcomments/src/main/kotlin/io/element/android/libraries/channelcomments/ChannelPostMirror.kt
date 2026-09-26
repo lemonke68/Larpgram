@@ -12,6 +12,7 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import io.element.android.libraries.matrix.api.timeline.item.event.LARPGRAM_CIRCLE_FILENAME_PREFIX
+import io.element.android.libraries.matrix.api.timeline.item.event.LarpgramAlbum
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.withTimeoutOrNull
@@ -91,6 +92,21 @@ object ChannelPostMirror {
         }.getOrDefault(false)
     }
 
+    /**
+     * Правка форка: true для части альбома Larpgram кроме первой (см. `LarpgramAlbum`). В обсуждение
+     * зеркалится только первая часть: её id носит пост в ленте канала, и подпись альбома — у неё.
+     */
+    private fun isAlbumTail(originalJson: String?): Boolean {
+        originalJson ?: return false
+        return runCatchingExceptions {
+            val content = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
+                ?: return@runCatchingExceptions false
+            val name = content["filename"]?.jsonPrimitive?.content
+                ?: content["body"]?.jsonPrimitive?.content
+            (LarpgramAlbum.parse(name)?.index ?: 0) > 0
+        }.getOrDefault(false)
+    }
+
     /** A room is a channel (broadcast) when sending is admin-gated: eventsDefault power level > 0. */
     private suspend fun isChannel(room: JoinedRoom): Boolean =
         (room.info().roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
@@ -132,7 +148,8 @@ object ChannelPostMirror {
                             val id = ev.event.eventId?.value
                             id != null && id !in preIds &&
                                 ev.event.sender.value == myId &&
-                                matches(ev.event.timelineItemDebugInfoProvider().originalJson)
+                                matches(ev.event.timelineItemDebugInfoProvider().originalJson) &&
+                                !isAlbumTail(ev.event.timelineItemDebugInfoProvider().originalJson)
                         }
                 }
                 .first()

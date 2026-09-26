@@ -49,6 +49,7 @@ import io.element.android.features.messages.impl.timeline.components.reactionsum
 import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheetState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemGalleryContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
@@ -581,9 +582,14 @@ class MessagesPresenter(
     }
 
     private suspend fun handleActionRedact(event: TimelineItem.Event) {
+        // Правка форка: альбом Larpgram удаляется целиком, как в Telegram.
+        val targets = (event.content as? TimelineItemGalleryContent)?.albumParts?.takeIf { it.isNotEmpty() }
+            ?: listOf(event.eventOrTransactionId)
         timelineController.invokeOnCurrentTimeline {
-            redactEvent(eventOrTransactionId = event.eventOrTransactionId, reason = null)
-                .onFailure { Timber.e(it) }
+            targets.forEach { target ->
+                redactEvent(eventOrTransactionId = target, reason = null)
+                    .onFailure { Timber.e(it) }
+            }
         }
     }
 
