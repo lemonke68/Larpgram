@@ -12,6 +12,7 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.impl.FakeDateTimeObserver
 import io.element.android.features.home.impl.roomlist.BlockedInviteAutoDecliner
+import io.element.android.features.home.impl.roomlist.OrphanDmRepairer
 import io.element.android.libraries.androidutils.system.DateTimeObserver
 import io.element.android.libraries.dateformatter.test.FakeDateFormatter
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
@@ -277,6 +278,11 @@ class RoomListDataSourceTest {
         dateTimeObserver = dateTimeObserver,
         analyticsService = analyticsService,
         blockedInviteAutoDecliner = BlockedInviteAutoDecliner(
+            client = FakeMatrixClient(),
+            roomListService = roomListService,
+            sessionCoroutineScope = backgroundScope,
+        ),
+        orphanDmRepairer = OrphanDmRepairer(
             client = FakeMatrixClient(),
             roomListService = roomListService,
             sessionCoroutineScope = backgroundScope,

@@ -912,6 +912,11 @@ class RoomListPresenterTest {
                 roomListService = client.roomListService,
                 sessionCoroutineScope = backgroundScope,
             ),
+            orphanDmRepairer = OrphanDmRepairer(
+                client = client,
+                roomListService = client.roomListService,
+                sessionCoroutineScope = backgroundScope,
+            ),
         ),
         searchPresenter = searchPresenter,
         globalSearchPresenter = { aGlobalSearchState() },
