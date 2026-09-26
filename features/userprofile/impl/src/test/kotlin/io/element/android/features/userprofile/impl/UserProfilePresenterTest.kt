@@ -62,9 +62,9 @@ class UserProfilePresenterTest {
 
     @Test
     fun `present - returns the user profile data`() = runTest {
-        val matrixUser = aMatrixUser(A_USER_ID.value, "Alice", "anAvatarUrl")
+        val matrixUser = aMatrixUser(A_USER_ID_2.value, "Alice", "anAvatarUrl")
         val client = createFakeMatrixClient().apply {
-            givenGetProfileResult(A_USER_ID, Result.success(matrixUser))
+            givenGetProfileResult(A_USER_ID_2, Result.success(matrixUser))
         }
         val presenter = createUserProfilePresenter(
             client = client,
@@ -78,6 +78,24 @@ class UserProfilePresenterTest {
             assertThat(initialState.verificationState).isEqualTo(UserProfileVerificationState.UNKNOWN)
             assertThat(initialState.dmRoomId).isEqualTo(A_ROOM_ID)
             assertThat(initialState.canCall).isFalse()
+        }
+    }
+
+    @Test
+    fun `present - own profile is shown from the session cache right away`() = runTest {
+        val client = createFakeMatrixClient().apply {
+            givenGetProfileResult(A_USER_ID, Result.failure(AN_EXCEPTION))
+        }
+        val presenter = createUserProfilePresenter(
+            client = client,
+            userId = A_USER_ID,
+        )
+        presenter.test {
+            val initialState = awaitItem()
+            assertThat(initialState.isCurrentUser).isTrue()
+            assertThat(initialState.userName).isEqualTo(client.userProfile.value.displayName)
+            assertThat(initialState.avatarUrl).isEqualTo(client.userProfile.value.avatarUrl)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -164,14 +182,14 @@ class UserProfilePresenterTest {
     @Test
     fun `present - returns empty data in case of failure`() = runTest {
         val client = createFakeMatrixClient().apply {
-            givenGetProfileResult(A_USER_ID, Result.failure(AN_EXCEPTION))
+            givenGetProfileResult(A_USER_ID_2, Result.failure(AN_EXCEPTION))
         }
         val presenter = createUserProfilePresenter(
             client = client,
         )
         presenter.test {
             val initialState = awaitFirstItem()
-            assertThat(initialState.userId).isEqualTo(A_USER_ID)
+            assertThat(initialState.userId).isEqualTo(A_USER_ID_2)
             assertThat(initialState.userName).isNull()
             assertThat(initialState.avatarUrl).isNull()
             assertThat(initialState.isBlocked).isEqualTo(AsyncData.Success(false))
@@ -279,7 +297,7 @@ class UserProfilePresenterTest {
         }.test {
             val initialState = awaitFirstItem()
             assertThat(initialState.startDmActionState).isInstanceOf(AsyncAction.Uninitialized::class.java)
-            val matrixUser = MatrixUser(UserId("@alice:server.org"))
+            val matrixUser = MatrixUser(A_USER_ID_2)
             initialState.eventSink(UserProfileEvent.StartDM)
             awaitItem().also { state ->
                 assertThat(state.startDmActionState).isEqualTo(startDMFailureResult)
@@ -309,7 +327,7 @@ class UserProfilePresenterTest {
         }.test {
             val initialState = awaitFirstItem()
             assertThat(initialState.startDmActionState).isInstanceOf(AsyncAction.Uninitialized::class.java)
-            val matrixUser = MatrixUser(UserId("@alice:server.org"))
+            val matrixUser = MatrixUser(A_USER_ID_2)
             initialState.eventSink(UserProfileEvent.StartDM)
             awaitItem().also { state ->
                 assertThat(state.startDmActionState).isEqualTo(startDMSuccessResult)
@@ -324,7 +342,7 @@ class UserProfilePresenterTest {
 
     @Test
     fun `present - start DM action confirmation scenario - cancel`() = runTest {
-        val matrixUser = MatrixUser(UserId("@alice:server.org"))
+        val matrixUser = MatrixUser(A_USER_ID_2)
         val startDMConfirmationResult = ConfirmingStartDmWithMatrixUser(matrixUser, false)
         val executeResult = lambdaRecorder<MatrixUser, Boolean, MutableState<AsyncAction<RoomId>>, Unit> { _, _, actionState ->
             actionState.value = startDMConfirmationResult
@@ -354,7 +372,7 @@ class UserProfilePresenterTest {
 
     @Test
     fun `present - start DM action confirmation scenario - confirm`() = runTest {
-        val matrixUser = MatrixUser(UserId("@alice:server.org"))
+        val matrixUser = MatrixUser(A_USER_ID_2)
         val startDMConfirmationResult = ConfirmingStartDmWithMatrixUser(matrixUser, false)
         val executeResult = lambdaRecorder<MatrixUser, Boolean, MutableState<AsyncAction<RoomId>>, Unit> { _, _, actionState ->
             actionState.value = startDMConfirmationResult
@@ -404,7 +422,7 @@ class UserProfilePresenterTest {
 
     private fun createUserProfilePresenter(
         client: MatrixClient = createFakeMatrixClient(),
-        userId: UserId = UserId("@alice:server.org"),
+        userId: UserId = A_USER_ID_2,
         startDMAction: StartDMAction = FakeStartDMAction(),
         isElementCallAvailable: Boolean = true,
     ): UserProfilePresenter {

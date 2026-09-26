@@ -86,6 +86,9 @@ class UserProfilePresenter(
         }
     }
 
+    /** Презентер вкладки «Профиль» живёт вместе с её узлом, поэтому переживает уход с вкладки. */
+    private var lastKnownAbout: String? = null
+
     @Composable
     override fun present(): UserProfileState {
         val coroutineScope = rememberCoroutineScope()
@@ -102,9 +105,22 @@ class UserProfilePresenter(
                 .onEach { isBlocked.value = AsyncData.Success(it) }
                 .launchIn(this)
         }
-        val userProfile by produceState<MatrixUser?>(null) { value = client.getProfile(userId).getOrNull() }
-        val about by produceState<String?>(null, isCurrentUser) {
+        // Правка форка: свой профиль (вкладка «Профиль») показываем сразу из кэша сессии и обновляем
+        // в фоне. Иначе при каждом переходе на вкладку мелькали полный @id и аватар-заглушка, пока
+        // шёл запрос профиля (фидбек 2026-09-26).
+        val userProfile by produceState(initialValue = if (isCurrentUser) client.userProfile.value else null) {
+            if (isCurrentUser) {
+                launch { client.getUserProfile() }
+                client.userProfile.collect { value = it }
+            } else {
+                value = client.getProfile(userId).getOrNull()
+            }
+        }
+        // Правка форка: последнее «О себе» показываем сразу, пока идёт запрос, чтобы строка не
+        // подъезжала и не сдвигала экран при каждом переходе на вкладку «Профиль».
+        val about by produceState(lastKnownAbout, isCurrentUser) {
             value = if (isCurrentUser) publicBio.ownBio() else publicBio.bio(userId)
+            lastKnownAbout = value
         }
 
         fun handleEvent(event: UserProfileEvent) {
