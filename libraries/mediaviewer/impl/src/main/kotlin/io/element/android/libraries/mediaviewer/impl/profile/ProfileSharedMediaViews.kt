@@ -365,6 +365,7 @@ private fun FileRow(item: MediaItem.Event, onClick: () -> Unit) {
                 style = ElementTheme.typography.fontBodyMdRegular,
                 color = ElementTheme.colors.textSecondary,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -420,11 +421,13 @@ private fun VoiceRow(item: MediaItem.Voice, state: VoiceMessageState) {
                 overflow = TextOverflow.Ellipsis,
             )
             val time = if (state.progress > 0f) state.time else item.mediaInfo.duration ?: state.time
+            // Правка форка: пока длительность не известна, time пустой — без висящей «·» (A-025).
             Text(
-                text = listOfNotNull(item.mediaInfo.dateSent, time).joinToString(" · "),
+                text = listOfNotNull(item.mediaInfo.dateSent, time.takeIf { it.isNotBlank() }).joinToString(" · "),
                 style = ElementTheme.typography.fontBodyMdRegular,
                 color = ElementTheme.colors.textSecondary,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
