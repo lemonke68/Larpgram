@@ -64,6 +64,11 @@ class RoomSelectPresenter(
 
         val roomInfoList by dataSource.roomInfoList.collectAsState(initial = persistentListOf())
         val savedMessagesRoomId by savedMessages.roomId.collectAsState()
+        // Правка форка: в Telegram «Избранное» есть всегда. Раньше оно появлялось в списке только
+        // после первого открытия из настроек (аудит A-023) — создаём его при первом выборе чата.
+        LaunchedEffect(Unit) {
+            if (savedMessages.roomId.value == null) savedMessages.getOrCreate()
+        }
         val roomSummaryDetailsList by remember {
             derivedStateOf {
                 val (saved, others) = roomInfoList.partition { it.roomId == savedMessagesRoomId }
