@@ -159,6 +159,12 @@ fun MediaViewerView(
                             onInfoClick = {
                                 state.eventSink(MediaViewerEvent.OpenInfo(currentData))
                             },
+                            onShowInChatClick = currentData.eventId?.takeIf { state.canShowInfo }?.let { eventId ->
+                                { state.eventSink(MediaViewerEvent.ViewInTimeline(eventId)) }
+                            },
+                            onForwardClick = currentData.eventId?.takeIf { state.canShowInfo }?.let { eventId ->
+                                { state.eventSink(MediaViewerEvent.Forward(eventId)) }
+                            },
                         )
                     }
                     else -> {

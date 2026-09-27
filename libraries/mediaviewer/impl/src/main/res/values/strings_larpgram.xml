@@ -5,4 +5,6 @@
     <string name="larpgram_viewer_save">Save to gallery</string>
     <string name="larpgram_viewer_share">Share</string>
     <string name="larpgram_viewer_info">Details</string>
+    <string name="larpgram_viewer_show_in_chat">Show in chat</string>
+    <string name="larpgram_viewer_forward">Forward</string>
 </resources>

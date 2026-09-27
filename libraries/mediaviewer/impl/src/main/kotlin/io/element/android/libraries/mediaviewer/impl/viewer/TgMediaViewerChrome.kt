@@ -98,6 +98,9 @@ internal fun TgMediaViewerTopBar(
     onShareClick: () -> Unit,
     onSaveClick: () -> Unit,
     onInfoClick: () -> Unit,
+    // Правка форка: пункты меню TG «Показать в чате» и «Переслать» (аудит A-019); null — скрыть.
+    onShowInChatClick: (() -> Unit)? = null,
+    onForwardClick: (() -> Unit)? = null,
 ) {
     val downloadedMedia by data.downloadedMedia
     val actionsEnabled = downloadedMedia.isSuccess()
@@ -156,6 +159,26 @@ internal fun TgMediaViewerTopBar(
                     )
                 }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    if (onShowInChatClick != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.larpgram_viewer_show_in_chat)) },
+                            leadingIcon = { Icon(CompoundIcons.Chat(), contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onShowInChatClick()
+                            },
+                        )
+                    }
+                    if (onForwardClick != null) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.larpgram_viewer_forward)) },
+                            leadingIcon = { Icon(CompoundIcons.Forward(), contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onForwardClick()
+                            },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.larpgram_viewer_save)) },
                         leadingIcon = { Icon(CompoundIcons.Download(), contentDescription = null) },

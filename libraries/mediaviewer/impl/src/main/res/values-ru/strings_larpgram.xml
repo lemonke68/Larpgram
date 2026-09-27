@@ -4,4 +4,6 @@
     <string name="larpgram_viewer_save">Сохранить в галерею</string>
     <string name="larpgram_viewer_share">Поделиться</string>
     <string name="larpgram_viewer_info">Подробнее</string>
+    <string name="larpgram_viewer_show_in_chat">Показать в чате</string>
+    <string name="larpgram_viewer_forward">Переслать</string>
 </resources>
