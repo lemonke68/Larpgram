@@ -16,4 +16,7 @@
     <string name="common_topic">Описание</string>
     <string name="common_topic_placeholder">Описание</string>
     <string name="screen_create_poll_max_selections_headline">Голосов на человека</string>
+    <string name="screen_notification_settings_room_mention_label">Упоминания всех (@room)</string>
+    <string name="screen_notification_settings_sound_element_default">Larpgram по умолчанию</string>
+    <string name="screen_advanced_settings_show_media_timeline_private_rooms">В личных чатах и закрытых группах</string>
 </resources>
