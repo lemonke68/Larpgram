@@ -13,6 +13,8 @@ package io.element.android.features.home.impl.roomlist
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.features.home.impl.R
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -162,22 +164,17 @@ class RoomListContextMenuTest : RobolectricTest() {
         callback.assertSuccess()
     }
 
+    // Правка форка: переключателя «Избранное» (m.favourite) в меню нет — «Избранное» у нас это
+    // сохранённые сообщения.
     @Test
-    fun `clicking on Favourites generates expected Event`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<RoomListEvent>()
+    fun `there is no Favourite toggle`() = runAndroidComposeUiTest {
         val contextMenu = aContextMenuShown(isDm = false, isFavorite = false)
-        val callback = EnsureNeverCalledWithParam<RoomId>()
         setRoomListContextMenu(
             contextMenu = contextMenu,
-            eventSink = eventsRecorder,
-            onRoomSettingsClick = callback,
+            eventSink = EventsRecorder(expectEvents = false),
         )
-        clickOn(CommonStrings.common_favourite)
-        eventsRecorder.assertList(
-            listOf(
-                RoomListEvent.SetRoomIsFavorite(contextMenu.roomId, true),
-            )
-        )
+        val favourite = activity!!.getString(CommonStrings.common_favourite)
+        onAllNodesWithText(favourite).assertCountEquals(0)
     }
 
     private fun AndroidComposeUiTest<ComponentActivity>.setRoomListContextMenu(

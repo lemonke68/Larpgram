@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -134,18 +135,23 @@ internal fun TgNewMessageFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Правка форка: залитый круг, как `key_chats_actionBackground` TG: в светлой теме — акцент
+    // с белым карандашом, в тёмной — светло-серый с тёмным (эталон tg-ref/android/chats_list.jpg).
+    // Стеклянный круг сливался с белым фоном списка.
+    val isLight = ElementTheme.isLightTheme
     Box(
         modifier = modifier
             .size(FAB_SIZE)
-            .tgGlass(CircleShape)
+            .shadow(elevation = 4.dp, shape = CircleShape)
             .clip(CircleShape)
+            .background(if (isLight) ElementTheme.colors.bgAccentRest else Color(0xFFD9DBDC))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = CompoundIcons.Compose(),
             contentDescription = stringResource(R.string.screen_home_new_chat),
-            tint = ElementTheme.colors.iconPrimary,
+            tint = if (isLight) Color.White else Color(0xFF1F2023),
         )
     }
 }

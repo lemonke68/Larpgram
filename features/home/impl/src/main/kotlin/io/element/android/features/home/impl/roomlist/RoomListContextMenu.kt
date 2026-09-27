@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -47,6 +48,8 @@ fun RoomListContextMenu(
     ModalBottomSheet(
         onDismissRequest = { eventSink(RoomListEvent.HideContextMenu) },
         scrollable = false,
+        // Правка форка: сразу целиком — в полуоткрытом виде «Удалить чат» уходил под навигацию.
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         RoomListModalBottomSheetContent(
             contextMenu = contextMenu,
@@ -81,9 +84,6 @@ fun RoomListContextMenu(
                 eventSink(RoomListEvent.HideContextMenu)
                 eventSink(RoomListEvent.BlockUser(contextMenu.roomId, contextMenu.dmUserId))
             },
-            onFavoriteChange = { isFavorite ->
-                eventSink(RoomListEvent.SetRoomIsFavorite(contextMenu.roomId, isFavorite))
-            },
             onReportRoomClick = {
                 eventSink(RoomListEvent.HideContextMenu)
                 onReportRoomClick(contextMenu.roomId)
@@ -100,7 +100,6 @@ private fun RoomListModalBottomSheetContent(
     onLeaveRoomClick: () -> Unit,
     onPinChange: (isPinned: Boolean) -> Unit,
     onBlockUserClick: () -> Unit,
-    onFavoriteChange: (isFavorite: Boolean) -> Unit,
     onRoomMarkReadClick: () -> Unit,
     onRoomMarkUnreadClick: () -> Unit,
     onReportRoomClick: () -> Unit,
@@ -163,30 +162,8 @@ private fun RoomListModalBottomSheetContent(
                 )
             ),
         )
-        val (textResId, icon) = if (contextMenu.isFavorite) {
-            CommonStrings.common_favourited to CompoundIcons.FavouriteSolid()
-        } else {
-            CommonStrings.common_favourite to CompoundIcons.Favourite()
-        }
-        ListItem(
-            content = {
-                Text(
-                    text = stringResource(id = textResId),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            },
-            leadingContent = ListItemContent.Icon(
-                iconSource = IconSource.Vector(
-                    icon,
-                )
-            ),
-            trailingContent = ListItemContent.Switch(
-                checked = contextMenu.isFavorite,
-            ),
-            onClick = {
-                onFavoriteChange(!contextMenu.isFavorite)
-            },
-        )
+        // Правка форка: переключателя «Избранное» (m.favourite Element) нет — в Larpgram
+        // «Избранное» это сохранённые сообщения, два разных «Избранных» путали.
         ListItem(
             content = {
                 Text(
