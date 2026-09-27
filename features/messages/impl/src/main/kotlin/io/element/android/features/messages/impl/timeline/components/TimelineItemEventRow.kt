@@ -1036,18 +1036,31 @@ private fun MessageEventBubbleContent(
                     )
                 }
             }
-            TimestampPosition.Below ->
+            TimestampPosition.Below -> {
+                // Правка форка: без пузыря (крупные эмодзи) время — на тёмной плашке, как в Overlay.
+                val onWallpaper = event.content.isBubbleless
                 Column(modifier) {
                     content {}
                     TimelineEventTimestampView(
                         event = event,
                         eventSink = eventSink,
                         showViewCount = isChannel,
+                        contentColor = if (onWallpaper) Color.White else null,
                         modifier = Modifier
                             .align(Alignment.End)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .then(
+                                if (onWallpaper) {
+                                    Modifier
+                                        .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                } else {
+                                    Modifier
+                                }
+                            )
                     )
                 }
+            }
             TimestampPosition.Hidden -> Box(modifier) { content {} }
         }
     }
@@ -1216,10 +1229,11 @@ private fun MessageEventBubbleContent(
             is TimelineItemAttachmentsContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
             is TimelineItemStickerContent -> TimestampPosition.Overlay
             // Правка форка: сообщение из одних эмодзи рисуется без пузыря, поэтому время
-            // берёт ту же плашку, что у стикеров и кружочков. Без неё оно повисло бы прямо
-            // на обоях и не читалось.
+            // берёт ту же плашку, что у стикеров и кружочков, но под эмодзи, а не поверх:
+            // поверх оно закрывало пол-эмодзи (аудит A-006). Без плашки время повисло бы
+            // прямо на обоях и не читалось.
             is TimelineItemTextBasedContent -> if (content.isEmojiOnly) {
-                TimestampPosition.Overlay
+                TimestampPosition.Below
             } else {
                 TimestampPosition.Default
             }
