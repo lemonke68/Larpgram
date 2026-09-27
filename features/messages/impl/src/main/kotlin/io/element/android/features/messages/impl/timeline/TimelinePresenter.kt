@@ -643,14 +643,22 @@ class TimelinePresenter(
         lastReadReceiptId: MutableState<EventId?>,
         readReceiptType: ReceiptType,
     ) = launch(dispatchers.computation) {
+        // Правка форка: корень треда живёт в основной ленте, и квитанция на него с thread_id самого
+        // треда даёт от Synapse 400 «event_id is not related to thread» — квитанция терялась
+        // (комментарии канала, где тред часто состоит из одного корня; аудит A-039).
+        val threadRootId = (timelineController.mainTimelineMode() as? Timeline.Mode.Thread)?.threadRootId
+        val newestEventId = getLastEventIdBeforeOrAt(0, timelineItems)
+        val onlyRootVisible = threadRootId != null && newestEventId?.value == threadRootId.value
         // If we are at the bottom of timeline, we mark the room as read.
         if (firstVisibleIndex == 0) {
+            if (onlyRootVisible) return@launch
             timelineController.invokeOnCurrentTimeline {
                 markAsRead(receiptType = readReceiptType)
             }
         } else {
             // Get last valid EventId seen by the user, as the first index might refer to a Virtual item
             val eventId = getLastEventIdBeforeOrAt(firstVisibleIndex, timelineItems)
+            if (threadRootId != null && eventId?.value == threadRootId.value) return@launch
             if (eventId != null && eventId != lastReadReceiptId.value) {
                 lastReadReceiptId.value = eventId
                 timelineController.invokeOnCurrentTimeline {
