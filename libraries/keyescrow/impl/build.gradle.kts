@@ -18,6 +18,8 @@ android {
 setupDependencyInjection()
 
 dependencies {
+    // Правка форка: адреса сервера — LarpgramHosts.
+    implementation(projects.appconfig)
     api(projects.libraries.keyescrow.api)
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)

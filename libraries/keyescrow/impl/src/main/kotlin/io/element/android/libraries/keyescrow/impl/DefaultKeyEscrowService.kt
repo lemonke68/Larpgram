@@ -7,6 +7,7 @@
 package io.element.android.libraries.keyescrow.impl
 
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.appconfig.LarpgramHosts
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
@@ -184,7 +185,7 @@ class DefaultKeyEscrowService(
         }
 
     private companion object {
-        const val BASE_URL = "https://push.mango-kokos.ru/escrow"
+        const val BASE_URL = LarpgramHosts.KEY_ESCROW_URL
         const val HEADER_AUTH = "Authorization"
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         val EMPTY_BODY = ByteArray(0).toRequestBody(null)

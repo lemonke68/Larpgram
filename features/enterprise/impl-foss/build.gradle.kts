@@ -20,6 +20,8 @@ android {
 setupDependencyInjection()
 
 dependencies {
+    // Правка форка: адреса сервера — LarpgramHosts.
+    implementation(projects.appconfig)
     implementation(projects.libraries.compound)
     api(projects.features.enterprise.api)
     implementation(projects.libraries.architecture)

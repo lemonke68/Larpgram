@@ -11,6 +11,7 @@ package io.element.android.features.enterprise.impl
 import androidx.compose.ui.graphics.Color
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.appconfig.LarpgramHosts
 import io.element.android.compound.colors.SemanticColorsLightDark
 import io.element.android.features.enterprise.api.BugReportUrl
 import io.element.android.features.enterprise.api.EnterpriseService
@@ -88,9 +89,9 @@ class DefaultEnterpriseService(
     override fun getNoisyNotificationChannelId(sessionId: SessionId): String? = null
 
     companion object {
-        const val HOMESERVER_DOMAIN = "mango-kokos.ru"
-        const val HOMESERVER_URL = "https://$HOMESERVER_DOMAIN"
-        const val PUSH_GATEWAY_URL = "https://push.$HOMESERVER_DOMAIN/_matrix/push/v1/notify"
+        const val HOMESERVER_DOMAIN = LarpgramHosts.DOMAIN
+        const val HOMESERVER_URL = LarpgramHosts.HOMESERVER_URL
+        const val PUSH_GATEWAY_URL = LarpgramHosts.PUSH_GATEWAY_URL
     }
 }
 

@@ -7,6 +7,7 @@
 package io.element.android.features.stickers.impl.import
 
 import android.graphics.BitmapFactory
+import io.element.android.appconfig.LarpgramHosts
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.imagepacks.api.ImagePack
 import io.element.android.libraries.imagepacks.api.ImagePackId
@@ -207,7 +208,7 @@ class StickerPackImporter(
     }
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://stickers.mango-kokos.ru/import"
+        const val DEFAULT_BASE_URL = LarpgramHosts.STICKERS_IMPORT_URL
 
         /**
          * Сколько стикеров качаем и заливаем разом. Больше упирается уже не в нас, а в

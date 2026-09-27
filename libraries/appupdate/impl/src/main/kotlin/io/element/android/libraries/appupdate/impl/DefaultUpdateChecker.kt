@@ -7,6 +7,7 @@
 package io.element.android.libraries.appupdate.impl
 
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.appconfig.LarpgramHosts
 import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -104,11 +105,11 @@ class DefaultUpdateChecker(
 
     private companion object {
         /** Манифест на официальной странице Larpgram. Домен захардкожен, как и homeserver. */
-        const val MANIFEST_URL = "https://larpgram.mango-kokos.ru/latest.json"
-        const val DEBUG_MANIFEST_URL = "https://larpgram.mango-kokos.ru/latest-debug.json"
+        const val MANIFEST_URL = "${LarpgramHosts.SITE_URL}/latest.json"
+        const val DEBUG_MANIFEST_URL = "${LarpgramHosts.SITE_URL}/latest-debug.json"
 
         /** APK по умолчанию, если в манифесте нет apkUrl. */
-        const val DEFAULT_APK_URL = "https://larpgram.mango-kokos.ru/larpgram.apk"
+        const val DEFAULT_APK_URL = "${LarpgramHosts.SITE_URL}/larpgram.apk"
 
         /** Тип события в account data. Тот же неймспейс, что у паков и баннера почты. */
         const val DISMISSED_EVENT_TYPE = "ru.mangokokos.larpgram.update_dismissed"

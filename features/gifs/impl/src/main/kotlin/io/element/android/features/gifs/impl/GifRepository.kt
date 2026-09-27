@@ -6,6 +6,7 @@
 
 package io.element.android.features.gifs.impl
 
+import io.element.android.appconfig.LarpgramHosts
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -105,6 +106,6 @@ class GifRepository(
     }
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://gifs.mango-kokos.ru"
+        const val DEFAULT_BASE_URL = LarpgramHosts.GIFS_URL
     }
 }
