@@ -261,11 +261,13 @@ fun MediaViewerView(
                             page == pagerState.settledPage
                         }
                         val navigationBarPadding = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+                        // Правка форка: кнопки плеера видео — над лентой миниатюр, а не под ней.
+                        val thumbStripPadding = if (showThumbStrip) with(LocalDensity.current) { TG_THUMB_STRIP_HEIGHT.roundToPx() } else 0
                         MediaViewerPage(
                             isDisplayed = isDisplayed,
                             showOverlay = showOverlay,
                             containerPadding = padding,
-                            bottomPaddingInPixels = (bottomPaddingInPixels - navigationBarPadding).coerceAtLeast(0),
+                            bottomPaddingInPixels = (bottomPaddingInPixels - navigationBarPadding).coerceAtLeast(0) + thumbStripPadding,
                             data = dataForPage,
                             textFileViewer = textFileViewer,
                             onDismiss = onBackClick,
