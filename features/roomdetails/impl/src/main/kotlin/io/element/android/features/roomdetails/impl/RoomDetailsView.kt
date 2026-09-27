@@ -35,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,7 +46,6 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.roomcall.api.hasPermissionToJoin
 import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileVerificationState
-import io.element.android.features.userprofile.shared.UserProfileInfoCard
 import io.element.android.features.userprofile.shared.blockuser.BlockUserDialogs
 import io.element.android.features.userprofile.shared.blockuser.BlockUserSection
 import io.element.android.libraries.androidutils.system.copyToClipboard
@@ -159,10 +157,6 @@ fun RoomDetailsView(
                         roomAlias = state.roomAlias,
                         heroes = state.heroes,
                         isTombstoned = state.isTombstoned,
-                        // Правка форка (роумлесс): TG-подпись под именем — счётчик участников
-                        // (группа) / подписчиков (канал).
-                        memberCount = state.memberCount,
-                        isChannel = state.isChannel,
                         openAvatarPreview = { avatarUrl ->
                             openAvatarPreview(state.roomName, avatarUrl)
                         },
@@ -197,19 +191,6 @@ fun RoomDetailsView(
                 onCall = onJoinCallClick,
             )
             Spacer(Modifier.height(12.dp))
-
-            // DM presents as the person's profile (roomless model): TG-style info card with the
-            // @handle right under the action row, before the folded room actions below.
-            (state.roomType as? RoomDetailsType.Dm)?.let { dm ->
-                UserProfileInfoCard(
-                    userId = dm.otherMember.userId,
-                    about = null,
-                    onHandleClick = {
-                        state.eventSink(RoomDetailsEvent.CopyToClipboard(dm.otherMember.userId.value))
-                    },
-                )
-                Spacer(Modifier.height(12.dp))
-            }
 
             if (state.roomTopic !is RoomTopicState.Hidden) {
                 TopicSection(
@@ -277,7 +258,6 @@ fun RoomDetailsView(
                         MembersItem(
                             memberCount = state.memberCount,
                             hasVerificationViolations = state.hasMemberVerificationViolations,
-                            isChannel = state.isChannel,
                             openRoomMemberList = openRoomMemberList,
                         )
                         if (state.canShowKnockRequests) {
@@ -302,7 +282,14 @@ fun RoomDetailsView(
                             InviteItem(onClick = invitePeople)
                         }
                     }
-                    // No separate "Profile" row in DMs: this screen already IS the person's profile.
+                    state.dmOtherMemberDetailsState?.let { dmMemberDetails ->
+                        PreferenceCategory {
+                            ProfileItem(
+                                verificationState = dmMemberDetails.verificationState,
+                                onClick = { onProfileClick(dmMemberDetails.userId) }
+                            )
+                        }
+                    }
                 }
             }
             PreferenceCategory {
@@ -342,8 +329,6 @@ fun RoomDetailsView(
             OtherActionsSection(
                 dmOtherMemberDetailsState = state.dmOtherMemberDetailsState,
                 canReportRoom = state.canReportRoom,
-                roomType = state.roomType,
-                isChannel = state.isChannel,
                 onReportRoomClick = onReportRoomClick,
                 onLeaveRoomClick = { state.eventSink(RoomDetailsEvent.LeaveRoom(needsConfirmation = true)) }
             )
@@ -482,8 +467,6 @@ private fun RoomHeaderSection(
     roomAlias: RoomAlias?,
     heroes: ImmutableList<MatrixUser>,
     isTombstoned: Boolean,
-    memberCount: Long,
-    isChannel: Boolean,
     openAvatarPreview: (url: String) -> Unit,
     onSubtitleClick: (String) -> Unit,
 ) {
@@ -516,18 +499,6 @@ private fun RoomHeaderSection(
         Text(
             text = roomName,
             style = ElementTheme.typography.fontHeadingLgBold,
-            textAlign = TextAlign.Center,
-        )
-        // Правка форка (роумлесс): TG-подпись со счётчиком — участники (группа) / подписчики (канал).
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = if (isChannel) {
-                pluralStringResource(R.plurals.screen_room_details_subscriber_count, memberCount.toInt(), memberCount.toInt())
-            } else {
-                pluralStringResource(R.plurals.screen_room_details_member_count, memberCount.toInt(), memberCount.toInt())
-            },
-            style = ElementTheme.typography.fontBodyLgRegular,
-            color = ElementTheme.colors.textSecondary,
             textAlign = TextAlign.Center,
         )
         if (roomAlias != null) {
@@ -597,7 +568,14 @@ private fun DmHeaderSection(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        // Raw Matrix id is dropped from the header: the @handle lives in the info card below.
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            modifier = Modifier.niceClickable { onSubtitleClick(otherMember.userId.value) },
+            text = otherMember.userId.value,
+            style = ElementTheme.typography.fontBodyLgRegular,
+            color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
         Spacer(modifier = Modifier.height(12.dp))
     }
 }
@@ -774,18 +752,10 @@ private fun ProfileItem(
 private fun MembersItem(
     memberCount: Long,
     hasVerificationViolations: Boolean,
-    isChannel: Boolean,
     openRoomMemberList: () -> Unit,
 ) {
     ListItem(
-        // Правка форка (роумлесс): «Участники» (группа) / «Подписчики» (канал).
-        content = {
-            Text(
-                stringResource(
-                    if (isChannel) R.string.screen_room_details_subscribers else R.string.screen_room_details_members
-                )
-            )
-        },
+        content = { Text(stringResource(CommonStrings.common_people)) },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.User())),
         trailingContent = if (hasVerificationViolations) {
             ListItemContent.Icon(
@@ -859,8 +829,6 @@ private fun MediaGalleryItem(
 @Composable
 private fun OtherActionsSection(
     canReportRoom: Boolean,
-    roomType: RoomDetailsType,
-    isChannel: Boolean,
     onReportRoomClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
     dmOtherMemberDetailsState: UserProfileState?,
@@ -880,18 +848,11 @@ private fun OtherActionsSection(
                 onClick = onReportRoomClick,
             )
         }
-        // Правка форка (роумлесс): подпись выхода по типу. ЛС — «Удалить чат» (иконка Delete),
-        // группа — «Выйти из группы», канал — «Выйти из канала».
-        val (leaveTextResId, leaveIcon) = when {
-            roomType is RoomDetailsType.Dm -> R.string.screen_room_details_delete_chat to CompoundIcons.Delete()
-            isChannel -> R.string.screen_room_details_leave_channel to CompoundIcons.Leave()
-            else -> R.string.screen_room_details_leave_group to CompoundIcons.Leave()
-        }
         ListItem(
             content = {
-                Text(stringResource(leaveTextResId))
+                Text(stringResource(CommonStrings.action_leave_room))
             },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(leaveIcon)),
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Leave())),
             style = ListItemStyle.Destructive,
             onClick = onLeaveRoomClick,
         )

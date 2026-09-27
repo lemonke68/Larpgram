@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -72,11 +73,11 @@ fun TgStickerPanel(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "Стикеров пока нет",
+                    text = stringResource(R.string.larpgram_stickers_empty),
                     color = ElementTheme.colors.textSecondary,
                 )
                 TextButton(
-                    text = "Добавить пак из Telegram",
+                    text = stringResource(R.string.larpgram_stickers_add_from_telegram),
                     onClick = { state.eventSink(StickerPickerEvents.ShowImport) },
                 )
             }
@@ -147,7 +148,7 @@ private fun StickerSections(
                     Icon(
                         modifier = Modifier.size(24.dp),
                         imageVector = CompoundIcons.Plus(),
-                        contentDescription = "Добавить пак",
+                        contentDescription = stringResource(R.string.larpgram_stickers_add_pack),
                         tint = ElementTheme.colors.iconTertiary,
                     )
                 }
@@ -166,7 +167,7 @@ private fun StickerSections(
                 ) {
                     Text(
                         modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 6.dp),
-                        text = pack.displayName.orEmpty().ifBlank { "Пак ${index + 1}" },
+                        text = pack.displayName.orEmpty().ifBlank { stringResource(R.string.larpgram_stickers_pack_number, index + 1) },
                         style = ElementTheme.typography.fontBodySmMedium,
                         color = ElementTheme.colors.textSecondary,
                         maxLines = 1,

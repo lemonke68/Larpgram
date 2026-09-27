@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Модуль форка: строки стикеров. -->
+<resources>
+    <string name="larpgram_stickers_empty">No stickers yet</string>
+    <string name="larpgram_stickers_add_from_telegram">Add a pack from Telegram</string>
+    <string name="larpgram_stickers_add_pack">Add pack</string>
+    <string name="larpgram_stickers_pack_number">Pack %1$d</string>
+    <string name="larpgram_stickers_send_error_title">Sticker was not sent</string>
+    <string name="larpgram_stickers_send_error_unverified">Someone signed in to the account from a device that is not verified, and while it is there nothing goes to encrypted chats. Open Settings, the sessions section, and sign out of the ones you no longer use.</string>
+    <string name="larpgram_stickers_send_error_other">Something went wrong. Check the connection and try again.</string>
+    <string name="larpgram_stickers_ok">Got it</string>
+    <string name="larpgram_stickers_import_title">Pack from Telegram</string>
+    <string name="larpgram_stickers_import_hint">Paste a link like t.me/addstickers/name or just the pack name.</string>
+    <string name="larpgram_stickers_import_progress">Fetching the stickers, this takes a few seconds.</string>
+    <string name="larpgram_stickers_import_done">Done: «%1$s».</string>
+    <string name="larpgram_stickers_import_done_skipped">Done: «%1$s». Could not fetch: %2$d.</string>
+    <string name="larpgram_stickers_import_not_found">There is no such pack. Check the name.</string>
+    <string name="larpgram_stickers_import_empty">This pack has no stickers.</string>
+    <string name="larpgram_stickers_import_failed">That did not work. Try again.</string>
+    <string name="larpgram_stickers_import_add">Add</string>
+    <string name="larpgram_stickers_import_placeholder">pack name</string>
+</resources>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="larpgram_stickers_empty">Стикеров пока нет</string>
+    <string name="larpgram_stickers_add_from_telegram">Добавить пак из Telegram</string>
+    <string name="larpgram_stickers_add_pack">Добавить пак</string>
+    <string name="larpgram_stickers_pack_number">Пак %1$d</string>
+    <string name="larpgram_stickers_send_error_title">Стикер не отправился</string>
+    <string name="larpgram_stickers_send_error_unverified">В аккаунт заходили с устройства, которое не подтверждено, и пока оно есть, ничего не уходит в зашифрованные чаты. Открой настройки, раздел с сессиями, и выйди из тех, которыми больше не пользуешься.</string>
+    <string name="larpgram_stickers_send_error_other">Что-то пошло не так. Проверь связь и попробуй ещё раз.</string>
+    <string name="larpgram_stickers_ok">Понятно</string>
+    <string name="larpgram_stickers_import_title">Пак из Telegram</string>
+    <string name="larpgram_stickers_import_hint">Вставь ссылку вида t.me/addstickers/имя или просто имя пака.</string>
+    <string name="larpgram_stickers_import_progress">Забираем стикеры, это займёт несколько секунд.</string>
+    <string name="larpgram_stickers_import_done">Готово: «%1$s».</string>
+    <string name="larpgram_stickers_import_done_skipped">Готово: «%1$s». Не получилось забрать: %2$d.</string>
+    <string name="larpgram_stickers_import_not_found">Такого пака нет. Проверь название.</string>
+    <string name="larpgram_stickers_import_empty">В этом паке нет стикеров.</string>
+    <string name="larpgram_stickers_import_failed">Не получилось. Попробуй ещё раз.</string>
+    <string name="larpgram_stickers_import_add">Добавить</string>
+    <string name="larpgram_stickers_import_placeholder">имя пака</string>
+</resources>

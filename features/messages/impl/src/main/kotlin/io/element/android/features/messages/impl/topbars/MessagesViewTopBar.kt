@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -36,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.MessagesMenuActions
-import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.SharedHistoryIcon
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roomcall.api.aStandByCallState
@@ -52,7 +50,6 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
-import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
@@ -77,9 +74,6 @@ internal fun MessagesViewTopBar(
     onRoomDetailsClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    // Larpgram: a channel shows its subscriber count under the name, like Telegram.
-    isChannel: Boolean = false,
-    subscriberCount: Long? = null,
     menuActions: @Composable RowScope.() -> Unit,
 ) {
     TopAppBar(
@@ -105,11 +99,6 @@ internal fun MessagesViewTopBar(
                     isTombstoned = isTombstoned,
                     heroes = heroes,
                     dmUserStatus = dmUserStatus,
-                    subtitle = if (isChannel && subscriberCount != null) {
-                        pluralStringResource(R.plurals.channel_subscriber_count, subscriberCount.toInt(), subscriberCount.toInt())
-                    } else {
-                        null
-                    },
                     modifier = titleModifier
                 )
 
@@ -164,8 +153,7 @@ private fun RoomAvatarAndNameRow(
     heroes: ImmutableList<AvatarData>,
     isTombstoned: Boolean,
     dmUserStatus: DisplayedStatus?,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
+    modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier,
@@ -178,22 +166,14 @@ private fun RoomAvatarAndNameRow(
                 isTombstoned = isTombstoned,
             ),
         )
-        Column(modifier = Modifier.padding(start = 8.dp)) {
-            DisplayNameWithStatus(
-                name = roomName ?: stringResource(CommonStrings.common_no_room_name),
-                status = dmUserStatus,
-                style = ElementTheme.typography.fontBodyLgMedium,
-                nameColor = ElementTheme.colors.textPrimary,
-                nameFontStyle = FontStyle.Italic.takeIf { roomName == null },
-            )
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = ElementTheme.typography.fontBodySmRegular,
-                    color = ElementTheme.colors.textSecondary,
-                )
-            }
-        }
+        DisplayNameWithStatus(
+            name = roomName ?: stringResource(CommonStrings.common_no_room_name),
+            status = dmUserStatus,
+            modifier = Modifier.padding(start = 8.dp),
+            style = ElementTheme.typography.fontBodyLgMedium,
+            nameColor = ElementTheme.colors.textPrimary,
+            nameFontStyle = FontStyle.Italic.takeIf { roomName == null },
+        )
     }
 }
 

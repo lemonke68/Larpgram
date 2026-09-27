@@ -130,11 +130,9 @@ class StickerPickerPresenter(
                                 skipped = result.skipped,
                             )
                         }
-                        ImportResult.NotFound -> ImportState.Error("Такого пака нет. Проверь название.")
-                        is ImportResult.EmptyPack -> ImportState.Error(
-                            "В этом паке нет стикеров."
-                        )
-                        ImportResult.Failed -> ImportState.Error("Не получилось. Попробуй ещё раз.")
+                        ImportResult.NotFound -> ImportState.Error(ImportErrorReason.NotFound)
+                        is ImportResult.EmptyPack -> ImportState.Error(ImportErrorReason.EmptyPack)
+                        ImportResult.Failed -> ImportState.Error(ImportErrorReason.Failed)
                     }
                 }
                 StickerPickerEvents.Refresh -> coroutineScope.launch { load() }

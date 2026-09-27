@@ -47,7 +47,14 @@ sealed interface ImportState {
     data class Done(val packName: String, val skipped: Int) : ImportState
 
     /** Не получилось, с человеческой причиной. */
-    data class Error(val message: String) : ImportState
+    data class Error(val reason: ImportErrorReason) : ImportState
+}
+
+/** Почему пак не добавился; текст — в ресурсах (ImportDialog). */
+enum class ImportErrorReason {
+    NotFound,
+    EmptyPack,
+    Failed,
 }
 
 /**
