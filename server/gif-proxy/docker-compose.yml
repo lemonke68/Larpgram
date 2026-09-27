@@ -1,0 +1,18 @@
+services:
+  gif-proxy:
+    build: ./app
+    container_name: gif-proxy
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gif-proxy.rule=Host(`gifs.mango-kokos.ru`)"
+      - "traefik.http.routers.gif-proxy.entrypoints=websecure"
+      - "traefik.http.routers.gif-proxy.tls.certresolver=myresolver"
+      - "traefik.http.services.gif-proxy.loadbalancer.server.port=3000"
+
+networks:
+  web:
+    external: true

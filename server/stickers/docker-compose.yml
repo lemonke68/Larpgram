@@ -1,0 +1,19 @@
+services:
+  stickers:
+    image: nginx:1-alpine
+    restart: unless-stopped
+    volumes:
+      - /matrix/maunium/stickerpicker/web:/usr/share/nginx/html:ro
+      - /matrix/stickers/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stickers.rule=Host(`stickers.mango-kokos.ru`)"
+      - "traefik.http.routers.stickers.entrypoints=websecure"
+      - "traefik.http.routers.stickers.tls.certresolver=myresolver"
+      - "traefik.http.services.stickers.loadbalancer.server.port=80"
+
+networks:
+  web:
+    external: true

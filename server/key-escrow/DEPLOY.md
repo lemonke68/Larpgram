@@ -1,7 +1,12 @@
 # Развёртывание key-escrow
 
-Сервис депонирования ключа восстановления Larpgram. Даёт вход на новом устройстве по коду
-с почты вместо второго устройства. Живёт на `push.mango-kokos.ru/escrow` (рядом с sygnal,
+Сервис депонирования ключа восстановления Larpgram. Главный путь с 2026-09-24: новая сессия
+сама забирает ключ (`GET /key/session`) и открывает историю — вход в аккаунт и есть
+подтверждение, как в Telegram. Вход по коду с почты (`/code`, `/key/redeem`) остался запасным.
+Второе назначение — «удалить у обоих» для личек (`POST /room/delete`).
+
+Исходники — в репозитории Larpgram, `server/key-escrow` (с 2026-09-28; до этого было две копии
+без git). На сервере — `~/key-escrow`, туда выкатываем rsync'ом (см. «Обновление»). Живёт на `push.mango-kokos.ru/escrow` (рядом с sygnal,
 не на публичной витрине `larpgram.mango-kokos.ru`).
 
 > **Модель безопасности.** Сервис хранит ключ восстановления (зашифрованным на своём
@@ -72,7 +77,7 @@ TOKEN=<matrix access token>
 # залить ключ (обычно это делает само приложение при включении бэкапа):
 curl -s -X PUT https://push.mango-kokos.ru/escrow/key \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"recovery_key":"TEST test test ..."}' -w "\n%{http_code}\n"      # 204
+  -d '{"recovery_key":"<настоящий ключ, 48 знаков base58>"}' -w "\n%{http_code}\n"      # 204, мусор — 400
 
 curl -s https://push.mango-kokos.ru/escrow/key -H "Authorization: Bearer $TOKEN" -w "\n%{http_code}\n"  # 200
 curl -s -X POST https://push.mango-kokos.ru/escrow/code -H "Authorization: Bearer $TOKEN" -w "\n%{http_code}\n"  # 200 + masked_email, письмо на почту
@@ -86,22 +91,29 @@ curl -s -X POST https://push.mango-kokos.ru/escrow/key/redeem \
 | Метод | Путь (после Traefik) | Назначение | Коды |
 | --- | --- | --- | --- |
 | GET | `/key` | лежит ли ключ | 200 / 404 |
-| PUT | `/key` | залить ключ | 204 |
+| PUT | `/key` | залить ключ (только формат ключа Matrix) | 204 / 400 |
+| DELETE | `/key` | удалить протухший ключ (клиент зовёт, если ключ не подошёл) | 204 |
 | POST | `/code` | прислать код на почту | 200 (`masked_email`) / 404 нет почты / 429 часто |
 | POST | `/key/redeem` | проверить код, отдать ключ | 200 / 400 (`attempts_left`) / 404 нет ключа / 410 истёк / 429 лимит |
 | GET | `/key/session` | отдать ключ вошедшей сессии без кода (авто-разблокировка при входе) | 200 / 404 нет ключа |
-| POST | `/room/delete` | удалить ЛС у обоих (Synapse purge) | 202 / 400 нет room_id / 403 не участник / 409 не ЛС (нет в m.direct или больше двух) / 503 нет admin-токена |
+| POST | `/room/delete` | удалить ЛС у обоих (Synapse purge) | 202 / 400 нет room_id / 403 не участник / 409 не ЛС (`{"error": причина}`) / 502 Synapse / 503 нет admin-токена |
 
 Все требуют `Authorization: Bearer <matrix token>`; сервис проверяет его через Synapse
-`whoami` и берёт почту из `/account/3pid`. Код: 6 цифр, живёт 10 минут, 5 попыток, повторный
+`whoami` (401 — токен плохой, 502 — Synapse недоступен или 429) и берёт почту из `/account/3pid`.
+Чтения, записи и удаления ключа пишутся в лог контейнера строками `{"audit": ...}` (кто, с какого
+устройства, когда; без ключей): `docker logs key-escrow | grep audit`. Код: 6 цифр, живёт 10 минут, 5 попыток, повторный
 запрос не чаще раза в минуту (параметры в `.env`).
 
 ## Удалить у обоих (admin-токен, 2026-08-28)
 
 Эндпоинт `POST /room/delete` сносит комнату целиком через Synapse admin API — так реализовано
-«удалить у обоих» для ЛС (Matrix сам удалить чужую сторону не даёт). Проверяет, что комната — ЛС
-(ровно 2 участника) и что вызывающий в ней состоит; затем `DELETE /_synapse/admin/v2/rooms/<id>`
-с `purge:true`. Клиент дёргает его после 5-секундной undo-плашки.
+«удалить у обоих» для ЛС (Matrix сам удалить чужую сторону не даёт). С 2026-09-28 сервис не
+верит клиенту и проверяет всё сам через admin API (`lib/rules.js`, тесты — `npm test`):
+вызывающий — участник; участников не больше двух, все с нашего сервера; у комнаты нет имени и
+адреса; `events_default` = 0 (не канал); комната есть в `m.direct` **у каждого** участника.
+Иначе 409 с причиной. Затем `DELETE /_synapse/admin/v2/rooms/<id>` с `purge:true`. Клиент дёргает
+эндпоинт после 5-секундной undo-плашки и не предлагает его для собеседников с других серверов
+(purge сносит только нашу копию).
 
 Нужен `SYNAPSE_ADMIN_TOKEN` в `.env`. **Грабля MAS:** флаг `admin=1` в БД Synapse доступа к admin API
 НЕ даёт (403) — при делегировании auth в MAS нужен токен с admin-scope. Выпуск (пользователь должен
@@ -111,11 +123,14 @@ curl -s -X POST https://push.mango-kokos.ru/escrow/key/redeem \
 docker exec matrix-authentication-service \
   mas-cli manage issue-compatibility-token \
   --yes-i-want-to-grant-synapse-admin-privileges lemonke67
-# -> mct_...  впиши в SYNAPSE_ADMIN_TOKEN= в ~/key-escrow/.env, затем пересобери сервис
+# -> mct_...  впиши в SYNAPSE_ADMIN_TOKEN= в ~/key-escrow/.env, затем
+#    cd ~/key-escrow && docker compose up -d --force-recreate   (env читается при старте)
 ```
 
 Токен — это compat-токен @lemonke67 (полный доступ + synapse admin), отзывается через mas-cli
-(`kill-sessions` / удаление сессии). Пусто в env → эндпоинт отвечает 503. Проверка scope:
+(`kill-sessions` / удаление сессии). **План (аудит C-017):** завести отдельного бота
+`@escrow-admin`, выдать admin-scope ему и отозвать личный токен владельца — тогда утечка `.env`
+не даёт писать от имени владельца. Пусто в env → эндпоинт отвечает 503. Проверка scope:
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" \
@@ -125,9 +140,27 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 
 ## Обновление
 
+С Mac, из корня репозитория:
+
 ```bash
-cd ~/key-escrow && git pull        # или залей новый бандл
-docker compose build && docker compose up -d
+(cd server/key-escrow && npm test)
+rsync -az --exclude .env --exclude node_modules --exclude '*.db*' \
+  server/key-escrow/ lemonke67@100.115.48.43:key-escrow/
+ssh lemonke67@100.115.48.43 'cd ~/key-escrow && docker compose build && docker compose up -d'
+curl -s https://push.mango-kokos.ru/escrow/health      # {"ok":true}
 ```
 
 Данные (`escrow-data` volume) переживают пересборку. Схема БД создаётся сама при старте.
+`.dockerignore` не пускает `.env` и базу в образ; старые образы (до 2026-09-28 в них был `.env`)
+удалены.
+
+## Бэкап
+
+`backup.sh` в cron пользователя (`10 4 * * *`): SQLite backup API внутри контейнера →
+`~/backups/key-escrow/escrow-ГГГГММДД.db` на NVMe (том Docker — на RAID, то есть другой диск),
+хранится 14 дней, лог — `~/backups/key-escrow.log`. Ключи в копии зашифрованы
+`ESCROW_MASTER_KEY` (копия в Vaultwarden). Восстановление: остановить контейнер, положить файл в
+том как `/data/escrow.db` (`docker cp`), запустить.
+
+Без бэкапа потеря тома опасна: провижинер решит, что ключей нет ни у кого, и молча выпустит
+всем новые ключи восстановления.

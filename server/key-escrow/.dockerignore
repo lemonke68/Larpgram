@@ -9,3 +9,4 @@ test/
 DEPLOY.md
 .gitignore
 .dockerignore
+backup.sh
