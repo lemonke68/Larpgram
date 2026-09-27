@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -122,6 +123,7 @@ import io.element.android.libraries.designsystem.swipe.SwipeableActionsState
 import io.element.android.libraries.designsystem.swipe.rememberSwipeableActionsState
 import io.element.android.libraries.designsystem.text.toPx
 import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -1139,13 +1141,19 @@ private fun MessageEventBubbleContent(
             }
 
             val contentHasError = currentContentValidationState.hasError() || inReplyTo is InReplyToDetails.Error
-            val borderColor = if (contentHasError) ElementTheme.colors.borderCriticalSubtle else ElementTheme.colors.separatorPrimary
-            val backgroundColor = if (contentHasError) ElementTheme.colors.bgCriticalSubtle else ElementTheme.colors.bgCanvasDefault
+            // Правка форка: цитата как в Telegram — полупрозрачный оттенок пузыря с цветной чертой
+            // слева, без рамки. Непрозрачный тёмный прямоугольник выбивался из оранжевого пузыря
+            // (аудит A-010). В своём пузыре цвет берём от текста пузыря, в чужом — акцент.
+            val quoteColor = LocalOutgoingBubbleContentColor.current ?: ElementTheme.colors.textActionAccent
+            val backgroundColor = if (contentHasError) ElementTheme.colors.bgCriticalSubtle else quoteColor.copy(alpha = 0.14f)
+            val barColor = if (contentHasError) ElementTheme.colors.borderCriticalSubtle else quoteColor
             Box(
                 modifier = talkbackCompatModifier
-                    .border(1.dp, borderColor, shape)
                     .background(backgroundColor, shape)
-                    .padding(4.dp)
+                    .drawBehind {
+                        drawRect(color = barColor, size = size.copy(width = 3.dp.toPx()))
+                    }
+                    .padding(start = 7.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
             ) {
                 val contentValidationState = rememberEventContentValidationState(eventId = inReplyTo.eventId(), eventContent = inReplyTo.content())
                 val updatedEventSink by rememberUpdatedState(eventSink)
@@ -1157,6 +1165,7 @@ private fun MessageEventBubbleContent(
                     inReplyTo = inReplyTo,
                     contentValidationValue = currentContentValidationState,
                     hideImage = timelineProtectionState.hideMediaContent(inReplyTo.eventId()),
+                    containerColor = Color.Transparent,
                 )
             }
         }
