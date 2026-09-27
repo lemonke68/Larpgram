@@ -1,0 +1,34 @@
+services:
+  key-escrow:
+    build: .
+    container_name: key-escrow
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - escrow-data:/data
+    networks:
+      # web — для Traefik; matrix-exim-relay — чтобы слать код через тот же релей, что и MAS.
+      - web
+      - matrix-exim-relay
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # Живём на бэкенд-хосте push (рядом с sygnal), под путём /escrow. PathPrefix + priority
+      # выше host-only роутера sygnal, поэтому /escrow/* уходит сюда, остальное — в sygnal.
+      - "traefik.http.routers.escrow.rule=Host(`push.mango-kokos.ru`) && PathPrefix(`/escrow`)"
+      - "traefik.http.routers.escrow.entrypoints=websecure"
+      - "traefik.http.routers.escrow.tls.certresolver=myresolver"
+      - "traefik.http.routers.escrow.priority=100"
+      # Приложение видит короткие пути (/key, /code, /key/redeem) — префикс срезаем.
+      - "traefik.http.routers.escrow.middlewares=escrow-stripprefix"
+      - "traefik.http.middlewares.escrow-stripprefix.stripprefix.prefixes=/escrow"
+      - "traefik.http.services.escrow.loadbalancer.server.port=8080"
+
+volumes:
+  escrow-data:
+
+networks:
+  web:
+    external: true
+  matrix-exim-relay:
+    external: true

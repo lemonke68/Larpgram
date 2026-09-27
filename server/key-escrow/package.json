@@ -1,0 +1,19 @@
+{
+  "name": "larpgram-key-escrow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Депонирование ключа восстановления Larpgram: вход на новом устройстве по коду с почты вместо второго устройства.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16"
+  }
+}
