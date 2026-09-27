@@ -25,12 +25,16 @@ import androidx.compose.runtime.setValue
  * Inspired from https://github.com/bmarty/swipe/blob/trunk/swipe/src/main/kotlin/me/saket/swipe/SwipeableActionsState.kt
  */
 @Composable
-fun rememberSwipeableActionsState(): SwipeableActionsState {
-    return remember { SwipeableActionsState() }
+fun rememberSwipeableActionsState(swipeToStart: Boolean = false): SwipeableActionsState {
+    return remember(swipeToStart) { SwipeableActionsState(swipeToStart) }
 }
 
+/**
+ * @param swipeToStart Правка форка: `true` — контент тянется только влево (как ответ свайпом в
+ * Telegram), `false` — только вправо (как в Element).
+ */
 @Stable
-class SwipeableActionsState {
+class SwipeableActionsState(private val swipeToStart: Boolean = false) {
     /**
      * The current position (in pixels) of the content.
      */
@@ -45,7 +49,7 @@ class SwipeableActionsState {
 
     val draggableState = DraggableState { delta ->
         val targetOffset = offsetState.floatValue + delta
-        val isAllowed = isResettingOnRelease || targetOffset > 0f
+        val isAllowed = isResettingOnRelease || if (swipeToStart) targetOffset < 0f else targetOffset > 0f
 
         offsetState.floatValue += if (isAllowed) delta else 0f
     }

@@ -277,14 +277,17 @@ fun TimelineItemEventRow(
             Spacer(modifier = Modifier.height(2.dp))
         }
         if (canReply) {
-            val state: SwipeableActionsState = rememberSwipeableActionsState()
+            // Правка форка: ответ — свайпом влево, как в Telegram (`ChatActivity`, swipe-to-reply).
+            // Свайп вправо от края экрана на Android и так занят жестом «назад».
+            val state: SwipeableActionsState = rememberSwipeableActionsState(swipeToStart = true)
             val offset = state.offset.floatValue
             val swipeThresholdPx = 40.dp.toPx()
             val thresholdCrossed = abs(offset) > swipeThresholdPx
             SwipeSensitivity(3f) {
                 Box(Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.matchParentSize()) {
-                        ReplySwipeIndicator({ offset / 120 })
+                        Spacer(modifier = Modifier.weight(1f))
+                        ReplySwipeIndicator({ -offset / 120 }, fromEnd = true)
                     }
                     TimelineItemEventRowContent(
                         event = event,

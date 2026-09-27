@@ -26,7 +26,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.compose.ui.text.AnnotatedString
 import io.element.android.emojibasebindings.Emoji
@@ -292,8 +292,9 @@ class MessagesViewTest : RobolectricTest() {
             state = state,
         )
         onAllNodesWithTag(TestTags.messageBubble.value).apply {
-            onFirst().performTouchInput { swipeRight(endX = 200f) }
-            onLast().performTouchInput { swipeRight(endX = 200f) }
+            // Правка форка: ответ — свайпом влево, как в Telegram.
+            onFirst().performTouchInput { swipeLeft(startX = right, endX = right - 200f) }
+            onLast().performTouchInput { swipeLeft(startX = right, endX = right - 200f) }
         }
         if (userHasPermissionToSendMessage) {
             eventsRecorder.assertSingle(MessagesEvent.HandleAction(TimelineItemAction.Reply, canBeRepliedEvent))

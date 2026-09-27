@@ -32,12 +32,14 @@ import io.element.android.libraries.designsystem.theme.components.Icon
 fun RowScope.ReplySwipeIndicator(
     swipeProgress: () -> Float,
     modifier: Modifier = Modifier,
+    // Правка форка: значок у правого края и выезжает влево — ответ свайпом влево, как в Telegram.
+    fromEnd: Boolean = false,
 ) {
     Icon(
         modifier = modifier
             .align(Alignment.CenterVertically)
             .graphicsLayer {
-                translationX = 36.dp.toPx() * swipeProgress().coerceAtMost(1f)
+                translationX = 36.dp.toPx() * swipeProgress().coerceAtMost(1f) * if (fromEnd) -1f else 1f
                 alpha = swipeProgress()
             },
         contentDescription = null,
