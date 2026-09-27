@@ -852,6 +852,14 @@ class RustMatrixClient(
     override suspend fun addRecentEmoji(emoji: String): Result<Unit> = withContext(sessionDispatcher) {
         runCatchingExceptions {
             innerClient.addRecentEmoji(emoji)
+        }.recoverCatching { error ->
+            // Правка форка: у аккаунта, где недавних ещё не было, SDK сначала читает account data
+            // `io.element.recent_emoji`, получает 404 и сдаётся — недавние не появлялись никогда
+            // (панель эмодзи, аудит A-035). Создаём запись сами, в формате Element Web.
+            val existing = runCatchingExceptions { innerClient.accountData(RECENT_EMOJI_EVENT_TYPE) }.getOrNull()
+            if (existing != null) throw error
+            val escaped = emoji.replace("\\", "\\\\").replace("\"", "\\\"")
+            innerClient.setAccountData(RECENT_EMOJI_EVENT_TYPE, "{\"recent_emoji\":[[\"$escaped\",1]]}")
         }
     }
 
@@ -991,3 +999,6 @@ private fun defaultRoomCreationPowerLevels(isPublic: Boolean, isSpace: Boolean) 
         mapOf()
     }
 )
+
+/** Правка форка: account data недавних эмодзи (Element Web и rust-SDK). */
+private const val RECENT_EMOJI_EVENT_TYPE = "io.element.recent_emoji"
