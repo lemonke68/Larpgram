@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.theme.ProvideOutgoingBubbleColors
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
 import io.element.android.features.messages.impl.timeline.model.bubble.BubbleState
 import io.element.android.features.messages.impl.timeline.model.bubble.BubbleStatePreviewParam
@@ -182,11 +183,16 @@ fun MessageEventBubble(
             // dark theme default (accent purple) kept a grey timestamp and a purple link on it.
             if (showBubble && state.isMine) {
                 val themeLinkColor = ElementTheme.colors.textLinkExternal
+                val bubbleContentColor = contentColorForBubble(backgroundBubbleColor)
                 CompositionLocalProvider(
-                    LocalOutgoingBubbleContentColor provides contentColorForBubble(backgroundBubbleColor),
+                    LocalOutgoingBubbleContentColor provides bubbleContentColor,
                     LocalOutgoingBubbleLinkColor provides linkColorForBubble(backgroundBubbleColor, themeLinkColor),
                 ) {
-                    content()
+                    // Вложенные элементы (файл, опрос, голосовое) берут цвета темы — перекрашиваем
+                    // их тоже, см. ProvideOutgoingBubbleColors.
+                    ProvideOutgoingBubbleColors(contentColor = bubbleContentColor) {
+                        content()
+                    }
                 }
             } else {
                 content()
