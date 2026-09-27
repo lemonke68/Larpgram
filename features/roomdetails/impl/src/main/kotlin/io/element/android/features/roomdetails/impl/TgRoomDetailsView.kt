@@ -178,25 +178,29 @@ fun TgRoomDetailsView(
                     RoomAvatar(state = state, expandFraction = avatarExpand.fraction, openAvatarPreview = openAvatarPreview)
                 }
             }
-            if (!isSavedMessages) item(key = "actions") {
-                TgProfileActions(
-                    actions = actions(
-                        state = state,
-                        goBack = goBack,
-                        onShareRoom = onShareRoom,
-                        onJoinCallClick = onJoinCallClick,
+            if (!isSavedMessages) {
+                item(key = "actions") {
+                    TgProfileActions(
+                        actions = actions(
+                            state = state,
+                            goBack = goBack,
+                            onShareRoom = onShareRoom,
+                            onJoinCallClick = onJoinCallClick,
+                        )
                     )
-                )
+                }
             }
             if (!isSavedMessages) infoCard(state = state)
-            if (!isSavedMessages) manageCard(
-                state = state,
-                openRoomMemberList = openRoomMemberList,
-                invitePeople = invitePeople,
-                onKnockRequestsClick = onKnockRequestsClick,
-                openAdminSettings = openAdminSettings,
-                onSecurityAndPrivacyClick = onSecurityAndPrivacyClick,
-            )
+            if (!isSavedMessages) {
+                manageCard(
+                    state = state,
+                    openRoomMemberList = openRoomMemberList,
+                    invitePeople = invitePeople,
+                    onKnockRequestsClick = onKnockRequestsClick,
+                    openAdminSettings = openAdminSettings,
+                    onSecurityAndPrivacyClick = onSecurityAndPrivacyClick,
+                )
+            }
             item(key = "tabs_gap") { Spacer(Modifier.height(TgProfileDefaults.cardGap - 8.dp)) }
             stickyHeader(key = "tabs") {
                 TgProfileTabs(

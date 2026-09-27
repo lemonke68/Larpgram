@@ -7,8 +7,11 @@
 package io.element.android.libraries.imagepacks.impl
 
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.imagepacks.api.ImagePack
 import io.element.android.libraries.imagepacks.api.ImagePackEventTypes
 import io.element.android.libraries.imagepacks.api.ImagePackId
+import io.element.android.libraries.imagepacks.api.ImagePackImage
+import io.element.android.libraries.imagepacks.api.ImagePackUsage
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.test.TestScope
@@ -16,9 +19,6 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import io.element.android.libraries.imagepacks.api.ImagePack
-import io.element.android.libraries.imagepacks.api.ImagePackImage
-import io.element.android.libraries.imagepacks.api.ImagePackUsage
 import org.junit.Test
 
 class DefaultImagePackSourceTest {
