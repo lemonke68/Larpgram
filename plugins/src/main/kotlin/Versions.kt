@@ -31,13 +31,14 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 /**
  * Year of the version on 2 digits.
- * Do not update this value. it is updated by the release script.
+ * Правка форка: у нас релизного скрипта Element нет — год и месяц меняются только вместе с
+ * синком апстрима (tools/larpgram/sync-upstream.sh), руками их не трогаем.
  */
 private const val versionYear = 26
 
 /**
  * Month of the version on 2 digits. Value must be in [1,12].
- * Do not update this value. it is updated by the release script.
+ * Правка форка: меняется только синком апстрима; тогда versionReleaseNumber сбрасывается.
  */
 private const val versionMonth = 9
 
@@ -54,8 +55,8 @@ private const val versionReleaseNumber = 6
  * Правка форка: у Larpgram своя человекочитаемая версия (v0.x), а не CalVer апстрима.
  * Это то, что видит человек — в настройках, в согласии MAS, на странице раздачи. versionCode
  * при этом остаётся монотонным по формуле ниже (его сравнивает апдейтер, человеку не виден).
- * Меняй по мере готовности плана: 0.7 ≈ ядро готово и раздаётся, впереди кастом-эмодзи,
- * инлайн-реакции, веб/iOS и харднинг.
+ * Номер растёт с каждым релизом (0.3.5 → 0.3.6). История нумерации: 0.7.x в августе, потом
+ * 0.2.x/0.3.x — см. docs/RELEASE.md. Порядок выкатки — там же.
  */
 private const val larpgramVersionName = "0.3.5"
 
