@@ -71,4 +71,6 @@
     <string name="larpgram_attach_partial_access">Открыт доступ только к части фото и видео.</string>
     <string name="larpgram_attach_partial_manage">Изменить</string>
     <string name="larpgram_attach_camera">Камера. Тап — фото, удержание — видео</string>
+    <string name="larpgram_delete_message_title">Удалить сообщение?</string>
+    <string name="larpgram_delete_message_content">Сообщение удалится у всех в чате.</string>
 </resources>

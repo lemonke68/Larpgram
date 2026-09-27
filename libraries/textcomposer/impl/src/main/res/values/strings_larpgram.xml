@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Правка форка: строки Larpgram этого модуля. -->
+<resources>
+    <!-- Подсказка поля при правке подписи к отправленному медиа (TG: «Подпись»). -->
+    <string name="larpgram_composer_caption_placeholder">Caption</string>
+</resources>

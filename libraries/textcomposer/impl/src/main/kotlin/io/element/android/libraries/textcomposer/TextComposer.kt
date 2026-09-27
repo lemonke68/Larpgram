@@ -169,14 +169,19 @@ fun TextComposer(
 
     val placeholder = if (composerMode.inThread || composerMode is MessageComposerMode.Normal && isInThreadTimeline) {
         stringResource(id = CommonStrings.action_reply_in_thread)
-    } else if (composerMode is MessageComposerMode.Attachment || composerMode is MessageComposerMode.EditCaption) {
+    } else if (composerMode is MessageComposerMode.EditCaption) {
+        // Правка форка: короткая подсказка TG, длинная элементовская не влезает в пилюлю.
+        stringResource(id = R.string.larpgram_composer_caption_placeholder)
+    } else if (composerMode is MessageComposerMode.Attachment) {
         stringResource(id = R.string.rich_text_editor_composer_caption_placeholder)
     } else {
         stringResource(id = R.string.rich_text_editor_composer_placeholder)
     }
     val canSendTextMessage = markdown.isNotBlank() || composerMode is MessageComposerMode.Attachment
-    // Правка форка: полоса ввода Telegram (TgStandardLayout) везде, кроме подписи к вложению.
-    val useTgLayout = composerMode !is MessageComposerMode.Attachment && composerMode !is MessageComposerMode.EditCaption
+    // Правка форка: полоса ввода Telegram (TgStandardLayout) везде, кроме подписи на экране
+    // предпросмотра вложения. Подпись к уже отправленному медиа — тоже TG-пилюля с плашкой
+    // «Изменение подписи»: у раскладки Element нет фона, и она рисовалась прямо поверх ленты.
+    val useTgLayout = composerMode !is MessageComposerMode.Attachment
     val sendButtonSize = if (useTgLayout) 44.dp else 36.dp
 
     val textInput: @Composable () -> Unit = when (state) {
@@ -471,8 +476,10 @@ fun TextComposer(
         // убрать её из композиции на старте записи, вместе с ней умрёт обработчик, а
         // отпускание пальца ловить будет некому — голосовое просто не записывалось
         // (телефон, 2026-08-15).
+        // Правка форка: при правке текста или подписи справа всегда галочка, не микрофон.
         val showRecordModeButton = circleRecordGestures != null &&
             !canSendTextMessage &&
+            !composerMode.isEditing &&
             (
                 voiceMessageState is VoiceMessageState.Idle ||
                     (voiceMessageState is VoiceMessageState.Recording && !voiceRecordingLocked)
@@ -876,7 +883,8 @@ private fun TextInputBox(
             contentAlignment = Alignment.CenterStart,
         ) {
             textInput()
-            if (isTextEmpty && composerMode.showCaptionCompatibilityWarning()) {
+            // Правка форка: в TG-пилюле без красного ⓘ «подпись могут не увидеть старые клиенты».
+            if (isTextEmpty && composerMode.showCaptionCompatibilityWarning() && !tgStyle) {
                 var showBottomSheet by remember { mutableStateOf(false) }
                 Icon(
                     modifier = Modifier

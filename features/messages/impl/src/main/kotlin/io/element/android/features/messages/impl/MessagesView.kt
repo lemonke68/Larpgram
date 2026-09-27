@@ -95,6 +95,7 @@ import io.element.android.features.messages.impl.messagecomposer.TgMediaPanel
 import io.element.android.features.messages.impl.messagecomposer.TgMediaPanelController
 import io.element.android.features.messages.impl.messagecomposer.TgMediaPanelTab
 import io.element.android.features.messages.impl.messagecomposer.rememberTgMediaPanelController
+import io.element.android.features.messages.impl.messagecomposer.showKeyboardOnFocusedInput
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsPickerView
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerView
@@ -129,7 +130,6 @@ import io.element.android.features.stickers.impl.StickerPickerEvents
 import io.element.android.features.stickers.impl.StickerSendErrorDialog
 import io.element.android.features.stickers.impl.TgStickerPanel
 import io.element.android.libraries.androidutils.ui.hideKeyboard
-import io.element.android.libraries.androidutils.ui.showKeyboard
 import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertMolecule
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayoutState
@@ -515,6 +515,24 @@ fun MessagesView(
         )
     }
 
+    // Правка форка: удаление сообщения — с подтверждением, как в Telegram.
+    var redactConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
+    if (redactConfirmingEvent != null) {
+        ConfirmationDialog(
+            title = stringResource(id = R.string.larpgram_delete_message_title),
+            content = stringResource(id = R.string.larpgram_delete_message_content),
+            submitText = stringResource(id = CommonStrings.action_delete),
+            destructiveSubmit = true,
+            onSubmitClick = {
+                redactConfirmingEvent?.let { event ->
+                    onActionSelected(TimelineItemAction.Redact, event)
+                }
+                redactConfirmingEvent = null
+            },
+            onDismiss = { redactConfirmingEvent = null },
+        )
+    }
+
     // Правка форка: размытый фон под меню долгого нажатия, как в Telegram — попап отделяется
     // от чата и не сливается с ним. Штатного блюра на Android 10 нет, поэтому снимок окна через
     // PixelCopy (rememberBlurredBackdrop). Рисуется отдельным окном (Popup) под шторкой: сама
@@ -525,6 +543,8 @@ fun MessagesView(
     val onSelectActionCommon: (TimelineItemAction, TimelineItem.Event) -> Unit = { action, event ->
         if (action == TimelineItemAction.EndPoll) {
             endPollConfirmingEvent = event
+        } else if (action == TimelineItemAction.Redact) {
+            redactConfirmingEvent = event
         } else {
             onActionSelected(action, event)
         }
@@ -887,7 +907,7 @@ private fun MessagesViewComposerBottomSheetContents(
                             if (mediaPanel.isVisible) {
                                 coroutineScope.launch {
                                     state.composerState.textEditorState.requestFocus()
-                                    localView.showKeyboard()
+                                    localView.showKeyboardOnFocusedInput()
                                 }
                             } else {
                                 mediaPanel.open()

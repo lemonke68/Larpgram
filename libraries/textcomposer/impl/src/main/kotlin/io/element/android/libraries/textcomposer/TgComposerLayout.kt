@@ -174,9 +174,9 @@ internal fun TgStandardLayout(
                     }
                 }
                 // Справа в пилюле: скрепка. В TG уезжает, как только в поле появился текст
-                // (`ChatActivityEnterView.checkSendButton`, 100–150 мс).
+                // (`ChatActivityEnterView.checkSendButton`, 100–150 мс). При правке её нет.
                 AnimatedVisibility(
-                    visible = isTextEmpty && voiceMessageState is VoiceMessageState.Idle,
+                    visible = isTextEmpty && voiceMessageState is VoiceMessageState.Idle && !composerMode.isEditing,
                     enter = fadeIn(tween(ATTACH_ANIMATION_MS)) + scaleIn(tween(ATTACH_ANIMATION_MS)) +
                         expandHorizontally(tween(ATTACH_ANIMATION_MS), expandFrom = Alignment.Start),
                     exit = fadeOut(tween(ATTACH_ANIMATION_MS)) + scaleOut(tween(ATTACH_ANIMATION_MS)) +

@@ -132,6 +132,9 @@ fun MarkdownTextInput(
         },
         update = { editText ->
             editText.contentDescription = placeholder
+            // Правка форка: поле не пересоздаётся при смене режима (TG-пилюля и для подписи),
+            // поэтому подсказку обновляем здесь, а не только при создании.
+            if (editText.hint?.toString() != placeholder) editText.hint = placeholder
             editText.applyStyleInCompose(richTextEditorStyle)
             editText.onEnterKeyListener = {
                 onSendMessage()

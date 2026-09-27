@@ -65,4 +65,6 @@
     <string name="larpgram_attach_partial_access">Only some photos and videos are shared.</string>
     <string name="larpgram_attach_partial_manage">Change</string>
     <string name="larpgram_attach_camera">Camera. Tap for a photo, hold for a video</string>
+    <string name="larpgram_delete_message_title">Delete message?</string>
+    <string name="larpgram_delete_message_content">The message will be deleted for everyone in the chat.</string>
 </resources>

@@ -7,6 +7,9 @@
 
 package io.element.android.features.messages.impl.messagecomposer
 
+import android.os.Build
+import android.view.View
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.libraries.androidutils.ui.showKeyboard
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -81,6 +85,23 @@ class TgMediaPanelController internal constructor(initialKeyboardHeightPx: Int) 
     fun close() {
         isVisible = false
         isSearchFocused = false
+    }
+}
+
+/**
+ * Правка форка: вернуть клавиатуру кнопкой «Клавиатура» при открытой панели. `View.showKeyboard()`
+ * до Android 11 зовёт `showSoftInput(корневой ComposeView, SHOW_IMPLICIT)`, и IME такой запрос
+ * молча игнорирует (Honor, Android 10). Показываем на поле ввода в фокусе, после прохода фокуса,
+ * явным запросом пользователя (флаг 0).
+ */
+internal fun View.showKeyboardOnFocusedInput() {
+    post {
+        val target = findFocus() ?: this
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            target.showKeyboard()
+        } else {
+            context.getSystemService(InputMethodManager::class.java)?.showSoftInput(target, 0)
+        }
     }
 }
 

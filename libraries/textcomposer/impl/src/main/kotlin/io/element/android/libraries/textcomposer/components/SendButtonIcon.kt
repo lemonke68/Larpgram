@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
@@ -53,8 +54,12 @@ internal fun SendButtonIcon(
     } else {
         Color.Transparent
     }
+    // Правка форка: в TG-полосе неактивная кнопка (пустая подпись при правке) — на стеклянном
+    // круге, иначе серая галочка висит прямо поверх ленты.
+    val isTgSize = size != 36.dp
     Box(
         modifier = modifier
+            .then(if (isTgSize && !canSendMessage) Modifier.tgGlass(CircleShape) else Modifier)
             .clip(CircleShape)
             .size(size)
             .background(backgroundColor)
