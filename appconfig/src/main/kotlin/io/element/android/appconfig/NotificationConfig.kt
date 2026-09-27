@@ -27,6 +27,7 @@ object NotificationConfig {
      */
     const val SHOW_QUICK_REPLY_ACTION = true
 
+    // Правка форка: фирменный фиолетовый Larpgram (LarpgramColors.accentLight) вместо зелёного Element.
     @ColorInt
-    val NOTIFICATION_ACCENT_COLOR: Int = "#FF0DBD8B".toColorInt()
+    val NOTIFICATION_ACCENT_COLOR: Int = "#FF6949A7".toColorInt()
 }

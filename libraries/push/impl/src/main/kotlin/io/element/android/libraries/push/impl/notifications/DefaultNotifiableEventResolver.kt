@@ -202,7 +202,9 @@ class DefaultNotifiableEventResolver(
                     imageUriString = imageUriString,
                     imageMimeType = imageMimeType.takeIf { imageUriString != null },
                     roomName = roomDisplayName,
-                    roomIsDm = isDm,
+                    // Правка форка: личка, которую Synapse ещё не пометил как DM (нет в m.direct
+                    // у получателя), называется по собеседнику — заголовок был «larptest: larptest».
+                    roomIsDm = isDm || (!isSpace && roomDisplayName == senderDisambiguatedDisplayName),
                     roomAvatarPath = roomAvatarUrl,
                     senderAvatarPath = senderAvatarUrl,
                     hasMentionOrReply = hasMention,
@@ -424,7 +426,8 @@ class DefaultNotifiableEventResolver(
             // Правка форка: тип медиа словом, как в списке чатов. Имя файла в уведомление
             // пускать нельзя — у кружочка оно служебное.
             is ImageMessageType -> if (hasImageUri) {
-                messageType.caption
+                // С картинкой-превью подписи нет, и система писала «Изображение» даже для гифки.
+                messageType.caption ?: stringProvider.getString(CommonStrings.common_gif).takeIf { messageType.isGif }
             } else {
                 messageType.caption ?: if (messageType.isGif) {
                     stringProvider.getString(CommonStrings.common_gif)
