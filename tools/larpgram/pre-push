@@ -1,0 +1,31 @@
+#!/bin/sh
+# Larpgram: не пускать историю Element на GitHub (аудит C-015).
+# Ставится так: cp tools/larpgram/pre-push .git/hooks/pre-push (см. docs/01-build-env.md).
+#
+# У форка своя история: корень «Import Element X Android v26.08.0», синки — squash-коммиты,
+# а к тегам Element они привязаны только локальными графтами. С выключенными графтами у нашей
+# истории нет ни одного общего коммита с Element. Если он есть у того, что пушим (ветки
+# backup/*, develop, случайный merge) — пуш зальёт всю историю Element, и GitHub ещё и откажет
+# по LFS. Поэтому для каждого пушимого ref ищем общего предка с Element и останавливаем пуш.
+zero=0000000000000000000000000000000000000000
+upstream_ref=""
+for candidate in refs/remotes/upstream/develop $(git for-each-ref --sort=-creatordate --format='%(refname)' 'refs/tags/v2*' | head -1); do
+    if git rev-parse -q --verify "$candidate^{commit}" >/dev/null; then upstream_ref="$candidate"; break; fi
+done
+
+input=$(cat)
+if [ -n "$upstream_ref" ]; then
+    echo "$input" | while read -r local_ref local_sha remote_ref remote_sha; do
+        [ -z "$local_sha" ] || [ "$local_sha" = "$zero" ] && continue
+        if git --no-replace-objects merge-base "$local_sha" "$upstream_ref" >/dev/null 2>&1; then
+            echo "pre-push: в $local_ref есть история Element (общий предок с $upstream_ref). Пуш отменён." >&2
+            exit 1
+        fi
+    done || exit 1
+else
+    echo "pre-push: нет ни upstream/develop, ни тегов v2*, проверку истории пропускаю" >&2
+fi
+
+# Git LFS (штатный хук репозитория).
+command -v git-lfs >/dev/null 2>&1 || { echo "pre-push: git-lfs не найден" >&2; exit 2; }
+echo "$input" | git lfs pre-push "$@"
