@@ -9,7 +9,6 @@
     <string name="screen_home_tab_profile">Profile</string>
     <!-- "New" menu in the chats top bar. -->
     <string name="screen_home_new_chat">New chat</string>
-    <string name="screen_home_new_channel">New channel</string>
     <!-- Roomless: chat-list swipe actions and context menu, differ by chat type. -->
     <string name="screen_roomlist_mute">Mute</string>
     <string name="screen_roomlist_unmute">Unmute</string>

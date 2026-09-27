@@ -4,7 +4,6 @@
     <string name="screen_home_tab_settings">Настройки</string>
     <string name="screen_home_tab_profile">Профиль</string>
     <string name="screen_home_new_chat">Новый чат</string>
-    <string name="screen_home_new_channel">Новый канал</string>
     <string name="screen_roomlist_mute">Без звука</string>
     <string name="screen_roomlist_unmute">Со звуком</string>
     <string name="screen_roomlist_pin">Закрепить</string>
