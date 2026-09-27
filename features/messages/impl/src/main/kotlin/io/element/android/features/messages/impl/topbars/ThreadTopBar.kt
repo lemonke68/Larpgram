@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.features.messages.impl.R
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
@@ -60,6 +61,9 @@ internal fun ThreadTopBar(
         },
         title = {
             val name = roomName ?: stringResource(CommonStrings.common_no_room_name)
+            // Правка форка: тред в обсуждении канала — это комментарии к посту. Заголовок
+            // «Комментарии», ниже имя канала (без суффикса обсуждения), как в Telegram (A-027).
+            val channelName = roomName?.let { n -> CHANNEL_DISCUSSION_SUFFIXES.firstOrNull { n.endsWith(it) }?.let { n.removeSuffix(it) } }
             val description = stringResource(
                 CommonStrings.a11y_thread_in_room,
                 name,
@@ -84,11 +88,11 @@ internal fun ThreadTopBar(
                         .padding(horizontal = 8.dp),
                 ) {
                     Text(
-                        text = stringResource(CommonStrings.common_thread),
+                        text = if (channelName != null) stringResource(R.string.screen_channel_comments) else stringResource(CommonStrings.common_thread),
                         style = ElementTheme.typography.fontBodyLgMedium,
                     )
                     Text(
-                        text = name,
+                        text = channelName ?: name,
                         style = ElementTheme.typography.fontBodySmRegular,
                         fontStyle = FontStyle.Italic.takeIf { roomName == null },
                         color = ElementTheme.colors.textSecondary,
@@ -144,3 +148,6 @@ internal fun ThreadTopBarPreview() = ElementPreview {
         )
     }
 }
+
+/** Суффиксы имени группы-обсуждения канала (`larpgram_channel_discussion_name` в createroom, en/ru). */
+private val CHANNEL_DISCUSSION_SUFFIXES = listOf(" — comments", " — комментарии")
