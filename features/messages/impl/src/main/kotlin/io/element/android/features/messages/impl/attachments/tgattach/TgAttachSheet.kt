@@ -849,7 +849,7 @@ private fun TabBar(
                         .clip(RoundedCornerShape(TAB_BAR_HEIGHT / 2))
                         .background(if (isSelected) ElementTheme.colors.bgSubtleSecondary else Color.Transparent)
                         .clickable { tab.action?.let(onAction) }
-                        .padding(horizontal = 10.dp),
+                        .padding(horizontal = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -863,7 +863,9 @@ private fun TabBar(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = stringResource(tab.label),
-                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        // Размер в dp, как у TG (`AndroidUtilities.dp`): при крупном системном шрифте
+                        // пять вкладок иначе не влезали и последняя обрезалась.
+                        style = TextStyle(fontSize = with(LocalDensity.current) { 12.dp.toSp() }, fontWeight = FontWeight.Medium),
                         color = if (isSelected) ElementTheme.colors.textActionAccent else ElementTheme.colors.textPrimary,
                         maxLines = 1,
                     )
