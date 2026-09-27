@@ -1008,8 +1008,12 @@ class TimelinePresenterTest {
         )
         presenter.test {
             assertThat(redactedVoiceMessageManager.invocations.size).isEqualTo(0)
-            skipItems(2)
+            // Правка форка: удалённое сообщение в ленте не рисуется, поэтому второго состояния
+            // с ним нет — ждём сам побочный эффект.
+            skipItems(1)
+            runCurrent()
             assertThat(redactedVoiceMessageManager.invocations.size).isEqualTo(1)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 

@@ -149,6 +149,28 @@ class RoomBeginningPostProcessorTest {
             roomCreator = A_USER_ID,
             hasMoreToLoadBackwards = true
         )
-        assertThat(processedItems).isEqualTo(listOf(otherMemberJoinEvent))
+        // Правка форка: вход собеседника сразу после создания — часть настройки лички, тоже скрыт.
+        assertThat(processedItems).isEmpty()
+    }
+
+    // Правка форка: вся настройка новой лички скрыта, как в Telegram.
+    @Test
+    fun `processor removes the DM setup events that follow the room creation`() {
+        val timelineItems = listOf(
+            timelineStartEvent,
+            roomCreateEvent,
+            roomCreatorJoinEvent,
+            otherMemberJoinEvent,
+            messageEvent,
+            otherMemberJoinEvent,
+        )
+        val processor = RoomBeginningPostProcessor(Timeline.Mode.Live)
+        val processedItems = processor.process(
+            items = timelineItems,
+            isDm = true,
+            roomCreator = A_USER_ID,
+            hasMoreToLoadBackwards = false,
+        )
+        assertThat(processedItems).containsExactly(timelineStartEvent, messageEvent, otherMemberJoinEvent).inOrder()
     }
 }

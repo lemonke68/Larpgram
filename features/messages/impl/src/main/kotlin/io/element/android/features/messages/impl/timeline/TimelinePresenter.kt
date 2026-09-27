@@ -31,10 +31,10 @@ import io.element.android.features.messages.impl.crypto.sendfailure.resolve.Reso
 import io.element.android.features.messages.impl.timeline.components.MessageShieldData
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactory
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactoryConfig
+import io.element.android.features.messages.impl.timeline.factories.dropEmptyDaySeparators
 import io.element.android.features.messages.impl.timeline.groups.canBeGrouped
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
-import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemDaySeparatorModel
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemReadMarkerModel
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemTypingNotificationModel
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionEvent
@@ -346,12 +346,9 @@ class TimelinePresenter(
                     } else {
                         newTimelineItems
                     }.let { items ->
-                        // В пустом «Избранном» не оставляем одинокую плашку даты.
-                        if (isSavedMessages && items.none { it is TimelineItem.Event }) {
-                            items.filterNot { it is TimelineItem.Virtual && it.model is TimelineItemDaySeparatorModel }
-                        } else {
-                            items
-                        }
+                        // После фильтра канала/«Избранного» не оставляем плашку дня без сообщений
+                        // (пустой новый канал показывал одинокое «Сегодня»).
+                        if (isChannelRoom || isSavedMessages) items.dropEmptyDaySeparators() else items
                     }
                     timelineItemIndexer.process(rendered)
                     timelineItems = rendered.toImmutableList()

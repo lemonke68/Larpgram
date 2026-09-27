@@ -16,6 +16,7 @@ import io.element.android.features.messages.impl.timeline.factories.event.Timeli
 import io.element.android.features.messages.impl.timeline.factories.virtual.TimelineItemVirtualFactory
 import io.element.android.features.messages.impl.timeline.groups.TimelineItemGrouper
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRedactedContent
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemDaySeparatorModel
 import io.element.android.libraries.androidutils.diff.DiffCacheUpdater
 import io.element.android.libraries.androidutils.diff.MutableListDiffCache
@@ -106,6 +107,8 @@ class TimelineItemsFactory(
         val result = timelineItemGrouper.group(newTimelineItemStates)
             .mergeLarpgramAlbums()
             .markReadUpToLatestReceipt()
+            .dropRoomCreationGroup()
+            .dropRedactedMessages()
             .dropEmptyDaySeparators()
             .toImmutableList()
         this._timelineItems.emit(result)
@@ -166,7 +169,7 @@ internal fun List<TimelineItem>.markReadUpToLatestReceipt(): List<TimelineItem> 
  * нерасшифрованные) не нужна. Список идёт от новых к старым, поэтому сообщения дня стоят в списке
  * перед его плашкой: если перед плашкой не событие, день пустой.
  */
-private fun List<TimelineItem>.dropEmptyDaySeparators(): List<TimelineItem> =
+internal fun List<TimelineItem>.dropEmptyDaySeparators(): List<TimelineItem> =
     filterIndexed { index, item ->
         val isDaySeparator = item is TimelineItem.Virtual && item.model is TimelineItemDaySeparatorModel
         if (!isDaySeparator) return@filterIndexed true
@@ -175,3 +178,25 @@ private fun List<TimelineItem>.dropEmptyDaySeparators(): List<TimelineItem> =
             .firstOrNull { it !is TimelineItem.Virtual || it.model is TimelineItemDaySeparatorModel }
         previous is TimelineItem.Event || previous is TimelineItem.GroupedEvents
     }
+
+private val roomCreateTypeRegex = Regex(""""type"\s*:\s*"m\.room\.create"""")
+
+/**
+ * Правка форка: свёрнутый блок «N изменений в комнате» от создания чата (m.room.create, вход
+ * создателя, права, правила входа…) в Telegram не показывается: новый чат пустой. Прячем группу
+ * служебных событий, в которой есть само создание комнаты. В других клиентах события на месте.
+ */
+private fun List<TimelineItem>.dropRoomCreationGroup(): List<TimelineItem> =
+    filterNot { item ->
+        item is TimelineItem.GroupedEvents &&
+            item.events.any { event -> event.debugInfo.originalJson?.let(roomCreateTypeRegex::containsMatchIn) == true }
+    }
+
+/**
+ * Правка форка: удалённое сообщение в Telegram исчезает, плашки «Сообщение удалено» нет.
+ * Прячем только у себя: redaction — штатное событие Matrix, другие клиенты рисуют его как обычно.
+ */
+private fun List<TimelineItem>.dropRedactedMessages(): List<TimelineItem> =
+    // Удалённое сообщение, у которого есть ветка (корень или ответ), оставляем: без него
+    // ветку не открыть.
+    filterNot { it is TimelineItem.Event && it.content is TimelineItemRedactedContent && it.threadInfo == null }

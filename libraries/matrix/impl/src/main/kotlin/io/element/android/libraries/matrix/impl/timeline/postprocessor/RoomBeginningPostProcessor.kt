@@ -62,10 +62,23 @@ class RoomBeginningPostProcessor(private val mode: Timeline.Mode) {
             }.takeIf { it >= 0 }
         }
 
-        val indicesToRemove = listOfNotNull(
-            roomCreationEventIndex,
-            selfUserJoinedEventIndex,
-        )
+        // Правка форка: в Telegram новая личка пустая. Кроме создания и входа создателя прячем и
+        // остальную настройку комнаты сразу за ними (права, правила входа, шифрование, приглашение
+        // и вход собеседника) — Element сворачивал её в «N изменений в комнате». Идём от создания
+        // до первого события, которое не служебное.
+        val setupEventIndices = roomCreationEventIndex?.let { start ->
+            items.indices
+                .drop(start + 1)
+                .takeWhile { index -> items[index].isRoomSetupItem() }
+                .filter { index -> items[index] is MatrixTimelineItem.Event }
+        }.orEmpty()
+
+        val indicesToRemove = (
+            listOfNotNull(
+                roomCreationEventIndex,
+                selfUserJoinedEventIndex,
+            ) + setupEventIndices
+            ).distinct()
         if (indicesToRemove.isEmpty()) {
             // Nothing to do, return the list as is
             return items
@@ -78,4 +91,11 @@ class RoomBeginningPostProcessor(private val mode: Timeline.Mode) {
         }
         return newItems
     }
+}
+
+/** Правка форка: служебное событие настройки комнаты (или виртуальная плашка между ними). */
+private fun MatrixTimelineItem.isRoomSetupItem(): Boolean = when (this) {
+    is MatrixTimelineItem.Virtual -> true
+    is MatrixTimelineItem.Event -> event.content is StateContent || event.content is RoomMembershipContent
+    else -> false
 }
