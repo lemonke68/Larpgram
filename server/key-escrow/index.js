@@ -8,7 +8,8 @@
 import express from 'express';
 import * as db from './lib/db.js';
 import { encrypt, decrypt, hashCode, genCode, timingSafeEqualHex } from './lib/crypto.js';
-import { whoami, getEmail, getRoomMembers, deleteRoom, hasAdminToken, isDirectRoom } from './lib/matrix.js';
+import { whoami, getEmail, getRoomMembers, deleteRoom, hasAdminToken, getDirectRoomsOf, getRoomDetails } from './lib/matrix.js';
+import { isValidRecoveryKey, deleteForBothRefusal } from './lib/rules.js';
 import { sendCode } from './lib/mail.js';
 
 const CODE_TTL_MS = Number(process.env.CODE_TTL_SECONDS || 600) * 1000;
@@ -33,17 +34,23 @@ function bearer(req) {
 async function auth(req, res, next) {
   const token = bearer(req);
   if (!token) return res.sendStatus(401);
-  let userId;
+  let who;
   try {
-    userId = await whoami(token);
+    who = await whoami(token);
   } catch (e) {
     console.error('whoami упал:', e.message);
     return res.sendStatus(502);
   }
-  if (!userId) return res.sendStatus(401);
-  req.userId = userId;
+  if (!who) return res.sendStatus(401);
+  req.userId = who.userId;
+  req.deviceId = who.deviceId;
   req.token = token;
   next();
+}
+
+// Журнал обращений к ключу: кто, с какого устройства, что сделал. Ключей и токенов тут нет.
+function audit(req, action, extra = {}) {
+  console.log(JSON.stringify({ audit: action, user: req.userId, device: req.deviceId, at: new Date().toISOString(), ...extra }));
 }
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -58,10 +65,20 @@ app.get('/key', auth, (req, res) => {
 // Залить/перезаписать ключ восстановления.
 app.put('/key', auth, (req, res) => {
   const key = req.body?.recovery_key;
-  if (typeof key !== 'string' || !key.trim()) {
-    return res.status(400).json({ error: 'recovery_key required' });
+  if (!isValidRecoveryKey(key)) {
+    audit(req, 'put-key-rejected');
+    return res.status(400).json({ error: 'recovery_key must be a Matrix recovery key' });
   }
-  db.putKey.run(req.userId, encrypt(key), Date.now());
+  db.putKey.run(req.userId, encrypt(key.trim()), Date.now());
+  audit(req, 'put-key');
+  res.sendStatus(204);
+});
+
+// Удалить ключ: клиент зовёт, когда ключ из хранилища не подошёл (его сменили в другом клиенте).
+// Тогда, как только сессию подтвердят вручную, клиент выпустит и сохранит свежий ключ.
+app.delete('/key', auth, (req, res) => {
+  db.deleteKey.run(req.userId);
+  audit(req, 'delete-key');
   res.sendStatus(204);
 });
 
@@ -132,13 +149,14 @@ app.post('/key/redeem', auth, (req, res) => {
 app.get('/key/session', auth, (req, res) => {
   const keyRow = db.getKey.get(req.userId);
   if (!keyRow) return res.sendStatus(404);
+  audit(req, 'get-key-session');
   res.set('Cache-Control', 'no-store');
   res.json({ recovery_key: decrypt(keyRow.key_enc) });
 });
 
 // «Удалить у обоих» для ЛС: серверный Synapse purge комнаты. Matrix не даёт удалить чужую
-// сторону, поэтому это делает сервис своим admin-токеном — но только для лички (m.direct, не больше
-// двух участников) и только если вызывающий сам в ней состоит. Клиент лишь просит; власти у него нет.
+// сторону, поэтому это делает сервис своим admin-токеном — но только для локальной лички и только
+// если вызывающий сам в ней состоит. Клиент лишь просит; власти у него нет.
 app.post('/room/delete', auth, async (req, res) => {
   if (!hasAdminToken()) return res.sendStatus(503); // admin-токен не настроен
   const roomId = String(req.body?.room_id || '').trim();
@@ -153,17 +171,29 @@ app.post('/room/delete', auth, async (req, res) => {
   }
   if (!members) return res.sendStatus(502);
   if (!members.includes(req.userId)) return res.sendStatus(403); // не участник — нельзя
-  // Только личка: помечена в m.direct вызывающего и в ней не больше двух человек. Раньше
-  // проверяли одно «ровно 2 участника» — под это попадала и группа из двоих.
-  const isDirect = await isDirectRoom(req.token, req.userId, roomId);
-  if (isDirect === null) return res.sendStatus(502);
-  if (!isDirect || members.length > 2) return res.sendStatus(409);
+
+  // Всё проверяем данными сервера, а не клиента (см. deleteForBothRefusal): раньше хватало m.direct
+  // вызывающего, а его клиент пишет сам — так можно было снести группу или канал из двоих.
+  const room = await getRoomDetails(roomId);
+  if (!room) return res.sendStatus(502);
+  const directOf = {};
+  for (const member of members) {
+    const direct = await getDirectRoomsOf(member);
+    if (direct === null) return res.sendStatus(502);
+    directOf[member] = direct;
+  }
+  const refusal = deleteForBothRefusal({ callerId: req.userId, members, room, directOf });
+  if (refusal) {
+    audit(req, 'delete-room-refused', { room: roomId, reason: refusal });
+    return res.status(409).json({ error: refusal });
+  }
 
   const ok = await deleteRoom(roomId).catch((e) => {
     console.error('delete room упал:', e.message);
     return false;
   });
   if (!ok) return res.sendStatus(502);
+  audit(req, 'delete-room', { room: roomId });
   res.sendStatus(202);
 });
 

@@ -6,7 +6,8 @@
   "description": "Депонирование ключа восстановления Larpgram: вход на новом устройстве по коду с почты вместо второго устройства.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test test/*.test.js"
   },
   "engines": {
     "node": ">=20"

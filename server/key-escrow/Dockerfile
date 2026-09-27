@@ -11,8 +11,8 @@ WORKDIR /app
 # Данные (SQLite) — в /data, владелец node, чтобы контейнер писал не из-под root.
 RUN mkdir -p /data && chown -R node:node /data
 
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY . .
 

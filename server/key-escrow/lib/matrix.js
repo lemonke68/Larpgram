@@ -47,10 +47,16 @@ export async function deleteRoom(roomId) {
   return res.ok;
 }
 
-// user_id или null, если токен не годится.
+// { userId, deviceId } или null, если токен не годится (401/403). Недоступность Synapse, 429 и
+// 5xx — исключение: мидлварь отвечает 502, а не «плохой токен».
 export async function whoami(token) {
-  const body = await get('/_matrix/client/v3/account/whoami', token).catch(() => null);
-  return body?.user_id || null;
+  const res = await fetch(`${HS}/_matrix/client/v3/account/whoami`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401 || res.status === 403) return null;
+  if (!res.ok) throw new Error(`whoami HTTP ${res.status}`);
+  const body = await res.json();
+  return body?.user_id ? { userId: body.user_id, deviceId: body.device_id || null } : null;
 }
 
 // Первый привязанный email или null.
@@ -61,17 +67,32 @@ export async function getEmail(token) {
   return email?.address || null;
 }
 
-// Комната помечена личкой в m.direct вызывающего? Так «удалить у обоих» не заденет группу,
-// где случайно остались двое. null — не смогли прочитать account data.
-export async function isDirectRoom(token, userId, roomId) {
-  const res = await fetch(
-    `${HS}/_matrix/client/v3/user/${encodeURIComponent(userId)}/account_data/m.direct`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  ).catch(() => null);
-  if (!res) return null;
-  if (res.status === 404) return false; // ни одной лички
-  if (!res.ok) return null;
+// m.direct пользователя через admin API (объект «собеседник → комнаты»); {} если нет; null при ошибке.
+// Читаем у каждого участника сами, а не верим клиенту: m.direct клиент пишет как хочет.
+export async function getDirectRoomsOf(userId) {
+  const res = await adminFetch(`/_synapse/admin/v1/users/${encodeURIComponent(userId)}/accountdata`).catch(() => null);
+  if (!res || !res.ok) return null;
   const body = await res.json().catch(() => null);
-  if (!body || typeof body !== 'object') return null;
-  return Object.values(body).some((rooms) => Array.isArray(rooms) && rooms.includes(roomId));
+  const direct = body?.account_data?.global?.['m.direct'];
+  return direct && typeof direct === 'object' ? direct : {};
+}
+
+// Имя, адрес и events_default комнаты через admin API; null при ошибке.
+export async function getRoomDetails(roomId) {
+  const id = encodeURIComponent(roomId);
+  const [infoRes, stateRes] = await Promise.all([
+    adminFetch(`/_synapse/admin/v1/rooms/${id}`).catch(() => null),
+    adminFetch(`/_synapse/admin/v1/rooms/${id}/state`).catch(() => null),
+  ]);
+  if (!infoRes?.ok || !stateRes?.ok) return null;
+  const info = await infoRes.json().catch(() => null);
+  const state = await stateRes.json().catch(() => null);
+  if (!info || !Array.isArray(state?.state)) return null;
+  const powerLevels = state.state.find((e) => e.type === 'm.room.power_levels' && e.state_key === '');
+  return {
+    roomId,
+    name: info.name || null,
+    canonicalAlias: info.canonical_alias || null,
+    eventsDefault: Number(powerLevels?.content?.events_default ?? 0),
+  };
 }

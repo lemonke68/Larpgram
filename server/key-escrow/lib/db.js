@@ -27,6 +27,7 @@ export const putKey = db.prepare(
    ON CONFLICT(user_id) DO UPDATE SET key_enc = excluded.key_enc, created_at = excluded.created_at`
 );
 export const getKey = db.prepare('SELECT key_enc FROM keys WHERE user_id = ?');
+export const deleteKey = db.prepare('DELETE FROM keys WHERE user_id = ?');
 
 export const upsertCode = db.prepare(
   `INSERT INTO codes(user_id, code_hash, expires_at, attempts, last_sent_at) VALUES(?, ?, ?, 0, ?)
