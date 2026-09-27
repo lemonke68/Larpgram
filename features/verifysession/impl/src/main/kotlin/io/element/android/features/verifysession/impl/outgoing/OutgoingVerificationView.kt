@@ -145,26 +145,20 @@ private fun EmailVerificationDialogs(
 ) {
     when (emailStep) {
         EmailVerifyStep.Hidden -> Unit
-        EmailVerifyStep.SendingCode -> ProgressDialog(text = "Отправляем код на почту…")
+        EmailVerifyStep.SendingCode -> ProgressDialog(text = stringResource(R.string.larpgram_email_verify_sending))
         is EmailVerifyStep.EnterCode -> {
             if (emailStep.submitting) {
-                ProgressDialog(text = "Проверяем код…")
+                ProgressDialog(text = stringResource(R.string.larpgram_email_verify_checking))
             } else {
-                val subtitle = buildString {
-                    append("Код отправлен на ")
-                    append(emailStep.maskedEmail)
-                    append(". Введите 6 цифр из письма.")
-                    emailStep.error?.let {
-                        append("\n\n")
-                        append(emailVerifyErrorText(it))
-                    }
-                }
+                val sent = stringResource(R.string.larpgram_email_verify_sent, emailStep.maskedEmail)
+                val error = emailStep.error?.let { emailVerifyErrorText(it) }
+                val subtitle = if (error != null) "$sent\n\n$error" else sent
                 TextFieldDialog(
-                    title = "Вход по коду с почты",
+                    title = stringResource(R.string.larpgram_email_verify_title),
                     content = subtitle,
                     value = "",
                     placeholder = "000000",
-                    submitText = "Подтвердить",
+                    submitText = stringResource(R.string.larpgram_email_verify_submit),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     validation = { it != null && it.trim().length == CODE_LENGTH && it.trim().all(Char::isDigit) },
                     onSubmit = { eventSink(OutgoingVerificationViewEvent.SubmitEmailCode(it.trim())) },
@@ -181,25 +175,23 @@ private fun EmailVerificationDialogs(
 
 private const val CODE_LENGTH = 6
 
+@Composable
 private fun emailVerifyErrorText(error: EmailVerifyError): String = when (error) {
     is EmailVerifyError.InvalidCode -> error.attemptsLeft?.let {
-        "Неверный код. Осталось попыток: $it."
-    } ?: "Неверный код."
-    EmailVerifyError.Expired -> "Срок кода истёк. Запросите новый: закройте и нажмите «Подтвердить по почте» снова."
-    EmailVerifyError.TooManyAttempts -> "Слишком много попыток. Запросите новый код: закройте и начните заново."
-    EmailVerifyError.RecoverFailed -> "Код верный, но восстановить ключи не удалось. Попробуйте ещё раз."
-    EmailVerifyError.Network -> "Нет связи с сервером. Проверьте интернет и попробуйте снова."
+        stringResource(R.string.larpgram_email_verify_wrong_code_left, it)
+    } ?: stringResource(R.string.larpgram_email_verify_wrong_code)
+    EmailVerifyError.Expired -> stringResource(R.string.larpgram_email_verify_expired)
+    EmailVerifyError.TooManyAttempts -> stringResource(R.string.larpgram_email_verify_too_many)
+    EmailVerifyError.RecoverFailed -> stringResource(R.string.larpgram_email_verify_recover_failed)
+    EmailVerifyError.Network -> stringResource(R.string.larpgram_email_verify_network)
 }
 
+@Composable
 private fun emailVerifyUnavailableText(reason: EmailVerifyUnavailable): String = when (reason) {
-    EmailVerifyUnavailable.NoEmail ->
-        "К аккаунту не привязана почта, поэтому этот способ недоступен. Подтвердите на другом устройстве."
-    EmailVerifyUnavailable.NoStoredKey ->
-        "Для этого аккаунта на сервере нет ключа. Войдите на устройстве, где уже есть доступ, и включите резервную копию."
-    EmailVerifyUnavailable.RateLimited ->
-        "Код запрашивали слишком часто. Подождите немного и попробуйте снова."
-    EmailVerifyUnavailable.Network ->
-        "Нет связи с сервером. Проверьте интернет и попробуйте снова."
+    EmailVerifyUnavailable.NoEmail -> stringResource(R.string.larpgram_email_verify_no_email)
+    EmailVerifyUnavailable.NoStoredKey -> stringResource(R.string.larpgram_email_verify_no_key)
+    EmailVerifyUnavailable.RateLimited -> stringResource(R.string.larpgram_email_verify_rate_limited)
+    EmailVerifyUnavailable.Network -> stringResource(R.string.larpgram_email_verify_network)
 }
 
 @Composable
@@ -345,7 +337,7 @@ private fun OutgoingVerificationBottomMenu(
                 if (!isWaiting && state.request is VerificationRequest.Outgoing.CurrentSession) {
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
-                        text = "Подтвердить по почте",
+                        text = stringResource(R.string.larpgram_email_verify_action),
                         onClick = { eventSink(OutgoingVerificationViewEvent.StartEmailVerification) },
                     )
                 } else {

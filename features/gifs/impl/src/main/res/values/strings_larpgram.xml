@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Модуль форка: строки Larpgram. -->
+<resources>
+    <!-- Панель GIF. -->
+    <string name="larpgram_gifs_search">Search GIFs</string>
+    <string name="larpgram_gifs_error">Could not load GIFs</string>
+    <string name="larpgram_gifs_retry">Retry</string>
+    <string name="larpgram_gifs_recent_empty">GIFs you send will show up here</string>
+    <string name="larpgram_gifs_nothing_found">Nothing found</string>
+    <string name="larpgram_gifs_recent">Recent</string>
+</resources>

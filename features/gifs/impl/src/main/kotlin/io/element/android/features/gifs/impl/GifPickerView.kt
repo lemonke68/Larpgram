@@ -24,10 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.features.gifs.impl.R
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
@@ -49,7 +51,7 @@ fun GifPickerView(
         TextField(
             value = state.query,
             onValueChange = { state.eventSink(GifPickerEvents.QueryChanged(it)) },
-            placeholder = "Поиск гифок",
+            placeholder = stringResource(R.string.larpgram_gifs_search),
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
@@ -62,26 +64,28 @@ fun GifPickerView(
             state.hasFailed -> CenteredBox(contentModifier) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Не получилось загрузить гифки",
+                        text = stringResource(R.string.larpgram_gifs_error),
                         color = ElementTheme.colors.textSecondary,
                         textAlign = TextAlign.Center,
                     )
                     TextButton(
-                        text = "Повторить",
+                        text = stringResource(R.string.larpgram_gifs_retry),
                         onClick = { state.eventSink(GifPickerEvents.Retry) },
                     )
                 }
             }
             state.isEmpty -> CenteredBox(contentModifier) {
                 Text(
-                    text = if (state.query.isBlank()) "Тут появятся отправленные гифки" else "Ничего не нашлось",
+                    text = stringResource(
+                        if (state.query.isBlank()) R.string.larpgram_gifs_recent_empty else R.string.larpgram_gifs_nothing_found
+                    ),
                     color = ElementTheme.colors.textSecondary,
                 )
             }
             else -> {
                 if (state.isShowingRecent) {
                     Text(
-                        text = "Недавние",
+                        text = stringResource(R.string.larpgram_gifs_recent),
                         color = ElementTheme.colors.textSecondary,
                         modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                     )

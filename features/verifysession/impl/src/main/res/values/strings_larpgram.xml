@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Модуль форка: строки Larpgram. -->
+<resources>
+    <!-- Вход по коду с почты (запасной путь, основной — ключ из escrow без кода). -->
+    <string name="larpgram_email_verify_sending">Sending the code to your email…</string>
+    <string name="larpgram_email_verify_checking">Checking the code…</string>
+    <string name="larpgram_email_verify_sent">The code was sent to %1$s. Enter the 6 digits from the email.</string>
+    <string name="larpgram_email_verify_title">Sign in with an email code</string>
+    <string name="larpgram_email_verify_submit">Confirm</string>
+    <string name="larpgram_email_verify_action">Confirm by email</string>
+    <string name="larpgram_email_verify_wrong_code_left">Wrong code. Attempts left: %1$d.</string>
+    <string name="larpgram_email_verify_wrong_code">Wrong code.</string>
+    <string name="larpgram_email_verify_expired">The code has expired. Request a new one: close this and tap “Confirm by email” again.</string>
+    <string name="larpgram_email_verify_too_many">Too many attempts. Request a new code: close this and start again.</string>
+    <string name="larpgram_email_verify_recover_failed">The code is right, but the keys could not be restored. Try again.</string>
+    <string name="larpgram_email_verify_network">No connection to the server. Check the internet and try again.</string>
+    <string name="larpgram_email_verify_no_email">No email is linked to the account, so this option is unavailable. Confirm on another device.</string>
+    <string name="larpgram_email_verify_no_key">The server has no key for this account. Sign in on a device that already has access and turn on the backup.</string>
+    <string name="larpgram_email_verify_rate_limited">The code was requested too often. Wait a little and try again.</string>
+</resources>

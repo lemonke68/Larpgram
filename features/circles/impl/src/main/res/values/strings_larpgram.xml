@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Модуль форка: строки Larpgram. -->
+<resources>
+    <!-- Запись кружочка. -->
+    <string name="larpgram_circle_camera">camera</string>
+    <string name="larpgram_circle_lock">Lock recording</string>
+    <string name="larpgram_circle_switch_camera">Switch camera</string>
+    <string name="larpgram_circle_cancel">CANCEL</string>
+    <string name="larpgram_circle_slide_to_cancel">‹ Slide to cancel</string>
+    <string name="larpgram_circle_send">Send video message</string>
+</resources>

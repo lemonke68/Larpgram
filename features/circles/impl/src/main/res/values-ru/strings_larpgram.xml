@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="larpgram_circle_camera">камера</string>
+    <string name="larpgram_circle_lock">Закрепить запись</string>
+    <string name="larpgram_circle_switch_camera">Сменить камеру</string>
+    <string name="larpgram_circle_cancel">ОТМЕНА</string>
+    <string name="larpgram_circle_slide_to_cancel">‹ Влево — отмена</string>
+    <string name="larpgram_circle_send">Отправить кружочек</string>
+</resources>

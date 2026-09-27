@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="larpgram_gifs_search">Поиск гифок</string>
+    <string name="larpgram_gifs_error">Не получилось загрузить гифки</string>
+    <string name="larpgram_gifs_retry">Повторить</string>
+    <string name="larpgram_gifs_recent_empty">Тут появятся отправленные гифки</string>
+    <string name="larpgram_gifs_nothing_found">Ничего не нашлось</string>
+    <string name="larpgram_gifs_recent">Недавние</string>
+</resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="larpgram_email_verify_sending">Отправляем код на почту…</string>
+    <string name="larpgram_email_verify_checking">Проверяем код…</string>
+    <string name="larpgram_email_verify_sent">Код отправлен на %1$s. Введите 6 цифр из письма.</string>
+    <string name="larpgram_email_verify_title">Вход по коду с почты</string>
+    <string name="larpgram_email_verify_submit">Подтвердить</string>
+    <string name="larpgram_email_verify_action">Подтвердить по почте</string>
+    <string name="larpgram_email_verify_wrong_code_left">Неверный код. Осталось попыток: %1$d.</string>
+    <string name="larpgram_email_verify_wrong_code">Неверный код.</string>
+    <string name="larpgram_email_verify_expired">Срок кода истёк. Запросите новый: закройте и нажмите «Подтвердить по почте» снова.</string>
+    <string name="larpgram_email_verify_too_many">Слишком много попыток. Запросите новый код: закройте и начните заново.</string>
+    <string name="larpgram_email_verify_recover_failed">Код верный, но восстановить ключи не удалось. Попробуйте ещё раз.</string>
+    <string name="larpgram_email_verify_network">Нет связи с сервером. Проверьте интернет и попробуйте снова.</string>
+    <string name="larpgram_email_verify_no_email">К аккаунту не привязана почта, поэтому этот способ недоступен. Подтвердите на другом устройстве.</string>
+    <string name="larpgram_email_verify_no_key">Для этого аккаунта на сервере нет ключа. Войдите на устройстве, где уже есть доступ, и включите резервную копию.</string>
+    <string name="larpgram_email_verify_rate_limited">Код запрашивали слишком часто. Подождите немного и попробуйте снова.</string>
+</resources>

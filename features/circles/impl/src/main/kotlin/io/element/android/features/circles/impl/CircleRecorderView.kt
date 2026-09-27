@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -61,6 +62,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.circles.impl.R
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -150,7 +152,7 @@ fun CircleRecorderView(
             ) {
                 val recorder = state.recorder
                 if (LocalInspectionMode.current || recorder == null) {
-                    Text(text = "камера", color = Color.White)
+                    Text(text = stringResource(R.string.larpgram_circle_camera), color = Color.White)
                 } else {
                     CameraPreview(
                         recorder = recorder,
@@ -219,7 +221,7 @@ fun CircleRecorderView(
                     Icon(
                         modifier = Modifier.size(20.dp),
                         imageVector = CompoundIcons.LockSolid(),
-                        contentDescription = "Закрепить запись",
+                        contentDescription = stringResource(R.string.larpgram_circle_lock),
                         tint = ElementTheme.colors.iconAccentPrimary,
                     )
                 }
@@ -239,7 +241,7 @@ fun CircleRecorderView(
                     Icon(
                         modifier = Modifier.size(24.dp),
                         imageVector = CompoundIcons.SwitchCameraSolid(),
-                        contentDescription = "Сменить камеру",
+                        contentDescription = stringResource(R.string.larpgram_circle_switch_camera),
                         tint = Color.White,
                     )
                 }
@@ -274,12 +276,12 @@ fun CircleRecorderView(
                                 modifier = Modifier.clickable {
                                     state.eventSink(CircleRecorderEvents.CancelRecording)
                                 },
-                                text = "ОТМЕНА",
+                                text = stringResource(R.string.larpgram_circle_cancel),
                                 color = ElementTheme.colors.textActionAccent,
                             )
                         } else {
                             Text(
-                                text = "‹ Свайп для отмены",
+                                text = stringResource(R.string.larpgram_circle_slide_to_cancel),
                                 color = if (ElementTheme.isLightTheme) {
                                     Color.Black.copy(alpha = 0.5f)
                                 } else {
@@ -322,7 +324,7 @@ fun CircleRecorderView(
                             Icon(
                                 modifier = Modifier.size(28.dp),
                                 imageVector = CompoundIcons.SendSolid(),
-                                contentDescription = "Отправить кружочек",
+                                contentDescription = stringResource(R.string.larpgram_circle_send),
                                 tint = Color.White,
                             )
                         }
