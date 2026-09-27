@@ -8,7 +8,6 @@
 
 package io.element.android.features.home.impl.roomlist
 
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -28,10 +27,10 @@ import dev.zacsweers.metro.Inject
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.announcement.api.Announcement
 import io.element.android.features.announcement.api.AnnouncementService
-import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.into
+import io.element.android.features.home.impl.model.ChatType
 import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.TypingPreview
@@ -57,12 +56,9 @@ import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
-import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
-import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
-import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -76,7 +72,6 @@ import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
 import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
-import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsColdStartWatcher
 import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
@@ -85,8 +80,6 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
@@ -98,9 +91,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
-
-// Окно отмены «удалить у обоих» перед серверным purge.
-private const val DELETE_FOR_BOTH_UNDO_MS = 5_000L
 
 @Inject
 class RoomListPresenter(
@@ -132,8 +122,7 @@ class RoomListPresenter(
     // Правка форка (роумлесс): свой пин чатов поверх списка (account data).
     private val pinnedChatsStore: PinnedChatsStore,
     // Правка форка: «удалить у обоих» для ЛС через наш серверный Synapse purge.
-    private val keyEscrowService: KeyEscrowService,
-    private val snackbarDispatcher: SnackbarDispatcher,
+    private val deleteForBothScheduler: DeleteForBothScheduler,
     // Правка форка: «Черновик:» и «печатает…» в строке чата.
     private val draftPreviews: DraftPreviews,
     private val typingTracker: RoomListTypingTracker,
@@ -141,9 +130,6 @@ class RoomListPresenter(
     private val savedMessages: SavedMessages,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
-
-    // Отложенная (5с) задача «удалить у обоих» — её отменяет тап «Отменить» на плашке.
-    private var pendingDeleteForBothJob: Job? = null
 
     @Composable
     override fun present(): RoomListState {
@@ -274,7 +260,7 @@ class RoomListPresenter(
                 is RoomListEvent.SetRoomIsMuted -> coroutineScope.setRoomIsMuted(event.roomId, event.isMuted)
                 is RoomListEvent.SetRoomIsPinned -> pinnedChatsStore.setPinned(event.roomId, event.isPinned)
                 is RoomListEvent.DeleteRoom -> coroutineScope.deleteRoom(event.roomId)
-                is RoomListEvent.DeleteRoomForBoth -> coroutineScope.deleteRoomForBoth(event.roomId)
+                is RoomListEvent.DeleteRoomForBoth -> deleteForBothScheduler.schedule(event.roomId)
                 is RoomListEvent.BlockUser -> coroutineScope.blockUser(event.roomId, event.userId)
                 is RoomListEvent.MarkAsRead -> coroutineScope.markAsRead(event.roomId)
                 is RoomListEvent.MarkAsUnread -> coroutineScope.markAsUnread(event.roomId)
@@ -419,10 +405,12 @@ class RoomListPresenter(
                 typingTracker.typing,
                 savedMessages.roomId,
             ) { summaries, pinnedIds, drafts, typing, savedRoomId ->
-                applyPins(summaries, pinnedIds)
+                // Правка форка: «Избранное» всегда закреплено сверху (план, ф4.5), остальные пины — под ним.
+                applyPins(summaries, listOfNotNull(savedRoomId) + pinnedIds.filterNot { it == savedRoomId })
                     .map { it.withDraftAndTyping(drafts[it.roomId], typing[it.roomId]) }
                     // «Избранное»: «Вы присоединились к комнате» — шум создания, строку оставляем пустой.
                     .map { if (it.roomId == savedRoomId && it.isLatestEventService) it.copy(latestEvent = LatestEvent.None) else it }
+                    .map { if (it.isLocalDm()) it.copy(canDeleteForBoth = true) else it }
                     .toImmutableList()
             }.collect { value = AsyncData.Success(it) }
         }
@@ -522,8 +510,6 @@ class RoomListPresenter(
         }
     }
 
-    // Правка форка (роумлесс), ф2 пин: закреплённые комнаты наверх, в порядке пина; помечаем
-    // isPinned для строки/меню. Пин ставится только на ROOM, поэтому инвайты не трогаются.
     /**
      * Правка форка: черновик и «печатает…» поверх строки. Правило TG (`DialogCell`): черновик
      * прячется, если после него пришло непрочитанное сообщение; время у строки — время черновика,
@@ -544,6 +530,11 @@ class RoomListPresenter(
         )
     }
 
+    private fun RoomListRoomSummary.isLocalDm(): Boolean =
+        chatType == ChatType.Dm && dmUserId != null && dmUserId.domainName == client.sessionId.domainName
+
+    // Правка форка (роумлесс), ф2 пин: закреплённые комнаты наверх, в порядке пина; помечаем
+    // isPinned для строки/меню. Пин ставится только на ROOM, поэтому инвайты не трогаются.
     private fun applyPins(
         summaries: ImmutableList<RoomListRoomSummary>,
         pinnedIds: List<RoomId>,
@@ -557,34 +548,11 @@ class RoomListPresenter(
     }
 
     // Правка форка (роумлесс), ф3 удаление: leave + forget, чтобы комната ушла из списка.
-    // «Удалить у обоих» в Matrix невозможно — власти над чужим аккаунтом нет.
+    // «Удалить у обоих» — отдельно, через серверный purge (DeleteForBothScheduler).
     private fun CoroutineScope.deleteRoom(roomId: RoomId) = launch {
         client.getRoom(roomId)?.use { room ->
             room.leave().onSuccess { room.forget() }
         }
-    }
-
-    // Правка форка: «удалить у обоих» (ЛС) — серверный Synapse purge на нашем сервере. Показываем
-    // 5с undo-плашку; если не отменили — дёргаем сервер, он сносит комнату у обоих. Локально ничего
-    // не удаляем заранее, чтобы «Отменить» действительно отменял (комната сама уйдёт после purge).
-    private fun CoroutineScope.deleteRoomForBoth(roomId: RoomId) {
-        pendingDeleteForBothJob?.cancel()
-        val job = launch {
-            delay(DELETE_FOR_BOTH_UNDO_MS)
-            val ok = keyEscrowService.deleteDmForBoth(roomId)
-            if (!ok) {
-                snackbarDispatcher.post(SnackbarMessage(messageResId = R.string.screen_roomlist_delete_both_failed))
-            }
-        }
-        pendingDeleteForBothJob = job
-        snackbarDispatcher.post(
-            SnackbarMessage(
-                messageResId = R.string.screen_roomlist_delete_both_pending,
-                actionResId = CommonStrings.action_cancel,
-                duration = SnackbarDuration.Long,
-                action = { job.cancel() },
-            )
-        )
     }
 
     // Правка форка (роумлесс), ф4 блок (только ЛС): односторонняя TG-стена — ignoreUser +

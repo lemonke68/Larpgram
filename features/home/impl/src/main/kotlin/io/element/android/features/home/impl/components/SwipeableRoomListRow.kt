@@ -276,15 +276,16 @@ fun rememberChatSwipeStartActions(
                 label = stringResource(
                     when (room.chatType) {
                         // В ЛС удаление сносит комнату у обоих (серверный purge), поэтому и подпись
-                        // другая; в группе/канале — только выход со своей стороны.
-                        ChatType.Dm -> R.string.screen_roomlist_delete_both
+                        // другая; в группе/канале — только выход со своей стороны. ЛС с человеком
+                        // с другого сервера purge не достаёт — там просто «Удалить чат».
+                        ChatType.Dm -> if (room.canDeleteForBoth) R.string.screen_roomlist_delete_both else R.string.screen_roomlist_delete_chat
                         ChatType.Group -> R.string.screen_roomlist_leave_group
                         ChatType.Channel -> R.string.screen_roomlist_leave_channel
                     }
                 ),
                 background = Color(0xFFE0533D),
                 onClick = {
-                    if (room.chatType == ChatType.Dm) {
+                    if (room.chatType == ChatType.Dm && room.canDeleteForBoth) {
                         eventSink(RoomListEvent.DeleteRoomForBoth(room.roomId))
                     } else {
                         eventSink(RoomListEvent.DeleteRoom(room.roomId))

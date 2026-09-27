@@ -61,6 +61,9 @@ data class RoomListRoomSummary(
     val typing: TypingPreview? = null,
     // Правка форка: последнее событие служебное (вход, смена имени…) — в «Избранном» его не показываем.
     val isLatestEventService: Boolean = false,
+    // Правка форка: «удалить у обоих» — только ЛС с человеком с нашего сервера (серверный purge
+    // чужой сервер не достаёт). Проставляет пресентер.
+    val canDeleteForBoth: Boolean = false,
 ) {
     val isMuted = userDefinedNotificationMode == RoomNotificationMode.MUTE
 

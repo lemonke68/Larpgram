@@ -944,8 +944,11 @@ class RoomListPresenterTest {
             client = client,
             sessionCoroutineScope = backgroundScope,
         ),
-        keyEscrowService = keyEscrowService,
-        snackbarDispatcher = snackbarDispatcher,
+        deleteForBothScheduler = DeleteForBothScheduler(
+            keyEscrowService = keyEscrowService,
+            snackbarDispatcher = snackbarDispatcher,
+            sessionCoroutineScope = backgroundScope,
+        ),
         draftPreviews = draftPreviews,
         typingTracker = RoomListTypingTracker(client),
         dateFormatter = FakeDateFormatter(),
