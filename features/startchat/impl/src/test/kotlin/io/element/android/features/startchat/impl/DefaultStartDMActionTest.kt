@@ -13,16 +13,13 @@ import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.CreatedRoom
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.enterprise.test.FakeSessionEnterpriseService
-import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.FakeMatrixClient
-import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.test.FakeAnalyticsService
@@ -72,24 +69,19 @@ class DefaultStartDMActionTest {
         assertThat(analyticsService.capturedEvents).containsExactly(CreatedRoom(isDM = true))
     }
 
+    // Правка форка: без листа подтверждения — несуществующая ЛС создаётся сразу.
     @Test
-    fun `when dm is not found, and createIfDmDoesNotExist is false, assert dm is not created and state is updated to confirmation state`() = runTest {
-        val encryptionService = FakeEncryptionService(
-            getUserIdentityResult = { Result.success(null) }
-        )
-        val matrixClient = FakeMatrixClient(
-            encryptionService = encryptionService
-        ).apply {
+    fun `when dm is not found, and createIfDmDoesNotExist is false, assert dm is created right away`() = runTest {
+        val matrixClient = FakeMatrixClient().apply {
             givenFindDmResult(Result.success(null))
             givenCreateDmResult(Result.success(A_ROOM_ID))
         }
         val analyticsService = FakeAnalyticsService()
         val action = createStartDMAction(matrixClient, analyticsService)
         val state = mutableStateOf<AsyncAction<RoomId>>(AsyncAction.Uninitialized)
-        val matrixUser = aMatrixUser()
-        action.execute(matrixUser, false, state)
-        assertThat(state.value).isEqualTo(ConfirmingStartDmWithMatrixUser(matrixUser, isUserIdentityUnknown = true))
-        assertThat(analyticsService.capturedEvents).isEmpty()
+        action.execute(aMatrixUser(), false, state)
+        assertThat(state.value).isEqualTo(AsyncAction.Success(A_ROOM_ID))
+        assertThat(analyticsService.capturedEvents).containsExactly(CreatedRoom(isDM = true))
     }
 
     @Test
@@ -104,25 +96,6 @@ class DefaultStartDMActionTest {
         action.execute(aMatrixUser(), true, state)
         assertThat(state.value).isEqualTo(AsyncAction.Failure(AN_EXCEPTION))
         assertThat(analyticsService.capturedEvents).isEmpty()
-    }
-
-    @Test
-    fun `when user identity fetched and identity unknown`() = runTest {
-        val getUserIdentityResult = lambdaRecorder<UserId, Result<IdentityState?>> { _ -> Result.success(null) }
-        val encryptionService = FakeEncryptionService(getUserIdentityResult = getUserIdentityResult)
-        val matrixClient = FakeMatrixClient(encryptionService = encryptionService).apply {
-            givenFindDmResult(Result.success(null))
-        }
-
-        val action = createStartDMAction(
-            matrixClient = matrixClient,
-        )
-        val state = mutableStateOf<AsyncAction<RoomId>>(AsyncAction.Uninitialized)
-
-        action.execute(aMatrixUser(), false, state)
-
-        getUserIdentityResult.assertions().isCalledOnce()
-        assertThat(state.value).isEqualTo(ConfirmingStartDmWithMatrixUser(aMatrixUser(), isUserIdentityUnknown = true))
     }
 
     @Test

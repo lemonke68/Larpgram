@@ -12,7 +12,6 @@ import androidx.compose.runtime.MutableState
 import dev.zacsweers.metro.ContributesBinding
 import im.vector.app.features.analytics.plan.CreatedRoom
 import io.element.android.features.enterprise.api.SessionEnterpriseService
-import io.element.android.features.startchat.api.ConfirmingStartDmWithMatrixUser
 import io.element.android.features.startchat.api.StartDMAction
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.di.SessionScope
@@ -50,11 +49,9 @@ class DefaultStartDMAction(
                 actionState.value = AsyncAction.Failure(result.throwable)
             }
             StartDMResult.DmDoesNotExist -> {
-                val identityState = matrixClient.encryptionService.getUserIdentity(matrixUser.userId, fallbackToServer = false).getOrNull()
-                actionState.value = ConfirmingStartDmWithMatrixUser(
-                    matrixUser = matrixUser,
-                    isUserIdentityUnknown = identityState == null
-                )
+                // Правка форка: как в Telegram, чат открывается сразу, без листа Element
+                // «Начать чат с этим новым контактом?».
+                execute(matrixUser, createIfDmDoesNotExist = true, actionState = actionState)
             }
         }
     }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Правка форка: русские строки Element, заменённые на формулировки Telegram (аудит 2026-09-27,
+  A-007/A-011/A-013/A-020/A-024/A-026). Ресурсы приложения перекрывают библиотечные, поэтому
+  translations.xml апстрима не трогаем.
+-->
+<resources>
+    <string name="action_edit">Изменить</string>
+    <string name="common_edited_suffix">изменено</string>
+    <string name="screen_create_room_room_access_section_public_option_description">Кто угодно может присоединиться.</string>
+    <string name="action_invite_friends">Добавить участников</string>
+    <string name="screen_create_room_add_people_title">Добавить участников</string>
+    <string name="screen_room_details_invite_people_title">Добавить участников</string>
+    <string name="screen_room_details_edit_room_title">Изменить</string>
+    <string name="screen_room_change_permissions_room_details">Изменение информации</string>
+    <string name="common_topic">Описание</string>
+    <string name="common_topic_placeholder">Описание</string>
+    <string name="screen_create_poll_max_selections_headline">Голосов на человека</string>
+</resources>

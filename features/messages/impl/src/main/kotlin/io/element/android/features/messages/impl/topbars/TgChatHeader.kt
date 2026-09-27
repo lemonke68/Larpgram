@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -41,7 +42,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.MessagesEvent
@@ -121,10 +121,17 @@ internal fun TgChatHeader(
                     ),
                     forcedAvatarSize = 36.dp,
                 )
+                // Размеры текста в dp, как у TG (`AndroidUtilities.dp`): крупный системный шрифт
+                // не раздувает пилюлю, и «был(а) вчера в 23:59» влезает.
+                val density = LocalDensity.current
+                val nameSize = with(density) { 17.dp.toSp() }
+                val nameLineHeight = with(density) { 20.dp.toSp() }
+                val subtitleSize = with(density) { 13.dp.toSp() }
+                val subtitleLineHeight = with(density) { 16.dp.toSp() }
                 Column(modifier = Modifier.padding(start = 8.dp)) {
                     Text(
                         text = state.roomName ?: stringResource(CommonStrings.common_no_room_name),
-                        style = ElementTheme.typography.fontBodyLgMedium.copy(fontSize = 17.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
+                        style = ElementTheme.typography.fontBodyLgMedium.copy(fontSize = nameSize, lineHeight = nameLineHeight, fontWeight = FontWeight.Medium),
                         color = ElementTheme.colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -132,7 +139,7 @@ internal fun TgChatHeader(
                     if (subtitle != null) {
                         Text(
                             text = subtitle.text,
-                            style = ElementTheme.typography.fontBodySmRegular.copy(fontSize = 13.sp, lineHeight = 16.sp),
+                            style = ElementTheme.typography.fontBodySmRegular.copy(fontSize = subtitleSize, lineHeight = subtitleLineHeight),
                             color = if (subtitle.isAccent) ElementTheme.colors.textActionAccent else ElementTheme.colors.textSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
