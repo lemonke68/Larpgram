@@ -31,6 +31,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,11 +56,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -820,41 +823,51 @@ private fun TabBar(
             add(AttachTab({ CompoundIcons.TextFormatting() }, R.string.larpgram_attach_tab_format, TgAttachAction.TextFormatting))
         }
     }
-    Row(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
             .height(TAB_BAR_HEIGHT)
             .tgGlass(RoundedCornerShape(TAB_BAR_HEIGHT / 2))
             .padding(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        tabs.forEach { tab ->
-            val isSelected = tab.action == null
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(TAB_BAR_HEIGHT / 2))
-                    .background(if (isSelected) ElementTheme.colors.bgSubtleSecondary else Color.Transparent)
-                    .clickable { tab.action?.let(onAction) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                val tint = if (isSelected) ElementTheme.colors.textActionAccent else ElementTheme.colors.iconPrimary
-                Icon(
-                    modifier = Modifier.size(24.dp),
-                    imageVector = tab.icon(),
-                    contentDescription = null,
-                    tint = tint,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = stringResource(tab.label),
-                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
-                    color = if (isSelected) ElementTheme.colors.textActionAccent else ElementTheme.colors.textPrimary,
-                    maxLines = 1,
-                )
+        // Ширина вкладки — по подписи, а не поровну: «Геопозиция» не влезала в пятую часть полосы.
+        // Не влезают все (крупный системный шрифт) — полоса листается вбок, как в Telegram.
+        Row(
+            modifier = Modifier
+                .fillMaxHeight()
+                .horizontalScroll(rememberScrollState())
+                .widthIn(min = maxWidth),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            tabs.forEach { tab ->
+                val isSelected = tab.action == null
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(TAB_BAR_HEIGHT / 2))
+                        .background(if (isSelected) ElementTheme.colors.bgSubtleSecondary else Color.Transparent)
+                        .clickable { tab.action?.let(onAction) }
+                        .padding(horizontal = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    val tint = if (isSelected) ElementTheme.colors.textActionAccent else ElementTheme.colors.iconPrimary
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = tab.icon(),
+                        contentDescription = null,
+                        tint = tint,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(tab.label),
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        color = if (isSelected) ElementTheme.colors.textActionAccent else ElementTheme.colors.textPrimary,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
