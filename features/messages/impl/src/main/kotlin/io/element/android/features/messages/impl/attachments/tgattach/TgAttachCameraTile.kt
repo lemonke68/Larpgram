@@ -9,6 +9,8 @@ package io.element.android.features.messages.impl.attachments.tgattach
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -61,12 +63,20 @@ internal fun TgAttachCameraTile(
     OnLifecycleEvent { _, event ->
         if (event == Lifecycle.Event.ON_RESUME) hasPermission = hasCameraPermission()
     }
+    // Правка форка: без разрешения тап сначала просит камеру (живое превью появится сразу), а
+    // плитка не чёрная, а нейтральная — чёрный квадрат выглядел как сломанный (аудит A-015).
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        hasPermission = granted
+    }
     Box(
         modifier = modifier
             // TextureView превью иначе выглядывает за край плитки.
             .clipToBounds()
-            .background(Color.Black)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .background(if (hasPermission) Color.Black else Color(0xFF3A3A3C))
+            .combinedClickable(
+                onClick = { if (hasPermission) onClick() else permissionLauncher.launch(Manifest.permission.CAMERA) },
+                onLongClick = onLongClick,
+            ),
     ) {
         if (hasPermission && !LocalInspectionMode.current) {
             CameraPreview(Modifier.fillMaxSize())
