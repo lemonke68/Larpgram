@@ -66,6 +66,16 @@ object TgSettingsColors {
     val Gray = Color(0xFF8A8A90)
 }
 
+/** Фон страницы настроек TG: в светлой теме серый (`windowBackgroundGray`), карточки на нём белые. */
+@Composable
+fun tgSettingsPageColor(): Color =
+    if (ElementTheme.isLightTheme) Color(0xFFF0F0F0) else ElementTheme.colors.bgCanvasDefault
+
+/** Фон карточки настроек: белый на сером в светлой теме, приглушённый в тёмной. */
+@Composable
+fun tgSettingsCardColor(): Color =
+    if (ElementTheme.isLightTheme) Color.White else ElementTheme.colors.bgSubtleSecondary
+
 /**
  * Скруглённая карточка-группа: соседние [TgSettingsItem] лежат внутри одной карточки,
  * между карточками — вертикальный зазор. Аналог секций в TG-настройках.
@@ -80,7 +90,7 @@ fun ColumnScope.TgSettingsGroup(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(ElementTheme.colors.bgSubtleSecondary)
+            .background(tgSettingsCardColor())
             .padding(vertical = 4.dp),
         content = content,
     )

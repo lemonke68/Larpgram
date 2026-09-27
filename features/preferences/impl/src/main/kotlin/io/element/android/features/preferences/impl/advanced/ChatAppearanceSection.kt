@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -426,11 +427,14 @@ private fun RowStyleCard(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Одна строка: при крупном системном шрифте «Двустрочный» рвался посреди слова.
             Text(
                 modifier = Modifier.weight(1f),
                 text = label,
-                style = ElementTheme.typography.fontBodyMdMedium,
+                style = ElementTheme.typography.fontBodySmMedium,
                 color = ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Box(
                 modifier = Modifier

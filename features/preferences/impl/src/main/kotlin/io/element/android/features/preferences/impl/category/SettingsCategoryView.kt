@@ -32,6 +32,7 @@ import io.element.android.features.preferences.impl.root.SettingsCategory
 import io.element.android.features.preferences.impl.root.TgSettingsColors
 import io.element.android.features.preferences.impl.root.TgSettingsGroup
 import io.element.android.features.preferences.impl.root.TgSettingsItem
+import io.element.android.features.preferences.impl.root.tgSettingsPageColor
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.components.preferences.PreferencePage
 import io.element.android.libraries.designsystem.theme.components.ListItemStyle
@@ -61,6 +62,7 @@ fun SettingsCategoryView(
         modifier = modifier,
         onBackClick = onBackClick,
         title = category.title,
+        containerColor = tgSettingsPageColor(),
     ) {
         when (category) {
             SettingsCategory.Account -> AccountCategory(

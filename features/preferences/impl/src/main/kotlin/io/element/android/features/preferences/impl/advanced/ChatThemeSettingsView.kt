@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.element.android.features.preferences.impl.R
+import io.element.android.features.preferences.impl.root.tgSettingsPageColor
 import io.element.android.libraries.designsystem.components.preferences.PreferencePage
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -26,6 +27,7 @@ fun ChatThemeSettingsView(
         modifier = modifier,
         onBackClick = onBackClick,
         title = stringResource(R.string.screen_chat_theme_settings_title),
+        containerColor = tgSettingsPageColor(),
     ) {
         ChatThemeSection(state)
     }

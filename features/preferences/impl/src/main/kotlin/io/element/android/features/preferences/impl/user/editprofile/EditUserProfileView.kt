@@ -140,7 +140,8 @@ fun EditUserProfileView(
             )
             Spacer(modifier = Modifier.height(16.dp))
             TextField(
-                label = stringResource(CommonStrings.common_about),
+                // Правка форка: поле «О себе», а не «О приложении» (common_about).
+                label = stringResource(CommonStrings.larpgram_profile_about_label),
                 value = state.bio,
                 singleLine = false,
                 minLines = 2,

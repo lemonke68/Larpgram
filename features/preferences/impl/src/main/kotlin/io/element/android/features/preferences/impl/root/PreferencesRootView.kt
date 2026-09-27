@@ -80,7 +80,8 @@ fun PreferencesRootView(
         PreferencePage(
             onBackClick = onBackClick,
             title = stringResource(id = CommonStrings.common_settings),
-            snackbarHost = { SnackbarHost(snackbarHostState) }
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = tgSettingsPageColor(),
         ) {
             // Правка форка: шапка TG — крупный аватар с камерой, имя и @имя по центру.
             TgSettingsProfileHeader(

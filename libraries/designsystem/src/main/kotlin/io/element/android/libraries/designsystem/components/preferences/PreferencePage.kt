@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +43,8 @@ fun PreferencePage(
     onBackClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     snackbarHost: @Composable () -> Unit = {},
+    // Правка форка: фон страницы (TG-настройки: серая страница, белые карточки в светлой теме).
+    containerColor: Color = ElementTheme.colors.bgCanvasDefault,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
@@ -49,6 +52,7 @@ fun PreferencePage(
             .fillMaxSize()
             .imePadding(),
         contentWindowInsets = scaffoldScrollableContentInsets,
+        containerColor = containerColor,
         topBar = {
             PreferenceTopAppBar(
                 title = title,
