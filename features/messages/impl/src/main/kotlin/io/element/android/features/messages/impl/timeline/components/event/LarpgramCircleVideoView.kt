@@ -8,17 +8,22 @@ package io.element.android.features.messages.impl.timeline.components.event
 
 import android.view.TextureView
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -26,7 +31,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -34,13 +43,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.protection.ProtectedView
 import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.ui.strings.CommonStrings
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 /**
  * Кружочек в таймлайне: квадратное видео, обрезанное в круг.
@@ -114,6 +127,29 @@ fun LarpgramCircleVideoView(
             }
         }
     }
+    // Правка форка: длительность и кольцо прогресса, как у кружочка в Telegram (аудит A-021).
+    // Пока играет со звуком — остаток времени и кольцо по краю; иначе — полная длительность.
+    val totalMs = content.duration.inWholeMilliseconds
+    var progress by remember(content.mediaSource) { mutableFloatStateOf(0f) }
+    var remainingMs by remember(content.mediaSource) { mutableLongStateOf(totalMs) }
+    LaunchedEffect(player, withSound, isPaused) {
+        if (player == null || !withSound || isPaused) {
+            if (!withSound) {
+                progress = 0f
+                remainingMs = totalMs
+            }
+            return@LaunchedEffect
+        }
+        while (isActive) {
+            val duration = player.duration.takeIf { it > 0 } ?: totalMs
+            if (duration > 0) {
+                progress = (player.currentPosition.toFloat() / duration).coerceIn(0f, 1f)
+                remainingMs = (duration - player.currentPosition).coerceAtLeast(0)
+            }
+            delay(100)
+        }
+    }
+
     // Пока файл не скачался, показываем обложку: чёрный круг вместо кружочка выглядит
     // как поломка (на этом уже обжигались, когда не было thumbnail).
     val showVideo = isPlaying && player != null
@@ -220,7 +256,39 @@ fun LarpgramCircleVideoView(
                 )
             }
         }
+        if (withSound && progress > 0f) {
+            Canvas(modifier = Modifier.matchParentSize()) {
+                val stroke = 3.dp.toPx()
+                drawArc(
+                    color = Color.White,
+                    startAngle = -90f,
+                    sweepAngle = 360f * progress,
+                    useCenter = false,
+                    topLeft = Offset(stroke / 2, stroke / 2),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
+        if (totalMs > 0) {
+            Text(
+                modifier = Modifier
+                    // Слева снизу, как в Telegram: справа снизу — плашка времени отправки.
+                    .align(Alignment.BottomStart)
+                    .padding(start = 28.dp, bottom = 14.dp)
+                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                text = formatCircleDuration(remainingMs),
+                style = ElementTheme.typography.fontBodyXsMedium,
+                color = Color.White,
+            )
+        }
     }
+}
+
+private fun formatCircleDuration(ms: Long): String {
+    val totalSeconds = (ms + 999) / 1000
+    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
 }
 
 /** Как в Telegram: кружок занимает заметную, но не всю ширину. */
