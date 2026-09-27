@@ -85,6 +85,17 @@ class AndroidMediaPreProcessor(
         runCatchingExceptions {
             val resolvedMimeType = mimeType.ensureDefaultSubtype()
             val result = when {
+                // Правка форка: «Файл» — документ, без превращения в фото/видео. matrix-sdk сам
+                // выбирает msgtype по mime (image/* → m.image даже через sendFile), поэтому медиа
+                // уходит как application/octet-stream; тип остаётся в расширении имени файла.
+                mediaOptimizationConfig.sendAsFile -> processFile(
+                    uri = uri,
+                    mimeType = if (resolvedMimeType.isMimeTypeImage() || resolvedMimeType.isMimeTypeVideo() || resolvedMimeType.isMimeTypeAudio()) {
+                        MimeTypes.OctetStream
+                    } else {
+                        resolvedMimeType
+                    },
+                )
                 resolvedMimeType == MimeTypes.Svg -> processSvgImage(uri, resolvedMimeType)
                 resolvedMimeType.isMimeTypeImage() -> {
                     val imageMimeType = resolveImageMimeType(uri, mimeType).ensureDefaultSubtype()

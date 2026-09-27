@@ -14,6 +14,11 @@ import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 data class MediaOptimizationConfig(
     val compressImages: Boolean,
     val videoCompressionPreset: VideoCompressionPreset,
+    /**
+     * Правка форка: отправить как документ (`m.file`) с настоящим mime, без обработки картинки или
+     * видео — как вкладка «Файл» в Telegram. Раньше JPG из «Файла» уходил сжатым фото (A-016).
+     */
+    val sendAsFile: Boolean = false,
 )
 
 fun VideoCompressionPreset.compressorHelper(): VideoCompressorHelper = when (this) {

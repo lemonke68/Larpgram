@@ -236,12 +236,14 @@ class AttachmentsPreviewPresenter(
                 is AttachmentsPreviewEvent.SendAttachment -> {
                     ongoingSendAttachmentJob.value = coroutineScope.launch {
                         if (preprocessMediaJob?.isActive != true && sendActionState.value !is SendActionState.Sending.ReadyToUpload) {
-                            val configs = mediaOptimizationSelectorStates.map {
+                            val configs = mediaOptimizationSelectorStates.mapIndexed { index, it ->
                                 MediaOptimizationConfig(
                                     compressImages = it.isImageOptimizationEnabled
                                         ?: mediaOptimizationConfigProvider.get().compressImages,
                                     videoCompressionPreset = it.selectedVideoPreset
                                         ?: mediaOptimizationConfigProvider.get().videoCompressionPreset,
+                                    // Правка форка: из «Файла» — документом (m.file).
+                                    sendAsFile = (editedAttachments.getOrNull(index) as? Attachment.Media)?.sendAsFile == true,
                                 )
                             }
                             preprocessMediaJob = coroutineScope.launch(dispatchers.io) {
@@ -458,6 +460,7 @@ class AttachmentsPreviewPresenter(
             MediaOptimizationConfig(
                 compressImages = false,
                 videoCompressionPreset = videoCompressionPreset,
+                sendAsFile = true,
             )
         } else {
             MediaOptimizationConfig(

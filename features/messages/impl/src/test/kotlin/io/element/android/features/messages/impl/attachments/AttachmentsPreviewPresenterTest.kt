@@ -703,6 +703,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
                 config = MediaOptimizationConfig(
                     compressImages = false,
                     videoCompressionPreset = VideoCompressionPreset.HIGH,
+                    sendAsFile = true,
                 )
             ),
         )
@@ -713,6 +714,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
                 MediaOptimizationConfig(
                     compressImages = false,
                     videoCompressionPreset = VideoCompressionPreset.HIGH,
+                    sendAsFile = true,
                 )
             )
         }
@@ -880,6 +882,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
                 MediaOptimizationConfig(
                     compressImages = false,
                     videoCompressionPreset = VideoCompressionPreset.STANDARD,
+                    sendAsFile = true,
                 )
             )
         }
