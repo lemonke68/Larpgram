@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
+import io.element.android.features.preferences.impl.R
 import io.element.android.features.preferences.impl.advanced.aAdvancedSettingsState
 import io.element.android.features.preferences.impl.root.PreferencesRootState
 import io.element.android.features.preferences.impl.root.SettingsCategory
@@ -47,7 +48,7 @@ class SettingsCategoryViewTest : RobolectricTest() {
         val user = aMatrixUser()
         ensureCalledOnceWithParam(user) { callback ->
             setView(SettingsCategory.Account, aPreferencesRootState(myUser = user), onOpenUserProfile = callback)
-            onNodeWithText("Изменить профиль").performClick()
+            onNodeWithText(activity!!.getString(R.string.larpgram_settings_edit_profile)).performClick()
         }
     }
 

@@ -18,4 +18,29 @@
     <string name="screen_chat_appearance_gradient_color_1">Цвет 1</string>
     <string name="screen_chat_appearance_gradient_color_2">Цвет 2</string>
     <string name="screen_chat_appearance_gradient_angle">Угол: %1$d°</string>
+    <!-- Категории корня настроек (SettingsCategory). -->
+    <string name="larpgram_settings_account_title">Аккаунт</string>
+    <string name="larpgram_settings_account_subtitle">Профиль, аккаунт на сервере, выход</string>
+    <string name="larpgram_settings_chats_title">Настройки чатов</string>
+    <string name="larpgram_settings_chats_subtitle">Обои, оформление, анимации</string>
+    <string name="larpgram_settings_privacy_title">Конфиденциальность</string>
+    <string name="larpgram_settings_privacy_subtitle">Устройства, ключи доступа, блокировки</string>
+    <string name="larpgram_settings_notifications_title">Уведомления</string>
+    <string name="larpgram_settings_notifications_subtitle">Звуки, звонки, счётчик сообщений</string>
+    <string name="larpgram_settings_data_title">Данные и память</string>
+    <string name="larpgram_settings_data_subtitle">Настройки загрузки медиафайлов</string>
+    <string name="larpgram_settings_folders_title">Папки с чатами</string>
+    <string name="larpgram_settings_folders_subtitle">Сортировка чатов по папкам</string>
+    <string name="larpgram_settings_devices_title">Устройства</string>
+    <string name="larpgram_settings_devices_subtitle">Управление активными сеансами</string>
+    <string name="larpgram_settings_power_title">Энергосбережение</string>
+    <string name="larpgram_settings_power_subtitle">Экономия энергии при низком заряде</string>
+    <string name="larpgram_settings_language_title">Язык</string>
+    <string name="larpgram_settings_language_subtitle">Язык интерфейса</string>
+    <string name="larpgram_settings_edit_profile">Изменить профиль</string>
+    <string name="larpgram_settings_edit_profile_subtitle">Имя, аватар, «О себе»</string>
+    <string name="larpgram_settings_lock_subtitle">Код-пароль и биометрия</string>
+    <string name="larpgram_settings_encryption_subtitle">Резервные ключи, безопасный бэкап</string>
+    <string name="larpgram_settings_analytics_subtitle">Отправка обезличенных данных</string>
+    <string name="larpgram_settings_soon">Скоро</string>
 </resources>

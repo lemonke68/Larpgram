@@ -146,8 +146,8 @@ private fun ColumnScope.CategoriesSection(
     TgSettingsGroup {
         SettingsCategory.entries.filter { it.isAvailable }.forEach { category ->
             TgSettingsItem(
-                title = category.title,
-                subtitle = category.subtitle,
+                title = stringResource(category.titleRes),
+                subtitle = stringResource(category.subtitleRes),
                 color = category.color,
                 iconVector = category.icon,
                 trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),

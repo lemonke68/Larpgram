@@ -9,9 +9,11 @@
 package io.element.android.features.preferences.impl.root
 
 import android.os.Build
+import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.preferences.impl.R
 
 /**
  * TG-стиль настроек, Ф2: верхний уровень настроек — это список категорий, каждая ведёт в
@@ -20,53 +22,53 @@ import io.element.android.compound.tokens.generated.CompoundIcons
  * а где у Element нет бэкенда — экран-заглушка «скоро».
  */
 enum class SettingsCategory(
-    val title: String,
-    val subtitle: String,
+    @StringRes val titleRes: Int,
+    @StringRes val subtitleRes: Int,
     val colorHex: Long,
 ) {
     Account(
-        title = "Аккаунт",
-        subtitle = "Номер, имя пользователя, «О себе»",
+        titleRes = R.string.larpgram_settings_account_title,
+        subtitleRes = R.string.larpgram_settings_account_subtitle,
         colorHex = 0xFF3478F6,
     ),
     Chats(
-        title = "Настройки чатов",
-        subtitle = "Обои, оформление, анимации",
+        titleRes = R.string.larpgram_settings_chats_title,
+        subtitleRes = R.string.larpgram_settings_chats_subtitle,
         colorHex = 0xFFF3A33B,
     ),
     Privacy(
-        title = "Конфиденциальность",
-        subtitle = "Устройства, ключи доступа, блокировки",
+        titleRes = R.string.larpgram_settings_privacy_title,
+        subtitleRes = R.string.larpgram_settings_privacy_subtitle,
         colorHex = 0xFF4CB050,
     ),
     Notifications(
-        title = "Уведомления",
-        subtitle = "Звуки, звонки, счётчик сообщений",
+        titleRes = R.string.larpgram_settings_notifications_title,
+        subtitleRes = R.string.larpgram_settings_notifications_subtitle,
         colorHex = 0xFFEB5545,
     ),
     Data(
-        title = "Данные и память",
-        subtitle = "Настройки загрузки медиафайлов",
+        titleRes = R.string.larpgram_settings_data_title,
+        subtitleRes = R.string.larpgram_settings_data_subtitle,
         colorHex = 0xFF29B6D8,
     ),
     Folders(
-        title = "Папки с чатами",
-        subtitle = "Сортировка чатов по папкам",
+        titleRes = R.string.larpgram_settings_folders_title,
+        subtitleRes = R.string.larpgram_settings_folders_subtitle,
         colorHex = 0xFF3478F6,
     ),
     Devices(
-        title = "Устройства",
-        subtitle = "Управление активными сеансами",
+        titleRes = R.string.larpgram_settings_devices_title,
+        subtitleRes = R.string.larpgram_settings_devices_subtitle,
         colorHex = 0xFF37AEA0,
     ),
     Power(
-        title = "Энергосбережение",
-        subtitle = "Экономия энергии при низком заряде",
+        titleRes = R.string.larpgram_settings_power_title,
+        subtitleRes = R.string.larpgram_settings_power_subtitle,
         colorHex = 0xFFF3A33B,
     ),
     Language(
-        title = "Язык",
-        subtitle = "Язык интерфейса",
+        titleRes = R.string.larpgram_settings_language_title,
+        subtitleRes = R.string.larpgram_settings_language_subtitle,
         colorHex = 0xFF8E64E8,
     );
 

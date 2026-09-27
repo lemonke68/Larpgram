@@ -38,4 +38,30 @@
     <string name="screen_chat_appearance_gradient_color_2">Colour 2</string>
     <!-- Gradient wallpaper editor: angle in degrees. %1$d is the angle. -->
     <string name="screen_chat_appearance_gradient_angle">Angle: %1$d°</string>
+    <!-- Категории корня настроек (SettingsCategory). -->
+    <string name="larpgram_settings_account_title">Account</string>
+    <string name="larpgram_settings_account_subtitle">Profile, account on the server, sign out</string>
+    <string name="larpgram_settings_chats_title">Chat Settings</string>
+    <string name="larpgram_settings_chats_subtitle">Wallpapers, appearance, animations</string>
+    <string name="larpgram_settings_privacy_title">Privacy and Security</string>
+    <string name="larpgram_settings_privacy_subtitle">Devices, passkeys, blocked users</string>
+    <string name="larpgram_settings_notifications_title">Notifications</string>
+    <string name="larpgram_settings_notifications_subtitle">Sounds, calls, message counter</string>
+    <string name="larpgram_settings_data_title">Data and Storage</string>
+    <string name="larpgram_settings_data_subtitle">Media download settings</string>
+    <string name="larpgram_settings_folders_title">Chat Folders</string>
+    <string name="larpgram_settings_folders_subtitle">Sort chats into folders</string>
+    <string name="larpgram_settings_devices_title">Devices</string>
+    <string name="larpgram_settings_devices_subtitle">Manage active sessions</string>
+    <string name="larpgram_settings_power_title">Power Saving</string>
+    <string name="larpgram_settings_power_subtitle">Save energy on low battery</string>
+    <string name="larpgram_settings_language_title">Language</string>
+    <string name="larpgram_settings_language_subtitle">Interface language</string>
+    <!-- Экраны категорий настроек. -->
+    <string name="larpgram_settings_edit_profile">Edit profile</string>
+    <string name="larpgram_settings_edit_profile_subtitle">Name, avatar, bio</string>
+    <string name="larpgram_settings_lock_subtitle">Passcode and biometrics</string>
+    <string name="larpgram_settings_encryption_subtitle">Recovery keys, secure backup</string>
+    <string name="larpgram_settings_analytics_subtitle">Sending anonymous data</string>
+    <string name="larpgram_settings_soon">Soon</string>
 </resources>

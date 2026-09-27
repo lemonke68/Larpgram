@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.preferences.impl.R
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsState
 import io.element.android.features.preferences.impl.advanced.AppearanceThemeItem
 import io.element.android.features.preferences.impl.advanced.ChatAppearanceSection
@@ -61,7 +62,7 @@ fun SettingsCategoryView(
     PreferencePage(
         modifier = modifier,
         onBackClick = onBackClick,
-        title = category.title,
+        title = stringResource(category.titleRes),
         containerColor = tgSettingsPageColor(),
     ) {
         when (category) {
@@ -112,8 +113,8 @@ private fun ColumnScope.AccountCategory(
 ) {
     TgSettingsGroup {
         TgSettingsItem(
-            title = "Изменить профиль",
-            subtitle = "Имя, аватар, «О себе»",
+            title = stringResource(R.string.larpgram_settings_edit_profile),
+            subtitle = stringResource(R.string.larpgram_settings_edit_profile_subtitle),
             color = TgSettingsColors.Blue,
             iconVector = CompoundIcons.UserProfile(),
             onClick = { onOpenUserProfile(state.myUser) },
@@ -170,7 +171,7 @@ private fun ColumnScope.PrivacyCategory(
     TgSettingsGroup {
         TgSettingsItem(
             title = stringResource(id = CommonStrings.common_screen_lock),
-            subtitle = "Код-пароль и биометрия",
+            subtitle = stringResource(R.string.larpgram_settings_lock_subtitle),
             color = TgSettingsColors.Orange,
             iconVector = CompoundIcons.Lock(),
             onClick = onOpenLockScreenSettings,
@@ -178,7 +179,7 @@ private fun ColumnScope.PrivacyCategory(
         if (state.showSecureBackup) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_encryption),
-                subtitle = "Резервные ключи, безопасный бэкап",
+                subtitle = stringResource(R.string.larpgram_settings_encryption_subtitle),
                 color = TgSettingsColors.Green,
                 iconVector = CompoundIcons.Key(),
                 trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
@@ -197,7 +198,7 @@ private fun ColumnScope.PrivacyCategory(
         if (state.showAnalyticsSettings) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_analytics),
-                subtitle = "Отправка обезличенных данных",
+                subtitle = stringResource(R.string.larpgram_settings_analytics_subtitle),
                 color = TgSettingsColors.Cyan,
                 iconVector = CompoundIcons.Chart(),
                 onClick = onOpenAnalytics,
@@ -270,13 +271,13 @@ private fun ColumnScope.ComingSoonCategory(category: SettingsCategory) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = category.subtitle,
+            text = stringResource(category.subtitleRes),
             textAlign = TextAlign.Center,
             style = ElementTheme.typography.fontBodyLgMedium,
             color = ElementTheme.colors.textPrimary,
         )
         Text(
-            text = "Скоро",
+            text = stringResource(R.string.larpgram_settings_soon),
             textAlign = TextAlign.Center,
             style = ElementTheme.typography.fontBodyMdRegular,
             color = ElementTheme.colors.textSecondary,

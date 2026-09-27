@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.home.impl.R
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
@@ -93,8 +94,8 @@ internal const val INDETERMINATE_PROGRESS = -1f
 @Composable
 internal fun TgHintBannerPreview() = ElementPreview {
     TgHintBanner(
-        title = "Привяжите почту",
-        message = "Без неё не восстановить доступ, если забудете пароль.",
+        title = stringResource(R.string.larpgram_banner_email_title),
+        message = stringResource(R.string.larpgram_banner_email_message),
         onClick = {},
         onDismissClick = {},
     )

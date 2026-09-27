@@ -8,8 +8,10 @@ package io.element.android.features.home.impl.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.roomlist.UpdateBannerState
 import io.element.android.libraries.appupdate.api.UpdateInstallState
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -32,14 +34,14 @@ internal fun UpdateBanner(
 ) {
     val install = state.installState
     val (title, message) = when (install) {
-        UpdateInstallState.Idle -> "Вышло обновление Larpgram ${state.versionName}" to "Нажмите, чтобы обновить."
+        UpdateInstallState.Idle -> stringResource(R.string.larpgram_banner_update_title, state.versionName) to stringResource(R.string.larpgram_banner_update_message)
         is UpdateInstallState.Downloading -> {
             val percent = install.progress?.let { " ${(it * 100).toInt()}%" }.orEmpty()
-            "Загружаем обновление…$percent" to "После установки приложение откроется заново."
+            stringResource(R.string.larpgram_banner_update_downloading, percent) to stringResource(R.string.larpgram_banner_update_downloading_message)
         }
-        UpdateInstallState.WaitingForConfirmation -> "Подтвердите установку" to "Нажмите «Обновить» в окне Android."
-        UpdateInstallState.NeedsPermission -> "Разрешите установку обновлений" to "Включите «Разрешить из этого источника», вернитесь и нажмите сюда."
-        UpdateInstallState.Failed -> "Не удалось обновиться" to "Проверьте интернет и нажмите, чтобы попробовать снова."
+        UpdateInstallState.WaitingForConfirmation -> stringResource(R.string.larpgram_banner_update_confirm) to stringResource(R.string.larpgram_banner_update_confirm_message)
+        UpdateInstallState.NeedsPermission -> stringResource(R.string.larpgram_banner_update_permission) to stringResource(R.string.larpgram_banner_update_permission_message)
+        UpdateInstallState.Failed -> stringResource(R.string.larpgram_banner_update_failed) to stringResource(R.string.larpgram_banner_update_failed_message)
     }
     val isBusy = install is UpdateInstallState.Downloading
     TgHintBanner(

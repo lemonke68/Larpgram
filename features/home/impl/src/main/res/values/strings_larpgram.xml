@@ -22,4 +22,19 @@
     <!-- Roomless (gap D): a channel reads as "Unsubscribe". Key name predates the wording. -->
     <string name="screen_roomlist_leave_channel">Unsubscribe</string>
     <string name="screen_roomlist_block_user">Block</string>
+    <!-- Баннеры над списком чатов. -->
+    <string name="larpgram_banner_update_title">Larpgram %1$s is out</string>
+    <string name="larpgram_banner_update_message">Tap to update.</string>
+    <string name="larpgram_banner_update_downloading">Downloading the update…%1$s</string>
+    <string name="larpgram_banner_update_downloading_message">The app restarts after the installation.</string>
+    <string name="larpgram_banner_update_confirm">Confirm the installation</string>
+    <string name="larpgram_banner_update_confirm_message">Tap “Update” in the Android dialog.</string>
+    <string name="larpgram_banner_update_permission">Allow installing updates</string>
+    <string name="larpgram_banner_update_permission_message">Turn on “Allow from this source”, come back and tap here.</string>
+    <string name="larpgram_banner_update_failed">Could not update</string>
+    <string name="larpgram_banner_update_failed_message">Check the connection and tap to try again.</string>
+    <string name="larpgram_banner_email_title">Link an email</string>
+    <string name="larpgram_banner_email_message">Without it you cannot get back in if you forget the password. Tap to link it.</string>
+    <string name="larpgram_banner_sessions_title">Check your sessions</string>
+    <string name="larpgram_banner_sessions_message">There are other sign-ins to the account. Tap to end the ones you do not need.</string>
 </resources>

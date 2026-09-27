@@ -93,11 +93,11 @@ class PreferencesRootViewTest : RobolectricTest() {
         )
         SettingsCategory.entries.filter { it.isAvailable }.forEach { category ->
             // performScrollTo() throws if the node does not exist.
-            onNodeWithText(category.title).performScrollTo()
+            onNodeWithText(activity!!.getString(category.titleRes)).performScrollTo()
         }
         // Заглушек «Скоро» в списке нет.
-        onNodeWithText(SettingsCategory.Folders.title).assertDoesNotExist()
-        onNodeWithText(SettingsCategory.Power.title).assertDoesNotExist()
+        val hidden = listOf(SettingsCategory.Folders, SettingsCategory.Power).map { activity!!.getString(it.titleRes) }
+        hidden.forEach { title -> onNodeWithText(title).assertDoesNotExist() }
     }
 
     @Test
@@ -242,7 +242,7 @@ class PreferencesRootViewTest : RobolectricTest() {
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.clickOnCategory(category: SettingsCategory) {
-    onNodeWithText(category.title).performScrollTo().performClick()
+    onNodeWithText(activity!!.getString(category.titleRes)).performScrollTo().performClick()
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.clickOn(resId: Int) {

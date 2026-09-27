@@ -15,4 +15,18 @@
     <string name="screen_roomlist_leave_group">Выйти из группы</string>
     <string name="screen_roomlist_leave_channel">Отписаться</string>
     <string name="screen_roomlist_block_user">Заблокировать</string>
+    <string name="larpgram_banner_update_title">Вышло обновление Larpgram %1$s</string>
+    <string name="larpgram_banner_update_message">Нажмите, чтобы обновить.</string>
+    <string name="larpgram_banner_update_downloading">Загружаем обновление…%1$s</string>
+    <string name="larpgram_banner_update_downloading_message">После установки приложение откроется заново.</string>
+    <string name="larpgram_banner_update_confirm">Подтвердите установку</string>
+    <string name="larpgram_banner_update_confirm_message">Нажмите «Обновить» в окне Android.</string>
+    <string name="larpgram_banner_update_permission">Разрешите установку обновлений</string>
+    <string name="larpgram_banner_update_permission_message">Включите «Разрешить из этого источника», вернитесь и нажмите сюда.</string>
+    <string name="larpgram_banner_update_failed">Не удалось обновиться</string>
+    <string name="larpgram_banner_update_failed_message">Проверьте интернет и нажмите, чтобы попробовать снова.</string>
+    <string name="larpgram_banner_email_title">Привяжите почту</string>
+    <string name="larpgram_banner_email_message">Без неё не восстановить доступ, если забудете пароль. Нажмите, чтобы привязать.</string>
+    <string name="larpgram_banner_sessions_title">Проверьте свои сессии</string>
+    <string name="larpgram_banner_sessions_message">Есть и другие входы в аккаунт. Нажмите, чтобы завершить лишние.</string>
 </resources>
