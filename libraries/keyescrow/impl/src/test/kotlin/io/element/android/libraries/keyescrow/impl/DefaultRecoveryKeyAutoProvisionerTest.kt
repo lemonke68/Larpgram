@@ -8,6 +8,7 @@ package io.element.android.libraries.keyescrow.impl
 
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
+import io.element.android.libraries.matrix.api.encryption.RecoveryException
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
@@ -55,6 +56,60 @@ class DefaultRecoveryKeyAutoProvisionerTest {
     fun `nothing is reset when escrow is unreachable`() = runTest {
         val encryptionService = FakeEncryptionService(resetRecoveryKeyLambda = { error("must not reset") })
         encryptionService.recoveryStateStateFlow.value = RecoveryState.ENABLED
+        val escrow = FakeKeyEscrowService(hasStoredKeyResult = null)
+
+        createProvisioner(encryptionService, escrow).ensureProvisioned()
+
+        assertThat(escrow.storedKey).isNull()
+    }
+
+    @Test
+    fun `a stale escrowed key is removed when it does not unlock the session`() = runTest {
+        val encryptionService = FakeEncryptionService()
+        encryptionService.givenRecoverFailure(RecoveryException.SecretStorage("wrong key"))
+        encryptionService.recoveryStateStateFlow.value = RecoveryState.INCOMPLETE
+        var deleted = false
+        val escrow = FakeKeyEscrowService(
+            fetchSessionKeyLambda = { "OLD KEY" },
+            deleteStoredKeyLambda = {
+                deleted = true
+                true
+            },
+        )
+
+        createProvisioner(encryptionService, escrow).ensureProvisioned()
+
+        assertThat(deleted).isTrue()
+    }
+
+    @Test
+    fun `other recovery errors keep the escrowed key`() = runTest {
+        val encryptionService = FakeEncryptionService()
+        encryptionService.givenRecoverFailure(IllegalStateException("network"))
+        encryptionService.recoveryStateStateFlow.value = RecoveryState.INCOMPLETE
+        val escrow = FakeKeyEscrowService(
+            fetchSessionKeyLambda = { "KEY" },
+            deleteStoredKeyLambda = { error("must not delete") },
+        )
+
+        createProvisioner(encryptionService, escrow).ensureProvisioned()
+    }
+
+    @Test
+    fun `disabled recovery with a stored key gets a fresh key that overwrites the stale one`() = runTest {
+        val encryptionService = FakeEncryptionService(enableRecoveryLambda = { _, _ -> Result.success("NEW KEY") })
+        encryptionService.recoveryStateStateFlow.value = RecoveryState.DISABLED
+        val escrow = FakeKeyEscrowService(hasStoredKeyResult = true)
+
+        createProvisioner(encryptionService, escrow).ensureProvisioned()
+
+        assertThat(escrow.storedKey).isEqualTo("NEW KEY")
+    }
+
+    @Test
+    fun `disabled recovery is left alone when escrow is unreachable`() = runTest {
+        val encryptionService = FakeEncryptionService(enableRecoveryLambda = { _, _ -> error("must not enable") })
+        encryptionService.recoveryStateStateFlow.value = RecoveryState.DISABLED
         val escrow = FakeKeyEscrowService(hasStoredKeyResult = null)
 
         createProvisioner(encryptionService, escrow).ensureProvisioned()

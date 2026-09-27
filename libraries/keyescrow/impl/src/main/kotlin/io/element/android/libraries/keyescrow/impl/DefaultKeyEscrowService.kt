@@ -80,6 +80,16 @@ class DefaultKeyEscrowService(
         }
     }
 
+    override suspend fun deleteStoredKey(): Boolean {
+        val token = accessToken() ?: return false
+        val request = Request.Builder()
+            .url("$BASE_URL/key")
+            .header(HEADER_AUTH, "Bearer $token")
+            .delete()
+            .build()
+        return execute(request) { it.isSuccessful } ?: false
+    }
+
     override suspend fun requestCode(): RequestCodeResult {
         val token = accessToken() ?: return RequestCodeResult.NetworkError
         val request = Request.Builder()

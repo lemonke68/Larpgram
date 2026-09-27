@@ -18,6 +18,7 @@ class FakeKeyEscrowService(
     private val redeemCodeLambda: (String) -> RedeemResult = { RedeemResult.NetworkError },
     private val deleteDmForBothLambda: (RoomId) -> Boolean = { true },
     private val fetchSessionKeyLambda: () -> String? = { null },
+    private val deleteStoredKeyLambda: () -> Boolean = { true },
 ) : KeyEscrowService {
     var storedKey: String? = null
         private set
@@ -36,4 +37,6 @@ class FakeKeyEscrowService(
     override suspend fun fetchSessionKey(): String? = fetchSessionKeyLambda()
 
     override suspend fun deleteDmForBoth(roomId: RoomId): Boolean = deleteDmForBothLambda(roomId)
+
+    override suspend fun deleteStoredKey(): Boolean = deleteStoredKeyLambda()
 }

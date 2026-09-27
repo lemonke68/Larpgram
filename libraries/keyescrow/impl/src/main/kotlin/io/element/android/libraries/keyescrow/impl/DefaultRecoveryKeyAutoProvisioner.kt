@@ -13,6 +13,7 @@ import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.encryption.RecoveryException
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -44,10 +45,13 @@ class DefaultRecoveryKeyAutoProvisioner(
         } ?: return
         when (state) {
             // Свежий аккаунт без восстановления: создать ключ и заескроить.
+            // Если в escrow уже лежит ключ, а восстановление выключено, ключ протух: его сбросили
+            // в другом клиенте (Reset identity в Element). Создаём новый и перезаписываем.
             RecoveryState.DISABLED -> {
-                // Страховка: не перезатираем уже заескроенный ключ.
-                if (keyEscrowService.hasStoredKey() != false) return
-                Timber.d("Auto-provisioning recovery key for a fresh account")
+                // Сервер не ответил — не трогаем ничего, попробуем в следующий раз.
+                val hasStoredKey = keyEscrowService.hasStoredKey() ?: return
+                if (hasStoredKey) Timber.w("Escrowed recovery key is stale: recovery is disabled on the account")
+                Timber.d("Auto-provisioning recovery key")
                 encryptionService.enableRecovery(waitForBackupsToUpload = false)
                     .onSuccess { storeKey(it) }
                     .onFailure { Timber.w(it, "Авто-создание recovery ключа не удалось") }
@@ -59,7 +63,15 @@ class DefaultRecoveryKeyAutoProvisioner(
                 val key = keyEscrowService.fetchSessionKey() ?: return
                 Timber.d("Auto-unlocking a new session with the escrowed recovery key")
                 encryptionService.recover(key)
-                    .onFailure { Timber.w(it, "Авто-восстановление по escrow-ключу не удалось") }
+                    .onFailure { error ->
+                        Timber.w(error, "Авто-восстановление по escrow-ключу не удалось")
+                        // Ключ не подошёл: его сменили в другом клиенте. Убираем протухший, чтобы
+                        // после ручного подтверждения ветка ENABLED положила свежий.
+                        if (error is RecoveryException.SecretStorage) {
+                            Timber.w("Escrowed recovery key is stale, removing it")
+                            keyEscrowService.deleteStoredKey()
+                        }
+                    }
             }
             // Восстановление настроено, но ключ в escrow не попал (аккаунты до escrow): выпустить
             // новый ключ и заескроить, иначе следующая сессия снова упрётся в «подтвердите».

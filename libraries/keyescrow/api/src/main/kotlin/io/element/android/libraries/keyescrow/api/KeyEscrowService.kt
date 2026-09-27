@@ -34,6 +34,12 @@ interface KeyEscrowService {
     /** Залить ключ восстановления в хранилище, перезаписав прежний. */
     suspend fun store(recoveryKey: String): Result<Unit>
 
+    /**
+     * Удалить ключ из хранилища. Зовём, когда ключ оттуда не подошёл (его сменили или сбросили
+     * в другом клиенте): тогда после ручного подтверждения сессии провижинер положит свежий.
+     */
+    suspend fun deleteStoredKey(): Boolean
+
     /** Попросить сервер прислать 6-значный код на почту аккаунта. */
     suspend fun requestCode(): RequestCodeResult
 
