@@ -6,6 +6,7 @@
 
 package io.element.android.features.messages.impl.actionlist
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -30,6 +31,12 @@ class MessageActionsAnchor {
      * состоянию из презентера и координаты должны быть готовы к его компоновке.
      */
     var bubbleBounds: Rect? by mutableStateOf(null)
+
+    /**
+     * Правка форка: список ленты, чтобы перед меню выдвинуть пузырь из-под шапки. Пузырь в меню —
+     * снимок экрана, и шапка поверх пузыря попадала в снимок (находка сессии 2026-09-27, N-1).
+     */
+    var listState: LazyListState? = null
 
     fun register(id: String, layoutCoordinates: LayoutCoordinates) {
         coordinates[id] = layoutCoordinates

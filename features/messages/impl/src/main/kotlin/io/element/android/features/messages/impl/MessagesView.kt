@@ -14,6 +14,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +49,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -231,6 +234,8 @@ fun MessagesView(
     // Правка форка: якорь меню долгого нажатия. Пузыри регистрируют сюда координаты по id,
     // onMessageLongClick читает их. Объявлен до обработчика, чтобы тот его видел.
     val messageActionsAnchor = remember { MessageActionsAnchor() }
+    val anchorScope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     fun hidingKeyboard(block: () -> Unit) {
         localView.hideKeyboard()
@@ -253,6 +258,28 @@ fun MessagesView(
         // Правка форка: координаты пузыря для привязанного меню. Один общий обработчик на все
         // пути открытия, поэтому спрашиваем по id, а не ловим в колбэке конкретного нажатия.
         messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
+        // Правка форка: пузырь частично под шапкой — сначала выдвигаем его, как Telegram, иначе
+        // шапка попадает в снимок пузыря в меню.
+        val bounds = messageActionsAnchor.bubbleBounds
+        val listState = messageActionsAnchor.listState
+        val headerBottomPx = with(density) { (headerOverlayHeight + 8.dp).toPx() }
+        if (bounds != null && listState != null && bounds.top < headerBottomPx) {
+            anchorScope.launch {
+                // Лента перевёрнута (новые снизу): положительный сдвиг опускает содержимое.
+                listState.scrollBy(headerBottomPx - bounds.top)
+                withFrameNanos { }
+                messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
+                hidingKeyboard {
+                    state.actionListState.eventSink(
+                        ActionListEvent.ComputeForMessage(
+                            event = event,
+                            userEventPermissions = state.userEventPermissions,
+                        )
+                    )
+                }
+            }
+            return
+        }
         hidingKeyboard {
             state.actionListState.eventSink(
                 ActionListEvent.ComputeForMessage(
@@ -748,7 +775,11 @@ private fun MessagesViewContent(
                     stickerPackRequest = originalJson to stickerUrl
                 },
             ) {
+                // Правка форка: список ленты отдаём якорю меню долгого нажатия (см. onMessageLongClick).
+                val timelineListState = rememberLazyListState()
+                LocalMessageActionsAnchor.current?.listState = timelineListState
                 TimelineView(
+                    lazyListState = timelineListState,
                     state = state.timelineState,
                     timelineProtectionState = state.timelineProtectionState,
                     onUserDataClick = onUserDataClick,
