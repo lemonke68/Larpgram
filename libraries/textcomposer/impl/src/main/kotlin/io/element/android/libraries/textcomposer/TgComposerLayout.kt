@@ -132,7 +132,9 @@ internal fun TgStandardLayout(
                     TgComposerIconButton(
                         // Панель открыта — кнопка возвращает клавиатуру, как в Telegram.
                         imageVector = if (isMediaPanelOpen) CompoundIcons.Keyboard() else CompoundIcons.Reaction(),
-                        contentDescription = if (isMediaPanelOpen) "Клавиатура" else "Эмодзи и стикеры",
+                        contentDescription = stringResource(
+                            if (isMediaPanelOpen) R.string.larpgram_composer_keyboard else R.string.larpgram_composer_emoji_and_stickers
+                        ),
                         tint = iconTint,
                         onClick = { onStickerClick?.invoke() },
                         modifier = Modifier.padding(start = 2.dp),
@@ -387,7 +389,7 @@ private fun VoiceLockHint() {
             Icon(
                 modifier = Modifier.size(20.dp),
                 imageVector = CompoundIcons.LockSolid(),
-                contentDescription = "Закрепить запись",
+                contentDescription = stringResource(R.string.larpgram_composer_lock_recording),
                 tint = ElementTheme.colors.iconAccentPrimary,
             )
         }

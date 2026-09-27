@@ -73,4 +73,21 @@
     <string name="larpgram_attach_camera">Камера. Тап — фото, удержание — видео</string>
     <string name="larpgram_delete_message_title">Удалить сообщение?</string>
     <string name="larpgram_delete_message_content">Сообщение удалится у всех в чате.</string>
+    <string name="larpgram_sticker_pack_not_found">Пак этого стикера не найден</string>
+    <string name="larpgram_sticker_pack_default_name">Стикерпак</string>
+    <string name="larpgram_media_panel_emoji">Эмодзи</string>
+    <string name="larpgram_media_panel_stickers">Стикеры</string>
+    <string name="larpgram_media_panel_backspace">Стереть</string>
+    <plurals name="larpgram_sticker_pack_add">
+        <item quantity="one">Добавить %1$d стикер</item>
+        <item quantity="few">Добавить %1$d стикера</item>
+        <item quantity="many">Добавить %1$d стикеров</item>
+        <item quantity="other">Добавить %1$d стикера</item>
+    </plurals>
+    <plurals name="larpgram_sticker_pack_remove">
+        <item quantity="one">Удалить %1$d стикер</item>
+        <item quantity="few">Удалить %1$d стикера</item>
+        <item quantity="many">Удалить %1$d стикеров</item>
+        <item quantity="other">Удалить %1$d стикера</item>
+    </plurals>
 </resources>

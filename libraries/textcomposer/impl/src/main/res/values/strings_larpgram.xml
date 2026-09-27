@@ -3,4 +3,11 @@
 <resources>
     <!-- Подсказка поля при правке подписи к отправленному медиа (TG: «Подпись»). -->
     <string name="larpgram_composer_caption_placeholder">Caption</string>
+    <string name="larpgram_composer_keyboard">Keyboard</string>
+    <string name="larpgram_composer_emoji_and_stickers">Emoji and stickers</string>
+    <string name="larpgram_composer_stickers">Stickers</string>
+    <string name="larpgram_composer_lock_recording">Lock recording</string>
+    <string name="larpgram_composer_record_voice">Record a voice message, tap to switch to a video message</string>
+    <string name="larpgram_composer_record_circle">Record a video message, tap to switch to a voice message</string>
+    <string name="larpgram_composer_record_circle_short">Record a video message</string>
 </resources>

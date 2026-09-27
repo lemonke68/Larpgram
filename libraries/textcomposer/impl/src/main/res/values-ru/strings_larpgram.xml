@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="larpgram_composer_caption_placeholder">Подпись</string>
+    <string name="larpgram_composer_keyboard">Клавиатура</string>
+    <string name="larpgram_composer_emoji_and_stickers">Эмодзи и стикеры</string>
+    <string name="larpgram_composer_stickers">Стикеры</string>
+    <string name="larpgram_composer_lock_recording">Закрепить запись</string>
+    <string name="larpgram_composer_record_voice">Записать голосовое, тап — переключить на кружочек</string>
+    <string name="larpgram_composer_record_circle">Записать кружочек, тап — переключить на голосовое</string>
+    <string name="larpgram_composer_record_circle_short">Записать кружочек</string>
 </resources>

@@ -67,4 +67,18 @@
     <string name="larpgram_attach_camera">Camera. Tap for a photo, hold for a video</string>
     <string name="larpgram_delete_message_title">Delete message?</string>
     <string name="larpgram_delete_message_content">The message will be deleted for everyone in the chat.</string>
+    <!-- Лист стикерпака и панель эмодзи/GIF/стикеров. -->
+    <string name="larpgram_sticker_pack_not_found">The pack of this sticker was not found</string>
+    <string name="larpgram_sticker_pack_default_name">Sticker pack</string>
+    <string name="larpgram_media_panel_emoji">Emoji</string>
+    <string name="larpgram_media_panel_stickers">Stickers</string>
+    <string name="larpgram_media_panel_backspace">Delete</string>
+    <plurals name="larpgram_sticker_pack_add">
+        <item quantity="one">Add %1$d sticker</item>
+        <item quantity="other">Add %1$d stickers</item>
+    </plurals>
+    <plurals name="larpgram_sticker_pack_remove">
+        <item quantity="one">Remove %1$d sticker</item>
+        <item quantity="other">Remove %1$d stickers</item>
+    </plurals>
 </resources>

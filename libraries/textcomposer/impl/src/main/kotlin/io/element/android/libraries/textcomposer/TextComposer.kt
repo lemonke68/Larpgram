@@ -692,7 +692,7 @@ private fun StandardLayout(
                     Icon(
                         modifier = Modifier.size(24.dp),
                         imageVector = CompoundIcons.Reaction(),
-                        contentDescription = "Стикеры",
+                        contentDescription = stringResource(R.string.larpgram_composer_stickers),
                         tint = ElementTheme.colors.iconSecondary,
                     )
                 }
@@ -735,7 +735,7 @@ private fun StandardLayout(
                                 Icon(
                                     modifier = Modifier.size(20.dp),
                                     imageVector = CompoundIcons.LockSolid(),
-                                    contentDescription = "Закрепить запись",
+                                    contentDescription = stringResource(R.string.larpgram_composer_lock_recording),
                                     tint = ElementTheme.colors.iconAccentPrimary,
                                 )
                             }

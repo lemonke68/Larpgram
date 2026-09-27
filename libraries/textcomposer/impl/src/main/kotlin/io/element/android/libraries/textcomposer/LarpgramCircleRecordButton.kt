@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAll
 import io.element.android.compound.theme.ElementTheme
@@ -104,7 +105,7 @@ internal fun LarpgramCircleRecordButton(
                 }
             },
         imageVector = CompoundIcons.VideoCall(),
-        contentDescription = "Записать кружочек",
+        contentDescription = stringResource(R.string.larpgram_composer_record_circle_short),
         tint = ElementTheme.colors.iconSecondary,
     )
 }

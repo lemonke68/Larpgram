@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAll
 import io.element.android.compound.theme.ElementTheme
@@ -157,8 +158,8 @@ internal fun LarpgramRecordModeButton(
             RecordMode.Circle -> CompoundIcons.VideoCall()
         },
         contentDescription = when (mode) {
-            RecordMode.Voice -> "Записать голосовое, тап — переключить на кружочек"
-            RecordMode.Circle -> "Записать кружочек, тап — переключить на голосовое"
+            RecordMode.Voice -> stringResource(R.string.larpgram_composer_record_voice)
+            RecordMode.Circle -> stringResource(R.string.larpgram_composer_record_circle)
         },
         tint = if (tgStyle) Color.White else ElementTheme.colors.iconSecondary,
     )

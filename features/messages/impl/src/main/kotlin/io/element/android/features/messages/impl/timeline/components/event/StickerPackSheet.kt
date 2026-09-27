@@ -33,10 +33,13 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.features.messages.impl.R
 import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -130,7 +133,7 @@ fun StickerPackSheet(
                     modifier = Modifier.fillMaxWidth().height(120.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(text = "Пак этого стикера не найден", color = ElementTheme.colors.textSecondary)
+                    Text(text = stringResource(R.string.larpgram_sticker_pack_not_found), color = ElementTheme.colors.textSecondary)
                 }
                 else -> StickerPackContent(
                     pack = currentPack,
@@ -154,7 +157,7 @@ private fun StickerPackContent(
     isSaved: Boolean,
     onToggle: () -> Unit,
 ) {
-    val name = pack.displayName?.takeIf { it.isNotBlank() } ?: "Стикерпак"
+    val name = pack.displayName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.larpgram_sticker_pack_default_name)
     Text(
         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         text = name,
@@ -175,11 +178,11 @@ private fun StickerPackContent(
     }
 
     Button(
-        text = if (isSaved) {
-            "Удалить (${pack.stickers.size}) стикеров"
-        } else {
-            "Добавить (${pack.stickers.size}) стикеров"
-        },
+        text = pluralStringResource(
+            if (isSaved) R.plurals.larpgram_sticker_pack_remove else R.plurals.larpgram_sticker_pack_add,
+            pack.stickers.size,
+            pack.stickers.size,
+        ),
         onClick = onToggle,
         modifier = Modifier
             .fillMaxWidth()

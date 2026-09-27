@@ -11,6 +11,7 @@ import android.os.Build
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -43,20 +44,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.messages.impl.R
 import io.element.android.libraries.androidutils.ui.showKeyboard
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
 
 /** Правка форка: вкладки панели Telegram под полем ввода. */
-enum class TgMediaPanelTab(val title: String) {
-    Emoji("Эмодзи"),
-    Gif("GIF"),
-    Stickers("Стикеры"),
+enum class TgMediaPanelTab(@StringRes val titleRes: Int?, val fixedTitle: String? = null) {
+    Emoji(R.string.larpgram_media_panel_emoji),
+    Gif(null, fixedTitle = "GIF"),
+    Stickers(R.string.larpgram_media_panel_stickers),
 }
 
 /**
@@ -227,7 +230,7 @@ fun TgMediaPanel(
                                 controller.isSearchFocused = false
                             }
                             .padding(horizontal = 14.dp, vertical = 6.dp),
-                        text = tab.title,
+                        text = tab.titleRes?.let { stringResource(it) } ?: tab.fixedTitle.orEmpty(),
                         style = ElementTheme.typography.fontBodyMdMedium,
                         color = if (isSelected) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
                     )
@@ -243,7 +246,7 @@ fun TgMediaPanel(
                     Icon(
                         modifier = Modifier.size(24.dp),
                         imageVector = CompoundIcons.Backspace(),
-                        contentDescription = "Стереть",
+                        contentDescription = stringResource(R.string.larpgram_media_panel_backspace),
                         tint = if (isLight) Color(0xFF8C9197) else Color(0xFF7B8187),
                     )
                 }
