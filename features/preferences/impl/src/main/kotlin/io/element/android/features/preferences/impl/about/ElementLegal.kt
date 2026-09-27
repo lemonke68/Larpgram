@@ -28,9 +28,10 @@ sealed class ElementLegal(
 }
 
 fun getAllLegals(): ImmutableList<ElementLegal> {
+    // Правка форка: страниц правил и конфиденциальности у Larpgram пока нет, а ссылки на element.io
+    // тут вводили бы в заблуждение (аудит A-031). Остаются авторские права — это исходники форка
+    // (AGPL), см. URL_COPYRIGHT в BuildTimeConfig.
     return persistentListOf(
         ElementLegal.Copyright,
-        ElementLegal.AcceptableUsePolicy,
-        ElementLegal.PrivacyPolicy,
     )
 }

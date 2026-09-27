@@ -20,7 +20,8 @@ object BuildTimeConfig {
     val OAUTH_CLIENT_URL_PATH: String? = "apps/android"
     val URL_WEBSITE: String? = null
     val URL_LOGO: String? = null
-    val URL_COPYRIGHT: String? = null
+    // Правка форка: «Авторские права» в «О приложении» — исходники Larpgram (AGPL).
+    val URL_COPYRIGHT: String? = "https://github.com/lemonke68/Larpgram"
     val URL_ACCEPTABLE_USE: String? = null
     val URL_PRIVACY: String? = null
     val URL_POLICY: String? = null
