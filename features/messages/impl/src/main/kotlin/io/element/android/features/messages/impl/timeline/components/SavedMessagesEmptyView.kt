@@ -8,8 +8,11 @@ package io.element.android.features.messages.impl.timeline.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -60,11 +63,21 @@ internal fun SavedMessagesEmptyView(modifier: Modifier = Modifier) {
                 CommonStrings.larpgram_saved_messages_empty_files,
                 CommonStrings.larpgram_saved_messages_empty_devices,
             ).forEach { line ->
-                Text(
-                    text = "•  " + stringResource(line),
-                    style = ElementTheme.typography.fontBodyMdRegular,
-                    color = ElementTheme.colors.textPrimary,
-                )
+                // Правка форка: маркер отдельно — перенесённые строки встают под текст, а не под
+                // точку (висячий отступ, как в TG; аудит A-033).
+                Row {
+                    Text(
+                        text = "•",
+                        style = ElementTheme.typography.fontBodyMdRegular,
+                        color = ElementTheme.colors.textPrimary,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(line),
+                        style = ElementTheme.typography.fontBodyMdRegular,
+                        color = ElementTheme.colors.textPrimary,
+                    )
+                }
             }
         }
     }
