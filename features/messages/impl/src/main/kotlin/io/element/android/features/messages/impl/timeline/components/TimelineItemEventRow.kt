@@ -724,20 +724,22 @@ private fun TimelineItemEventRowContent(
         }
 
         // Larpgram (роумлесс, gap D): TG-чип «Комментарии» под постом канала, влитый в карточку.
-        // Текстовый пост несёт ссылку на дискуссию в своём контенте; медиа-пост — нет, но зеркалится
-        // в дискуссию, поэтому чип показываем и на медиа, когда у канала есть дискуссия. Остальные
-        // типы пока не зеркалятся и чип не получают.
+        // Старые текстовые посты несут ссылку на дискуссию в своём контенте; новые текстовые, медиа
+        // и стикеры зеркалятся в дискуссию по id поста, поэтому чип у них есть, когда у канала есть
+        // дискуссия.
         val hasTextComments = remember(event.id) {
             event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) != null } ?: false
         }
-        val isMediaPost = event.content is TimelineItemImageContent ||
+        val isMirroredPost = event.content is TimelineItemImageContent ||
             event.content is TimelineItemVideoContent ||
             event.content is TimelineItemAudioContent ||
             event.content is TimelineItemVoiceContent ||
             event.content is TimelineItemFileContent ||
-            event.content is TimelineItemGalleryContent
+            event.content is TimelineItemGalleryContent ||
+            event.content is TimelineItemStickerContent ||
+            event.content is TimelineItemTextBasedContent
         val showChannelComments = timelineRoomInfo.isChannel &&
-            (hasTextComments || (isMediaPost && timelineRoomInfo.channelDiscussionRoomId != null))
+            (hasTextComments || (isMirroredPost && timelineRoomInfo.channelDiscussionRoomId != null))
         // Число комментариев: текстовый пост коррелируется по correlation-id из своего контента,
         // медиа-пост — по своему eventId (в его зеркале comment_id = eventId поста). Нет числа
         // (дискуссия ещё не загружена) → подпись без числа.

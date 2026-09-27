@@ -46,6 +46,9 @@ dependencies {
     implementation(projects.libraries.featureflag.api)
     implementation(projects.features.invitepeople.api)
     implementation(projects.features.enterprise.api)
+    // Правка форка: имя обсуждения канала и общий ключ account data «канал → обсуждение».
+    implementation(projects.services.toolbox.api)
+    implementation(projects.libraries.channelcomments)
     api(projects.features.createroom.api)
 
     testCommonDependencies(libs, true)
@@ -57,4 +60,5 @@ dependencies {
     testImplementation(projects.features.startchat.test)
     testImplementation(projects.libraries.featureflag.test)
     testImplementation(projects.features.enterprise.test)
+    testImplementation(projects.services.toolbox.test)
 }

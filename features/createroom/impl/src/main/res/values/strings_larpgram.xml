@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Правка форка: строки Larpgram этого модуля. -->
+<resources>
+    <!-- Имя группы-обсуждения, которую создаём вместе с каналом. %1$s — имя канала. -->
+    <string name="larpgram_channel_discussion_name">%1$s — comments</string>
+</resources>

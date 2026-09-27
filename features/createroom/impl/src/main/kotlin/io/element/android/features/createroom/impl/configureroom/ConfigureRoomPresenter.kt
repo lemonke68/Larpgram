@@ -24,10 +24,12 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import im.vector.app.features.analytics.plan.CreatedRoom
+import io.element.android.features.createroom.impl.R
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runCatchingUpdatingState
+import io.element.android.libraries.channelcomments.ChannelDiscussion
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
@@ -35,8 +37,6 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
 import io.element.android.libraries.matrix.api.createroom.RoomPreset
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import io.element.android.libraries.matrix.api.room.alias.RoomAliasHelper
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.room.join.JoinRule
@@ -51,6 +51,7 @@ import io.element.android.libraries.mediaupload.api.MediaPreProcessor
 import io.element.android.libraries.permissions.api.PermissionsEvent
 import io.element.android.libraries.permissions.api.PermissionsPresenter
 import io.element.android.services.analytics.api.AnalyticsService
+import io.element.android.services.toolbox.api.strings.StringProvider
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -58,6 +59,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import timber.log.Timber
 import kotlin.jvm.optionals.getOrDefault
 import kotlin.jvm.optionals.getOrNull
@@ -78,6 +81,8 @@ class ConfigureRoomPresenter(
     private val roomAliasHelper: RoomAliasHelper,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
     private val sessionEnterpriseService: SessionEnterpriseService,
+    // Правка форка: имя обсуждения канала на языке создателя.
+    private val stringProvider: StringProvider,
 ) : Presenter<ConfigureRoomState> {
     @AssistedFactory
     interface Factory {
@@ -336,14 +341,13 @@ class ConfigureRoomPresenter(
     ) {
         // Idempotent on retry: if this channel already has a linked discussion group, don't create
         // a second one.
-        val existing = matrixClient.getAccountData(CHANNEL_DISCUSSIONS_ACCOUNT_DATA_TYPE).getOrNull()
+        val existing = matrixClient.getAccountData(ChannelDiscussion.ACCOUNT_DATA_TYPE).getOrNull()
         val currentMap = existing
             ?.let { runCatching { channelDiscussionsJson.decodeFromString<Map<String, String>>(it) }.getOrNull() }
             .orEmpty()
         if (currentMap.containsKey(channelId.value)) return
         val discussionParams = CreateRoomParameters(
-            // TODO localise / let the user rename in the design pass.
-            name = config.roomName?.let { "$it — comments" },
+            name = config.roomName?.let { stringProvider.getString(R.string.larpgram_channel_discussion_name, it) },
             topic = null,
             isEncrypted = !sessionEnterpriseService.isEncryptionDisabledByHomeserver(),
             isDirect = false,
@@ -357,7 +361,7 @@ class ConfigureRoomPresenter(
         // the SDK). The link is also duplicated into post content later so any member can find it.
         val updated = currentMap + (channelId.value to discussionId.value)
         matrixClient.setAccountData(
-            CHANNEL_DISCUSSIONS_ACCOUNT_DATA_TYPE,
+            ChannelDiscussion.ACCOUNT_DATA_TYPE,
             channelDiscussionsJson.encodeToString(updated),
         )
     }
@@ -376,8 +380,5 @@ class ConfigureRoomPresenter(
 
 /** Power level a member needs to post in a channel: admin only. */
 private const val CHANNEL_POST_POWER_LEVEL = 100L
-
-/** Per-user account data mapping a channel roomId to its linked discussion group roomId. */
-private const val CHANNEL_DISCUSSIONS_ACCOUNT_DATA_TYPE = "ru.mangokokos.larpgram.channel_discussions"
 
 private val channelDiscussionsJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }

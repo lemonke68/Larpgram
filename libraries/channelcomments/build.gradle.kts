@@ -5,6 +5,8 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  */
+import extension.testCommonDependencies
+
 plugins {
     id("io.element.android-library")
 }
@@ -18,4 +20,6 @@ dependencies {
     implementation(projects.libraries.core)
     implementation(projects.libraries.matrix.api)
     implementation(libs.serialization.json)
+
+    testCommonDependencies(libs)
 }

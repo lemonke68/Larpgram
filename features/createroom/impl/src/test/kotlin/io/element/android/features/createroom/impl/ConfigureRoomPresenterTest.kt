@@ -56,6 +56,7 @@ import io.element.android.libraries.permissions.test.FakePermissionsPresenterFac
 import io.element.android.libraries.previewutils.room.aSpaceRoom
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.test.FakeAnalyticsService
+import io.element.android.services.toolbox.test.strings.FakeStringProvider
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.matching
@@ -596,5 +597,6 @@ class ConfigureRoomPresenterTest : RobolectricTest() {
         ),
         mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
         sessionEnterpriseService = sessionEnterpriseService,
+        stringProvider = FakeStringProvider(),
     )
 }

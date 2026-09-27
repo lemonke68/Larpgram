@@ -51,6 +51,22 @@ object ChannelPostMirror {
         }.getOrDefault(false)
     }
 
+    /** Msgtypes of a plain text post. */
+    private val TEXT_MSGTYPES = setOf("m.text", "m.notice", "m.emote")
+
+    /**
+     * Правка форка: true для текстового поста (`m.text`/`m.notice`/`m.emote`). Текстовые посты канала
+     * тоже уходят штатной отправкой и зеркалятся по id поста, как медиа.
+     */
+    fun isTextMessage(originalJson: String?): Boolean {
+        originalJson ?: return false
+        return runCatchingExceptions {
+            val root = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject
+            if (root["type"]?.jsonPrimitive?.content != ROOM_MESSAGE_EVENT_TYPE) return@runCatchingExceptions false
+            root["content"]?.jsonObject?.get("msgtype")?.jsonPrimitive?.content in TEXT_MSGTYPES
+        }.getOrDefault(false)
+    }
+
     /** True for an `m.sticker` event (its content has no msgtype; identified by the top-level event type). */
     fun isStickerEvent(originalJson: String?): Boolean {
         originalJson ?: return false
@@ -164,7 +180,8 @@ object ChannelPostMirror {
         val content = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
             ?: return@runCatchingExceptions null
         buildJsonObject {
-            content.forEach { (key, value) -> put(key, value) }
+            // Правка форка: без m.relates_to — ответ в канале ссылается на событие другой комнаты.
+            content.forEach { (key, value) -> if (key != "m.relates_to") put(key, value) }
             put(ChannelDiscussion.COMMENT_ID_FIELD, commentId)
         }.toString()
     }.getOrNull()
