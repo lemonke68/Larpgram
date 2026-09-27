@@ -807,7 +807,9 @@ private fun TimelineItemEventRowContent(
         }
 
         // Pin icon
-        val isEventPinned = timelineRoomInfo.pinnedEventIds.contains(event.eventId)
+        // Правка форка: в Telegram у закреплённого сообщения значка сбоку нет — закреп видно в
+        // плашке под шапкой.
+        val isEventPinned = SHOW_PIN_ICON && timelineRoomInfo.pinnedEventIds.contains(event.eventId)
         if (isEventPinned) {
             Icon(
                 imageVector = CompoundIcons.PinSolid(),
@@ -1528,3 +1530,5 @@ internal fun ThreadSummaryViewPreview() {
         )
     }
 }
+
+private const val SHOW_PIN_ICON = false

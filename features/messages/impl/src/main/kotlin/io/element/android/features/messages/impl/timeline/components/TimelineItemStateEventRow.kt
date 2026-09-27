@@ -83,14 +83,18 @@ fun TimelineItemStateEventRow(
                 )
             }
         }
-        TimelineItemReadReceiptView(
-            state = ReadReceiptViewState(
-                sendState = event.localSendState,
-                isLastOutgoingMessage = isLastOutgoingMessage,
-                receipts = event.readReceiptState.receipts,
-            ),
-            onReadReceiptsClick = { onReadReceiptsClick(event) },
-        )
+        // Правка форка: у служебных сообщений в Telegram нет галочек и отметок о прочтении —
+        // под «Вы закрепили сообщение» висел лишний значок.
+        if (SHOW_STATE_EVENT_READ_RECEIPTS) {
+            TimelineItemReadReceiptView(
+                state = ReadReceiptViewState(
+                    sendState = event.localSendState,
+                    isLastOutgoingMessage = isLastOutgoingMessage,
+                    receipts = event.readReceiptState.receipts,
+                ),
+                onReadReceiptsClick = { onReadReceiptsClick(event) },
+            )
+        }
     }
 }
 
@@ -114,3 +118,5 @@ internal fun TimelineItemStateEventRowPreview() = ElementPreview {
         eventSink = {}
     )
 }
+
+private const val SHOW_STATE_EVENT_READ_RECEIPTS = false
