@@ -183,3 +183,36 @@ private fun ReactionPill(
 private val PILL_HEIGHT = 28.dp
 private val PILL_GAP = 4.dp
 private val TIMESTAMP_GAP = 8.dp
+
+/**
+ * Колонка «содержимое + ряд реакций» с одной композицией. [EqualWidthColumn] компонует детей
+ * дважды (SubcomposeLayout) — в дереве появлялись дубли времени и сообщения. Здесь содержимое
+ * меряется один раз, а ряд реакций — с minWidth по ширине содержимого, чтобы время стояло у
+ * правого края пузыря.
+ */
+@Composable
+internal fun ContentWithReactionsColumn(
+    content: @Composable () -> Unit,
+    reactions: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Layout(
+        contents = listOf(content, reactions),
+        modifier = modifier,
+    ) { (contentMeasurables, reactionMeasurables), constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val contentPlaceables = contentMeasurables.map { it.measure(loose) }
+        val contentWidth = contentPlaceables.maxOfOrNull { it.width } ?: 0
+        val reactionConstraints = loose.copy(minWidth = contentWidth.coerceAtMost(loose.maxWidth))
+        val reactionPlaceables = reactionMeasurables.map { it.measure(reactionConstraints) }
+        val width = maxOf(contentWidth, reactionPlaceables.maxOfOrNull { it.width } ?: 0)
+        val height = contentPlaceables.sumOf { it.height } + reactionPlaceables.sumOf { it.height }
+        layout(width, height) {
+            var y = 0
+            (contentPlaceables + reactionPlaceables).forEach {
+                it.placeRelative(0, y)
+                y += it.height
+            }
+        }
+    }
+}

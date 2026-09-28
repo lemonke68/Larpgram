@@ -52,6 +52,7 @@ import io.element.android.features.messages.impl.timeline.components.customreact
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryEvent
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.TimelineItemReactions
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.sendfailure.SendFailureDialogState
 import io.element.android.features.roomcall.api.aStandByCallState
@@ -82,8 +83,10 @@ import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.pressBack
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import io.element.android.tests.testutils.setSafeContent
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableList
 import org.junit.Test
 import org.robolectric.annotation.Config
 import kotlin.time.Duration.Companion.milliseconds
@@ -159,7 +162,7 @@ class MessagesViewTest : RobolectricTest() {
         val eventsRecorder = EventsRecorder<MessagesEvent>(expectEvents = false)
         val state = aMessagesState(
             timelineState = aTimelineState(
-                timelineItems = aTimelineItemList(aTimelineItemTextContent()),
+                timelineItems = aTimelineItemList(aTimelineItemTextContent()).withoutReactions(),
             ),
             eventSink = eventsRecorder
         )
@@ -184,7 +187,7 @@ class MessagesViewTest : RobolectricTest() {
         val localEcho = aTimelineItemEvent(
             isMine = true,
             content = aTimelineItemTextContent(),
-        ).copy(eventId = null)
+        ).copy(eventId = null, reactionsState = TimelineItemReactions(persistentListOf()))
         val state = aMessagesState(
             timelineState = aTimelineState(
                 timelineItems = persistentListOf(localEcho),
@@ -245,7 +248,7 @@ class MessagesViewTest : RobolectricTest() {
                 canPinUnpin = userCanPinEvent,
             ),
             timelineState = aTimelineState(
-                timelineItems = aTimelineItemList(aTimelineItemTextContent()),
+                timelineItems = aTimelineItemList(aTimelineItemTextContent()).withoutReactions(),
             ),
         )
         val timelineItem = state.timelineState.timelineItems.first() as TimelineItem.Event
@@ -805,3 +808,9 @@ private fun AndroidComposeUiTest<ComponentActivity>.setMessagesView(
         }
     }
 }
+
+// Правка форка: реакции теперь внутри пузыря (A-008), и тап в его центр попадал бы по пилюле.
+// Тестам клика по сообщению реакции не нужны.
+private fun ImmutableList<TimelineItem>.withoutReactions(): ImmutableList<TimelineItem> = map { item ->
+    if (item is TimelineItem.Event) item.copy(reactionsState = TimelineItemReactions(persistentListOf())) else item
+}.toImmutableList()

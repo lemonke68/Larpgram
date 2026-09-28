@@ -1235,30 +1235,39 @@ private fun MessageEventBubbleContent(
             PostWithCommentsFooter(
                 modifier = modifier,
                 content = {
-                    // Правка форка: EqualWidthColumn — ряд реакций во всю ширину поста, время справа.
-                    EqualWidthColumn(spacing = 8.dp) {
+                    // Правка форка: ряд реакций во всю ширину поста, время справа.
+                    ContentWithReactionsColumn(
+                        content = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                threadDecoration()
+                                // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    senderName()
+                                    contentWithTimestamp()
+                                }
+                            }
+                        },
+                        reactions = { reactionsRow() },
+                    )
+                },
+                footer = { commentsFooter() },
+            )
+        } else if (reactionsFooter != null) {
+            // Правка форка: ряд реакций во всю ширину пузыря, время справа.
+            ContentWithReactionsColumn(
+                modifier = modifier,
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         threadDecoration()
                         // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             senderName()
                             contentWithTimestamp()
                         }
-                        reactionsRow()
                     }
                 },
-                footer = { commentsFooter() },
+                reactions = { reactionsRow() },
             )
-        } else if (reactionsFooter != null) {
-            // Правка форка: EqualWidthColumn — ряд реакций во всю ширину пузыря, время справа.
-            EqualWidthColumn(modifier = modifier) {
-                threadDecoration()
-                // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    senderName()
-                    contentWithTimestamp()
-                }
-                reactionsRow()
-            }
         } else {
             Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 threadDecoration()
