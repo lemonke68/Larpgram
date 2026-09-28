@@ -130,6 +130,7 @@ fun aMessagesState(
     ),
     isCurrentlySharingLiveLocationInRoom: Boolean = false,
     dmUserStatus: DisplayedStatus? = null,
+    // Правка форка: каналы.
     isChannel: Boolean = false,
     isChannelMuted: Boolean = false,
     channelSubscriberCount: Long? = null,

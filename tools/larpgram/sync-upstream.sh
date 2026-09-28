@@ -14,6 +14,7 @@
 #   tools/larpgram/sync-upstream.sh finish [msg]   # after resolving conflicts: commit + graft
 #                                                  # (msg: optional file with the commit message body)
 #   tools/larpgram/sync-upstream.sh check          # before pushing: no Element commit is a real ancestor
+#   tools/larpgram/sync-upstream.sh unmarked       # Element .kt files we changed without a `Правка форка` note
 #
 # Never `git commit --amend` a sync commit: with the grafts active, amend copies the grafted upstream
 # parent into the real commit and the next push would upload Element's whole history. Use `finish msg`.
@@ -106,10 +107,27 @@ check() {
     return "$bad"
 }
 
+# Element's Kotlin files that we edited, where none of our added lines carries a marker. During a
+# sync an unmarked hunk looks like Element's own code and is easy to overwrite (audit C-007).
+unmarked() {
+    local tag file bad=0
+    tag="$(git --no-replace-objects log --format='%(trailers:key=Upstream-Tag,valueonly,separator=%x20)' | grep -v '^$' | head -1)"
+    while read -r file; do
+        # No `grep -q` straight on the diff: with pipefail its early exit fails the pipeline.
+        if ! git diff "$tag" -- "$file" | grep '^+' | grep -v '^+++' | grep -cE 'Правка форка|[Ll]arpgram|форк|Форк' >/dev/null; then
+            echo "$file"
+            bad=1
+        fi
+    done < <(git diff --name-only --diff-filter=M "$tag" -- '*.kt' ':!*/src/test/*' ':!*/src/androidTest/*')
+    [ "$bad" = 0 ] && echo "OK: every edited Element file has a marker (base $tag)."
+    return "$bad"
+}
+
 case "${1:-}" in
     restore) restore_grafts ;;
     check) check ;;
+    unmarked) unmarked ;;
     start) [ -n "${2:-}" ] || { echo "Usage: $0 start <tag>" >&2; exit 1; }; start "$2" ;;
     finish) finish "${2:-}" ;;
-    *) sed -n '2,22p' "$0"; exit 1 ;;
+    *) sed -n '2,23p' "$0"; exit 1 ;;
 esac

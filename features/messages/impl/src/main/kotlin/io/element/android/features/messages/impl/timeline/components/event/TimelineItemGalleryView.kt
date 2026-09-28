@@ -54,6 +54,8 @@ import io.element.android.libraries.matrix.ui.media.contentvalidation.rememberEv
 import io.element.android.libraries.ui.utils.time.formatShort
 
 private const val MAX_TILES = 6
+
+// Правка форка: сетка альбома переписана под Telegram (все раскладки ниже).
 private val GALLERY_WIDTH = 264.dp
 private val GRID_SPACING = 2.dp
 private val GROUP_CORNER_RADIUS = 12.dp

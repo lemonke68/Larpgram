@@ -24,6 +24,7 @@ open class EditUserProfileStatePreviewParam : PreviewParameterProvider<EditUserP
             aEditUserProfileState(userAvatarUrl = "example://uri"),
             aEditUserProfileState(saveAction = AsyncAction.ConfirmingCancellation),
             aEditUserProfileState(canChangeAvatarUrl = false, canChangeDisplayName = false),
+            // Правка форка: «О себе».
             aEditUserProfileState(bio = "//watch my skin ervpt in a cynthoni of flames//"),
         )
 }

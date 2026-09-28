@@ -42,7 +42,7 @@ sealed interface TimelineEvent {
     data class LoadMore(val direction: Timeline.PaginationDirection) : TimelineItemEvent
     data class OpenThread(val threadRootEventId: ThreadId, val focusedEvent: EventId?) : TimelineItemEvent
 
-    /** Open the comments (discussion thread) for a channel post (Telegram-style). */
+    /** Правка форка: open the comments (discussion thread) for a channel post (Telegram-style). */
     data class OpenChannelPostComments(val event: TimelineItem.Event) : TimelineItemEvent
 
     /**

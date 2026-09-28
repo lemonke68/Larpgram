@@ -14,6 +14,7 @@ sealed interface SpaceFiltersEvent {
     sealed interface Unselected : SpaceFiltersEvent {
         data object ShowFilters : Unselected
 
+        // Правка форка: папки-пространства пилюлями над списком.
         // Pick a space directly from the always-visible folder pills.
         data class SelectFilter(val spaceFilter: SpaceServiceFilter) : Unselected
     }

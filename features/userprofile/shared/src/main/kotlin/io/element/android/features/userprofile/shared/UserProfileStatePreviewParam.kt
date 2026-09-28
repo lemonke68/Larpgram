@@ -35,6 +35,7 @@ open class UserProfileStatePreviewParam : PreviewParameterProvider<UserProfileSt
             aUserProfileState(startDmActionState = ConfirmingStartDmWithMatrixUser(aMatrixUser(), isUserIdentityUnknown = false)),
             aUserProfileState(verificationState = UserProfileVerificationState.VERIFICATION_VIOLATION),
             aUserProfileState(
+                // Правка форка: свой профиль и «О себе».
                 userId = UserId("@lin:mango-kokos.ru"),
                 userName = "lin",
                 isCurrentUser = true,

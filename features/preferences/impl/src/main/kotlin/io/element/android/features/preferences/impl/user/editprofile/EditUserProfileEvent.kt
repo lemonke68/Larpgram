@@ -13,6 +13,8 @@ import io.element.android.libraries.matrix.ui.media.AvatarAction
 sealed interface EditUserProfileEvent {
     data class HandleAvatarAction(val action: AvatarAction) : EditUserProfileEvent
     data class UpdateDisplayName(val name: String) : EditUserProfileEvent
+
+    // Правка форка: «О себе».
     data class UpdateBio(val bio: String) : EditUserProfileEvent
     data object Exit : EditUserProfileEvent
     data object Save : EditUserProfileEvent

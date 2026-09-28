@@ -226,6 +226,7 @@ private fun OnBoardingContent(state: OnBoardingState) {
                     .fillMaxWidth(),
                 horizontalAlignment = CenterHorizontally,
             ) {
+                // Правка форка: скрываемый приветственный текст.
                 // Пустая строка означает «не показывать»: слоган ещё не придуман, а пока
                 // его нет, лучше чистый экран, чем текст ни о чём. Чтобы вернуть заголовок,
                 // достаточно вписать строки в app/src/main/res/values{,-ru}/strings.xml.

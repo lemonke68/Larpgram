@@ -34,13 +34,16 @@ internal fun UpdateBanner(
 ) {
     val install = state.installState
     val (title, message) = when (install) {
-        UpdateInstallState.Idle -> stringResource(R.string.larpgram_banner_update_title, state.versionName) to stringResource(R.string.larpgram_banner_update_message)
+        UpdateInstallState.Idle -> stringResource(R.string.larpgram_banner_update_title, state.versionName) to
+            stringResource(R.string.larpgram_banner_update_message)
         is UpdateInstallState.Downloading -> {
             val percent = install.progress?.let { " ${(it * 100).toInt()}%" }.orEmpty()
             stringResource(R.string.larpgram_banner_update_downloading, percent) to stringResource(R.string.larpgram_banner_update_downloading_message)
         }
-        UpdateInstallState.WaitingForConfirmation -> stringResource(R.string.larpgram_banner_update_confirm) to stringResource(R.string.larpgram_banner_update_confirm_message)
-        UpdateInstallState.NeedsPermission -> stringResource(R.string.larpgram_banner_update_permission) to stringResource(R.string.larpgram_banner_update_permission_message)
+        UpdateInstallState.WaitingForConfirmation -> stringResource(R.string.larpgram_banner_update_confirm) to
+            stringResource(R.string.larpgram_banner_update_confirm_message)
+        UpdateInstallState.NeedsPermission -> stringResource(R.string.larpgram_banner_update_permission) to
+            stringResource(R.string.larpgram_banner_update_permission_message)
         UpdateInstallState.Failed -> stringResource(R.string.larpgram_banner_update_failed) to stringResource(R.string.larpgram_banner_update_failed_message)
     }
     val isBusy = install is UpdateInstallState.Downloading

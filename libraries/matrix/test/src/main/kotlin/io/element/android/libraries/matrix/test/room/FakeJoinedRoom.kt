@@ -92,6 +92,7 @@ class FakeJoinedRoom(
     private val startLiveLocationShareResult: (Long) -> Result<EventId> = { lambdaError() },
     private val stopLiveLocationShareResult: () -> Result<Unit> = { lambdaError() },
     private val sendLiveLocationResult: (String) -> Result<Unit> = { lambdaError() },
+    // Правка форка: стикеры и сырые события.
     private val sendStickerResult: (String, String) -> Result<Unit> = { _, _ -> lambdaError() },
     private val sendRawEventResult: (String, String) -> Result<Unit> = { _, _ -> Result.success(Unit) },
     private val setOwnMemberDisplayNameResult: (String) -> Result<Unit> = { lambdaError() },

@@ -42,6 +42,7 @@ class ConfigureRoomNode(
     @Parcelize
     data class Inputs(
         val isSpace: Boolean,
+        // Правка форка: каналы.
         val isChannel: Boolean,
         val parentSpaceId: RoomId?,
     ) : NodeInputs, Parcelable

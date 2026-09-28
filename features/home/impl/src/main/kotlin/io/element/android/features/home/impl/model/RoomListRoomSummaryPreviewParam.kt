@@ -176,6 +176,7 @@ internal fun aRoomListRoomSummary(
     avatarData: AvatarData = AvatarData(id, name, size = AvatarSize.RoomListItem),
     isDirect: Boolean = false,
     isDm: Boolean = false,
+    // Правка форка: тип чата, личка и закрепление.
     chatType: ChatType = if (isDm) ChatType.Dm else ChatType.Group,
     dmUserId: UserId? = if (isDm) UserId("@dm:domain") else null,
     isPinned: Boolean = false,

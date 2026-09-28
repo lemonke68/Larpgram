@@ -279,6 +279,7 @@ internal fun aRedactedMessagesGroupedEvents(
 internal fun aTimelineRoomInfo(
     name: String = ROOM_NAME,
     isDm: Boolean = false,
+    // Правка форка: каналы.
     isChannel: Boolean = false,
     userHasPermissionToSendMessage: Boolean = true,
     pinnedEventIds: List<EventId> = emptyList(),

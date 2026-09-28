@@ -44,6 +44,7 @@ class SpaceFiltersPresenter(
                 SpaceFiltersEvent.Unselected.ShowFilters -> {
                     selectionMode = SelectionMode.Selecting
                 }
+                // Правка форка: выбор папки из пилюль.
                 is SpaceFiltersEvent.Unselected.SelectFilter -> {
                     selectionMode = SelectionMode.Selected(event.spaceFilter)
                 }

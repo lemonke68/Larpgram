@@ -45,6 +45,7 @@ fun aAdvancedSettingsState(
     hideInviteAvatars: Boolean = false,
     timelineMediaPreviewValue: MediaPreviewValue = MediaPreviewValue.On,
     liveLocationMinimumDistanceUpdate: Int? = 50,
+    // Правка форка: оформление чатов.
     messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
     bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
     chatWallpaperId: String = ChatWallpaperOption.DEFAULT.id,

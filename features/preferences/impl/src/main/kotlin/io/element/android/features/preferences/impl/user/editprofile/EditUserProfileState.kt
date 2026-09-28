@@ -17,6 +17,7 @@ import kotlinx.collections.immutable.ImmutableList
 data class EditUserProfileState(
     val userId: UserId,
     val displayName: String,
+    // Правка форка: «О себе».
     // Bio ("О себе"), stored in private account data (self only).
     val bio: String,
     val userAvatarUrl: String?,

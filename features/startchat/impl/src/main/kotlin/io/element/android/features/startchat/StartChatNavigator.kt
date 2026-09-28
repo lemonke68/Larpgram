@@ -20,6 +20,8 @@ import io.element.android.libraries.matrix.api.core.RoomIdOrAlias
 interface StartChatNavigator : Plugin {
     fun onRoomCreated(roomIdOrAlias: RoomIdOrAlias, serverNames: List<String>)
     fun onCreateNewRoom()
+
+    // Правка форка: новый канал.
     fun onCreateNewChannel()
     fun onShowJoinRoomByAddress()
     fun onDismissJoinRoomByAddress()

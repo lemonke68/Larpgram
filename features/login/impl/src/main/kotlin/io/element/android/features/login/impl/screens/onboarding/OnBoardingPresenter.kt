@@ -134,6 +134,7 @@ class OnBoardingPresenter(
             defaultAccountProvider = defaultAccountProvider,
             mustChooseAccountProvider = mustChooseAccountProvider,
             canLoginWithQrCode = canLoginWithQrCode,
+            // Правка форка: регистрация на нашем сервере.
             // Апстрим показывал регистрацию только когда сервер не выбран, потому что у него
             // она начинается с выбора провайдера. У нас сервер один и заранее известный, но
             // регистрироваться на нём надо: иначе новым людям неоткуда взяться.

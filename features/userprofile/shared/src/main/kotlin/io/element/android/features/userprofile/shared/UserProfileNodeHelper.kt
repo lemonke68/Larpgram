@@ -28,6 +28,7 @@ class UserProfileNodeHelper(
         fun startCall(dmRoomId: RoomId, callIntent: CallIntent)
         fun startVerifyUserFlow(userId: UserId)
 
+        // Правка форка: свой профиль как в Telegram.
         // Self-profile (TG-style) actions. Default no-op for other users' profiles.
         fun navigateToSettings() = Unit
         fun navigateToEditProfile() = Unit

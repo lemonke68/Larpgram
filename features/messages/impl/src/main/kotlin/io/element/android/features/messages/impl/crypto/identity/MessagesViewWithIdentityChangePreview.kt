@@ -45,6 +45,7 @@ internal fun MessagesViewWithIdentityChangePreview(
         onViewAllPinnedMessagesClick = {},
         knockRequestsBannerView = {},
         customReactionBottomSheet = {},
+        // Правка форка: пикер эмодзи в меню долгого нажатия.
         emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onThreadsListClick = {},
     )

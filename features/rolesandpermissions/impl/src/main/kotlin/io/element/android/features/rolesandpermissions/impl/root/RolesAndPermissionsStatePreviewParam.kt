@@ -55,6 +55,7 @@ internal fun aRolesAndPermissionsState(
     roomSupportsOwners: Boolean = true,
     adminCount: Int = 0,
     moderatorCount: Int = 0,
+    // Правка форка: без роли модератора.
     availableSelfDemoteActions: List<SelfDemoteAction> = listOf(SelfDemoteAction.ToMember),
     changeOwnRoleAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     resetPermissionsAction: AsyncAction<Unit> = AsyncAction.Uninitialized,

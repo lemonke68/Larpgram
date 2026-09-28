@@ -108,6 +108,7 @@ fun DependencyHandlerScope.allLibrariesImpl() {
     implementation(project(":libraries:session-storage:impl"))
     implementation(project(":libraries:mediapickers:impl"))
     implementation(project(":libraries:mediaupload:impl"))
+    // Правка форка: наши библиотеки.
     implementation(project(":libraries:imagepacks:impl"))
     implementation(project(":libraries:accountemail:impl"))
     implementation(project(":libraries:appupdate:impl"))

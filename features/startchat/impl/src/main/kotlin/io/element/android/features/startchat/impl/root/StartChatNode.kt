@@ -53,6 +53,7 @@ class StartChatNode(
             modifier = modifier,
             onCloseClick = this::navigateUp,
             onNewRoomClick = navigator::onCreateNewRoom,
+            // Правка форка: новый канал; вход по адресу и каталог убраны.
             onNewChannelClick = navigator::onCreateNewChannel,
             onOpenDM = {
                 navigator.onRoomCreated(roomIdOrAlias = it.toRoomIdOrAlias(), serverNames = emptyList())

@@ -19,6 +19,7 @@ open class RoomListStateContextMenuShownPreviewParam : PreviewParameterProvider<
             aContextMenuShown(hasNewContent = true),
             aContextMenuShown(isDm = true, isFavorite = true),
             aContextMenuShown(roomName = null),
+            // Правка форка: меню канала и закреплённого чата.
             aContextMenuShown(chatType = ChatType.Channel),
             aContextMenuShown(isPinned = true),
         )

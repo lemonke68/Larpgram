@@ -47,6 +47,7 @@ class CreateRoomFlowNode(
     @Parcelize
     data class Inputs(
         val isSpace: Boolean,
+        // Правка форка: каналы (isChannel протаскивается до ConfigureRoom).
         val isChannel: Boolean,
         val parentSpaceId: RoomId?,
     ) : NodeInputs, Parcelable

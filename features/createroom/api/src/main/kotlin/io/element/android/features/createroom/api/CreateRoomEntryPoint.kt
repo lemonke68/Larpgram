@@ -24,7 +24,7 @@ interface CreateRoomEntryPoint : FeatureEntryPoint {
          */
         fun setIsSpace(isSpace: Boolean): Builder
 
-        /** Create a broadcast channel: a room where only admins can post (see ConfigureRoomPresenter). */
+        /** Правка форка: create a broadcast channel: a room where only admins can post (see ConfigureRoomPresenter). */
         fun setIsChannel(isChannel: Boolean): Builder
 
         /**

@@ -98,6 +98,7 @@ class UserProfileFlowNode(
                         backstack.push(NavTarget.VerifyUser(userId))
                     }
 
+                    // Правка форка: свой профиль как в Telegram.
                     override fun navigateToSettings() {
                         callback.navigateToSettings()
                     }

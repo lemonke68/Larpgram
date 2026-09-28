@@ -19,6 +19,8 @@ enum class HomeNavigationBarItem(
     Chats(
         labelRes = R.string.screen_home_tab_chats
     ),
+
+    // Правка форка: вкладки как в Telegram: «Настройки» и «Профиль» вместо «Пространств».
     Settings(
         labelRes = R.string.screen_home_tab_settings
     ),

@@ -47,5 +47,6 @@ internal fun PreferencesEntryPoint.InitialTarget.toNavTarget() = when (this) {
     is PreferencesEntryPoint.InitialTarget.NotificationSettings -> PreferencesFlowNode.NavTarget.NotificationSettings
     PreferencesEntryPoint.InitialTarget.NotificationTroubleshoot -> PreferencesFlowNode.NavTarget.TroubleshootNotifications
     PreferencesEntryPoint.InitialTarget.DeveloperSettings -> PreferencesFlowNode.NavTarget.DeveloperSettings
+    // Правка форка: редактирование профиля из вкладки «Профиль».
     PreferencesEntryPoint.InitialTarget.EditProfile -> PreferencesFlowNode.NavTarget.EditCurrentUserProfile
 }

@@ -19,6 +19,7 @@ sealed interface SpaceFiltersState {
     data object Disabled : SpaceFiltersState
 
     data class Unselected(
+        // Правка форка: список папок для пилюль в любом состоянии.
         val availableFilters: ImmutableList<SpaceServiceFilter>,
         val eventSink: (SpaceFiltersEvent.Unselected) -> Unit,
     ) : SpaceFiltersState

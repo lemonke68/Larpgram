@@ -27,6 +27,8 @@ interface HomeEntryPoint : FeatureEntryPoint {
         fun navigateToRoom(roomId: RoomId, eventId: EventId?, joinedRoom: JoinedRoom?)
         fun navigateToCreateRoom()
         fun navigateToCreateSpace()
+
+        // Правка форка: новый канал; ниже — выходы из вкладок «Настройки» и «Профиль».
         fun navigateToCreateChannel()
         fun navigateToSettings()
         fun navigateToSetUpRecovery()

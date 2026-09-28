@@ -33,6 +33,7 @@ fun anUnselectedSpaceFiltersState(
     eventSink = eventSink,
 )
 
+// Правка форка: общий список папок для превью пилюль.
 fun aSpaceFilterList(): List<SpaceServiceFilter> = listOf(
     aSpaceServiceFilter(
         displayName = "Work",

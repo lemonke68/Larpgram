@@ -41,6 +41,7 @@ open class HomeStatePreviewParam : PreviewParameterProvider<HomeState> {
                 homeSpacesState = aHomeSpacesState(),
             ),
             aHomeState(
+                // Правка форка: вкладки «Настройки» и «Профиль».
                 currentHomeNavigationBarItem = HomeNavigationBarItem.Settings,
             ),
         ) + RoomListStatePreviewParam().values.map {

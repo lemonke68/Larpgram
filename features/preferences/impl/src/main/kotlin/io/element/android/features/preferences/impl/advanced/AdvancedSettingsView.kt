@@ -74,6 +74,7 @@ fun AdvancedSettingsView(
             )
         }
     ) {
+        // Правка форка: экран разбит на секции (оформление, медиа, модерация) в отдельных функциях.
         AppearanceThemeItem(state)
         ListItem(
             content = {

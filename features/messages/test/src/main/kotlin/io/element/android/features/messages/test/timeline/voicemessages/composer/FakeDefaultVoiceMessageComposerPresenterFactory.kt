@@ -43,6 +43,7 @@ class FakeDefaultVoiceMessageComposerPresenterFactory(
                 sessionCoroutineScope = sessionCoroutineScope,
             ),
             messageComposerContext = FakeMessageComposerContext(),
+            // Правка форка: кружочки (комната и клиент для отправки).
             room = FakeJoinedRoom(),
             matrixClient = FakeMatrixClient(),
             permissionsPresenterFactory = FakePermissionsPresenterFactory(),

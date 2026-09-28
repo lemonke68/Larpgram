@@ -24,6 +24,8 @@ class DefaultCreateRoomEntryPoint : CreateRoomEntryPoint {
         private val callback: CreateRoomEntryPoint.Callback,
     ) : CreateRoomEntryPoint.Builder {
         private var isSpace = false
+
+        // Правка форка: каналы.
         private var isChannel = false
         private var parentSpaceId: RoomId? = null
 

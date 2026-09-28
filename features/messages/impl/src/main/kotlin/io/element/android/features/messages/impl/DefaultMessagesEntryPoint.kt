@@ -30,5 +30,6 @@ class DefaultMessagesEntryPoint : MessagesEntryPoint {
 internal fun MessagesEntryPoint.InitialTarget.toNavTarget() = when (this) {
     is MessagesEntryPoint.InitialTarget.Messages -> MessagesFlowNode.NavTarget.Messages(focusedEventId)
     MessagesEntryPoint.InitialTarget.PinnedMessages -> MessagesFlowNode.NavTarget.PinnedMessagesList
+    // Правка форка: открыть комментарии канала (тред) по ссылке.
     is MessagesEntryPoint.InitialTarget.Thread -> MessagesFlowNode.NavTarget.Thread(threadRootId, focusedEventId)
 }
