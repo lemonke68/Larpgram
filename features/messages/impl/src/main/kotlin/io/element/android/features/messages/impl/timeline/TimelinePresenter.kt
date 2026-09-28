@@ -79,7 +79,7 @@ import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.collections.immutable.toPersistentMap
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
@@ -507,7 +507,7 @@ class TimelinePresenter(
                         threadItems.mapNotNull { threadItem ->
                             val commentId = commentIdByEvent[threadItem.rootEvent.eventId.value] ?: return@mapNotNull null
                             commentId to threadItem.numberOfReplies
-                        }.toMap().toPersistentMap()
+                        }.toMap().toImmutableMap()
                     }.collect { value = it }
                 } finally {
                     threadsService.destroy()

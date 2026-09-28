@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: сборка альбома Larpgram в одну мозаику.
  *
  * Альбом приходит несколькими обычными фото/видео с меткой в имени файла (см. `LarpgramAlbum`).
@@ -7,6 +8,7 @@
  * вклинилось чужое сообщение, каждая половина собирается отдельно; одиночная часть остаётся фото.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.messages.impl.timeline.factories

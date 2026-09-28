@@ -20,7 +20,6 @@ import io.element.android.libraries.matrix.api.room.RoomNotificationSettings
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 data class RoomDetailsState(
@@ -58,7 +57,7 @@ data class RoomDetailsState(
     val roomHistoryVisibility: RoomHistoryVisibility,
     val hasNewContent: Boolean,
     // Правка форка: участники группы для вкладки «Участники» TG-профиля (владельцы и админы сверху).
-    val members: ImmutableList<RoomMember> = persistentListOf(),
+    val members: ImmutableList<RoomMember>,
     val eventSink: (RoomDetailsEvent) -> Unit
 ) {
     val roomBadges = buildList {

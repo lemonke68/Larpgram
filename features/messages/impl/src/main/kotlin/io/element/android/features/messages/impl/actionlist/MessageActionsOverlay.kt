@@ -1,10 +1,12 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: меню долгого нажатия, привязанное к сообщению (фаза 2).
  *
  * Вместо шторки снизу — как в Telegram: нажатое сообщение остаётся на месте чётким, фон под
  * ним размыт, над сообщением плашка реакций, под ним меню действий.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.messages.impl.actionlist

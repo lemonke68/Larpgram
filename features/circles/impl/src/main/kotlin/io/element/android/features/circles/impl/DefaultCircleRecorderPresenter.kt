@@ -1,7 +1,9 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Модуль форка: кружочки, круглые видеосообщения как в Telegram.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.circles.impl
@@ -16,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.ContributesBinding
-import dev.zacsweers.metro.Inject
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.channelcomments.ChannelPostMirror
 import io.element.android.libraries.core.extensions.runCatchingExceptions
@@ -37,9 +38,8 @@ import java.io.File
  * обработка жеста живёт в кнопке композера (`LarpgramCircleRecordButton`), сюда приходят
  * уже готовые события.
  */
-@Inject
 @ContributesBinding(RoomScope::class)
-class CircleRecorderPresenter(
+class DefaultCircleRecorderPresenter(
     private val room: JoinedRoom,
     private val matrixClient: MatrixClient,
     private val recorder: CircleRecorder,

@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +48,7 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Surface
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
+import io.element.android.libraries.designsystem.theme.components.TextField
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlin.math.roundToInt
 import android.graphics.Color as AndroidColor
@@ -124,7 +124,7 @@ fun ChatWallpaperColorPickerDialog(
                             .clip(RoundedCornerShape(10.dp))
                             .background(currentColor),
                     ) {}
-                    OutlinedTextField(
+                    TextField(
                         modifier = Modifier.fillMaxWidth(),
                         value = hexInput,
                         onValueChange = { raw ->
@@ -137,7 +137,7 @@ fun ChatWallpaperColorPickerDialog(
                             }
                         },
                         singleLine = true,
-                        label = { Text(text = "HEX") },
+                        label = "HEX",
                     )
                 }
 

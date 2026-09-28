@@ -123,6 +123,7 @@ open class ConfigureRoomStatePreviewParam : PreviewParameterProvider<ConfigureRo
 fun aConfigureRoomState(
     config: CreateRoomConfig = CreateRoomConfig(),
     isSpace: Boolean = false,
+    isChannel: Boolean = false,
     isKnockFeatureEnabled: Boolean = true,
     avatarActions: List<AvatarAction> = emptyList(),
     createRoomAction: AsyncAction<RoomId> = AsyncAction.Uninitialized,
@@ -147,6 +148,7 @@ fun aConfigureRoomState(
 ) = ConfigureRoomState(
     config = config,
     isSpace = isSpace,
+    isChannel = isChannel,
     avatarActions = avatarActions.toImmutableList(),
     createRoomAction = createRoomAction,
     cameraPermissionState = cameraPermissionState,

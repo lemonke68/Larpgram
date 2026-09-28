@@ -34,7 +34,7 @@ fun rememberSwipeableActionsState(swipeToStart: Boolean = false): SwipeableActio
  * Telegram), `false` — только вправо (как в Element).
  */
 @Stable
-class SwipeableActionsState(private val swipeToStart: Boolean = false) {
+class SwipeableActionsState(private val swipeToStart: Boolean) {
     /**
      * The current position (in pixels) of the content.
      */

@@ -1,7 +1,9 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: секреты не должны попадать в debug-лог HTTP.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.libraries.network.interceptors

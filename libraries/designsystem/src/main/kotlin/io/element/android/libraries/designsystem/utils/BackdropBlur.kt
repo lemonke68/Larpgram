@@ -1,8 +1,10 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: размытый снимок экрана под всплывающими поверхностями (запись кружочка,
  * меню долгого нажатия на сообщении). На Android 10 системного блюра нет, поэтому свой.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.libraries.designsystem.utils

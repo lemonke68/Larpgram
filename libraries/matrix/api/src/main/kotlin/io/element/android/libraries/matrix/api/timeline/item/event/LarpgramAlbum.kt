@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: альбом в стиле Telegram, совместимый с любым клиентом Matrix.
  *
  * Раньше альбом уходил одним событием-галереей MSC4274. Её понимает только Element X с включённым
@@ -11,6 +12,7 @@
  * (см. [LARPGRAM_CIRCLE_FILENAME_PREFIX]): штатная отправка медиа не даёт добавить своё поле в content.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.libraries.matrix.api.timeline.item.event

@@ -1,10 +1,12 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: прошедший звонок как в Telegram. В ЛС — пузырь со стороны звонившего:
  * «Исходящий / Входящий / Отклонённый звонок», под ним стрелка и время, справа трубка —
  * перезвонить (`ChatMessageCell` с `MessageObject.isVoiceCall`). В группе — служебная таблетка
  * по центру, как «Видеочат начат».
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.messages.impl.timeline.components

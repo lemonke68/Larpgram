@@ -1,7 +1,9 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: присутствие пользователя («в сети», «был(а) в 14:20») для шапки чата и профилей.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.libraries.matrix.ui.presence

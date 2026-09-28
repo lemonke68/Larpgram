@@ -19,7 +19,7 @@ import kotlinx.collections.immutable.ImmutableList
 data class ConfigureRoomState(
     val isSpace: Boolean,
     // Правка форка: канал TG (подписчики только читают) — для заголовка экрана.
-    val isChannel: Boolean = false,
+    val isChannel: Boolean,
     val config: CreateRoomConfig,
     val avatarActions: ImmutableList<AvatarAction>,
     val createRoomAction: AsyncAction<RoomId>,

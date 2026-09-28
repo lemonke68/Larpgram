@@ -132,12 +132,12 @@ private fun FolderPill(
 @PreviewsDayNight
 @Composable
 internal fun SpaceFolderPillsViewPreview(
-    @PreviewParameter(SpaceFolderPillsStatePreviewParam::class) state: SpaceFiltersState,
+    @PreviewParameter(SpaceFolderPillsSpaceFiltersStatePreviewParam::class) state: SpaceFiltersState,
 ) = ElementPreview {
     SpaceFolderPillsView(state = state)
 }
 
-internal class SpaceFolderPillsStatePreviewParam : androidx.compose.ui.tooling.preview.PreviewParameterProvider<SpaceFiltersState> {
+internal class SpaceFolderPillsSpaceFiltersStatePreviewParam : androidx.compose.ui.tooling.preview.PreviewParameterProvider<SpaceFiltersState> {
     override val values: Sequence<SpaceFiltersState>
         get() = sequenceOf(
             anUnselectedSpaceFiltersState(),

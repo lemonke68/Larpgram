@@ -1,8 +1,10 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: профиль чата в стиле Telegram 12 (`ProfileActivity`) — ЛС подаётся как профиль
  * собеседника, группа и канал — как их профили. Заменяет элементовский `RoomDetailsView`.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.roomdetails.impl

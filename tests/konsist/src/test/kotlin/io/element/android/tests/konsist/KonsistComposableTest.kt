@@ -50,6 +50,17 @@ class KonsistComposableTest {
                 "HorizontalFloatingToolbarItem",
                 "HorizontalFloatingToolbarSeparator",
                 "DebugNavStateNodeHost",
+                // Правка форка: общий набор блоков профиля в стиле TG (TgProfileKit.kt), им
+                // пользуются профиль пользователя и профиль чата — держим в одном файле.
+                "TgProfileActions",
+                "TgProfileCard",
+                "TgProfileCardItem",
+                "TgProfileCardSegment",
+                "TgProfileHeader",
+                "TgProfileInfoRow",
+                "TgProfileMenu",
+                "TgProfileTabs",
+                "TgProfileTopBar",
             )
             .assertTrue(
                 additionalMessage =

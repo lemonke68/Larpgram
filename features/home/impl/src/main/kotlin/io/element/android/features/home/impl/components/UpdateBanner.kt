@@ -1,7 +1,9 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: баннер с предложением обновить приложение.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.home.impl.components
@@ -61,7 +63,7 @@ internal fun UpdateBanner(
 
 @PreviewsDayNight
 @Composable
-internal fun UpdateBannerPreview(@PreviewParameter(UpdateBannerStateProvider::class) state: UpdateBannerState) = ElementPreview {
+internal fun UpdateBannerPreview(@PreviewParameter(UpdateBannerStatePreviewParam::class) state: UpdateBannerState) = ElementPreview {
     UpdateBanner(
         state = state,
         onClick = {},
@@ -69,7 +71,7 @@ internal fun UpdateBannerPreview(@PreviewParameter(UpdateBannerStateProvider::cl
     )
 }
 
-internal class UpdateBannerStateProvider : PreviewParameterProvider<UpdateBannerState> {
+internal class UpdateBannerStatePreviewParam : PreviewParameterProvider<UpdateBannerState> {
     override val values = sequenceOf(
         UpdateInstallState.Idle,
         UpdateInstallState.Downloading(progress = 0.42f),

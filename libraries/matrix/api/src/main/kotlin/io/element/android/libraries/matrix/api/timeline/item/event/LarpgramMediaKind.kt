@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: признаки медиа, по которым в списке чатов и в уведомлениях пишется тип
  * сообщения словом — «Кружочек», «GIF», «Стикер».
  *
@@ -6,6 +7,7 @@
  * libraries/eventformatter (список чатов) и libraries/push (уведомления).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.libraries.matrix.api.timeline.item.event

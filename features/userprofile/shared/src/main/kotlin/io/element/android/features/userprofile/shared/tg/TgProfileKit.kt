@@ -1,8 +1,10 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: детали профиля в стиле Telegram 12 (ProfileActivity, ProfileActionsView,
  * SharedMediaLayout). Общие для профиля собеседника, группы, канала и своего профиля.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.userprofile.shared.tg
@@ -360,7 +362,7 @@ fun TgProfileTabs(
 
 /** Пустая вкладка: «Здесь будут медиа из этого чата». */
 @Composable
-fun TgProfileEmptyTab(
+internal fun TgProfileEmptyTab(
     text: String,
     modifier: Modifier = Modifier,
 ) {

@@ -101,7 +101,7 @@ fun ColumnScope.TgSettingsGroup(
  * Контейнер [ListItem] прозрачный, поэтому сквозь него виден фон карточки.
  */
 @Composable
-fun TgSettingsItem(
+internal fun TgSettingsItem(
     title: String,
     color: Color,
     onClick: () -> Unit,
@@ -136,7 +136,7 @@ fun TgSettingsItem(
  * имя и @имя пользователя. Тап — в редактирование профиля.
  */
 @Composable
-fun TgSettingsProfileHeader(
+internal fun TgSettingsProfileHeader(
     matrixUser: MatrixUser,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

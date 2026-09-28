@@ -1,9 +1,11 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: подсказка над списком чатов как `DialogsHintCell` в Telegram — строка во всю
  * ширину с жирным заголовком 14, серым текстом 13 и крестиком справа; тап по строке — действие.
  * Вместо элементовской карточки-объявления с большой кнопкой на треть экрана.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.home.impl.components

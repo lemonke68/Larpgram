@@ -14,9 +14,10 @@ import com.lemonappdev.konsist.api.verify.assertTrue
 import org.junit.Test
 
 class KonsistLicenseTest {
+    // Правка форка: новые файлы форка несут «Copyright (c) 2026 Larpgram.» вместо Element (аудит C-014).
     private val publicLicense = """
         /\*
-        (?:.*\n)* \* Copyright \(c\) 20\d\d((, |-)20\d\d)? Element Creations Ltd\.
+        (?:.*\n)* \* Copyright \(c\) 20\d\d((, |-)20\d\d)? (Element Creations Ltd|Larpgram)\.
         (?:.*\n)* \*
          \* SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial\.
          \* Please see LICENSE files in the repository root for full details\.
@@ -54,10 +55,13 @@ class KonsistLicenseTest {
                     it.name.startsWith("Template ").not()
             }
             .assertTrue {
-                it.text.count("Element Creations Ltd.") == 1
+                // Правка форка: ровно один владелец в заголовке — Element или Larpgram.
+                it.text.count("Element Creations Ltd.") + larpgramCopyright.findAll(it.text).count() == 1
             }
     }
 }
+
+private val larpgramCopyright = """ \* Copyright \(c\) 20\d\d Larpgram\.""".toRegex()
 
 private fun String.count(subString: String): Int {
     var count = 0

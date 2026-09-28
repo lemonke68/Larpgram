@@ -216,7 +216,7 @@ internal fun VideoQualitySelectorDialog(
 }
 
 @Composable
-fun ModerationAndSafetySection(
+internal fun ModerationAndSafetySection(
     state: AdvancedSettingsState,
 ) {
     PreferenceCategory(

@@ -1,7 +1,9 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: вкладки общих медиа в профиле чата (`SharedMediaLayout` TG).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.libraries.mediaviewer.impl.profile
@@ -15,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import dev.zacsweers.metro.ContributesBinding
-import dev.zacsweers.metro.Inject
 import io.element.android.features.contentscanner.api.ContentScannerService
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -45,7 +46,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @ContributesBinding(RoomScope::class)
-@Inject
 class DefaultProfileSharedMedia(
     private val room: JoinedRoom,
     private val timelineMediaItemsFactory: TimelineMediaItemsFactory,
@@ -86,7 +86,7 @@ class DefaultProfileSharedMedia(
         val latestOnOpenMedia by rememberUpdatedState(onOpenMedia)
 
         return remember(media, links) {
-            SectionImpl(
+            DefaultSection(
                 media = media,
                 links = links,
                 presenterFactories = mediaItemPresenterFactories,
@@ -112,7 +112,7 @@ class DefaultProfileSharedMedia(
     }
 }
 
-private class SectionImpl(
+private class DefaultSection(
     private val media: AsyncData<GroupedMediaItems>,
     private val links: ProfileLinksState,
     private val presenterFactories: MediaItemPresenterFactories,

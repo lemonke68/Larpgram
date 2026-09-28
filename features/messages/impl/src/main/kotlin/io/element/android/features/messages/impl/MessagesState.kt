@@ -72,30 +72,27 @@ data class MessagesState(
     /** Whether the current user has muted this channel's notifications. Only meaningful for a channel. */
     val isChannelMuted: Boolean,
     /** Subscriber (joined member) count shown in a channel's header, or null if not a channel. */
-    val channelSubscriberCount: Long? = null,
+    val channelSubscriberCount: Long?,
     /**
      * Правка форка (роумлесс, ф4 блок): собеседник в ЛС заблокирован (в ignoredUsers). Композер
      * гасим, вместо него полоса «Разблокировать» — своя сторона TG-стены.
      */
-    val isUserBlocked: Boolean = false,
+    val isUserBlocked: Boolean,
     /**
      * Правка форка: шапка чата Telegram. Собеседник ЛС (для «в сети / был(а)») и число
      * участников группы для подзаголовка.
      */
-    val dmUserId: UserId? = null,
-    val memberCount: Long? = null,
+    val dmUserId: UserId?,
+    val memberCount: Long?,
     val eventSink: (MessagesEvent) -> Unit,
-    // Правка форка: состояние пикера стикеров. Дефолт null, чтобы не трогать три
-    // десятка мест, где апстрим собирает MessagesState (в основном превью и тесты).
-    val stickerPickerState: StickerPickerState? = null,
-    val gifPickerState: GifPickerState? = null,
-    val circleRecorderState: CircleRecorderState? = null,
-    // Загрузчик медиа для проигрывания кружочков в таймлайне. Дефолт null по той же
-    // причине: превью и тесты собирают состояние сами, и медиа им не нужно.
-    val circleMediaLoader: MatrixMediaLoader? = null,
-    // Источник стикер-паков: по тапу на стикер показываем его пак (добавить/удалить). Дефолт
-    // null — превью и тесты его не требуют.
-    val imagePackSource: ImagePackSource? = null,
+    // Правка форка: пикеры стикеров и гифок, запись кружочка. null в превью и тестах.
+    val stickerPickerState: StickerPickerState?,
+    val gifPickerState: GifPickerState?,
+    val circleRecorderState: CircleRecorderState?,
+    // Загрузчик медиа для проигрывания кружочков в таймлайне; null в превью и тестах.
+    val circleMediaLoader: MatrixMediaLoader?,
+    // Источник стикер-паков: по тапу на стикер показываем его пак (добавить/удалить).
+    val imagePackSource: ImagePackSource?,
 ) {
     val isTombstoned = successorRoom != null
 

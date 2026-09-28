@@ -1,7 +1,9 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Модуль форка: пикер стикеров.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.stickers.impl
@@ -15,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.ContributesBinding
-import dev.zacsweers.metro.Inject
 import io.element.android.features.stickers.impl.import.ImportResult
 import io.element.android.features.stickers.impl.import.StickerPackImporter
 import io.element.android.libraries.architecture.Presenter
@@ -34,9 +35,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@Inject
 @ContributesBinding(RoomScope::class)
-class StickerPickerPresenter(
+class DefaultStickerPickerPresenter(
     private val imagePackSource: ImagePackSource,
     private val room: JoinedRoom,
     private val matrixClient: MatrixClient,

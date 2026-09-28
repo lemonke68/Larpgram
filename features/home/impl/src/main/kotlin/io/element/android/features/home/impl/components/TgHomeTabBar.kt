@@ -1,10 +1,12 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Правка форка: нижние вкладки Telegram 12 (`MainTabsLayout`, `GlassTabView`) — стеклянная
  * пилюля во всю ширину с полями 8, высота 56, иконка сверху и подпись 12 жирным; у выбранной
  * вкладки подложка. У «Профиля» вместо иконки — свой аватар. Над панелью справа — круглая кнопка
  * «Новое сообщение», как плавающая кнопка списка чатов TG.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
+ * Please see LICENSE files in the repository root for full details.
  */
 
 package io.element.android.features.home.impl.components

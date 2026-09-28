@@ -8,6 +8,7 @@
 
 package io.element.android.features.verifysession.impl.outgoing
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.verification.SessionVerificationData
@@ -73,6 +74,7 @@ enum class EmailVerifyUnavailable {
     Network,
 }
 
+@Immutable
 sealed interface EmailVerifyError {
     /** Неверный код. [attemptsLeft] — сколько попыток осталось, если сервер сказал. */
     data class InvalidCode(val attemptsLeft: Int?) : EmailVerifyError

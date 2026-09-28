@@ -47,6 +47,7 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
@@ -134,6 +135,9 @@ fun aMessagesState(
     isChannel: Boolean = false,
     isChannelMuted: Boolean = false,
     channelSubscriberCount: Long? = null,
+    isUserBlocked: Boolean = false,
+    dmUserId: UserId? = null,
+    memberCount: Long? = null,
     eventSink: (MessagesEvent) -> Unit = {},
 ) = MessagesState(
     roomId = RoomId("!id:domain"),
@@ -168,6 +172,14 @@ fun aMessagesState(
     isChannel = isChannel,
     isChannelMuted = isChannelMuted,
     channelSubscriberCount = channelSubscriberCount,
+    isUserBlocked = isUserBlocked,
+    dmUserId = dmUserId,
+    memberCount = memberCount,
+    stickerPickerState = null,
+    gifPickerState = null,
+    circleRecorderState = null,
+    circleMediaLoader = null,
+    imagePackSource = null,
     eventSink = eventSink,
 )
 
