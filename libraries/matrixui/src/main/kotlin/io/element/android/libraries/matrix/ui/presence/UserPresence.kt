@@ -62,13 +62,14 @@ class UserPresenceFetcher(
         val token = matrixClient.getAccessToken().getOrNull() ?: return null
         val base = matrixClient.homeserverUrl.trimEnd('/')
         val encodedUserId = URLEncoder.encode(userId.value, Charsets.UTF_8.name())
-        val request = Request.Builder()
-            .url("$base/_matrix/client/v3/presence/$encodedUserId/status")
-            .header("Authorization", "Bearer $token")
-            .get()
-            .build()
         return withContext(dispatchers.io) {
             runCatching {
+                // Запрос собираем внутри runCatching: кривой адрес сервера — тоже «не знаем», а не падение.
+                val request = Request.Builder()
+                    .url("$base/_matrix/client/v3/presence/$encodedUserId/status")
+                    .header("Authorization", "Bearer $token")
+                    .get()
+                    .build()
                 okHttpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@use null
                     val json = JSONObject(response.body.string())
@@ -134,7 +135,7 @@ fun presenceText(presence: UserPresence?): PresenceText {
 }
 
 /** Сколько календарных дней между двумя моментами по местному времени. */
-private fun daysBetween(from: Long, to: Long): Int {
+internal fun daysBetween(from: Long, to: Long): Int {
     fun dayIndex(millis: Long): Long {
         val calendar = Calendar.getInstance().apply { timeInMillis = millis }
         calendar.set(Calendar.HOUR_OF_DAY, 0)

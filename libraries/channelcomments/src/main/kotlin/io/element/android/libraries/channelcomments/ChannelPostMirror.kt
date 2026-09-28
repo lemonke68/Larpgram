@@ -112,7 +112,7 @@ object ChannelPostMirror {
      * Правка форка: true для части альбома Larpgram кроме первой (см. `LarpgramAlbum`). В обсуждение
      * зеркалится только первая часть: её id носит пост в ленте канала, и подпись альбома — у неё.
      */
-    private fun isAlbumTail(originalJson: String?): Boolean {
+    internal fun isAlbumTail(originalJson: String?): Boolean {
         originalJson ?: return false
         return runCatchingExceptions {
             val content = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
@@ -176,7 +176,7 @@ object ChannelPostMirror {
         matrixClient.getJoinedRoom(discussionId)?.use { it.sendRawEvent(eventType, content) }
     }
 
-    private fun buildMirrorContent(originalJson: String, commentId: String): String? = runCatchingExceptions {
+    internal fun buildMirrorContent(originalJson: String, commentId: String): String? = runCatchingExceptions {
         val content = ChannelDiscussion.json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
             ?: return@runCatchingExceptions null
         buildJsonObject {

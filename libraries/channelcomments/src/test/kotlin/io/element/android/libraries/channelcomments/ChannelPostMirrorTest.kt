@@ -14,6 +14,8 @@ class ChannelPostMirrorTest {
     private fun message(msgtype: String, extra: String = "") =
         """{"type":"m.room.message","content":{"msgtype":"$msgtype","body":"x"$extra}}"""
 
+    private fun withFilename(name: String) = ",\"filename\":\"$name\""
+
     @Test
     fun `text post kinds are text messages`() {
         assertThat(ChannelPostMirror.isTextMessage(message("m.text"))).isTrue()
@@ -38,14 +40,39 @@ class ChannelPostMirrorTest {
 
     @Test
     fun `circle is detected by the filename marker`() {
-        assertThat(ChannelPostMirror.isCircleEvent(message("m.video", ""","filename":"larpgram-circle-1.mp4""""))).isTrue()
-        assertThat(ChannelPostMirror.isCircleEvent(message("m.video", ""","filename":"clip.mp4""""))).isFalse()
-        assertThat(ChannelPostMirror.isCircleEvent(message("m.image", ""","filename":"larpgram-circle-1.mp4""""))).isFalse()
+        assertThat(ChannelPostMirror.isCircleEvent(message("m.video", withFilename("larpgram-circle-1.mp4")))).isTrue()
+        assertThat(ChannelPostMirror.isCircleEvent(message("m.video", withFilename("clip.mp4")))).isFalse()
+        assertThat(ChannelPostMirror.isCircleEvent(message("m.image", withFilename("larpgram-circle-1.mp4")))).isFalse()
     }
 
     @Test
     fun `sticker is detected by the event type`() {
         assertThat(ChannelPostMirror.isStickerEvent("""{"type":"m.sticker","content":{}}""")).isTrue()
         assertThat(ChannelPostMirror.isStickerEvent(message("m.image"))).isFalse()
+    }
+
+    @Test
+    fun `gallery is detected by msgtype or itemtypes`() {
+        assertThat(ChannelPostMirror.isGalleryEvent(message("m.gallery"))).isTrue()
+        assertThat(ChannelPostMirror.isGalleryEvent(message("m.image", ""","itemtypes":[]"""))).isTrue()
+        assertThat(ChannelPostMirror.isGalleryEvent(message("m.image"))).isFalse()
+        assertThat(ChannelPostMirror.isGalleryEvent(null)).isFalse()
+    }
+
+    @Test
+    fun `only the first part of a Larpgram album is mirrored`() {
+        assertThat(ChannelPostMirror.isAlbumTail(message("m.image", withFilename("larpgram-album-0a1b2c3d-1-3.jpg")))).isFalse()
+        assertThat(ChannelPostMirror.isAlbumTail(message("m.image", withFilename("larpgram-album-0a1b2c3d-2-3.jpg")))).isTrue()
+        assertThat(ChannelPostMirror.isAlbumTail(message("m.image", withFilename("photo.jpg")))).isFalse()
+    }
+
+    @Test
+    fun `mirror content keeps the post, drops the reply relation and adds the comment id`() {
+        val post = """{"content":{"msgtype":"m.text","body":"hi","m.relates_to":{"m.in_reply_to":{"event_id":"${'$'}x"}}}}"""
+        val mirror = ChannelPostMirror.buildMirrorContent(post, "${'$'}post")!!
+        assertThat(mirror).contains(""""body":"hi"""")
+        assertThat(mirror).doesNotContain("m.relates_to")
+        assertThat(ChannelDiscussion.commentIdFromMirror("""{"content":$mirror}""")).isEqualTo("${'$'}post")
+        assertThat(ChannelPostMirror.buildMirrorContent("not json", "id")).isNull()
     }
 }
