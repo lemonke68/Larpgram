@@ -376,7 +376,8 @@ private fun VoiceLockHint() {
     val density = LocalDensity.current
     Popup(
         alignment = Alignment.TopCenter,
-        offset = IntOffset(0, with(density) { (-52).dp.roundToPx() }),
+        // Правка форка: над кругом записи, который растёт под пальцем (LarpgramRecordModeButton).
+        offset = IntOffset(0, with(density) { (-76).dp.roundToPx() }),
         properties = PopupProperties(focusable = false, clippingEnabled = false),
     ) {
         Box(

@@ -8,6 +8,9 @@
 
 package io.element.android.libraries.textcomposer
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -18,11 +21,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -70,18 +75,31 @@ internal fun LarpgramRecordModeButton(
     val currentVoiceCancel by rememberUpdatedState(onVoiceCancel)
     val currentVoiceLock by rememberUpdatedState(onVoiceLock)
 
+    // Правка форка: пока держат голосовое, под пальцем растёт круг акцента, как в Telegram (A-021).
+    // Рисуется за пределами кнопки и раскладку не трогает.
+    var isHoldingVoice by remember { mutableStateOf(false) }
+    val holdScale by animateFloatAsState(
+        targetValue = if (isHoldingVoice) HOLD_CIRCLE_SCALE else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "record_hold_scale",
+    )
+    val holdColor = ElementTheme.colors.bgAccentRest
+
     val density = LocalDensity.current
     val lockThresholdPx = with(density) { LOCK_THRESHOLD.toPx() }
     val cancelThresholdPx = with(density) { CANCEL_THRESHOLD.toPx() }
 
+    val holdModifier = modifier.drawBehind {
+        if (holdScale > 1f) drawCircle(color = holdColor, radius = HOLD_CIRCLE_BASE.toPx() * holdScale)
+    }
     val shapeModifier = if (tgStyle) {
-        modifier
+        holdModifier
             .size(44.dp)
             .clip(CircleShape)
             .background(ElementTheme.colors.bgAccentRest)
             .padding(10.dp)
     } else {
-        modifier
+        holdModifier
             .padding(bottom = 5.dp, top = 5.dp, end = 6.dp, start = 6.dp)
             .size(48.dp)
             .padding(12.dp)
@@ -108,6 +126,7 @@ internal fun LarpgramRecordModeButton(
                     if (startMode == RecordMode.Circle) {
                         currentCircleGestures.onStart()
                     } else {
+                        isHoldingVoice = true
                         currentVoiceStart()
                     }
 
@@ -146,6 +165,7 @@ internal fun LarpgramRecordModeButton(
                         }
                     }
 
+                    isHoldingVoice = false
                     if (cancelled || locked) return@awaitEachGesture
 
                     if (startMode == RecordMode.Circle) {
@@ -174,6 +194,10 @@ internal fun LarpgramRecordModeButton(
  * уверенно и при этом не воспринимается как задержка.
  */
 private const val HOLD_THRESHOLD_MS = 400L
+
+/** Круг под пальцем при записи голосового: радиус 22dp, растёт вдвое (в TG ~2.1x). */
+private val HOLD_CIRCLE_BASE = 22.dp
+private const val HOLD_CIRCLE_SCALE = 2f
 
 /** Насколько увести палец вверх, чтобы запись зафиксировалась. */
 private val LOCK_THRESHOLD = 56.dp
