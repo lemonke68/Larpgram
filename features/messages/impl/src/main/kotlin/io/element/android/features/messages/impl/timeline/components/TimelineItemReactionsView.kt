@@ -40,6 +40,8 @@ fun TimelineItemReactionsView(
     onReactionLongClick: (emoji: String) -> Unit,
     onMoreReactionsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Правка форка: в Telegram у реакций нет кнопки «добавить» — добавляют из меню сообщения.
+    showAddButton: Boolean = true,
 ) {
     var expanded: Boolean by rememberSaveable { mutableStateOf(false) }
     TimelineItemReactionsView(
@@ -48,6 +50,7 @@ fun TimelineItemReactionsView(
         },
         reactions = reactionsState.reactions,
         userCanSendReaction = userCanSendReaction,
+        showAddButton = showAddButton,
         expanded = expanded,
         isOutgoing = isOutgoing,
         onReactionClick = onReactionClick,
@@ -61,6 +64,7 @@ fun TimelineItemReactionsView(
 private fun TimelineItemReactionsView(
     reactions: ImmutableList<AggregatedReaction>,
     userCanSendReaction: Boolean,
+    showAddButton: Boolean,
     isOutgoing: Boolean,
     expanded: Boolean,
     onReactionClick: (emoji: String) -> Unit,
@@ -99,7 +103,7 @@ private fun TimelineItemReactionsView(
                     onLongClick = {}
                 )
             },
-            addMoreButton = if (userCanSendReaction) {
+            addMoreButton = if (userCanSendReaction && showAddButton) {
                 {
                     CompositionLocalProvider(LocalLayoutDirection provides currentLayout) {
                         MessagesReactionButton(

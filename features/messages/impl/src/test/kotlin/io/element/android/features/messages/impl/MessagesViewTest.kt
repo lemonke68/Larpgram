@@ -15,6 +15,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -451,24 +452,19 @@ class MessagesViewTest : RobolectricTest() {
         eventsRecorder.assertSingle(ReactionSummaryEvent.ShowReactionSummary(timelineItem.eventId!!, timelineItem.reactionsState.reactions, "👍️"))
     }
 
+    // Правка форка: в Telegram под сообщением нет кнопки «добавить реакцию» — только меню (A-008).
     @Test
-    fun `clicking on more reaction emits the expected Event`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<CustomReactionEvent>()
+    fun `there is no add reaction button under a message`() = runAndroidComposeUiTest {
         val state = aMessagesState(
             timelineState = aTimelineState(
                 timelineItems = aTimelineItemList(aTimelineItemTextContent()),
             ),
-            customReactionState = aCustomReactionState(
-                eventSink = eventsRecorder,
-            ),
         )
-        val timelineItem = state.timelineState.timelineItems.first() as TimelineItem.Event
         setMessagesView(
             state = state,
         )
         val moreReactionContentDescription = activity!!.getString(R.string.screen_room_timeline_add_reaction)
-        onAllNodesWithContentDescription(moreReactionContentDescription).onFirst().performClick()
-        eventsRecorder.assertSingle(CustomReactionEvent.ShowCustomReactionSheet(timelineItem))
+        onAllNodesWithContentDescription(moreReactionContentDescription).assertCountEquals(0)
     }
 
     @Test

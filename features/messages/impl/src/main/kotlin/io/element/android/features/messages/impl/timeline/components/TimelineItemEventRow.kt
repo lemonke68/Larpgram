@@ -759,6 +759,9 @@ private fun TimelineItemEventRowContent(
             null
         }
 
+        // Правка форка: реакции рисуются внутри пузыря (A-008), если пузырь есть.
+        val reactionsInBubble = event.reactionsState.reactions.isNotEmpty() && !event.content.isBubbleless
+
         // Message bubble
         val bubbleState = BubbleState(
             groupPosition = event.groupPosition,
@@ -804,6 +807,25 @@ private fun TimelineItemEventRowContent(
                 // Чип-футер только для постов с пузырём; на безпузырном контенте (стикеры/кружочки)
                 // карточки нет — влить некуда, поэтому не показываем.
                 commentsFooter = commentsFooter.takeUnless { event.content.isBubbleless },
+                reactionsFooter = if (reactionsInBubble) {
+                    {
+                        CompositionLocalProvider(LocalReactionChipInBubble provides true) {
+                            TimelineItemReactionsView(
+                                reactionsState = event.reactionsState,
+                                userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
+                                // Внутри пузыря реакции всегда от начала строки, как в Telegram.
+                                isOutgoing = false,
+                                onReactionClick = onReactionClick,
+                                onReactionLongClick = onReactionLongClick,
+                                onMoreReactionsClick = { onMoreReactionsClick(event) },
+                                showAddButton = false,
+                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
                 eventContentView = eventContentView,
             )
         }
@@ -852,7 +874,8 @@ private fun TimelineItemEventRowContent(
         }
 
         // Reactions
-        if (event.reactionsState.reactions.isNotEmpty()) {
+        // Правка форка: снаружи пузыря только у безпузырного контента (стикер, гифка, кружок).
+        if (event.reactionsState.reactions.isNotEmpty() && !reactionsInBubble) {
             TimelineItemReactionsView(
                 reactionsState = event.reactionsState,
                 userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
@@ -860,6 +883,7 @@ private fun TimelineItemEventRowContent(
                 onReactionClick = onReactionClick,
                 onReactionLongClick = onReactionLongClick,
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
+                showAddButton = false,
                 modifier = Modifier
                     .constrainAs(reactions) {
                         top.linkTo(message.bottom, margin = (-4).dp)
@@ -942,6 +966,8 @@ private fun MessageEventBubbleContent(
     // Larpgram (роумлесс): необязательная нижняя секция пузыря — TG-чип «Комментарии», влитый
     // в карточку поста (наследует ширину и фон пузыря). null для не-каналов и обычных сообщений.
     commentsFooter: (@Composable () -> Unit)? = null,
+    // Правка форка: реакции внутри пузыря под содержимым, как в Telegram (аудит A-008).
+    reactionsFooter: (@Composable () -> Unit)? = null,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
     // Long clicks are not not automatically propagated from a `clickable`
@@ -1188,6 +1214,7 @@ private fun MessageEventBubbleContent(
                 threadDecoration()
                 inReplyTo(inReplyToDetails)
                 contentWithTimestamp()
+                reactionsFooter?.invoke()
                 commentsFooter?.invoke()
             }
         } else if (commentsFooter != null) {
@@ -1203,6 +1230,7 @@ private fun MessageEventBubbleContent(
                             senderName()
                             contentWithTimestamp()
                         }
+                        reactionsFooter?.invoke()
                     }
                 },
                 footer = { commentsFooter() },
@@ -1215,6 +1243,7 @@ private fun MessageEventBubbleContent(
                     senderName()
                     contentWithTimestamp()
                 }
+                reactionsFooter?.invoke()
             }
         }
     }
