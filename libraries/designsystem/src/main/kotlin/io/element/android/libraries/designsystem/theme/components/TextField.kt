@@ -293,7 +293,8 @@ private fun TextFieldContainer(
                 width = if (isFocused) 2.dp else 1.dp,
                 color = when {
                     !enabled -> ElementTheme.colors.borderDisabled
-                    isFocused -> ElementTheme.colors.borderFocused
+                    // Правка форка: рамка в фокусе цвета акцента, а не синяя Compound (аудит A-013).
+                    isFocused -> ElementTheme.colors.bgAccentRest
                     isError -> ElementTheme.colors.borderCriticalPrimary
                     else -> ElementTheme.colors.borderInteractiveSecondary
                 }
