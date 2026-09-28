@@ -14,6 +14,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.positionInWindow
 
 /**
  * Куда привязать всплывающее меню: экранные координаты нажатого пузыря.
@@ -49,6 +50,13 @@ class MessageActionsAnchor {
     /** `boundsInWindow` пузыря по id, либо null (пузырь ушёл с экрана или ещё не размещён). */
     fun boundsFor(id: String): Rect? =
         coordinates[id]?.takeIf { it.isAttached }?.boundsInWindow()
+
+    /**
+     * Верх пузыря в окне без обрезки краем ленты. `boundsInWindow` для пузыря, ушедшего под верх
+     * списка, даёт 0, и сдвиг «выдвинуть из-под шапки» получался меньше нужного.
+     */
+    fun unclippedTopFor(id: String): Float? =
+        coordinates[id]?.takeIf { it.isAttached }?.positionInWindow()?.y
 }
 
 /**

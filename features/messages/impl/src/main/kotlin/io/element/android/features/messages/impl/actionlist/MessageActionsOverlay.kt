@@ -79,6 +79,7 @@ private val SCREEN_EDGE_PADDING = 8.dp
 
 // Радиус скругления снимка пузыря: близко к телу пузыря форка (20dp).
 private val BUBBLE_SNAPSHOT_CORNER = 18.dp
+private val MIN_SNAPSHOT_HEIGHT = 96.dp
 
 /**
  * Меню долгого нажатия вокруг сообщения.
@@ -131,7 +132,6 @@ fun MessageActionsOverlay(
             }
             val density = LocalDensity.current
             val bubbleWidthDp = with(density) { (bubbleRight - bubbleLeft).toDp() }
-            val bubbleHeightDp = with(density) { (bubbleBottom - bubbleTop).toDp() }
             val bubbleLeftDp = with(density) { bubbleLeft.toDp() }
             val bubbleRightGapDp = with(density) { (constraints.maxWidth - bubbleRight).toDp() }
 
@@ -143,6 +143,18 @@ fun MessageActionsOverlay(
             val bottomMarginPx = with(density) { 24.dp.roundToPx() }
             val pillReservePx = with(density) { (PILL_RESERVE + GAP).roundToPx() }
             var groupHeightPx by remember { mutableStateOf(0) }
+            // Правка форка: высокий пузырь (опрос, длинный текст) вместе с меню не влезает, и
+            // нижние пункты уезжали за экран. Тогда показываем низ пузыря, обрезая верх: всё,
+            // кроме снимка, остаётся как есть, поэтому его высота — остаток экрана.
+            var snapshotHeightPx by remember { mutableStateOf(0) }
+            val fullBubbleHeightPx = bubbleBottom - bubbleTop
+            val shownBubbleHeightPx = if (groupHeightPx == 0 || snapshotHeightPx == 0) {
+                fullBubbleHeightPx
+            } else {
+                val restPx = groupHeightPx - snapshotHeightPx
+                val fitPx = screenHeightPx - minTopPx - bottomMarginPx - restPx
+                fullBubbleHeightPx.coerceAtMost(fitPx.coerceAtLeast(with(density) { MIN_SNAPSHOT_HEIGHT.roundToPx() }))
+            }
             val desiredTopPx = bubbleTop - pillReservePx
             val yOffsetPx = if (groupHeightPx == 0) {
                 desiredTopPx.coerceAtLeast(minTopPx)
@@ -190,7 +202,12 @@ fun MessageActionsOverlay(
                         },
                     )
                     Spacer(modifier = Modifier.height(GAP))
-                    BubbleSnapshot(bubble, bubbleWidthDp, bubbleHeightDp)
+                    BubbleSnapshot(
+                        bubble = bubble,
+                        widthDp = bubbleWidthDp,
+                        heightDp = with(density) { shownBubbleHeightPx.toDp() },
+                        modifier = Modifier.onSizeChanged { snapshotHeightPx = it.height },
+                    )
                 } else {
                     if (target.displayEmojiReactions) {
                         ReactionPill(
@@ -206,7 +223,12 @@ fun MessageActionsOverlay(
                         Spacer(modifier = Modifier.height(GAP))
                     }
 
-                    BubbleSnapshot(bubble, bubbleWidthDp, bubbleHeightDp)
+                    BubbleSnapshot(
+                        bubble = bubble,
+                        widthDp = bubbleWidthDp,
+                        heightDp = with(density) { shownBubbleHeightPx.toDp() },
+                        modifier = Modifier.onSizeChanged { snapshotHeightPx = it.height },
+                    )
 
                     Spacer(modifier = Modifier.height(GAP))
 
@@ -269,18 +291,21 @@ private fun BubbleSnapshot(
     bubble: ImageBitmap?,
     widthDp: Dp,
     heightDp: Dp,
+    modifier: Modifier = Modifier,
 ) {
     if (bubble != null) {
+        // Crop по низу: если высоту урезали, остаётся низ пузыря со временем и кнопками.
         Image(
             bitmap = bubble,
             contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.BottomCenter,
+            modifier = modifier
                 .size(widthDp, heightDp)
                 .clip(RoundedCornerShape(BUBBLE_SNAPSHOT_CORNER)),
         )
     } else {
-        Spacer(modifier = Modifier.size(widthDp, heightDp))
+        Spacer(modifier = modifier.size(widthDp, heightDp))
     }
 }
 

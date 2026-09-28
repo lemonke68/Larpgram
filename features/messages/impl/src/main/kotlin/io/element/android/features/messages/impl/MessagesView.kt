@@ -44,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -226,6 +229,9 @@ fun MessagesView(
     // Правка форка: шапка Telegram плавает поверх ленты (обои под статус-баром); в треде — апстримовская.
     val isThreadTimeline = state.timelineState.timelineMode is Timeline.Mode.Thread
     var headerOverlayHeight by remember { mutableStateOf(0.dp) }
+    // Правка форка: низ шапки в координатах окна (со статус-баром) — для выдвигания пузыря
+    // перед меню долгого нажатия. headerOverlayHeight статус-бар не учитывает.
+    var headerBottomInWindowPx by remember { mutableFloatStateOf(0f) }
     val floatingComposer = !state.composerState.showTextFormatting && state.composerState.suggestions.isEmpty()
 
     // This is needed because the composer is inside an AndroidView that can't be affected by the FocusManager in Compose
@@ -262,11 +268,12 @@ fun MessagesView(
         // шапка попадает в снимок пузыря в меню.
         val bounds = messageActionsAnchor.bubbleBounds
         val listState = messageActionsAnchor.listState
-        val headerBottomPx = with(density) { (headerOverlayHeight + 8.dp).toPx() }
-        if (bounds != null && listState != null && bounds.top < headerBottomPx) {
+        val headerBottomPx = headerBottomInWindowPx + with(density) { 8.dp.toPx() }
+        val bubbleTop = messageActionsAnchor.unclippedTopFor(event.id.value)
+        if (bounds != null && listState != null && bubbleTop != null && bubbleTop < headerBottomPx) {
             anchorScope.launch {
                 // Лента перевёрнута (новые снизу): положительный сдвиг опускает содержимое.
-                listState.scrollBy(headerBottomPx - bounds.top)
+                listState.scrollBy(headerBottomPx - bubbleTop)
                 withFrameNanos { }
                 messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
                 hidingKeyboard {
@@ -406,7 +413,8 @@ fun MessagesView(
                                 onThreadsListClick = onThreadsListClick,
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
-                                    .onSizeChanged { headerOverlayHeight = with(density) { it.height.toDp() } },
+                                    .onSizeChanged { headerOverlayHeight = with(density) { it.height.toDp() } }
+                                    .onGloballyPositioned { headerBottomInWindowPx = it.boundsInWindow().bottom },
                             )
                         }
 
