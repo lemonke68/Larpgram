@@ -140,6 +140,9 @@ class MediaItemsPostProcessorTest {
             expectedFileItems = listOf(
                 loading1,
             ),
+            expectedVoiceAndCircleItems = listOf(
+                loading1,
+            ),
         )
     }
 
@@ -186,6 +189,27 @@ class MediaItemsPostProcessorTest {
                 file1,
                 loading1,
             ),
+            expectedVoiceAndCircleItems = listOf(
+                date1,
+                voice3,
+                voice2,
+                voice1,
+                loading1,
+            ),
+        )
+    }
+
+    // Правка форка: кружочек (видео с меткой в имени) идёт и в сетку Element, и к голосовым.
+    @Test
+    fun `circle videos are grouped with voice messages in timeline order`() {
+        val circle = aMediaItemVideo(id = UniqueId("circle")).let {
+            it.copy(mediaInfo = it.mediaInfo.copy(filename = "larpgram-circle-1.mp4"))
+        }
+        test(
+            mediaItems = listOf(voice2, circle, video1, date1),
+            expectedImageAndVideoItems = listOf(date1, circle, video1),
+            expectedFileItems = listOf(date1, voice2),
+            expectedVoiceAndCircleItems = listOf(date1, voice2, circle),
         )
     }
 
@@ -193,6 +217,7 @@ class MediaItemsPostProcessorTest {
         mediaItems: List<MediaItem>,
         expectedImageAndVideoItems: List<MediaItem>,
         expectedFileItems: List<MediaItem>,
+        expectedVoiceAndCircleItems: List<MediaItem> = emptyList(),
     ) {
         val sut = MediaItemsPostProcessor()
         val result = sut.process(mediaItems.toImmutableList())
@@ -205,6 +230,7 @@ class MediaItemsPostProcessorTest {
             GroupedMediaItems(
                 imageAndVideoItems = expectedImageAndVideoItems.toImmutableList(),
                 fileItems = expectedFileItems.toImmutableList(),
+                voiceAndCircleItems = expectedVoiceAndCircleItems.toImmutableList(),
             )
         )
     }

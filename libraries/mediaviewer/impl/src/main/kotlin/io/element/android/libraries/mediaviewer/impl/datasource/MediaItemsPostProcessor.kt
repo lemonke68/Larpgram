@@ -9,6 +9,7 @@
 package io.element.android.libraries.mediaviewer.impl.datasource
 
 import dev.zacsweers.metro.Inject
+import io.element.android.libraries.matrix.api.timeline.item.event.LARPGRAM_CIRCLE_FILENAME_PREFIX
 import io.element.android.libraries.mediaviewer.impl.model.GroupedMediaItems
 import io.element.android.libraries.mediaviewer.impl.model.MediaItem
 import kotlinx.collections.immutable.toImmutableList
@@ -20,6 +21,9 @@ class MediaItemsPostProcessor {
     ): GroupedMediaItems {
         val imageAndVideoItems = mutableListOf<MediaItem>()
         val fileItems = mutableListOf<MediaItem>()
+        // Правка форка: третья группа — голосовые и кружочки (см. GroupedMediaItems.voiceAndCircleItems).
+        val voiceAndCircleItems = mutableListOf<MediaItem>()
+        val voiceAndCircleSubList = mutableListOf<MediaItem.Event>()
 
         val imageAndVideoItemsSubList = mutableListOf<MediaItem.Event>()
         val fileItemsSublist = mutableListOf<MediaItem.Event>()
@@ -40,23 +44,31 @@ class MediaItemsPostProcessor {
                         fileItems.addAll(fileItemsSublist)
                         fileItemsSublist.clear()
                     }
+                    if (voiceAndCircleSubList.isNotEmpty()) {
+                        voiceAndCircleItems.add(item)
+                        voiceAndCircleItems.addAll(voiceAndCircleSubList)
+                        voiceAndCircleSubList.clear()
+                    }
                 }
                 is MediaItem.Event -> {
                     when (item) {
                         is MediaItem.Image,
                         is MediaItem.Video -> {
                             imageAndVideoItemsSubList.add(item)
+                            if (item is MediaItem.Video && item.isCircle()) voiceAndCircleSubList.add(item)
                         }
                         is MediaItem.Audio,
                         is MediaItem.Voice,
                         is MediaItem.File -> {
                             fileItemsSublist.add(item)
+                            if (item is MediaItem.Voice) voiceAndCircleSubList.add(item)
                         }
                     }
                 }
                 is MediaItem.LoadingIndicator -> {
                     imageAndVideoItems.add(item)
                     fileItems.add(item)
+                    voiceAndCircleItems.add(item)
                 }
             }
         }
@@ -68,9 +80,14 @@ class MediaItemsPostProcessor {
             // Should not happen, since the SDK is always adding a date separator
             fileItems.addAll(fileItemsSublist)
         }
+        voiceAndCircleItems.addAll(voiceAndCircleSubList)
         return GroupedMediaItems(
             imageAndVideoItems = imageAndVideoItems.toImmutableList(),
             fileItems = fileItems.toImmutableList(),
+            voiceAndCircleItems = voiceAndCircleItems.toImmutableList(),
         )
     }
 }
+
+/** Правка форка: кружочек — видео с меткой Larpgram в имени файла. */
+internal fun MediaItem.Video.isCircle(): Boolean = mediaInfo.filename.startsWith(LARPGRAM_CIRCLE_FILENAME_PREFIX)

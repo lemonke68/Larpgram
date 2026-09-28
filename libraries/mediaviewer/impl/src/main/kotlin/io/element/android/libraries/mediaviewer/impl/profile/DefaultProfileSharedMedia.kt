@@ -135,6 +135,7 @@ private class DefaultSection(
             ProfileSharedMediaTab.Voice -> scope.voiceList(
                 media = media,
                 presenterFactories = presenterFactories,
+                onOpen = onOpen,
                 onLoadMore = onLoadMoreMedia,
             )
             ProfileSharedMediaTab.Links -> scope.linkList(

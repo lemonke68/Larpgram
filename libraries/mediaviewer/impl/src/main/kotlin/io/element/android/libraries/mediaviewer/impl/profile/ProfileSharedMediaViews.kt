@@ -55,6 +55,7 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.matrix.ui.media.contentvalidation.collectOverallState
+import io.element.android.libraries.mediaviewer.impl.datasource.isCircle
 import io.element.android.libraries.mediaviewer.impl.gallery.di.MediaItemPresenterFactories
 import io.element.android.libraries.mediaviewer.impl.gallery.di.rememberPresenter
 import io.element.android.libraries.mediaviewer.impl.model.GroupedMediaItems
@@ -79,7 +80,8 @@ internal fun LazyListScope.mediaGrid(
     onLoadMore: () -> Unit,
 ) {
     val items = media.itemsOrPlaceholder(this, emptyText = CommonStrings.larpgram_profile_empty_media) { it.imageAndVideoItems } ?: return
-    val events = items.filter { it is MediaItem.Image || it is MediaItem.Video }.filterIsInstance<MediaItem.Event>()
+    // Правка форка: кружочки живут во вкладке «Голосовые», как в Telegram (A-025).
+    val events = items.filter { it is MediaItem.Image || (it is MediaItem.Video && !it.isCircle()) }.filterIsInstance<MediaItem.Event>()
     val loader = items.backwardLoader()
     if (events.isEmpty() && loader == null) {
         item(key = "shared_media_empty") { EmptyTab(stringResource(CommonStrings.larpgram_profile_empty_media)) }
@@ -126,10 +128,12 @@ internal fun LazyListScope.fileList(
 internal fun LazyListScope.voiceList(
     media: AsyncData<GroupedMediaItems>,
     presenterFactories: MediaItemPresenterFactories,
+    onOpen: (MediaItem.Event) -> Unit,
     onLoadMore: () -> Unit,
 ) {
-    val items = media.itemsOrPlaceholder(this, emptyText = CommonStrings.larpgram_profile_empty_voice) { it.fileItems } ?: return
-    val voices = items.filterIsInstance<MediaItem.Voice>()
+    // Правка форка: голосовые и кружочки вперемешку, в порядке ленты (A-025).
+    val items = media.itemsOrPlaceholder(this, emptyText = CommonStrings.larpgram_profile_empty_voice) { it.voiceAndCircleItems } ?: return
+    val voices = items.filter { it is MediaItem.Voice || it is MediaItem.Video }.filterIsInstance<MediaItem.Event>()
     val loader = items.backwardLoader()
     if (voices.isEmpty() && loader == null) {
         item(key = "shared_voice_empty") { EmptyTab(stringResource(CommonStrings.larpgram_profile_empty_voice)) }
@@ -137,9 +141,15 @@ internal fun LazyListScope.voiceList(
     }
     voices.forEachIndexed { index, voice ->
         item(key = "shared_voice_${voice.id().value}", contentType = "shared_voice") {
-            val presenter: Presenter<VoiceMessageState> = presenterFactories.rememberPresenter(voice)
             CardRow(isFirst = index == 0, isLast = index == voices.lastIndex && loader == null) {
-                VoiceRow(item = voice, state = presenter.present())
+                when (voice) {
+                    is MediaItem.Voice -> {
+                        val presenter: Presenter<VoiceMessageState> = presenterFactories.rememberPresenter(voice)
+                        VoiceRow(item = voice, state = presenter.present())
+                    }
+                    is MediaItem.Video -> CircleRow(item = voice, onClick = { onOpen(voice) })
+                    else -> Unit
+                }
             }
         }
     }
@@ -426,6 +436,49 @@ private fun VoiceRow(item: MediaItem.Voice, state: VoiceMessageState) {
             // Правка форка: пока длительность не известна, time пустой — без висящей «·» (A-025).
             Text(
                 text = listOfNotNull(item.mediaInfo.dateSent, time.takeIf { it.isNotBlank() }).joinToString(" · "),
+                style = ElementTheme.typography.fontBodyMdRegular,
+                color = ElementTheme.colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Правка форка: кружочек в списке «Голосовые» — круглое превью, открывается в просмотрщике. */
+@Composable
+private fun CircleRow(item: MediaItem.Video, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(ElementTheme.colors.bgSubtleSecondary),
+            model = MediaRequestData(item.thumbnailSource ?: item.mediaSource, MediaRequestData.Kind.Thumbnail(GRID_THUMBNAIL_SIZE)),
+            contentScale = ContentScale.Crop,
+            contentDescription = null,
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.mediaInfo.senderName ?: item.mediaInfo.senderId?.value.orEmpty(),
+                style = ElementTheme.typography.fontBodyLgMedium,
+                color = ElementTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = listOfNotNull(
+                    stringResource(CommonStrings.larpgram_video_message),
+                    item.mediaInfo.dateSent,
+                    item.mediaInfo.duration?.takeIf { it.isNotBlank() },
+                ).joinToString(" · "),
                 style = ElementTheme.typography.fontBodyMdRegular,
                 color = ElementTheme.colors.textSecondary,
                 maxLines = 1,
