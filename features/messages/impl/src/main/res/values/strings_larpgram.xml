@@ -8,10 +8,6 @@
     <!-- Channel subscriber bar: tap to unmute notifications. -->
     <string name="screen_channel_unmute">Unmute</string>
     <!-- Subscriber count shown under a channel name in its header. -->
-    <plurals name="channel_subscriber_count">
-        <item quantity="one">%1$d subscriber</item>
-        <item quantity="other">%1$d subscribers</item>
-    </plurals>
     <!-- Roomless: shown instead of the composer for a blocked DM peer; tap to unblock. -->
     <string name="screen_room_unblock_user">You blocked this user. Tap to unblock.</string>
     <!-- Roomless (gap D): comment count on a channel post's Comments chip. -->
@@ -20,17 +16,6 @@
         <item quantity="other">%1$d comments</item>
     </plurals>
     <!-- Telegram chat header subtitle (TgChatHeader). -->
-    <string name="larpgram_header_typing">typing…</string>
-    <string name="larpgram_header_typing_one">%1$s is typing…</string>
-    <string name="larpgram_header_typing_two">%1$s and %2$s are typing…</string>
-    <plurals name="larpgram_header_typing_many">
-        <item quantity="one">%1$d person is typing…</item>
-        <item quantity="other">%1$d people are typing…</item>
-    </plurals>
-    <plurals name="larpgram_header_members">
-        <item quantity="one">%1$d member</item>
-        <item quantity="other">%1$d members</item>
-    </plurals>
     <string name="larpgram_header_menu_video_call">Video call</string>
     <string name="larpgram_header_menu_mute">Mute</string>
     <string name="larpgram_header_menu_unmute">Unmute</string>

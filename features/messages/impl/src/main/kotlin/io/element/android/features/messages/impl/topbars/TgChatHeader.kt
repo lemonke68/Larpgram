@@ -59,6 +59,7 @@ import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.ui.presence.UserPresence
 import io.element.android.libraries.matrix.ui.presence.presenceText
+import io.element.android.libraries.ui.strings.CommonPlurals
 import io.element.android.libraries.ui.strings.CommonStrings
 
 /**
@@ -286,22 +287,22 @@ private fun headerSubtitle(state: MessagesState, dmPresence: UserPresence?): Hea
     if (typing.renderTypingNotifications && typing.typingMembers.isNotEmpty()) {
         val names = typing.typingMembers.map { it.disambiguatedDisplayName }
         val text = when {
-            state.dmUserId != null -> stringResource(R.string.larpgram_header_typing)
-            names.size == 1 -> stringResource(R.string.larpgram_header_typing_one, names[0])
-            names.size == 2 -> stringResource(R.string.larpgram_header_typing_two, names[0], names[1])
-            else -> pluralStringResource(R.plurals.larpgram_header_typing_many, names.size, names.size)
+            state.dmUserId != null -> stringResource(CommonStrings.larpgram_typing)
+            names.size == 1 -> stringResource(CommonStrings.larpgram_typing_one, names[0])
+            names.size == 2 -> stringResource(CommonStrings.larpgram_typing_two, names[0], names[1])
+            else -> stringResource(CommonStrings.larpgram_typing_many, names[0], names.size - 1)
         }
         return HeaderSubtitle(text, isAccent = true)
     }
     if (state.isChannel) {
         val count = state.channelSubscriberCount ?: return null
-        return HeaderSubtitle(pluralStringResource(R.plurals.channel_subscriber_count, count.toInt(), count.toInt()), isAccent = false)
+        return HeaderSubtitle(pluralStringResource(CommonPlurals.larpgram_subscriber_count, count.toInt(), count.toInt()), isAccent = false)
     }
     if (state.dmUserId != null) {
         return presenceText(dmPresence).let { HeaderSubtitle(it.text, isAccent = it.isOnline) }
     }
     val members = state.memberCount ?: return null
-    return HeaderSubtitle(pluralStringResource(R.plurals.larpgram_header_members, members.toInt(), members.toInt()), isAccent = false)
+    return HeaderSubtitle(pluralStringResource(CommonPlurals.larpgram_member_count, members.toInt(), members.toInt()), isAccent = false)
 }
 
 /** Высота пилюль шапки, как у поля ввода. */

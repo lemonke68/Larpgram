@@ -67,6 +67,15 @@
     <string name="larpgram_typing_one">"%1$s is typing…"</string>
     <string name="larpgram_typing_two">"%1$s and %2$s are typing…"</string>
     <string name="larpgram_typing_many">"%1$s and %2$d more are typing…"</string>
+    <!-- Счётчики под названием чата: шапка чата и профиль группы/канала. -->
+    <plurals name="larpgram_member_count">
+        <item quantity="one">"%1$d member"</item>
+        <item quantity="other">"%1$d members"</item>
+    </plurals>
+    <plurals name="larpgram_subscriber_count">
+        <item quantity="one">"%1$d subscriber"</item>
+        <item quantity="other">"%1$d subscribers"</item>
+    </plurals>
     <!-- «Новое сообщение» (TG): экран по карандашу в списке чатов. -->
     <string name="larpgram_new_message">"New message"</string>
     <string name="larpgram_new_group">"New group"</string>

@@ -84,6 +84,7 @@ import io.element.android.libraries.mediaviewer.api.ProfileSharedMediaSection
 import io.element.android.libraries.mediaviewer.api.ProfileSharedMediaTab
 import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.testtags.testTag
+import io.element.android.libraries.ui.strings.CommonPlurals
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.toImmutableList
 
@@ -244,8 +245,8 @@ private fun roomSubtitle(state: RoomDetailsState, presence: UserPresence?): Pair
     val count = state.memberCount.toInt()
     return when {
         state.roomType is RoomDetailsType.Dm -> presenceText(presence).let { it.text to it.isOnline }
-        state.isChannel -> pluralStringResource(R.plurals.screen_room_details_subscriber_count, count, count) to false
-        else -> pluralStringResource(R.plurals.screen_room_details_member_count, count, count) to false
+        state.isChannel -> pluralStringResource(CommonPlurals.larpgram_subscriber_count, count, count) to false
+        else -> pluralStringResource(CommonPlurals.larpgram_member_count, count, count) to false
     }
 }
 

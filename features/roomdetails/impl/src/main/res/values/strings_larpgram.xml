@@ -11,12 +11,4 @@
     <string name="screen_room_details_leave_channel">Unsubscribe</string>
     <string name="screen_room_details_delete_chat">Delete chat</string>
     <!-- Member/subscriber count shown under the name in the details header. -->
-    <plurals name="screen_room_details_member_count">
-        <item quantity="one">%1$d member</item>
-        <item quantity="other">%1$d members</item>
-    </plurals>
-    <plurals name="screen_room_details_subscriber_count">
-        <item quantity="one">%1$d subscriber</item>
-        <item quantity="other">%1$d subscribers</item>
-    </plurals>
 </resources>
