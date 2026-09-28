@@ -41,8 +41,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.components.RoomSummaryRow
 import io.element.android.features.home.impl.contentType
@@ -55,6 +57,7 @@ import io.element.android.libraries.designsystem.theme.components.FilledTextFiel
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.utils.OnVisibleRangeChangeEffect
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -128,6 +131,8 @@ private fun RoomListSearchContent(
                             .semantics { contentDescription = searchLabel },
                         state = state.query,
                         lineLimits = TextFieldLineLimits.SingleLine,
+                        // Правка форка: видимая подсказка «Поиск», как в Telegram (аудит A-001).
+                        placeholder = { Text(text = searchLabel, color = ElementTheme.colors.textSecondary) },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
@@ -167,6 +172,18 @@ private fun RoomListSearchContent(
                 .padding(padding)
                 .consumeWindowInsets(padding)
         ) {
+            // Правка форка: пустая выдача по непустому запросу — «Ничего не найдено», а не белый экран.
+            if (state.query.text.isNotBlank() && state.results.isEmpty()) {
+                Text(
+                    text = stringResource(CommonStrings.common_no_results),
+                    color = ElementTheme.colors.textSecondary,
+                    style = ElementTheme.typography.fontBodyLgRegular,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp),
+                )
+            }
             val lazyListState = rememberLazyListState()
             OnVisibleRangeChangeEffect(lazyListState) { visibleRange ->
                 state.eventSink(RoomListSearchEvent.UpdateVisibleRange(visibleRange))

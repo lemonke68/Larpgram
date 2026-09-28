@@ -14,6 +14,7 @@ import dev.zacsweers.metro.AssistedInject
 import io.element.android.features.home.impl.datasource.RoomListRoomSummaryFactory
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
 import io.element.android.libraries.matrix.api.roomlist.RoomListService
@@ -46,6 +47,9 @@ class RoomListSearchDataSource(
         coroutineScope = coroutineScope
     )
 
+    // Правка форка: личку ищем и по @username собеседника (как в Telegram), а не только по имени.
+    private val allRooms = roomListService.allRooms
+
     val loadingState = roomList.loadingState
 
     val roomSummaries: Flow<ImmutableList<RoomListRoomSummary>> = roomList.summaries
@@ -61,11 +65,27 @@ class RoomListSearchDataSource(
     }
 
     suspend fun setSearchQuery(searchQuery: String) = coroutineScope {
-        val filter = if (searchQuery.isBlank()) {
+        val query = searchQuery.trim()
+        val filter = if (query.isBlank()) {
             RoomListFilter.None
         } else {
-            RoomListFilter.NormalizedMatchRoomName(searchQuery)
+            val byName = RoomListFilter.NormalizedMatchRoomName(query)
+            val dmsByUsername = dmRoomsMatchingUsername(query)
+            if (dmsByUsername.isEmpty()) byName else RoomListFilter.Any(listOf(byName, RoomListFilter.Identifiers(dmsByUsername)))
         }
         roomList.updateFilter(filter)
+    }
+
+    /** Личные чаты, у собеседника которых localpart (`@lemonke67` → `lemonke67`) содержит запрос. */
+    private fun dmRoomsMatchingUsername(query: String): List<RoomId> {
+        val needle = query.removePrefix("@").substringBefore(':').lowercase()
+        if (needle.isEmpty()) return emptyList()
+        return allRooms.summaries.replayCache.lastOrNull().orEmpty()
+            .filter { summary ->
+                summary.isDm && summary.info.heroes.any { hero ->
+                    hero.userId.value.removePrefix("@").substringBefore(':').lowercase().contains(needle)
+                }
+            }
+            .map { it.roomId }
     }
 }
