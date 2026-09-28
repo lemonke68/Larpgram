@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,12 +55,6 @@ import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.ui.strings.CommonStrings
 
-/**
- * Правка форка: чип реакции стоит внутри пузыря (A-008). Тогда без внешней рамки цвета ленты и
- * с полупрозрачной подложкой цвета текста: в исходящем пузыре она белая, во входящем — по теме.
- */
-internal val LocalReactionChipInBubble = staticCompositionLocalOf { false }
-
 @Composable
 @Suppress("ModifierClickableOrder") // This is needed to display the right ripple shape
 fun MessagesReactionButton(
@@ -70,15 +63,13 @@ fun MessagesReactionButton(
     content: MessagesReactionsButtonContent,
     modifier: Modifier = Modifier,
 ) {
-    val inBubble = LocalReactionChipInBubble.current
-    val buttonColor = when {
-        inBubble && content.isHighlighted -> ElementTheme.colors.textPrimary.copy(alpha = 0.28f)
-        inBubble -> ElementTheme.colors.textPrimary.copy(alpha = 0.12f)
-        content.isHighlighted -> ElementTheme.colors.bgSubtlePrimary
-        else -> ElementTheme.colors.bgSubtleSecondary
+    val buttonColor = if (content.isHighlighted) {
+        ElementTheme.colors.bgSubtlePrimary
+    } else {
+        ElementTheme.colors.bgSubtleSecondary
     }
 
-    val borderColor = if (content.isHighlighted && !inBubble) {
+    val borderColor = if (content.isHighlighted) {
         ElementTheme.colors.borderInteractivePrimary
     } else {
         buttonColor
@@ -101,7 +92,7 @@ fun MessagesReactionButton(
             .background(Color.Transparent)
             // Outer border, same colour as background
             .border(
-                BorderStroke(2.dp, if (inBubble) Color.Transparent else ElementTheme.colors.bgCanvasDefault),
+                BorderStroke(2.dp, ElementTheme.colors.bgCanvasDefault),
                 shape = RoundedCornerShape(corner = CornerSize(14.dp))
             )
             .padding(vertical = 2.dp, horizontal = 2.dp)

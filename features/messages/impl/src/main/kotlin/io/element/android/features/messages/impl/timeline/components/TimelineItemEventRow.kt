@@ -808,20 +808,16 @@ private fun TimelineItemEventRowContent(
                 // карточки нет — влить некуда, поэтому не показываем.
                 commentsFooter = commentsFooter.takeUnless { event.content.isBubbleless },
                 reactionsFooter = if (reactionsInBubble) {
-                    {
-                        CompositionLocalProvider(LocalReactionChipInBubble provides true) {
-                            TimelineItemReactionsView(
-                                reactionsState = event.reactionsState,
-                                userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
-                                // Внутри пузыря реакции всегда от начала строки, как в Telegram.
-                                isOutgoing = false,
-                                onReactionClick = onReactionClick,
-                                onReactionLongClick = onReactionLongClick,
-                                onMoreReactionsClick = { onMoreReactionsClick(event) },
-                                showAddButton = false,
-                                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                            )
-                        }
+                    { timestamp ->
+                        TgBubbleReactions(
+                            reactions = event.reactionsState.reactions,
+                            isMine = isMineLayout,
+                            userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
+                            onReactionClick = onReactionClick,
+                            onReactionLongClick = onReactionLongClick,
+                            timestamp = timestamp,
+                            modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 2.dp, bottom = 6.dp),
+                        )
                     }
                 } else {
                     null
@@ -967,7 +963,8 @@ private fun MessageEventBubbleContent(
     // в карточку поста (наследует ширину и фон пузыря). null для не-каналов и обычных сообщений.
     commentsFooter: (@Composable () -> Unit)? = null,
     // Правка форка: реакции внутри пузыря под содержимым, как в Telegram (аудит A-008).
-    reactionsFooter: (@Composable () -> Unit)? = null,
+    // Время передаётся в ряд реакций, чтобы стоять с ними в одной строке.
+    reactionsFooter: (@Composable (timestamp: (@Composable () -> Unit)?) -> Unit)? = null,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
     // Long clicks are not not automatically propagated from a `clickable`
@@ -1105,6 +1102,11 @@ private fun MessageEventBubbleContent(
         modifier: Modifier = Modifier,
         canShrinkContent: Boolean = false,
     ) {
+        // Правка форка: при реакциях в пузыре время уходит в их строку, как в Telegram (A-008).
+        val timeInReactions = reactionsFooter != null &&
+            timestampPosition != TimestampPosition.Overlay &&
+            timestampPosition != TimestampPosition.Hidden
+        val contentTimestampPosition = if (timeInReactions) TimestampPosition.Hidden else timestampPosition
         val timestampLayoutModifier =
             if (inReplyToDetails != null && timestampPosition == TimestampPosition.Overlay) {
                 Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
@@ -1116,7 +1118,7 @@ private fun MessageEventBubbleContent(
         val topPadding = if (inReplyToDetails != null || showSenderName) 0.dp else 8.dp
         val contentModifier = when (paddingBehaviour) {
             ContentPadding.Textual ->
-                Modifier.padding(start = 12.dp, end = 12.dp, top = topPadding, bottom = 8.dp)
+                Modifier.padding(start = 12.dp, end = 12.dp, top = topPadding, bottom = if (timeInReactions) 4.dp else 8.dp)
             // Правка форка: картинка не должна доходить до краёв пузыря. В Telegram вокруг неё
             // остаётся ободок в 4dp, и хвостик читается как продолжение пузыря, а не как кусок
             // другого цвета рядом с картинкой. Радиус картинки на эти же 4dp меньше, чтобы
@@ -1136,7 +1138,7 @@ private fun MessageEventBubbleContent(
         }
         val contentWithTimestamp = @Composable {
             WithTimestampLayout(
-                timestampPosition = timestampPosition,
+                timestampPosition = contentTimestampPosition,
                 eventSink = eventSink,
                 canShrinkContent = canShrinkContent,
                 modifier = timestampLayoutModifier.semantics(mergeDescendants = false) {
@@ -1145,6 +1147,16 @@ private fun MessageEventBubbleContent(
                 },
                 content = { onContentLayoutChange ->
                     eventContentView(contentModifier, onContentLayoutChange)
+                }
+            )
+        }
+
+        val reactionsRow = @Composable {
+            reactionsFooter?.invoke(
+                if (timeInReactions) {
+                    { TimelineEventTimestampView(event = event, eventSink = eventSink, showViewCount = isChannel) }
+                } else {
+                    null
                 }
             )
         }
@@ -1214,7 +1226,7 @@ private fun MessageEventBubbleContent(
                 threadDecoration()
                 inReplyTo(inReplyToDetails)
                 contentWithTimestamp()
-                reactionsFooter?.invoke()
+                reactionsRow()
                 commentsFooter?.invoke()
             }
         } else if (commentsFooter != null) {
@@ -1223,18 +1235,30 @@ private fun MessageEventBubbleContent(
             PostWithCommentsFooter(
                 modifier = modifier,
                 content = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Правка форка: EqualWidthColumn — ряд реакций во всю ширину поста, время справа.
+                    EqualWidthColumn(spacing = 8.dp) {
                         threadDecoration()
                         // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             senderName()
                             contentWithTimestamp()
                         }
-                        reactionsFooter?.invoke()
+                        reactionsRow()
                     }
                 },
                 footer = { commentsFooter() },
             )
+        } else if (reactionsFooter != null) {
+            // Правка форка: EqualWidthColumn — ряд реакций во всю ширину пузыря, время справа.
+            EqualWidthColumn(modifier = modifier) {
+                threadDecoration()
+                // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    senderName()
+                    contentWithTimestamp()
+                }
+                reactionsRow()
+            }
         } else {
             Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 threadDecoration()
@@ -1243,7 +1267,6 @@ private fun MessageEventBubbleContent(
                     senderName()
                     contentWithTimestamp()
                 }
-                reactionsFooter?.invoke()
             }
         }
     }

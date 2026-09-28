@@ -49,7 +49,7 @@ private const val versionMonth = 9
  * поле теперь двигает ТОЛЬКО versionCode — его сравнивает проверка обновлений, поэтому при
  * каждом релизе увеличивай на 1 (в пределах месяца; при смене месяца сбрасывается CalVer'ом).
  */
-private const val versionReleaseNumber = 6
+private const val versionReleaseNumber = 7
 
 /**
  * Правка форка: у Larpgram своя человекочитаемая версия (v0.x), а не CalVer апстрима.
@@ -58,7 +58,7 @@ private const val versionReleaseNumber = 6
  * Номер растёт с каждым релизом (0.3.5 → 0.3.6). История нумерации: 0.7.x в августе, потом
  * 0.2.x/0.3.x — см. docs/RELEASE.md. Порядок выкатки — там же.
  */
-private const val larpgramVersionName = "0.3.5"
+private const val larpgramVersionName = "0.3.6"
 
 object Versions {
     /**
