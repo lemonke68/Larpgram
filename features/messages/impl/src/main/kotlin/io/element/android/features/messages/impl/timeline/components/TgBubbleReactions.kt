@@ -11,10 +11,12 @@ package io.element.android.features.messages.impl.timeline.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -22,7 +24,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -31,9 +37,15 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.timeline.model.AggregatedReaction
+import io.element.android.features.messages.impl.timeline.model.AggregatedReactionSender
+import io.element.android.libraries.designsystem.components.avatar.Avatar
+import io.element.android.libraries.designsystem.components.avatar.AvatarSize
+import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.media.MediaSource
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
+import io.element.android.libraries.matrix.ui.model.getAvatarData
 import kotlinx.collections.immutable.ImmutableList
 
 /**
@@ -46,11 +58,15 @@ import kotlinx.collections.immutable.ImmutableList
  *
  * Цвета как в TG: своя реакция — залитая пилюля (в исходящем пузыре белая, во входящем цвета
  * акцента), чужая — полупрозрачная того же цвета.
+ *
+ * Вместо числа — аватарки поставивших, когда их мало (правило — [reactionAvatarSenders]).
  */
 @Composable
 internal fun TgBubbleReactions(
     reactions: ImmutableList<AggregatedReaction>,
     isMine: Boolean,
+    isDm: Boolean,
+    isChannel: Boolean,
     userCanSendReaction: Boolean,
     onReactionClick: (emoji: String) -> Unit,
     onReactionLongClick: (emoji: String) -> Unit,
@@ -66,6 +82,7 @@ internal fun TgBubbleReactions(
             reactions.forEach { reaction ->
                 ReactionPill(
                     reaction = reaction,
+                    avatarSenders = reactionAvatarSenders(reaction, reactions, isDm = isDm, isChannel = isChannel),
                     isMine = isMine,
                     onClick = {
                         // Свою реакцию снять можно всегда, поставить — только с правом реагировать.
@@ -133,6 +150,7 @@ internal fun TgBubbleReactions(
 @Composable
 private fun ReactionPill(
     reaction: AggregatedReaction,
+    avatarSenders: List<AggregatedReactionSender>,
     isMine: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -171,15 +189,76 @@ private fun ReactionPill(
                 style = ElementTheme.typography.fontBodyLgRegular,
             )
         }
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = reaction.count.toString(),
-            color = contentColor,
-            style = ElementTheme.typography.fontBodyMdMedium,
-        )
+        if (avatarSenders.isEmpty()) {
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = reaction.count.toString(),
+                color = contentColor,
+                style = ElementTheme.typography.fontBodyMdMedium,
+            )
+        } else {
+            Spacer(Modifier.width(2.dp))
+            ReactionAvatars(avatarSenders)
+        }
     }
 }
 
+/**
+ * Аватарки 20dp внахлёст с шагом 0.8 размера; каждая следующая вырезает под собой кольцо 1.67dp
+ * в предыдущей (`AvatarsDrawable` TG), поэтому фон пилюли виден в зазоре при любом её цвете.
+ */
+@Composable
+private fun ReactionAvatars(senders: List<AggregatedReactionSender>) {
+    val size = AvatarSize.TgReaction.dp
+    val step = size * AVATAR_STEP_FACTOR
+    Box(
+        modifier = Modifier
+            .width(size + step * (senders.size - 1))
+            .height(size)
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen),
+    ) {
+        senders.forEachIndexed { index, sender ->
+            val user = sender.user ?: MatrixUser(userId = sender.senderId)
+            Avatar(
+                avatarData = user.getAvatarData(AvatarSize.TgReaction),
+                avatarType = AvatarType.User,
+                modifier = Modifier
+                    .offset(x = step * index)
+                    .drawWithContent {
+                        if (index > 0) {
+                            drawCircle(
+                                color = Color.Black,
+                                radius = this.size.minDimension / 2 + AVATAR_STROKE.toPx(),
+                                blendMode = BlendMode.Clear,
+                            )
+                        }
+                        drawContent()
+                    },
+            )
+        }
+    }
+}
+
+/**
+ * Кого рисовать аватарками вместо числа в пилюле [reaction], как в TG (`ReactionsLayoutInBubble`):
+ * в личке — всегда (там не больше двух человек); в группе — если реакций на сообщении всего
+ * не больше трёх; в канале — никогда, там число.
+ */
+internal fun reactionAvatarSenders(
+    reaction: AggregatedReaction,
+    allReactions: List<AggregatedReaction>,
+    isDm: Boolean,
+    isChannel: Boolean,
+): List<AggregatedReactionSender> = when {
+    isChannel -> emptyList()
+    isDm -> reaction.senders.take(MAX_AVATARS)
+    reaction.count <= MAX_AVATARS && allReactions.sumOf { it.count } <= MAX_AVATARS -> reaction.senders
+    else -> emptyList()
+}
+
+private const val MAX_AVATARS = 3
+private const val AVATAR_STEP_FACTOR = 0.8f
+private val AVATAR_STROKE = 1.67.dp
 private val PILL_HEIGHT = 28.dp
 private val PILL_GAP = 4.dp
 private val TIMESTAMP_GAP = 8.dp

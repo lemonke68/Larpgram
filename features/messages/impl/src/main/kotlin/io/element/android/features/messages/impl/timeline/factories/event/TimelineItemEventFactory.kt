@@ -36,6 +36,7 @@ import io.element.android.libraries.matrix.api.timeline.item.EventThreadInfo
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileDetails
 import io.element.android.libraries.matrix.api.timeline.item.event.getAvatarUrl
 import io.element.android.libraries.matrix.api.timeline.item.event.getDisambiguatedDisplayName
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.messages.reply.map
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -120,7 +121,7 @@ class TimelineItemEventFactory(
             sentTime = sentTime,
             sentDate = sentDate,
             groupPosition = groupPosition,
-            reactionsState = currentTimelineItem.computeReactionsState(),
+            reactionsState = currentTimelineItem.computeReactionsState().withSenderProfiles(roomMembers),
             readReceiptState = currentTimelineItem.computeReadReceiptState(roomMembers, renderReadReceipts),
             localSendState = currentTimelineItem.event.localSendState,
             inReplyTo = currentTimelineItem.event.inReplyTo()?.map(permalinkParser = permalinkParser),
@@ -147,7 +148,27 @@ class TimelineItemEventFactory(
                 name = senderProfile.getDisambiguatedDisplayName(timelineItem.senderId),
                 url = senderProfile.getAvatarUrl(),
             ),
-            readReceiptState = receivedMatrixTimelineItem.computeReadReceiptState(roomMembers, renderReadReceipts)
+            readReceiptState = receivedMatrixTimelineItem.computeReadReceiptState(roomMembers, renderReadReceipts),
+            reactionsState = timelineItem.reactionsState.withSenderProfiles(roomMembers),
+        )
+    }
+
+    /**
+     * Правка форка: профили поставивших реакцию — для аватарок в пилюлях реакций, как в Telegram
+     * (`TgBubbleReactions`). Список участников может прийти позже событий, поэтому дописываем и в [update].
+     */
+    private fun TimelineItemReactions.withSenderProfiles(roomMembers: List<RoomMember>): TimelineItemReactions {
+        if (reactions.isEmpty() || roomMembers.isEmpty()) return this
+        return copy(
+            reactions = reactions.map { reaction ->
+                reaction.copy(
+                    senders = reaction.senders.map { sender ->
+                        if (sender.user != null) return@map sender
+                        val member = roomMembers.find { it.userId == sender.senderId } ?: return@map sender
+                        sender.copy(user = MatrixUser(userId = member.userId, displayName = member.displayName, avatarUrl = member.avatarUrl))
+                    }.toImmutableList()
+                )
+            }.toImmutableList()
         )
     }
 

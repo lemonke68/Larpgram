@@ -100,4 +100,7 @@ enum class AvatarSize(val dp: Dp) {
 
     // Правка форка: свой аватар на вкладке «Профиль» нижней панели (GlassTabView TG).
     TgTabAvatar(24.dp),
+
+    // Правка форка: аватарки поставивших в пилюле реакции (ReactionsLayoutInBubble TG).
+    TgReaction(20.dp),
 }

@@ -812,6 +812,8 @@ private fun TimelineItemEventRowContent(
                         TgBubbleReactions(
                             reactions = event.reactionsState.reactions,
                             isMine = isMineLayout,
+                            isDm = timelineRoomInfo.isDm,
+                            isChannel = timelineRoomInfo.isChannel,
                             userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
                             onReactionClick = onReactionClick,
                             onReactionLongClick = onReactionLongClick,
