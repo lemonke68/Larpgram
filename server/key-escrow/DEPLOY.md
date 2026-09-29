@@ -116,21 +116,27 @@ curl -s -X POST https://push.mango-kokos.ru/escrow/key/redeem \
 (purge сносит только нашу копию).
 
 Нужен `SYNAPSE_ADMIN_TOKEN` в `.env`. **Грабля MAS:** флаг `admin=1` в БД Synapse доступа к admin API
-НЕ даёт (403) — при делегировании auth в MAS нужен токен с admin-scope. Выпуск (пользователь должен
-быть в `mas-cli manage list-admin-users`; при необходимости `mas-cli manage promote-admin <user>`):
+НЕ даёт (403) — при делегировании auth в MAS нужен токен с admin-scope, его даёт флаг при выпуске
+(админом MAS аккаунт быть не обязан).
+
+С 2026-09-29 (аудит C-017) токен принадлежит отдельному боту **`@escrow-admin`** (device
+`ESCROWADMIN`, без пароля — войти в него можно только по токену), а не личному аккаунту владельца:
+утечка `.env` не даёт писать от имени владельца, а чистка своих сессий не ломает escrow. Выпуск
+заново (токен сразу пишется в `.env`, на экран не выводится):
 
 ```bash
-docker exec matrix-authentication-service \
-  mas-cli manage issue-compatibility-token \
-  --yes-i-want-to-grant-synapse-admin-privileges lemonke67
-# -> mct_...  впиши в SYNAPSE_ADMIN_TOKEN= в ~/key-escrow/.env, затем
-#    cd ~/key-escrow && docker compose up -d --force-recreate   (env читается при старте)
+# один раз: аккаунт бота
+docker exec matrix-authentication-service mas-cli manage register-user --yes --no-admin -d "Escrow admin" escrow-admin
+# токен с admin-scope -> в .env
+cp ~/key-escrow/.env ~/key-escrow/.env.bak-$(date +%F)
+T=$(docker exec matrix-authentication-service mas-cli manage issue-compatibility-token \
+      --yes-i-want-to-grant-synapse-admin-privileges escrow-admin ESCROWADMIN 2>&1 | grep -o 'mct_[A-Za-z0-9_]*' | head -1)
+[ -n "$T" ] && sed -i "s|^SYNAPSE_ADMIN_TOKEN=.*|SYNAPSE_ADMIN_TOKEN=$T|" ~/key-escrow/.env
+cd ~/key-escrow && docker compose up -d --force-recreate   # env читается только при старте
 ```
 
-Токен — это compat-токен @lemonke67 (полный доступ + synapse admin), отзывается через mas-cli
-(`kill-sessions` / удаление сессии). **План (аудит C-017):** завести отдельного бота
-`@escrow-admin`, выдать admin-scope ему и отозвать личный токен владельца — тогда утечка `.env`
-не даёт писать от имени владельца. Пусто в env → эндпоинт отвечает 503. Проверка scope:
+Отозвать — удалить сессию `ESCROWADMIN` бота (`mas-cli manage kill-sessions escrow-admin`). Пусто в
+env → эндпоинт отвечает 503. Проверка scope:
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" \
