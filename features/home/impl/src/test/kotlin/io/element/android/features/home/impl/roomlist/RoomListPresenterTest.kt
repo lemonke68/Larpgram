@@ -40,17 +40,16 @@ import io.element.android.libraries.appupdate.api.UpdateInstallState
 import io.element.android.libraries.appupdate.api.UpdateInstaller
 import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.chatcleanup.api.ChatCleanupService
+import io.element.android.libraries.chatcleanup.test.FakeChatCleanupService
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.test.FakeDateFormatter
-import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.eventformatter.api.RoomLatestEventFormatter
 import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventFormatter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
-import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
-import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
 import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -890,8 +889,7 @@ class RoomListPresenterTest {
         updateChecker: UpdateChecker = FakeUpdateChecker(),
         updateInstaller: UpdateInstaller = FakeUpdateInstaller(),
         recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
-        keyEscrowService: KeyEscrowService = FakeKeyEscrowService(),
-        snackbarDispatcher: SnackbarDispatcher = SnackbarDispatcher(),
+        chatCleanupService: ChatCleanupService = FakeChatCleanupService(),
         draftPreviews: DraftPreviews = NoOpDraftPreviews(),
     ) = RoomListPresenter(
         client = client,
@@ -944,11 +942,7 @@ class RoomListPresenterTest {
             client = client,
             sessionCoroutineScope = backgroundScope,
         ),
-        deleteForBothScheduler = DeleteForBothScheduler(
-            keyEscrowService = keyEscrowService,
-            snackbarDispatcher = snackbarDispatcher,
-            sessionCoroutineScope = backgroundScope,
-        ),
+        chatCleanupService = chatCleanupService,
         draftPreviews = draftPreviews,
         typingTracker = RoomListTypingTracker(client),
         dateFormatter = FakeDateFormatter(),

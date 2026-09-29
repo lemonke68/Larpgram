@@ -73,4 +73,17 @@
         <item quantity="many">Удалить %1$d стикеров</item>
         <item quantity="other">Удалить %1$d стикера</item>
     </plurals>
+    <string name="larpgram_clear_history">Очистить историю</string>
+    <string name="larpgram_clear_history_dm_message">Вы точно хотите очистить историю переписки с %1$s?</string>
+    <string name="larpgram_clear_history_group_message">Вы точно хотите очистить историю в «%1$s»?</string>
+    <string name="larpgram_clear_history_saved_message">Вы точно хотите очистить «%1$s»?</string>
+    <string name="larpgram_clear_history_also">Также очистить для %1$s</string>
+    <string name="larpgram_clear_history_failed">Не удалось очистить историю у обоих</string>
+    <string name="larpgram_delete_chat">Удалить чат</string>
+    <string name="larpgram_delete_chat_message">Вы точно хотите удалить чат с %1$s?</string>
+    <string name="larpgram_delete_chat_also">Также удалить для %1$s</string>
+    <string name="larpgram_leave_group">Выйти из группы</string>
+    <string name="larpgram_leave_group_message">Вы точно хотите выйти из группы «%1$s»?</string>
+    <string name="larpgram_leave_channel">Покинуть канал</string>
+    <string name="larpgram_leave_channel_message">Вы точно хотите покинуть канал «%1$s»?</string>
 </resources>

@@ -48,6 +48,7 @@ import io.element.android.features.poll.api.actions.SendPollResponseAction
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.channelcomments.ChannelDiscussion
+import io.element.android.libraries.chatcleanup.api.ChatCleanupService
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -83,9 +84,11 @@ import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
@@ -119,6 +122,8 @@ class TimelinePresenter(
     private val timelineProtectionPresenter: Presenter<TimelineProtectionState>,
     // Правка форка: в «Избранном» нет служебных строк и есть пустой экран TG.
     private val savedMessages: SavedMessages,
+    // Правка форка: «Очистить историю» из меню ⋮ прячет всё до отметки.
+    private val chatCleanupService: ChatCleanupService,
 ) : Presenter<TimelineState> {
     private val tag = "TimelinePresenter"
 
@@ -137,6 +142,9 @@ class TimelinePresenter(
         )
     )
     private var timelineItems by mutableStateOf<ImmutableList<TimelineItem>>(persistentListOf())
+
+    // Правка форка: лента догрузилась до отметки очистки истории, назад листать незачем.
+    private var historyCutoffReached by mutableStateOf(false)
 
     private val focusRequestState: MutableState<FocusRequestState> = mutableStateOf(FocusRequestState.None)
 
@@ -184,6 +192,9 @@ class TimelinePresenter(
         fun handleEvent(event: TimelineEvent) {
             when (event) {
                 is TimelineEvent.LoadMore -> {
+                    if (event.direction == Timeline.PaginationDirection.BACKWARDS && historyCutoffReached) {
+                        return
+                    }
                     if (event.direction == Timeline.PaginationDirection.FORWARDS) {
                         if (timelineMode is Timeline.Mode.Thread) {
                             // Do not paginate forwards in thread mode, as it's not supported
@@ -334,7 +345,15 @@ class TimelinePresenter(
         }
 
         LaunchedEffect(Unit) {
+            // Правка форка: отметка очистки истории этой комнаты (у себя или у обоих).
+            val clearedUpToFlow = chatCleanupService.clearedHistory.map { it[room.roomId] }.distinctUntilChanged()
             timelineItemsFactory.timelineItems
+                .combine(clearedUpToFlow) { items, clearedUpTo ->
+                    val cleared = items.applyClearedHistory(clearedUpTo)
+                    cleared.markerTs?.let { chatCleanupService.onClearMarkerSeen(room.roomId, it) }
+                    historyCutoffReached = cleared.reachedCutoff
+                    cleared.items
+                }
                 .onEach { newTimelineItems ->
                     // Larpgram: a channel hides membership/state service messages (Telegram-style —
                     // no "joined"/"invited"/"changed name" noise in the broadcast feed).

@@ -114,6 +114,7 @@ fun DependencyHandlerScope.allLibrariesImpl() {
     implementation(project(":libraries:appupdate:impl"))
     implementation(project(":libraries:keyescrow:impl"))
     implementation(project(":libraries:linkpreview:impl"))
+    implementation(project(":libraries:chatcleanup:impl"))
     implementation(project(":libraries:slashcommands:impl"))
     implementation(project(":libraries:usersearch:impl"))
     implementation(project(":libraries:textcomposer:impl"))

@@ -15,6 +15,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEncryptedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemGalleryContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemHistoryClearedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
@@ -57,6 +58,8 @@ fun TimelineItem.mustBeProtected(): Boolean {
                     is TimelineItemProfileChangeContent,
                     is TimelineItemRoomMembershipContent,
                     is TimelineItemStateEventContent,
+                    // Правка форка: отметка очистки истории, в ленте не рисуется.
+                    TimelineItemHistoryClearedContent,
                     is TimelineItemEmoteContent,
                     is TimelineItemNoticeContent,
                     is TimelineItemTextContent,

@@ -610,6 +610,14 @@ class JoinedRustRoom(
         }
     }
 
+    // Правка форка: своё состояние комнаты (маркер очистки истории у обоих).
+    override suspend fun sendRawStateEvent(eventType: String, stateKey: String, content: String): Result<Unit> = withContext(roomDispatcher) {
+        runCatchingExceptions {
+            innerRoom.sendStateEventRaw(eventType, stateKey, content)
+            Unit
+        }
+    }
+
     override suspend fun setOwnMemberDisplayName(displayName: String): Result<Unit> = withContext(roomDispatcher) {
         runCatchingExceptions {
             innerRoom.setOwnMemberDisplayName(displayName)

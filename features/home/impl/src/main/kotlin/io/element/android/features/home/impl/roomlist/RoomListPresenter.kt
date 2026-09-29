@@ -54,6 +54,7 @@ import io.element.android.libraries.appupdate.api.UpdateInstaller
 import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.chatcleanup.api.ChatCleanupService
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.featureflag.api.FeatureFlagService
@@ -122,7 +123,7 @@ class RoomListPresenter(
     // Правка форка (роумлесс): свой пин чатов поверх списка (account data).
     private val pinnedChatsStore: PinnedChatsStore,
     // Правка форка: «удалить у обоих» для ЛС через наш серверный Synapse purge.
-    private val deleteForBothScheduler: DeleteForBothScheduler,
+    private val chatCleanupService: ChatCleanupService,
     // Правка форка: «Черновик:» и «печатает…» в строке чата.
     private val draftPreviews: DraftPreviews,
     private val typingTracker: RoomListTypingTracker,
@@ -259,8 +260,8 @@ class RoomListPresenter(
                 is RoomListEvent.SetRoomIsFavorite -> coroutineScope.setRoomIsFavorite(event.roomId, event.isFavorite)
                 is RoomListEvent.SetRoomIsMuted -> coroutineScope.setRoomIsMuted(event.roomId, event.isMuted)
                 is RoomListEvent.SetRoomIsPinned -> pinnedChatsStore.setPinned(event.roomId, event.isPinned)
-                is RoomListEvent.DeleteRoom -> coroutineScope.deleteRoom(event.roomId)
-                is RoomListEvent.DeleteRoomForBoth -> deleteForBothScheduler.schedule(event.roomId)
+                is RoomListEvent.DeleteRoom -> chatCleanupService.deleteChat(event.roomId)
+                is RoomListEvent.DeleteRoomForBoth -> chatCleanupService.deleteChatForBoth(event.roomId)
                 is RoomListEvent.BlockUser -> coroutineScope.blockUser(event.roomId, event.userId)
                 is RoomListEvent.MarkAsRead -> coroutineScope.markAsRead(event.roomId)
                 is RoomListEvent.MarkAsUnread -> coroutineScope.markAsUnread(event.roomId)
@@ -400,17 +401,19 @@ class RoomListPresenter(
         val roomSummaries by produceState(initialValue = AsyncData.Loading()) {
             combine(
                 roomListDataSource.roomSummariesFlow,
-                pinnedChatsStore.pinnedFlow,
+                pinnedChatsStore.pinnedFlow.combine(chatCleanupService.clearedHistory, ::Pair),
                 draftPreviews.drafts,
                 typingTracker.typing,
                 savedMessages.roomId,
-            ) { summaries, pinnedIds, drafts, typing, savedRoomId ->
+            ) { summaries, (pinnedIds, clearedHistory), drafts, typing, savedRoomId ->
                 // Правка форка: «Избранное» всегда закреплено сверху (план, ф4.5), остальные пины — под ним.
                 applyPins(summaries, listOfNotNull(savedRoomId) + pinnedIds.filterNot { it == savedRoomId })
                     .map { it.withDraftAndTyping(drafts[it.roomId], typing[it.roomId]) }
                     // «Избранное»: «Вы присоединились к комнате» — шум создания, строку оставляем пустой.
                     .map { if (it.roomId == savedRoomId && it.isLatestEventService) it.copy(latestEvent = LatestEvent.None) else it }
                     .map { if (it.isLocalDm()) it.copy(canDeleteForBoth = true) else it }
+                    // История очищена (меню ⋮ в чате): последнее сообщение из-под отметки не показываем.
+                    .map { it.withoutClearedLatestEvent(clearedHistory[it.roomId]) }
                     .toImmutableList()
             }.collect { value = AsyncData.Success(it) }
         }
@@ -545,14 +548,6 @@ class RoomListPresenter(
         val pinnedRooms = pinnedIds.mapNotNull { byId[it]?.copy(isPinned = true) }
         val rest = summaries.filterNot { it.roomId in pinnedSet }
         return (pinnedRooms + rest).toImmutableList()
-    }
-
-    // Правка форка (роумлесс), ф3 удаление: leave + forget, чтобы комната ушла из списка.
-    // «Удалить у обоих» — отдельно, через серверный purge (DeleteForBothScheduler).
-    private fun CoroutineScope.deleteRoom(roomId: RoomId) = launch {
-        client.getRoom(roomId)?.use { room ->
-            room.leave().onSuccess { room.forget() }
-        }
     }
 
     // Правка форка (роумлесс), ф4 блок (только ЛС): односторонняя TG-стена — ignoreUser +

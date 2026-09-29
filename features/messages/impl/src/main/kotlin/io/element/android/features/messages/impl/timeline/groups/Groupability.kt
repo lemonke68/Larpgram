@@ -14,6 +14,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEncryptedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemGalleryContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemHistoryClearedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
@@ -74,7 +75,9 @@ internal fun TimelineItem.Event.canBeGrouped(): Boolean {
         TimelineItemRedactedContent,
         TimelineItemUnknownContent,
         is TimelineItemLegacyCallInviteContent,
-        is TimelineItemRtcNotificationContent -> false
+        is TimelineItemRtcNotificationContent,
+        // Правка форка: отметка очистки истории не группируется, её вырезает applyClearedHistory.
+        TimelineItemHistoryClearedContent -> false
         is TimelineItemProfileChangeContent,
         is TimelineItemRoomMembershipContent,
         is TimelineItemStateEventContent -> true

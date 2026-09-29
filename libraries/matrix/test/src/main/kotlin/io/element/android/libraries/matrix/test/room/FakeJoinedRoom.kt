@@ -95,6 +95,7 @@ class FakeJoinedRoom(
     // Правка форка: стикеры и сырые события.
     private val sendStickerResult: (String, String) -> Result<Unit> = { _, _ -> lambdaError() },
     private val sendRawEventResult: (String, String) -> Result<Unit> = { _, _ -> Result.success(Unit) },
+    private val sendRawStateEventResult: (String, String, String) -> Result<Unit> = { _, _, _ -> Result.success(Unit) },
     private val setOwnMemberDisplayNameResult: (String) -> Result<Unit> = { lambdaError() },
 ) : JoinedRoom, BaseRoom by baseRoom {
     private val sendQueueUpdates = MutableSharedFlow<SendQueueUpdate>(extraBufferCapacity = 10)
@@ -273,6 +274,10 @@ class FakeJoinedRoom(
 
     override suspend fun sendRawEvent(eventType: String, content: String): Result<Unit> = simulateLongTask {
         sendRawEventResult(eventType, content)
+    }
+
+    override suspend fun sendRawStateEvent(eventType: String, stateKey: String, content: String): Result<Unit> = simulateLongTask {
+        sendRawStateEventResult(eventType, stateKey, content)
     }
 
     override suspend fun setOwnMemberDisplayName(displayName: String): Result<Unit> = simulateLongTask {

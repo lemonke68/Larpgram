@@ -39,6 +39,7 @@ dependencies {
     implementation(projects.libraries.channelcomments)
     // Правка форка: превью ссылок в пузыре (TgLinkPreviewCard).
     implementation(projects.libraries.linkpreview.api)
+    implementation(projects.libraries.chatcleanup.api)
     implementation(projects.libraries.imagepacks.api)
     implementation(projects.libraries.core)
     implementation(projects.libraries.architecture)
@@ -100,6 +101,7 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.linkpreview.test)
+    testImplementation(projects.libraries.chatcleanup.test)
     testImplementation(projects.libraries.matrix.test)
     testImplementation(projects.libraries.dateformatter.test)
     testImplementation(projects.libraries.push.test)

@@ -71,4 +71,17 @@
         <item quantity="one">Remove %1$d sticker</item>
         <item quantity="other">Remove %1$d stickers</item>
     </plurals>
+    <string name="larpgram_clear_history">Clear history</string>
+    <string name="larpgram_clear_history_dm_message">Are you sure you want to clear your chat history with %1$s?</string>
+    <string name="larpgram_clear_history_group_message">Are you sure you want to clear your chat history in %1$s?</string>
+    <string name="larpgram_clear_history_saved_message">Are you sure you want to clear %1$s?</string>
+    <string name="larpgram_clear_history_also">Also clear for %1$s</string>
+    <string name="larpgram_clear_history_failed">Couldn\'t clear history for both</string>
+    <string name="larpgram_delete_chat">Delete chat</string>
+    <string name="larpgram_delete_chat_message">Are you sure you want to delete the chat with %1$s?</string>
+    <string name="larpgram_delete_chat_also">Also delete for %1$s</string>
+    <string name="larpgram_leave_group">Leave group</string>
+    <string name="larpgram_leave_group_message">Are you sure you want to leave %1$s?</string>
+    <string name="larpgram_leave_channel">Leave channel</string>
+    <string name="larpgram_leave_channel_message">Are you sure you want to leave %1$s?</string>
 </resources>

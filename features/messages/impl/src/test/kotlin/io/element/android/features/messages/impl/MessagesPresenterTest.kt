@@ -21,6 +21,7 @@ import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.chatcleanup.aChatCleanupState
 import io.element.android.features.messages.impl.crypto.identity.anIdentityChangeState
 import io.element.android.features.messages.impl.fixtures.aMessageEvent
 import io.element.android.features.messages.impl.link.aLinkState
@@ -1517,6 +1518,7 @@ class MessagesPresenterTest {
                     eventSink = {},
                 )
             },
+            chatCleanupPresenter = { aChatCleanupState() },
             circleRecorderPresenter = {
                 CircleRecorderState(
                     mode = CircleRecorderMode.Hidden,

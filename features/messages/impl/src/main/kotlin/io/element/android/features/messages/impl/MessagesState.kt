@@ -12,6 +12,7 @@ import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -89,6 +90,8 @@ data class MessagesState(
     val stickerPickerState: StickerPickerState?,
     val gifPickerState: GifPickerState?,
     val circleRecorderState: CircleRecorderState?,
+    // Правка форка: пункты «Очистить историю» и «Удалить чат» в меню ⋮; null в превью и тестах.
+    val chatCleanupState: ChatCleanupState?,
     // Загрузчик медиа для проигрывания кружочков в таймлайне; null в превью и тестах.
     val circleMediaLoader: MatrixMediaLoader?,
     // Источник стикер-паков: по тапу на стикер показываем его пак (добавить/удалить).

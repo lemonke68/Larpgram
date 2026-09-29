@@ -39,6 +39,7 @@ dependencies {
     implementation(projects.libraries.accountemail.api)
     implementation(projects.libraries.appupdate.api)
     implementation(projects.libraries.keyescrow.api)
+    implementation(projects.libraries.chatcleanup.api)
     // ВРЕМЕННО: для проверки чтения стикер-паков в RoomListPresenter.
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.matrixui)
@@ -82,6 +83,7 @@ dependencies {
     testImplementation(projects.features.networkmonitor.test)
     testImplementation(projects.libraries.matrix.test)
     testImplementation(projects.libraries.keyescrow.test)
+    testImplementation(projects.libraries.chatcleanup.test)
     testImplementation(projects.libraries.featureflag.test)
     testImplementation(projects.libraries.dateformatter.test)
     testImplementation(projects.libraries.eventformatter.test)

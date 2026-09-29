@@ -178,6 +178,7 @@ fun aMessagesState(
     stickerPickerState = null,
     gifPickerState = null,
     circleRecorderState = null,
+    chatCleanupState = null,
     circleMediaLoader = null,
     imagePackSource = null,
     eventSink = eventSink,

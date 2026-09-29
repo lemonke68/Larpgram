@@ -12,10 +12,12 @@ import dev.zacsweers.metro.Inject
 import io.element.android.features.location.api.Location
 import io.element.android.features.messages.impl.timeline.model.event.RtcNotificationState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemHistoryClearedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemUnknownContent
+import io.element.android.libraries.chatcleanup.api.HISTORY_CLEARED_STATE_TYPE
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.matrix.api.core.EventId
@@ -31,6 +33,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.FailedToParse
 import io.element.android.libraries.matrix.api.timeline.item.event.LegacyCallInviteContent
 import io.element.android.libraries.matrix.api.timeline.item.event.LiveLocationContent
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageContent
+import io.element.android.libraries.matrix.api.timeline.item.event.OtherState
 import io.element.android.libraries.matrix.api.timeline.item.event.PollContent
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileChangeContent
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileDetails
@@ -103,6 +106,10 @@ class TimelineItemContentFactory(
             }
             is LegacyCallInviteContent -> TimelineItemLegacyCallInviteContent
             is StateContent -> {
+                // Правка форка: отметка «история очищена у обоих» — не строка ленты, а граница скрытия.
+                if ((itemContent.content as? OtherState.Custom)?.eventType == HISTORY_CLEARED_STATE_TYPE) {
+                    return TimelineItemHistoryClearedContent
+                }
                 val senderDisambiguatedDisplayName = senderProfile.getDisambiguatedDisplayName(sender)
                 stateFactory.create(itemContent, isOutgoing, sender, senderDisambiguatedDisplayName)
             }

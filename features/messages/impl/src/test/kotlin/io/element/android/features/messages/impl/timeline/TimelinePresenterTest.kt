@@ -34,6 +34,8 @@ import io.element.android.features.poll.test.actions.FakeEndPollAction
 import io.element.android.features.poll.test.actions.FakeSendPollResponseAction
 import io.element.android.features.roomcall.api.aStandByCallState
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.chatcleanup.api.ChatCleanupService
+import io.element.android.libraries.chatcleanup.test.FakeChatCleanupService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.core.EventId
@@ -1900,6 +1902,7 @@ class TimelinePresenterTest {
         markAsFullyRead: MarkAsFullyRead = FakeMarkAsFullyRead { _, _ -> },
         timelineProtectionPresenter: Presenter<TimelineProtectionState> = { aTimelineProtectionState() },
         resolveVerifiedUserSendFailurePresenter: Presenter<ResolveVerifiedUserSendFailureState> = { aResolveVerifiedUserSendFailureState() },
+        chatCleanupService: ChatCleanupService = FakeChatCleanupService(),
     ): TimelinePresenter {
         return TimelinePresenter(
             timelineItemsFactoryCreator = aTimelineItemsFactoryCreator(),
@@ -1923,6 +1926,7 @@ class TimelinePresenterTest {
             markAsFullyRead = markAsFullyRead,
             timelineProtectionPresenter = timelineProtectionPresenter,
             savedMessages = NoOpSavedMessages(),
+            chatCleanupService = chatCleanupService,
         )
     }
 }

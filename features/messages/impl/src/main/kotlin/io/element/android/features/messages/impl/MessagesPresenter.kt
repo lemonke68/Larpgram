@@ -35,6 +35,7 @@ import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
@@ -130,6 +131,8 @@ class MessagesPresenter(
     private val stickerPickerPresenter: Presenter<StickerPickerState>,
     private val gifPickerPresenter: Presenter<GifPickerState>,
     private val circleRecorderPresenter: Presenter<CircleRecorderState>,
+    // Правка форка: «Очистить историю» и «Удалить чат» в меню ⋮.
+    private val chatCleanupPresenter: Presenter<ChatCleanupState>,
     // Larpgram: по тапу на стикер показываем его пак (добавить/удалить).
     private val imagePackSource: ImagePackSource,
     private val snackbarDispatcher: SnackbarDispatcher,
@@ -370,6 +373,7 @@ class MessagesPresenter(
         val stickerPickerState = stickerPickerPresenter.present()
         val gifPickerState = gifPickerPresenter.present()
         val circleRecorderState = circleRecorderPresenter.present()
+        val chatCleanupState = chatCleanupPresenter.present()
 
         return MessagesState(
             roomId = room.roomId,
@@ -408,6 +412,7 @@ class MessagesPresenter(
             stickerPickerState = stickerPickerState,
             gifPickerState = gifPickerState,
             circleRecorderState = circleRecorderState,
+            chatCleanupState = chatCleanupState,
             circleMediaLoader = matrixClient.matrixMediaLoader,
             imagePackSource = imagePackSource,
             isChannel = isChannel,

@@ -47,7 +47,12 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.MessagesEvent
 import io.element.android.features.messages.impl.MessagesState
 import io.element.android.features.messages.impl.R
+import io.element.android.features.messages.impl.chatcleanup.ChatCleanupDialog
+import io.element.android.features.messages.impl.chatcleanup.ChatCleanupDialogType
+import io.element.android.features.messages.impl.chatcleanup.ChatKind
+import io.element.android.features.messages.impl.chatcleanup.titleRes
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
+import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
@@ -79,6 +84,18 @@ internal fun TgChatHeader(
     modifier: Modifier = Modifier,
 ) {
     val subtitle = headerSubtitle(state = state, dmPresence = dmPresence)
+    var cleanupDialog by remember { mutableStateOf<ChatCleanupDialogType?>(null) }
+    val cleanupState = state.chatCleanupState
+    val dialogType = cleanupDialog
+    if (cleanupState != null && dialogType != null) {
+        ChatCleanupDialog(
+            type = dialogType,
+            state = cleanupState,
+            latestEventTs = state.timelineState.timelineItems.latestRemoteEventTs(),
+            onDismiss = { cleanupDialog = null },
+            onChatDeleted = onBackClick,
+        )
+    }
     val pillShape = RoundedCornerShape(TgGlassDefaults.inputRadius)
     val iconTint = ElementTheme.colors.iconPrimary
     // Под статус-баром и шапкой — размытая подложка, сходящая на нет книзу, чтобы лента,
@@ -182,6 +199,7 @@ internal fun TgChatHeader(
                 onThreadsListClick = onThreadsListClick,
                 onRoomDetailsClick = onRoomDetailsClick,
                 onSearchClick = onSearchClick,
+                onCleanupClick = { cleanupDialog = it },
             )
         }
     }
@@ -194,6 +212,7 @@ private fun HeaderMenu(
     onThreadsListClick: () -> Unit,
     onRoomDetailsClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onCleanupClick: (ChatCleanupDialogType) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -257,6 +276,28 @@ private fun HeaderMenu(
                     onRoomDetailsClick()
                 },
             )
+            val cleanupState = state.chatCleanupState
+            if (cleanupState?.canClearHistory == true) {
+                HeaderMenuItem(
+                    icon = CompoundIcons.History(),
+                    text = stringResource(ChatCleanupDialogType.ClearHistory.titleRes(cleanupState.chatKind)),
+                    onClick = {
+                        expanded = false
+                        onCleanupClick(ChatCleanupDialogType.ClearHistory)
+                    },
+                )
+            }
+            if (cleanupState?.canDeleteChat == true) {
+                HeaderMenuItem(
+                    icon = if (cleanupState.chatKind == ChatKind.Dm) CompoundIcons.Delete() else CompoundIcons.Leave(),
+                    text = stringResource(ChatCleanupDialogType.DeleteChat.titleRes(cleanupState.chatKind)),
+                    isDestructive = true,
+                    onClick = {
+                        expanded = false
+                        onCleanupClick(ChatCleanupDialogType.DeleteChat)
+                    },
+                )
+            }
         }
     }
 }
@@ -266,20 +307,21 @@ private fun HeaderMenuItem(
     icon: ImageVector,
     text: String,
     onClick: () -> Unit,
+    isDestructive: Boolean = false,
 ) {
     DropdownMenuItem(
         leadingIcon = {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = ElementTheme.colors.iconSecondary,
+                tint = if (isDestructive) ElementTheme.colors.iconCriticalPrimary else ElementTheme.colors.iconSecondary,
             )
         },
         text = {
             Text(
                 text = text,
                 style = ElementTheme.typography.fontBodyLgRegular,
-                color = ElementTheme.colors.textPrimary,
+                color = if (isDestructive) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textPrimary,
             )
         },
         onClick = onClick,
@@ -318,3 +360,15 @@ private fun headerSubtitle(state: MessagesState, dmPresence: UserPresence?): Hea
 
 /** Высота пилюль шапки, как у поля ввода. */
 private val HEADER_HEIGHT = 44.dp
+
+/** Время сервера самого свежего отправленного события в ленте — граница «Очистить историю». */
+private fun List<TimelineItem>.latestRemoteEventTs(): Long = asSequence()
+    .flatMap { item ->
+        when (item) {
+            is TimelineItem.Event -> sequenceOf(item)
+            is TimelineItem.GroupedEvents -> item.events.asSequence()
+            is TimelineItem.Virtual -> emptySequence()
+        }
+    }
+    .filter { it.isRemote }
+    .maxOfOrNull { it.sentTimeMillis } ?: 0L

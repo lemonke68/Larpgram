@@ -357,4 +357,15 @@ interface JoinedRoom : BaseRoom {
      * @param content полный JSON-контент события строкой.
      */
     suspend fun sendRawEvent(eventType: String, content: String): Result<Unit>
+
+    /**
+     * Правка форка: отправляет состояние комнаты произвольного типа с готовым JSON-контентом.
+     * Нужно для своих маркеров, которые должны видеть все участники (например, «история очищена
+     * у обоих»). Другие клиенты неизвестный тип состояния не показывают.
+     *
+     * @param eventType тип состояния.
+     * @param stateKey ключ состояния, обычно пустая строка.
+     * @param content полный JSON-контент строкой.
+     */
+    suspend fun sendRawStateEvent(eventType: String, stateKey: String, content: String): Result<Unit>
 }
