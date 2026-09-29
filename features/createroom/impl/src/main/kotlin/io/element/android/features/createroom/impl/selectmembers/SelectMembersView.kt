@@ -165,7 +165,7 @@ fun SelectMembersView(
 
 @PreviewsDayNight
 @Composable
-internal fun SelectMembersViewPreview(@PreviewParameter(SelectMembersStateProvider::class) state: SelectMembersState) = ElementPreview {
+internal fun SelectMembersViewPreview(@PreviewParameter(SelectMembersStatePreviewParam::class) state: SelectMembersState) = ElementPreview {
     SelectMembersView(
         state = state,
         onBackClick = {},

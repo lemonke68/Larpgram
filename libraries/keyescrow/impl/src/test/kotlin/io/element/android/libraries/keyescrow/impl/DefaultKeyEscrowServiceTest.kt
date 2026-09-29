@@ -122,7 +122,7 @@ class DefaultKeyEscrowServiceTest {
     }
 
     private fun TestScope.service(
-        server: FakeServer,
+        server: InterceptingServer,
         matrixClient: FakeMatrixClient = FakeMatrixClient(),
     ) = DefaultKeyEscrowService(
         matrixClient = matrixClient,
@@ -132,7 +132,7 @@ class DefaultKeyEscrowServiceTest {
 }
 
 /** Отвечает на любой запрос одним и тем же кодом и телом, запоминая запросы. */
-internal class FakeServer(private val answer: (Request) -> Response) {
+internal class InterceptingServer(private val answer: (Request) -> Response) {
     val requests = mutableListOf<Request>()
     val client: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
@@ -142,7 +142,7 @@ internal class FakeServer(private val answer: (Request) -> Response) {
         .build()
 }
 
-internal fun respond(code: Int, body: String = "") = FakeServer { request ->
+internal fun respond(code: Int, body: String = "") = InterceptingServer { request ->
     Response.Builder()
         .request(request)
         .protocol(Protocol.HTTP_1_1)
@@ -152,6 +152,6 @@ internal fun respond(code: Int, body: String = "") = FakeServer { request ->
         .build()
 }
 
-internal fun failing() = FakeServer { throw IOException("offline") }
+internal fun failing() = InterceptingServer { throw IOException("offline") }
 
 internal fun Request.bodyText(): String = Buffer().also { body?.writeTo(it) }.readUtf8()

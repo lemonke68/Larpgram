@@ -13,7 +13,7 @@ import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import kotlinx.collections.immutable.toImmutableList
 
-open class SelectMembersStateProvider : PreviewParameterProvider<SelectMembersState> {
+open class SelectMembersStatePreviewParam : PreviewParameterProvider<SelectMembersState> {
     private val alice = MatrixUser(UserId("@alice:mango-kokos.ru"), displayName = "Alice")
     private val bob = MatrixUser(UserId("@bob:matrix.org"), displayName = "Bob")
 
