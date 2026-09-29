@@ -34,7 +34,8 @@ fun SelectedUser(
         avatarData = matrixUser.getAvatarData(size = AvatarSize.SelectedUser),
         avatarType = AvatarType.User,
         text = matrixUser.getBestName(),
-        maxLines = 2,
+        // Правка форка: имя в одну строку с многоточием, как в TG; в две строки ник рвался посередине.
+        maxLines = 1,
         a11yContentDescription = matrixUser.getBestName(),
         canRemove = canRemove,
         onRemoveClick = { onUserRemove(matrixUser) },
