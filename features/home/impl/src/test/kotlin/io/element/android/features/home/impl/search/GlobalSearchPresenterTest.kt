@@ -278,7 +278,8 @@ class GlobalSearchPresenterTest {
 private fun TestScope.createGlobalSearchPresenter(
     roomListService: RoomListService = FakeRoomListService(),
     messageSearchService: MessageSearchService = FakeMessageSearchService(),
-    featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
+    // Правка форка: поиск по сообщениям в форке включён по умолчанию; тесты по умолчанию — выключенный.
+    featureFlagService: FeatureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageSearch.key to false)),
     latestEventFormatter: RoomLatestEventFormatter = FakeRoomLatestEventFormatter(),
     dateFormatter: DateFormatter = FakeDateFormatter(),
     fileSizeFormatter: FileSizeFormatter = FakeFileSizeFormatter(),

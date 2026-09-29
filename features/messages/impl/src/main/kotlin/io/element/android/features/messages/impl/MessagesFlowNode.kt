@@ -39,6 +39,7 @@ import io.element.android.features.location.api.ShowLocationMode
 import io.element.android.features.messages.api.MessagesEntryPoint
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.AttachmentsPreviewNode
+import io.element.android.features.messages.impl.chatsearch.ChatSearchNode
 import io.element.android.features.messages.impl.pinned.DefaultPinnedEventsTimelineProvider
 import io.element.android.features.messages.impl.pinned.list.PinnedMessagesListNode
 import io.element.android.features.messages.impl.report.ReportMessageNode
@@ -207,6 +208,10 @@ class MessagesFlowNode(
         @Parcelize
         data object ThreadsList : NavTarget
 
+        // Правка форка: поиск по сообщениям чата.
+        @Parcelize
+        data object ChatSearch : NavTarget
+
         @Parcelize
         data class AvatarPreview(val name: String, val avatarUrl: String) : NavTarget
     }
@@ -359,6 +364,10 @@ class MessagesFlowNode(
 
                     override fun navigateToThreadsList() {
                         backstack.push(NavTarget.ThreadsList)
+                    }
+
+                    override fun navigateToChatSearch() {
+                        backstack.push(NavTarget.ChatSearch)
                     }
 
                     override fun navigateToDeveloperSettings() {
@@ -559,6 +568,14 @@ class MessagesFlowNode(
                     }
                 }
                 createNode<PinnedMessagesListNode>(buildContext, plugins = listOf(callback))
+            }
+            NavTarget.ChatSearch -> {
+                val callback = object : ChatSearchNode.Callback {
+                    override fun viewInTimeline(eventId: EventId) {
+                        this@MessagesFlowNode.viewInTimeline(eventId)
+                    }
+                }
+                createNode<ChatSearchNode>(buildContext, plugins = listOf(callback))
             }
             NavTarget.KnockRequestsList -> {
                 knockRequestsListEntryPoint.createNode(this, buildContext)

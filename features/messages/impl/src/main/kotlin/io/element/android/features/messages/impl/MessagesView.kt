@@ -205,6 +205,8 @@ fun MessagesView(
     emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)? = null,
     // Правка форка: «в сети / был(а)» собеседника ЛС для шапки Telegram.
     dmPresence: UserPresence? = null,
+    // Правка форка: ⋮ → «Поиск» (ChatSearchNode).
+    onChatSearchClick: () -> Unit = {},
 ) {
     val eventContentValidationState = LocalEventContentValidationState.current
 
@@ -411,6 +413,7 @@ fun MessagesView(
                                 onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
                                 onJoinCallClick = onJoinCallClick,
                                 onThreadsListClick = onThreadsListClick,
+                                onSearchClick = { hidingKeyboard { onChatSearchClick() } },
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
                                     .onSizeChanged { headerOverlayHeight = with(density) { it.height.toDp() } }

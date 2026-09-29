@@ -81,4 +81,5 @@
     <string name="larpgram_group_name_placeholder">"Название группы"</string>
     <string name="larpgram_channel_name_placeholder">"Название канала"</string>
     <string name="larpgram_channel_description_hint">"Можете указать дополнительное описание канала."</string>
+    <string name="larpgram_message_search_scope_hint">"Ищутся сообщения, полученные начиная с Larpgram 0.3.6."</string>
 </resources>

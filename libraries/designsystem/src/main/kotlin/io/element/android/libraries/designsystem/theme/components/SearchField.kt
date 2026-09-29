@@ -138,8 +138,9 @@ private fun SearchFieldContainer(
         shape = RoundedCornerShape(99.dp),
         border = BorderStroke(
             width = 1.dp,
+            // Правка форка: рамка в фокусе цвета акцента, как у TextField (аудит A-013).
             color = if (isFocused) {
-                ElementTheme.colors.borderFocused
+                ElementTheme.colors.bgAccentRest
             } else {
                 ElementTheme.colors.borderInteractiveSecondary
             }

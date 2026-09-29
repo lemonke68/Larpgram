@@ -75,6 +75,7 @@ internal fun TgChatHeader(
     onRoomDetailsClick: () -> Unit,
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
     onThreadsListClick: () -> Unit,
+    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val subtitle = headerSubtitle(state = state, dmPresence = dmPresence)
@@ -180,6 +181,7 @@ internal fun TgChatHeader(
                 onJoinCallClick = onJoinCallClick,
                 onThreadsListClick = onThreadsListClick,
                 onRoomDetailsClick = onRoomDetailsClick,
+                onSearchClick = onSearchClick,
             )
         }
     }
@@ -191,6 +193,7 @@ private fun HeaderMenu(
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
     onThreadsListClick: () -> Unit,
     onRoomDetailsClick: () -> Unit,
+    onSearchClick: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -226,6 +229,14 @@ private fun HeaderMenu(
                 onClick = {
                     expanded = false
                     state.eventSink(MessagesEvent.ToggleChannelMute)
+                },
+            )
+            HeaderMenuItem(
+                icon = CompoundIcons.Search(),
+                text = stringResource(R.string.larpgram_header_menu_search),
+                onClick = {
+                    expanded = false
+                    onSearchClick()
                 },
             )
             if (state.threads.hasThreads) {

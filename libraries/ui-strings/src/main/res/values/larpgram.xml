@@ -89,4 +89,6 @@
     <string name="larpgram_group_name_placeholder">"Group name"</string>
     <string name="larpgram_channel_name_placeholder">"Channel name"</string>
     <string name="larpgram_channel_description_hint">"You can provide an optional description for your channel."</string>
+    <!-- Поиск по сообщениям: локальный индекс SDK начинается с версии, где его включили. -->
+    <string name="larpgram_message_search_scope_hint">"Search covers messages received since Larpgram 0.3.6."</string>
 </resources>

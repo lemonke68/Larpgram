@@ -159,6 +159,9 @@ class MessagesNode(
 
         fun navigateToThreadsList()
 
+        // Правка форка: ⋮ → «Поиск» по сообщениям чата.
+        fun navigateToChatSearch()
+
         fun navigateToAvatarPreview(username: String, avatarUrl: String)
     }
 
@@ -375,6 +378,7 @@ class MessagesNode(
                     )
                 },
                 onThreadsListClick = callback::navigateToThreadsList,
+                onChatSearchClick = callback::navigateToChatSearch,
             )
             roomMemberModerationRenderer.Render(
                 state = state.roomMemberModerationState,

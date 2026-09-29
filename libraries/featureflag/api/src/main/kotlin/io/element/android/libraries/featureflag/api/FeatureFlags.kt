@@ -164,7 +164,8 @@ enum class FeatureFlags(
         key = "feature.message_search",
         title = "Message search",
         description = "Index messages locally so they can be searched. Only messages received while enabled are indexed.",
-        defaultValue = { false },
+        // Правка форка: включено с 0.3.6 — поиск на главной и ⋮ → «Поиск» в чате (решение юзера 2026-09-29).
+        defaultValue = { true },
         isFinished = false,
     ),
 }

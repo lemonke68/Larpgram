@@ -215,7 +215,11 @@ private fun GlobalSearchContent(
                 when {
                     state.results.isUninitialized() -> startSearching()
                     state.results.isLoading() -> loading()
-                    results?.isEmpty() == true -> emptySearchResults(query = state.queryState.text.toString())
+                    results?.isEmpty() == true -> emptySearchResults(
+                        query = state.queryState.text.toString(),
+                        // Правка форка: индекс сообщений начинается с 0.3.6 — говорим об этом.
+                        isMessages = state.currentTarget == GlobalSearchTarget.MESSAGES,
+                    )
                     results is GlobalSearchResults.RoomListResults -> roomListResults(
                         results = results.results,
                         onRoomClick = { roomId -> onSelectSearchResult(roomId, null) },
@@ -249,14 +253,15 @@ private fun LazyListScope.loading() {
     }
 }
 
-private fun LazyListScope.emptySearchResults(query: String) {
+private fun LazyListScope.emptySearchResults(query: String, isMessages: Boolean) {
     item {
         IconTitleSubtitleMolecule(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(40.dp),
             title = stringResource(R.string.search_no_results_title),
-            subTitle = stringResource(R.string.search_no_results_subtitle, query),
+            subTitle = stringResource(R.string.search_no_results_subtitle, query) +
+                if (isMessages) "\n" + stringResource(CommonStrings.larpgram_message_search_scope_hint) else "",
             iconStyle = BigIcon.Style.Default(CompoundIcons.Search()),
         )
     }

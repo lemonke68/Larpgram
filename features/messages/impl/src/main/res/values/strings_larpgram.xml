@@ -21,6 +21,11 @@
     <string name="larpgram_header_menu_unmute">Unmute</string>
     <string name="larpgram_header_menu_threads">Threads</string>
     <string name="larpgram_header_menu_info">Info</string>
+    <string name="larpgram_header_menu_search">Search</string>
+    <!-- Поиск по сообщениям чата (ChatSearchView). -->
+    <string name="larpgram_chat_search_hint">Search</string>
+    <string name="larpgram_chat_search_no_results">Nothing found</string>
+    <string name="larpgram_chat_search_unavailable">Message search is not available on this device yet. Restart the app.</string>
     <string name="larpgram_pinned_message_title">Pinned message</string>
     <!-- Меню вложений Telegram -->
     <string name="larpgram_attach_tab_gallery">Gallery</string>

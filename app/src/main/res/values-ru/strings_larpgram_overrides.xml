@@ -127,4 +127,12 @@
     <string name="screen_bottom_sheet_manage_room_member_remove">Удалить из чата</string>
     <string name="screen_bottom_sheet_manage_room_member_unban">Разблокировать</string>
     <string name="screen_bottom_sheet_manage_room_member_unban_member_confirmation_description">Пользователь сможет вернуться в чат по приглашению.</string>
+    <!-- Глобальный поиск (features/home, строки Element в temporary.xml без перевода). -->
+    <string name="start_searching_title">"Начните поиск"</string>
+    <string name="start_searching_subtitle">"Ищите чаты и сообщения"</string>
+    <string name="search_section_chats">"Чаты"</string>
+    <string name="search_section_messages">"Сообщения"</string>
+    <string name="search_from_your_messages_header">"Сообщения"</string>
+    <string name="search_no_results_title">"Ничего не найдено"</string>
+    <string name="search_no_results_subtitle">"По запросу «%1$s» ничего нет."</string>
 </resources>

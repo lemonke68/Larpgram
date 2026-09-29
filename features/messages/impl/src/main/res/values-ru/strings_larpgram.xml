@@ -15,6 +15,10 @@
     <string name="larpgram_header_menu_unmute">Включить уведомления</string>
     <string name="larpgram_header_menu_threads">Треды</string>
     <string name="larpgram_header_menu_info">Информация</string>
+    <string name="larpgram_header_menu_search">Поиск</string>
+    <string name="larpgram_chat_search_hint">Поиск</string>
+    <string name="larpgram_chat_search_no_results">Ничего не найдено</string>
+    <string name="larpgram_chat_search_unavailable">Поиск по сообщениям пока недоступен. Перезапустите приложение.</string>
     <string name="larpgram_pinned_message_title">Закреплённое сообщение</string>
     <!-- Меню вложений Telegram -->
     <string name="larpgram_attach_tab_gallery">Галерея</string>
