@@ -31,16 +31,17 @@ APKSIGNER="$BUILD_TOOLS/apksigner"
 AAPT2="$BUILD_TOOLS/aapt2"
 export JAVA_HOME="${JAVA_HOME:-$HOME/.jdks/jdk-21.0.12+8/Contents/Home}"
 
-cert="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print $2; exit}')"
+cert="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest/ {print $NF; exit}')"
 [[ "$cert" == "$CERT_PREFIX"* ]] || { echo "Чужая подпись ($cert), нужен release с keystore.properties" >&2; exit 1; }
 
-badging="$("$AAPT2" dump badging "$APK" | head -1)"
+badging="$("$AAPT2" dump badging "$APK" | awk 'NR == 1')"
 version_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<<"$badging")"
 version_name="$(sed -E "s/.*versionName='([^']+)'.*/\1/" <<<"$badging")"
 sha256="$(shasum -a 256 "$APK" | cut -d' ' -f1)"
 size_mb="$(( $(stat -f%z "$APK") / 1048576 ))"
 
-current_code="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["versionCode"])' "$SITE/html/latest.json")"
+# Сравниваем с выкаченным (закоммиченным) манифестом: подготовка без --deploy уже меняет рабочую копию.
+current_code="$(git -C "$SITE" show HEAD:html/latest.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])')"
 (( version_code > current_code )) || { echo "versionCode $version_code не больше текущего $current_code" >&2; exit 1; }
 
 python3 - "$SITE/html/latest.json" "$version_code" "$version_name" "$sha256" <<'PY'
@@ -58,7 +59,8 @@ path, name, size = sys.argv[1:]
 html = open(path).read()
 html, n1 = re.subn(r'(<b id="ver">)[^<]*(</b>)', rf'\g<1>{name}\g<2>', html)
 html, n2 = re.subn(r'(<b id="size">)[^<]*(</b>)', rf'\g<1>≈{size} МБ\g<2>', html)
-html, n3 = re.subn(r'(<p class="wn-ver">Версия )[^<]*(</p>)', rf'\g<1>{name}\g<2>', html)
+# Под «Что нового» история версий: номер меняем только у верхнего блока.
+html, n3 = re.subn(r'(<p class="wn-ver">Версия )[^<]*(</p>)', rf'\g<1>{name}\g<2>', html, count=1)
 html, n4 = re.subn(r'Larpgram v[0-9][^ <]*', f'Larpgram v{name}', html)
 if (n1, n2, n3, n4) != (1, 1, 1, 1):
     sys.exit(f"index.html: ожидал по одной замене, вышло {(n1, n2, n3, n4)}")
