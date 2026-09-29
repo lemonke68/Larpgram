@@ -26,6 +26,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.createroom.CreateRoomParameters
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.alias.ResolvedRoomAlias
@@ -33,6 +34,7 @@ import io.element.android.libraries.matrix.api.room.alias.RoomAliasHelper
 import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevels
 import io.element.android.libraries.matrix.api.room.powerlevels.RoomPowerLevelsValues
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.AN_AVATAR_URL
 import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.A_MESSAGE
@@ -214,6 +216,32 @@ class ConfigureRoomPresenterTest : RobolectricTest() {
             val stateAfterCreateRoom = awaitItem()
             assertThat(stateAfterCreateRoom.createRoomAction).isInstanceOf(AsyncAction.Success::class.java)
             assertThat(stateAfterCreateRoom.createRoomAction.dataOrNull()).isEqualTo(createRoomResult.getOrNull())
+        }
+    }
+
+    @Test
+    fun `present - people chosen before the group are invited when it is created`() = runTest {
+        val matrixClient = createMatrixClient()
+        var params: CreateRoomParameters? = null
+        matrixClient.createRoomResult = {
+            params = it
+            Result.success(RoomId("!createRoomResult:domain"))
+        }
+        val alice = MatrixUser(UserId("@alice:domain"))
+        val presenter = createConfigureRoomPresenter(matrixClient = matrixClient, initialInvites = listOf(alice))
+        presenter.test {
+            val withInvites = awaitItemMatching { it.config.invites.isNotEmpty() }
+            assertThat(withInvites.config.invites).containsExactly(alice)
+            withInvites.eventSink(ConfigureRoomEvent.CreateRoom)
+            awaitItemMatching { it.createRoomAction is AsyncAction.Success }
+            assertThat(params?.invite).containsExactly(alice.userId)
+        }
+    }
+
+    private suspend fun TurbineTestContext<ConfigureRoomState>.awaitItemMatching(predicate: (ConfigureRoomState) -> Boolean): ConfigureRoomState {
+        while (true) {
+            val item = awaitItem()
+            if (predicate(item)) return item
         }
     }
 
@@ -571,6 +599,7 @@ class ConfigureRoomPresenterTest : RobolectricTest() {
     private fun createConfigureRoomPresenter(
         isSpace: Boolean = false,
         initialParenSpaceId: RoomId? = null,
+        initialInvites: List<MatrixUser> = emptyList(),
         roomAliasHelper: RoomAliasHelper = FakeRoomAliasHelper(),
         dataStore: CreateRoomConfigStore = CreateRoomConfigStore(roomAliasHelper),
         matrixClient: MatrixClient = createMatrixClient(),
@@ -585,6 +614,7 @@ class ConfigureRoomPresenterTest : RobolectricTest() {
         isSpace = isSpace,
         isChannel = false,
         initialParentSpaceId = initialParenSpaceId,
+        initialInvites = initialInvites,
         dataStore = dataStore,
         matrixClient = matrixClient,
         mediaPickerProvider = pickerProvider,

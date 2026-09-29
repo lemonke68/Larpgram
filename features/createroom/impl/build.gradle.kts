@@ -45,6 +45,8 @@ dependencies {
     implementation(libs.serialization.json)
     implementation(projects.libraries.featureflag.api)
     implementation(projects.features.invitepeople.api)
+    // Правка форка: выбор участников до создания группы (SelectMembersPresenter).
+    implementation(projects.libraries.usersearch.api)
     implementation(projects.features.enterprise.api)
     // Правка форка: имя обсуждения канала и общий ключ account data «канал → обсуждение».
     implementation(projects.services.toolbox.api)
@@ -54,6 +56,7 @@ dependencies {
     testCommonDependencies(libs, true)
     testImplementation(projects.services.analytics.test)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.libraries.usersearch.test)
     testImplementation(projects.libraries.mediapickers.test)
     testImplementation(projects.libraries.mediaupload.test)
     testImplementation(projects.libraries.permissions.test)

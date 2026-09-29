@@ -15,6 +15,7 @@ import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.navmodel.backstack.BackStack
+import com.bumble.appyx.navmodel.backstack.operation.push
 import com.bumble.appyx.navmodel.backstack.operation.replace
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
@@ -22,6 +23,7 @@ import io.element.android.annotations.ContributesNode
 import io.element.android.features.createroom.api.CreateRoomEntryPoint
 import io.element.android.features.createroom.impl.addpeople.AddPeopleNode
 import io.element.android.features.createroom.impl.configureroom.ConfigureRoomNode
+import io.element.android.features.createroom.impl.selectmembers.SelectMembersNode
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.NodeInputs
@@ -29,6 +31,7 @@ import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import kotlinx.parcelize.Parcelize
 
 @ContributesNode(SessionScope::class)
@@ -56,15 +59,33 @@ class CreateRoomFlowNode(
 
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node {
         return when (navTarget) {
+            // Правка форка: новая группа, как в TG, начинается с выбора людей, потом фото и название;
+            // приглашения уходят вместе с созданием комнаты.
+            is NavTarget.SelectMembers -> {
+                val callback = object : SelectMembersNode.Callback {
+                    override fun onMembersSelected(users: List<MatrixUser>) {
+                        backstack.push(
+                            NavTarget.ConfigureRoom(isSpace = false, isChannel = false, parentSpaceId = navTarget.parentSpaceId, invites = users)
+                        )
+                    }
+                }
+                createNode<SelectMembersNode>(buildContext, plugins = listOf(callback))
+            }
             is NavTarget.ConfigureRoom -> {
                 val inputs = ConfigureRoomNode.Inputs(
                     isSpace = navTarget.isSpace,
                     isChannel = navTarget.isChannel,
                     parentSpaceId = navTarget.parentSpaceId,
+                    invites = navTarget.invites,
                 )
                 val callback = object : ConfigureRoomNode.Callback {
                     override fun onCreateRoomSuccess(roomId: RoomId) {
-                        backstack.replace(NavTarget.AddPeople(roomId))
+                        if (navTarget.invites != null) {
+                            // Люди уже выбраны на первом шаге.
+                            callback.onRoomCreated(roomId)
+                        } else {
+                            backstack.replace(NavTarget.AddPeople(roomId))
+                        }
                     }
                 }
                 createNode<ConfigureRoomNode>(buildContext, plugins = listOf(inputs, callback))
@@ -88,15 +109,28 @@ class CreateRoomFlowNode(
 
     sealed interface NavTarget : Parcelable {
         @Parcelize
-        data class ConfigureRoom(val isSpace: Boolean, val isChannel: Boolean, val parentSpaceId: RoomId?) : NavTarget
+        data class SelectMembers(val parentSpaceId: RoomId?) : NavTarget
+
+        /** [invites] — люди с шага [SelectMembers]; null, если его не было (канал, пространство). */
+        @Parcelize
+        data class ConfigureRoom(
+            val isSpace: Boolean,
+            val isChannel: Boolean,
+            val parentSpaceId: RoomId?,
+            val invites: List<MatrixUser>? = null,
+        ) : NavTarget
 
         @Parcelize
         data class AddPeople(val roomId: RoomId) : NavTarget
     }
 }
 
-private fun initialElementFromInputs(inputs: CreateRoomFlowNode.Inputs) = CreateRoomFlowNode.NavTarget.ConfigureRoom(
-    isSpace = inputs.isSpace,
-    isChannel = inputs.isChannel,
-    parentSpaceId = inputs.parentSpaceId,
-)
+private fun initialElementFromInputs(inputs: CreateRoomFlowNode.Inputs) = if (!inputs.isSpace && !inputs.isChannel) {
+    CreateRoomFlowNode.NavTarget.SelectMembers(parentSpaceId = inputs.parentSpaceId)
+} else {
+    CreateRoomFlowNode.NavTarget.ConfigureRoom(
+        isSpace = inputs.isSpace,
+        isChannel = inputs.isChannel,
+        parentSpaceId = inputs.parentSpaceId,
+    )
+}

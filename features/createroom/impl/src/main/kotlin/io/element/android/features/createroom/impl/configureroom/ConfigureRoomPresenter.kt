@@ -42,6 +42,7 @@ import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibilit
 import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.api.roomdirectory.RoomVisibility
 import io.element.android.libraries.matrix.api.spaces.SpaceRoom
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.media.AvatarAction
 import io.element.android.libraries.matrix.ui.room.address.RoomAddressValidity
 import io.element.android.libraries.matrix.ui.room.address.RoomAddressValidityEffect
@@ -71,6 +72,8 @@ class ConfigureRoomPresenter(
     @Assisted private val isSpace: Boolean,
     @Assisted private val isChannel: Boolean,
     @Assisted private val initialParentSpaceId: RoomId?,
+    // Правка форка: приглашённые с шага выбора людей.
+    @Assisted private val initialInvites: List<MatrixUser>,
     private val dataStore: CreateRoomConfigStore,
     private val matrixClient: MatrixClient,
     private val mediaPickerProvider: PickerProvider,
@@ -86,7 +89,7 @@ class ConfigureRoomPresenter(
 ) : Presenter<ConfigureRoomState> {
     @AssistedFactory
     interface Factory {
-        fun create(isSpace: Boolean, isChannel: Boolean, initialParentSpaceId: RoomId?): ConfigureRoomPresenter
+        fun create(isSpace: Boolean, isChannel: Boolean, initialParentSpaceId: RoomId?, initialInvites: List<MatrixUser>): ConfigureRoomPresenter
     }
 
     private val cameraPermissionPresenter: PermissionsPresenter = permissionsPresenterFactory.create(android.Manifest.permission.CAMERA)
@@ -123,6 +126,7 @@ class ConfigureRoomPresenter(
 
         var spaces by remember { mutableStateOf<ImmutableList<SpaceRoom>>(persistentListOf()) }
         LaunchedEffect(Unit) {
+            dataStore.setInvites(initialInvites)
             spaces = matrixClient.spaceService.editableSpaces().getOrElse { emptyList() }.toImmutableList()
             val parentSpace = spaces.find { it.roomId == initialParentSpaceId }
             parentSpace?.let {

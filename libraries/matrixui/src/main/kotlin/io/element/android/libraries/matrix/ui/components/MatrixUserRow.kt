@@ -28,6 +28,8 @@ fun MatrixUserRow(
     avatarSize: AvatarSize = AvatarSize.UserListItem,
     verticalSpaceWidth: Dp = 12.dp,
     trailingContent: @Composable (() -> Unit)? = null,
+    // Правка форка: короткий @ник TG вместо полного MXID (`tgHandle`).
+    subtext: String? = if (matrixUser.displayName.isNullOrEmpty()) null else matrixUser.userId.value,
 ) = UserRow(
     avatarData = matrixUser.getAvatarData(avatarSize),
     nameContent = {
@@ -38,7 +40,7 @@ fun MatrixUserRow(
             style = ElementTheme.typography.fontBodyLgRegular,
         )
     },
-    subtext = if (matrixUser.displayName.isNullOrEmpty()) null else matrixUser.userId.value,
+    subtext = subtext,
     modifier = modifier,
     verticalSpaceWidth = verticalSpaceWidth,
     trailingContent = trailingContent,

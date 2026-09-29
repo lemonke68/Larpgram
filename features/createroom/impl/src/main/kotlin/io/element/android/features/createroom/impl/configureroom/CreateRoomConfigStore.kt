@@ -13,6 +13,8 @@ import dev.zacsweers.metro.Inject
 import io.element.android.libraries.androidutils.file.safeDelete
 import io.element.android.libraries.matrix.api.room.alias.RoomAliasHelper
 import io.element.android.libraries.matrix.api.spaces.SpaceRoom
+import io.element.android.libraries.matrix.api.user.MatrixUser
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.getAndUpdate
@@ -113,6 +115,11 @@ class CreateRoomConfigStore(
                 visibilityState = visibilityState
             )
         }
+    }
+
+    // Правка форка: люди с шага выбора участников «Новой группы».
+    fun setInvites(invites: List<MatrixUser>) {
+        createRoomConfigFlow.getAndUpdate { config -> config.copy(invites = invites.toImmutableList()) }
     }
 
     fun clearCachedData() {

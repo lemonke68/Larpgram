@@ -3,4 +3,7 @@
 <resources>
     <!-- Имя группы-обсуждения, которую создаём вместе с каналом. %1$s — имя канала. -->
     <string name="larpgram_channel_discussion_name">%1$s — comments</string>
+    <!-- «Новая группа», шаг выбора людей (GroupCreateActivity TG). -->
+    <string name="larpgram_select_members_hint">Add people…</string>
+    <string name="larpgram_select_members_subtitle">Choose members</string>
 </resources>

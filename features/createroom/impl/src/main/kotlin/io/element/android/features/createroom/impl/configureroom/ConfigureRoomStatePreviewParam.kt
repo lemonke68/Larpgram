@@ -123,6 +123,7 @@ open class ConfigureRoomStatePreviewParam : PreviewParameterProvider<ConfigureRo
 fun aConfigureRoomState(
     config: CreateRoomConfig = CreateRoomConfig(),
     isSpace: Boolean = false,
+    // Правка форка: каналы.
     isChannel: Boolean = false,
     isKnockFeatureEnabled: Boolean = true,
     avatarActions: List<AvatarAction> = emptyList(),

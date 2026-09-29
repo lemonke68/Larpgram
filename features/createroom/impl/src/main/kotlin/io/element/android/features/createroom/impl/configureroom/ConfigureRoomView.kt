@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -65,8 +66,11 @@ import io.element.android.libraries.matrix.api.spaces.SpaceRoom
 import io.element.android.libraries.matrix.ui.components.AvatarActionBottomSheet
 import io.element.android.libraries.matrix.ui.components.AvatarPickerState
 import io.element.android.libraries.matrix.ui.components.AvatarPickerView
+import io.element.android.libraries.matrix.ui.components.MatrixUserRow
+import io.element.android.libraries.matrix.ui.model.tgHandle
 import io.element.android.libraries.matrix.ui.room.address.RoomAddressField
 import io.element.android.libraries.permissions.api.PermissionsView
+import io.element.android.libraries.ui.strings.CommonPlurals
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
 import kotlin.jvm.optionals.getOrNull
@@ -124,7 +128,19 @@ fun ConfigureRoomView(
                 onChangeRoomName = { state.eventSink(ConfigureRoomEvent.RoomNameChanged(it)) },
             )
             // Правка форка: в TG у новой группы только фото и название; описание — у канала.
-            if (!state.isChannel && !isSpace) return@Column
+            // Ниже — выбранные на прошлом шаге участники (GroupCreateFinalActivity TG).
+            if (!state.isChannel && !isSpace) {
+                if (state.config.invites.isNotEmpty()) {
+                    ListSectionHeader(
+                        title = pluralStringResource(CommonPlurals.larpgram_member_count, state.config.invites.size, state.config.invites.size),
+                        hasDivider = false,
+                    )
+                    state.config.invites.forEach { user ->
+                        MatrixUserRow(matrixUser = user, subtext = user.userId.tgHandle(state.homeserverName))
+                    }
+                }
+                return@Column
+            }
             Spacer(modifier = Modifier.height(16.dp))
             RoomTopic(
                 modifier = Modifier.padding(horizontal = 16.dp),

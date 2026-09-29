@@ -24,6 +24,7 @@ import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.inputs
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.parcelize.Parcelize
 
@@ -45,11 +46,13 @@ class ConfigureRoomNode(
         // Правка форка: каналы.
         val isChannel: Boolean,
         val parentSpaceId: RoomId?,
+        // Правка форка: люди, выбранные до создания группы (шаг «Новая группа» TG).
+        val invites: List<MatrixUser>? = null,
     ) : NodeInputs, Parcelable
 
     private val inputs = inputs<Inputs>()
 
-    private val presenter = presenterFactory.create(inputs.isSpace, inputs.isChannel, inputs.parentSpaceId)
+    private val presenter = presenterFactory.create(inputs.isSpace, inputs.isChannel, inputs.parentSpaceId, inputs.invites.orEmpty())
 
     init {
         lifecycle.subscribe(

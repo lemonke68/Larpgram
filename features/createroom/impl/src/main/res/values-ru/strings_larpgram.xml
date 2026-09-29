@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="larpgram_channel_discussion_name">%1$s — комментарии</string>
+    <string name="larpgram_select_members_hint">Добавить людей…</string>
+    <string name="larpgram_select_members_subtitle">Выберите участников</string>
 </resources>
