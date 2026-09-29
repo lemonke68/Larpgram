@@ -26,6 +26,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayout
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayoutData
+import io.element.android.features.messages.impl.timeline.components.linkpreview.TextWithLinkPreview
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.rememberPresenter
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAttachmentsContent
@@ -139,7 +140,8 @@ fun TimelineItemEventContentView(
                     content = content,
                     onContentLayoutChange = calculatedOnContentLayoutChange,
                 )
-                is TimelineItemTextBasedContent -> TimelineItemTextView(
+                // Правка форка: карточка ссылки под текстом, как в TG.
+                is TimelineItemTextBasedContent -> TextWithLinkPreview(
                     content = content,
                     onLinkClick = onLinkClick,
                     onLinkLongClick = onLinkLongClick,

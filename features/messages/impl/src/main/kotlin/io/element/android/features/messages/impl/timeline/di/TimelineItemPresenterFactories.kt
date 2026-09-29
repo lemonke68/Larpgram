@@ -32,6 +32,12 @@ class TimelineItemPresenterFactories(
     private val presenters: MutableMap<TimelineItemEventContent, Presenter<*>> = mutableMapOf()
 
     /**
+     * Правка форка: есть ли presenter для [contentClass]. Превью ссылок (`TextWithLinkPreview`)
+     * необязательно, и там, где фабрик нет (дефолтный CompositionLocal), текст рисуется без него.
+     */
+    fun has(contentClass: KClass<out TimelineItemEventContent>): Boolean = contentClass in factories
+
+    /**
      * Creates and caches a presenter for the given content.
      *
      * Will throw if the presenter is not found in the [TimelineItemPresenterFactory] map multi binding.
