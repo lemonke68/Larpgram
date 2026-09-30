@@ -36,8 +36,6 @@ import io.element.android.features.location.api.LocationService
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.error.sendAttachmentError
-import io.element.android.features.messages.impl.attachments.tgattach.UncompressedMediaConfig
-import io.element.android.features.messages.impl.attachments.tgattach.sendGalleryMediaNow
 import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.RoomAliasSuggestionsDataSource
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
@@ -45,8 +43,6 @@ import io.element.android.features.messages.impl.timeline.TimelineController
 import io.element.android.features.messages.impl.utils.TextPillificationHelper
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
-import io.element.android.libraries.channelcomments.ChannelDiscussion
-import io.element.android.libraries.channelcomments.ChannelPostMirror
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
@@ -54,9 +50,7 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
-import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
-import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
@@ -70,7 +64,6 @@ import io.element.android.libraries.matrix.api.room.powerlevels.use
 import io.element.android.libraries.matrix.api.timeline.TimelineException
 import io.element.android.libraries.matrix.api.timeline.item.event.mediaSources
 import io.element.android.libraries.matrix.api.timeline.item.event.toEventOrTransactionId
-import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
 import io.element.android.libraries.matrix.ui.media.contentvalidation.EventContentValidationCache
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
 import io.element.android.libraries.matrix.ui.messages.reply.content
@@ -129,11 +122,10 @@ class MessageComposerPresenter(
     @Assisted private val threadRoot: ThreadId?,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     private val room: JoinedRoom,
-    private val matrixClient: MatrixClient,
     private val mediaPickerProvider: PickerProvider,
     private val sessionPreferencesStore: SessionPreferencesStore,
     private val localMediaFactory: LocalMediaFactory,
-    private val mediaSenderFactory: MediaSenderFactory,
+    mediaSenderFactory: MediaSenderFactory,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val analyticsService: AnalyticsService,
     private val locationService: LocationService,
@@ -144,8 +136,8 @@ class MessageComposerPresenter(
     private val permalinkBuilder: PermalinkBuilder,
     permissionsPresenterFactory: PermissionsPresenter.Factory,
     private val draftService: ComposerDraftService,
-    // Правка форка: копия текста черновика для «Черновик:» в списке чатов.
-    private val draftPreviews: DraftPreviews,
+    // Правка форка: меню вложений, пост канала, «Черновик:» (ComposerForkActions).
+    private val forkActions: ComposerForkActions,
     private val mentionSpanProvider: MentionSpanProvider,
     private val pillificationHelper: TextPillificationHelper,
     private val suggestionsProcessor: SuggestionsProcessor,
@@ -364,16 +356,7 @@ class MessageComposerPresenter(
                     showAttachmentSourcePicker = false
                     val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
                     sessionCoroutineScope.launch {
-                        sendGalleryMediaNow(
-                            media = event.media,
-                            caption = event.caption,
-                            inReplyToEventId = inReplyToEventId,
-                            mediaOptimizationConfig = if (event.compress) mediaOptimizationConfigProvider.get() else UncompressedMediaConfig,
-                            mediaSender = mediaSenderFactory.create(timelineMode = timelineController.mainTimelineMode()),
-                            room = room,
-                            matrixClient = matrixClient,
-                            snackbarDispatcher = snackbarDispatcher,
-                        )
+                        forkActions.sendGalleryMedia(event.media, event.caption, event.compress, inReplyToEventId, timelineController.mainTimelineMode())
                     }
                     resetComposerModeAfterAttaching()
                 }
@@ -431,11 +414,7 @@ class MessageComposerPresenter(
                 MessageComposerEvent.SaveDraft -> {
                     val draft = createDraftFromState(markdownTextEditorState, richTextEditorState)
                     sessionCoroutineScope.updateDraft(draft, isVolatile = false)
-                    // В TG «Черновик:» — только для нового сообщения или ответа в самом чате;
-                    // незаконченная правка старого сообщения черновиком не считается.
-                    if (threadRoot == null) {
-                        draftPreviews.set(room.roomId, draft?.takeIf { it.draftType !is ComposerDraftType.Edit }?.plainText)
-                    }
+                    forkActions.onDraftSaved(draft, isThread = threadRoot != null)
                 }
                 MessageComposerEvent.ClearSlashError -> {
                     slashCommandAction.value = AsyncAction.Uninitialized
@@ -595,39 +574,16 @@ class MessageComposerPresenter(
 
         // Reset composer right away
         resetComposer(markdownTextEditorState, richTextEditorState, fromEdit = capturedMode is MessageComposerMode.Edit)
+        // Правка форка: текстовый пост канала зеркалится в обсуждение после отправки.
+        val channelPostMirror = forkActions.prepareChannelPostMirror(capturedMode)
         when (capturedMode) {
-            is MessageComposerMode.Attachment -> timelineController.invokeOnCurrentTimeline {
+            is MessageComposerMode.Attachment,
+            is MessageComposerMode.Normal -> timelineController.invokeOnCurrentTimeline {
                 sendMessage(
                     body = message.markdown,
                     htmlBody = message.html,
                     intentionalMentions = message.intentionalMentions
                 )
-            }
-            is MessageComposerMode.Normal -> {
-                // Правка форка: пост канала с обсуждением уходит обычной отправкой (очередь,
-                // локальное эхо, повтор при обрыве сети), а потом зеркалится в обсуждение с id
-                // поста, как медиа-посты (ChannelPostMirror). Раньше это был raw-запрос мимо
-                // очереди: при плохой сети пост пропадал молча.
-                val isChannelWithDiscussion = channelDiscussionRoomId() != null
-                val preIds = if (isChannelWithDiscussion) {
-                    ChannelPostMirror.myPostIds(room, ChannelPostMirror::isTextMessage)
-                } else {
-                    emptySet()
-                }
-                timelineController.invokeOnCurrentTimeline {
-                    sendMessage(
-                        body = message.markdown,
-                        htmlBody = message.html,
-                        intentionalMentions = message.intentionalMentions
-                    )
-                }
-                if (isChannelWithDiscussion) {
-                    launch {
-                        runCatchingExceptions {
-                            ChannelPostMirror.mirrorLastPost(room, matrixClient, preIds, matches = ChannelPostMirror::isTextMessage)
-                        }
-                    }
-                }
             }
             is MessageComposerMode.Edit -> {
                 timelineController.invokeOnCurrentTimeline {
@@ -664,6 +620,7 @@ class MessageComposerPresenter(
                 }
             }
         }
+        channelPostMirror?.let { launch { it() } }
 
         val roomInfo = room.info()
         val roomMembers = room.membersStateFlow.value
@@ -983,12 +940,5 @@ class MessageComposerPresenter(
                 markdownTextEditorState.requestFocusAction()
             }
         }
-    }
-
-    /** RoomId of the linked discussion group if this room is a channel that has one, else null. */
-    private suspend fun channelDiscussionRoomId(): RoomId? {
-        val isChannel = (room.info().roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
-        if (!isChannel) return null
-        return ChannelDiscussion.resolveDiscussionRoomId(room, matrixClient)
     }
 }

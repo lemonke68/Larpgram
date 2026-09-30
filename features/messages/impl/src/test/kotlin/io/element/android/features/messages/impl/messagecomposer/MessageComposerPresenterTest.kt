@@ -1761,7 +1761,6 @@ class MessageComposerPresenterTest : RobolectricTest() {
         sessionCoroutineScope = this,
         threadRoot = threadRoot,
         room = room,
-        matrixClient = FakeMatrixClient(),
         mediaPickerProvider = pickerProvider,
         sessionPreferencesStore = sessionPreferencesStore,
         localMediaFactory = localMediaFactory,
@@ -1789,7 +1788,26 @@ class MessageComposerPresenterTest : RobolectricTest() {
         permalinkBuilder = permalinkBuilder,
         timelineController = TimelineController(room, timeline),
         draftService = draftService,
-        draftPreviews = draftPreviews,
+        forkActions = ComposerForkActions(
+            room = room,
+            matrixClient = FakeMatrixClient(),
+            mediaSenderFactory = MediaSenderFactory { timelineMode ->
+                DefaultMediaSender(
+                    preProcessor = mediaPreProcessor,
+                    room = room,
+                    timelineMode = timelineMode,
+                    mediaOptimizationConfigProvider = {
+                        MediaOptimizationConfig(
+                            compressImages = true,
+                            videoCompressionPreset = VideoCompressionPreset.STANDARD
+                        )
+                    }
+                )
+            },
+            mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
+            snackbarDispatcher = snackbarDispatcher,
+            draftPreviews = draftPreviews,
+        ),
         mentionSpanProvider = mentionSpanProvider,
         pillificationHelper = textPillificationHelper,
         suggestionsProcessor = SuggestionsProcessor(slashCommandService = slashCommandService),
