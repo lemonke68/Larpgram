@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2026 Larpgram.
- * Правка форка: нижние полосы чата Telegram: подписка на канал и заблокированный собеседник. Вынесено из `MessagesView.kt` (аудит C-009).
+ * Правка форка: нижние полосы чата Telegram: подписка на канал и заблокированный собеседник. Вынесено из `TgMessagesView.kt` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.

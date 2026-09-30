@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2024, 2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: тесты `TgMessagesView` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -92,7 +94,7 @@ import org.robolectric.annotation.Config
 import kotlin.time.Duration.Companion.milliseconds
 
 @Suppress("LargeClass")
-class MessagesViewTest : RobolectricTest() {
+class TgMessagesViewTest : RobolectricTest() {
     @Test
     fun `clicking on back invoke expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<MessagesEvent>(expectEvents = false)
@@ -780,7 +782,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setMessagesView(
     setSafeContent {
         // Cannot use the RichTextEditor, so simulate a LocalInspectionMode
         CompositionLocalProvider(LocalInspectionMode provides true) {
-            MessagesView(
+            TgMessagesView(
                 state = state,
                 onBackClick = onBackClick,
                 onRoomDetailsClick = onRoomDetailsClick,

@@ -15,7 +15,6 @@ import io.element.android.features.messages.impl.aMessagesState
 import io.element.android.features.messages.impl.messagecomposer.aMessageComposerState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.textcomposer.model.aTextEditorStateMarkdown
 
 @PreviewsDayNight
@@ -45,8 +44,6 @@ internal fun MessagesViewWithIdentityChangePreview(
         onViewAllPinnedMessagesClick = {},
         knockRequestsBannerView = {},
         customReactionBottomSheet = {},
-        // Правка форка: пикер эмодзи в меню долгого нажатия.
-        emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onThreadsListClick = {},
     )
 }

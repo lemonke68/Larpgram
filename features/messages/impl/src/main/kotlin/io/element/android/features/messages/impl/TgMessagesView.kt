@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: экран чата Telegram: плавающая шапка и поле ввода, меню вложений, меню долгого нажатия у пузыря. Заменяет элементовский `MessagesView`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -11,8 +13,10 @@ package io.element.android.features.messages.impl
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,20 +35,30 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -58,24 +72,40 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import dev.chrisbanes.haze.rememberHazeState
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.circles.impl.CircleRecorderEvents
+import io.element.android.features.circles.impl.CircleRecorderView
+import io.element.android.features.gifs.impl.GifPickerEvents
+import io.element.android.features.gifs.impl.GifPickerView
 import io.element.android.features.location.api.LiveLocationSharingBanner
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerEvent
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
+import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.ActionListView
+import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
+import io.element.android.features.messages.impl.actionlist.MessageActionsAnchor
+import io.element.android.features.messages.impl.actionlist.MessageActionsOverlay
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachAction
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheet
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeStateView
 import io.element.android.features.messages.impl.link.LinkEvent
 import io.element.android.features.messages.impl.link.LinkView
-import io.element.android.features.messages.impl.messagecomposer.AttachmentsBottomSheet
 import io.element.android.features.messages.impl.messagecomposer.DisabledComposerView
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerView
+import io.element.android.features.messages.impl.messagecomposer.TgMediaPanel
+import io.element.android.features.messages.impl.messagecomposer.TgMediaPanelController
+import io.element.android.features.messages.impl.messagecomposer.TgMediaPanelTab
+import io.element.android.features.messages.impl.messagecomposer.rememberTgMediaPanelController
+import io.element.android.features.messages.impl.messagecomposer.showKeyboardOnFocusedInput
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsPickerView
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
-import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerView
-import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerViewDefaults
+import io.element.android.features.messages.impl.pinned.banner.TgPinnedMessagesBannerView
+import io.element.android.features.messages.impl.pinned.banner.TgPinnedMessagesBannerViewDefaults
 import io.element.android.features.messages.impl.timeline.FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineView
@@ -85,6 +115,9 @@ import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.aTimelineState
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionEvent
+import io.element.android.features.messages.impl.timeline.components.event.LocalCircleMediaLoader
+import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
+import io.element.android.features.messages.impl.timeline.components.event.StickerPackSheet
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryEvent
 import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryView
 import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheet
@@ -94,16 +127,22 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemGrou
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.sendfailure.SendFailureDialogView
-import io.element.android.features.messages.impl.topbars.MessagesViewTopBar
+import io.element.android.features.messages.impl.topbars.TgChatHeader
 import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
 import io.element.android.features.roomcall.api.RoomCallState
+import io.element.android.features.stickers.impl.StickerPickerEvents
+import io.element.android.features.stickers.impl.StickerSendErrorDialog
+import io.element.android.features.stickers.impl.TgStickerPanel
 import io.element.android.libraries.androidutils.ui.hideKeyboard
 import io.element.android.libraries.designsystem.atomic.molecules.ComposerAlertMolecule
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayout
 import io.element.android.libraries.designsystem.components.ExpandableBottomSheetLayoutState
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
+import io.element.android.libraries.designsystem.components.glass.LocalChatBottomOverlayHeight
+import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
+import io.element.android.libraries.designsystem.components.glass.LocalChatTopOverlayHeight
 import io.element.android.libraries.designsystem.components.rememberExpandableBottomSheetLayoutState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -116,9 +155,12 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.HideKeyboardWhenDisposed
 import io.element.android.libraries.designsystem.utils.KeepScreenOn
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
+import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
 import io.element.android.libraries.designsystem.utils.scaffoldScrollableContentInsets
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
+import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
@@ -129,15 +171,18 @@ import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSen
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.media.contentvalidation.ContentValidationValue
 import io.element.android.libraries.matrix.ui.media.contentvalidation.LocalEventContentValidationState
+import io.element.android.libraries.matrix.ui.presence.UserPresence
+import io.element.android.libraries.textcomposer.CircleRecordGestures
 import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.wysiwyg.link.Link
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun MessagesView(
+fun TgMessagesView(
     state: MessagesState,
     onBackClick: () -> Unit,
     onRoomDetailsClick: () -> Unit,
@@ -154,6 +199,14 @@ fun MessagesView(
     modifier: Modifier = Modifier,
     forceJumpToBottomVisibility: Boolean = false,
     customReactionBottomSheet: @Composable () -> Unit,
+    // Правка форка (фаза 3): рендерер пикера эмодзи для инлайн-разворота по «+» в оверлее.
+    emojiPickerRenderer: EmojiPickerRenderer,
+    // Правка форка: клавиатура эмодзи для панели Telegram под полем ввода (модификатор, вставка).
+    emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)? = null,
+    // Правка форка: «в сети / был(а)» собеседника ЛС для шапки Telegram.
+    dmPresence: UserPresence? = null,
+    // Правка форка: ⋮ → «Поиск» (ChatSearchNode).
+    onChatSearchClick: () -> Unit = {},
 ) {
     val eventContentValidationState = LocalEventContentValidationState.current
 
@@ -169,8 +222,28 @@ fun MessagesView(
 
     var maxComposerHeightPx by remember { mutableIntStateOf(120) }
 
+    // Правка форка: плавающее поле ввода Telegram 12. Лента уходит под него и размывается под
+    // стеклом (haze), поэтому знает высоту панели снизу. В режиме форматирования и подсказок
+    // упоминаний шторка апстримовская — непрозрачная, лента над ней.
+    val chatGlassState = rememberHazeState()
+    val mediaPanel = rememberTgMediaPanelController()
+    var composerOverlayHeight by remember { mutableStateOf(0.dp) }
+    // Правка форка: шапка Telegram плавает поверх ленты (обои под статус-баром); в треде — апстримовская.
+    val isThreadTimeline = state.timelineState.timelineMode is Timeline.Mode.Thread
+    var headerOverlayHeight by remember { mutableStateOf(0.dp) }
+    // Правка форка: низ шапки в координатах окна (со статус-баром) — для выдвигания пузыря
+    // перед меню долгого нажатия. headerOverlayHeight статус-бар не учитывает.
+    var headerBottomInWindowPx by remember { mutableFloatStateOf(0f) }
+    val floatingComposer = !state.composerState.showTextFormatting && state.composerState.suggestions.isEmpty()
+
     // This is needed because the composer is inside an AndroidView that can't be affected by the FocusManager in Compose
     val localView = LocalView.current
+
+    // Правка форка: якорь меню долгого нажатия. Пузыри регистрируют сюда координаты по id,
+    // onMessageLongClick читает их. Объявлен до обработчика, чтобы тот его видел.
+    val messageActionsAnchor = remember { MessageActionsAnchor() }
+    val anchorScope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     fun hidingKeyboard(block: () -> Unit) {
         localView.hideKeyboard()
@@ -190,6 +263,32 @@ fun MessagesView(
 
     fun onMessageLongClick(event: TimelineItem.Event) {
         Timber.v("OnMessageLongClicked= ${event.id}")
+        // Правка форка: координаты пузыря для привязанного меню. Один общий обработчик на все
+        // пути открытия, поэтому спрашиваем по id, а не ловим в колбэке конкретного нажатия.
+        messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
+        // Правка форка: пузырь частично под шапкой — сначала выдвигаем его, как Telegram, иначе
+        // шапка попадает в снимок пузыря в меню.
+        val bounds = messageActionsAnchor.bubbleBounds
+        val listState = messageActionsAnchor.listState
+        val headerBottomPx = headerBottomInWindowPx + with(density) { 8.dp.toPx() }
+        val bubbleTop = messageActionsAnchor.unclippedTopFor(event.id.value)
+        if (bounds != null && listState != null && bubbleTop != null && bubbleTop < headerBottomPx) {
+            anchorScope.launch {
+                // Лента перевёрнута (новые снизу): положительный сдвиг опускает содержимое.
+                listState.scrollBy(headerBottomPx - bubbleTop)
+                withFrameNanos { }
+                messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
+                hidingKeyboard {
+                    state.actionListState.eventSink(
+                        ActionListEvent.ComputeForMessage(
+                            event = event,
+                            userEventPermissions = state.userEventPermissions,
+                        )
+                    )
+                }
+            }
+            return
+        }
         hidingKeyboard {
             state.actionListState.eventSink(
                 ActionListEvent.ComputeForMessage(
@@ -217,12 +316,27 @@ fun MessagesView(
         state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
     }
 
+    CompositionLocalProvider(
+        LocalMessageActionsAnchor provides messageActionsAnchor,
+        LocalChatGlassState provides chatGlassState,
+        LocalChatBottomOverlayHeight provides if (floatingComposer) composerOverlayHeight else 0.dp,
+        LocalChatTopOverlayHeight provides if (isThreadTimeline) 0.dp else headerOverlayHeight,
+    ) {
     val expandableState = rememberExpandableBottomSheetLayoutState()
+    val density = LocalDensity.current
+    // Правка форка: меню вложений Telegram рисуется поверх всего экрана чата, поэтому корень — Box.
+    Box(modifier = modifier.fillMaxSize()) {
     ExpandableBottomSheetLayout(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .imePadding()
-            .systemBarsPadding()
+            // Правка форка: низ не отступаем — обои и лента идут под панель навигации, отступ
+            // от неё берёт поле ввода (navigationBarsPadding в шторке).
+            .windowInsetsPadding(
+                WindowInsets.systemBars.only(
+                    if (isThreadTimeline) WindowInsetsSides.Top + WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal
+                )
+            )
             .onSizeChanged { size ->
                 // Let the composer takes at max half of the available height.
                 // The value will be different if the soft keyboard is displayed
@@ -231,7 +345,7 @@ fun MessagesView(
             },
         content = {
             Scaffold(
-                contentWindowInsets = scaffoldScrollableContentInsets,
+                contentWindowInsets = if (isThreadTimeline) scaffoldScrollableContentInsets else WindowInsets(0),
                 topBar = {
                     if (state.timelineState.timelineMode is Timeline.Mode.Thread) {
                         ThreadTopBar(
@@ -240,26 +354,6 @@ fun MessagesView(
                             heroes = state.heroes,
                             isTombstoned = state.isTombstoned,
                             onBackClick = onBackClick,
-                        )
-                    } else {
-                        MessagesViewTopBar(
-                            roomName = state.roomName,
-                            roomAvatar = state.roomAvatar,
-                            isTombstoned = state.isTombstoned,
-                            heroes = state.heroes,
-                            dmUserIdentityState = state.dmUserVerificationState,
-                            sharedHistoryIcon = state.topBarSharedHistoryIcon,
-                            dmUserStatus = state.dmUserStatus,
-                            onBackClick = { hidingKeyboard { onBackClick() } },
-                            onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
-                            menuActions = {
-                                MessagesMenuActions(
-                                    displayThreads = state.timelineState.timelineMode !is Timeline.Mode.Thread && state.threads.hasThreads,
-                                    roomCallState = state.roomCallState,
-                                    onJoinCallClick = onJoinCallClick,
-                                    onThreadsListClick = onThreadsListClick
-                                )
-                            }
                         )
                     }
                 },
@@ -302,8 +396,6 @@ fun MessagesView(
                             onReadReceiptClick = { event ->
                                 state.readReceiptBottomSheetState.eventSink(ReadReceiptBottomSheetEvent.EventSelected(event))
                             },
-                            onSendLocationClick = onSendLocationClick,
-                            onCreatePollClick = onCreatePollClick,
                             onSwipeToReply = { targetEvent ->
                                 state.eventSink(MessagesEvent.HandleAction(TimelineItemAction.Reply, targetEvent))
                             },
@@ -312,6 +404,22 @@ fun MessagesView(
                             onViewAllPinnedMessagesClick = onViewAllPinnedMessagesClick,
                             knockRequestsBannerView = knockRequestsBannerView,
                         )
+
+                        if (!isThreadTimeline) {
+                            TgChatHeader(
+                                state = state,
+                                dmPresence = dmPresence,
+                                onBackClick = { hidingKeyboard { onBackClick() } },
+                                onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
+                                onJoinCallClick = onJoinCallClick,
+                                onThreadsListClick = onThreadsListClick,
+                                onSearchClick = { hidingKeyboard { onChatSearchClick() } },
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .onSizeChanged { headerOverlayHeight = with(density) { it.height.toDp() } }
+                                    .onGloballyPositioned { headerBottomInWindowPx = it.boundsInWindow().bottom },
+                            )
+                        }
 
                         SuggestionsPickerView(
                             modifier = Modifier
@@ -332,19 +440,28 @@ fun MessagesView(
                 snackbarHost = {
                     SnackbarHost(
                         snackbarHostState,
-                        modifier = Modifier.navigationBarsPadding()
+                        modifier = Modifier.padding(bottom = LocalChatBottomOverlayHeight.current),
                     )
                 },
             )
         },
         bottomSheetContent = {
-            MessagesViewComposerBottomSheetContents(
-                state = state,
-                onLinkClick = { url, customTab -> onLinkClick(url, customTab) },
-                onRoomSuccessorClick = { roomId ->
-                    state.timelineState.eventSink(TimelineEvent.NavigateToPredecessorOrSuccessorRoom(roomId = roomId))
-                },
-            )
+            Column(
+                modifier = Modifier
+                    .onSizeChanged { composerOverlayHeight = with(density) { it.height.toDp() } }
+                    // Открытая панель эмодзи сама доходит до низа экрана, полосу навигации учитывает она.
+                    .then(if (mediaPanel.isVisible) Modifier else Modifier.navigationBarsPadding())
+            ) {
+                MessagesViewComposerBottomSheetContents(
+                    state = state,
+                    mediaPanel = mediaPanel,
+                    emojiKeyboard = emojiKeyboard,
+                    onLinkClick = { url, customTab -> onLinkClick(url, customTab) },
+                    onRoomSuccessorClick = { roomId ->
+                        state.timelineState.eventSink(TimelineEvent.NavigateToPredecessorOrSuccessorRoom(roomId = roomId))
+                    },
+                )
+            }
         },
         sheetDragHandle = @Composable { toggleAction ->
             if (state.composerState.showTextFormatting) {
@@ -381,7 +498,45 @@ fun MessagesView(
             RectangleShape
         },
         maxBottomSheetContentHeight = maxComposerHeightPx.toDp(),
+        contentUnderSheet = floatingComposer,
     )
+
+    val showAttachSheet = state.composerState.showAttachmentSourcePicker
+    LaunchedEffect(showAttachSheet) {
+        if (showAttachSheet) {
+            // Клавиатура — Android View, FocusManager Compose её не прячет.
+            localView.hideKeyboard()
+            mediaPanel.close()
+        }
+    }
+    TgAttachSheet(
+        isVisible = showAttachSheet,
+        canShareLocation = state.composerState.canShareLocation,
+        enableTextFormatting = state.enableTextFormatting,
+        onAction = { action ->
+            val composerSink = state.composerState.eventSink
+            when (action) {
+                TgAttachAction.Dismiss -> composerSink(MessageComposerEvent.DismissAttachmentMenu)
+                is TgAttachAction.Send -> composerSink(MessageComposerEvent.SendGalleryMedia(action.media, action.caption, action.compress))
+                is TgAttachAction.Preview -> composerSink(MessageComposerEvent.PreviewGalleryMedia(action.media))
+                TgAttachAction.CameraPhoto -> composerSink(MessageComposerEvent.PickAttachmentSource.PhotoFromCamera)
+                TgAttachAction.CameraVideo -> composerSink(MessageComposerEvent.PickAttachmentSource.VideoFromCamera)
+                TgAttachAction.SystemGallery -> composerSink(MessageComposerEvent.PickAttachmentSource.FromGallery)
+                TgAttachAction.Files -> composerSink(MessageComposerEvent.PickAttachmentSource.FromFiles)
+                TgAttachAction.Location -> {
+                    composerSink(MessageComposerEvent.PickAttachmentSource.Location)
+                    onSendLocationClick()
+                }
+                TgAttachAction.Poll -> {
+                    composerSink(MessageComposerEvent.PickAttachmentSource.Poll)
+                    onCreatePollClick()
+                }
+                TgAttachAction.TextFormatting -> composerSink(MessageComposerEvent.ToggleTextFormatting(enabled = true))
+            }
+        },
+    )
+    } // конец Box меню вложений
+    } // конец CompositionLocalProvider(LocalMessageActionsAnchor)
 
     var endPollConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
 
@@ -398,25 +553,99 @@ fun MessagesView(
         )
     }
 
-    ActionListView(
-        state = state.actionListState,
-        onSelectAction = { action: TimelineItemAction, event: TimelineItem.Event ->
-            if (action == TimelineItemAction.EndPoll) {
-                endPollConfirmingEvent = event
-            } else {
-                onActionSelected(action, event)
-            }
-        },
-        onCustomReactionClick = { event ->
-            state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
-        },
-        onEmojiReactionClick = ::onEmojiReactionClick,
-        onVerifiedUserSendFailureClick = { event ->
-            state.timelineState.eventSink(TimelineEvent.ComputeVerifiedUserSendFailure(event))
-        },
-    )
+    // Правка форка: удаление сообщения — с подтверждением, как в Telegram.
+    var redactConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
+    if (redactConfirmingEvent != null) {
+        ConfirmationDialog(
+            title = stringResource(id = R.string.larpgram_delete_message_title),
+            content = stringResource(id = R.string.larpgram_delete_message_content),
+            submitText = stringResource(id = CommonStrings.action_delete),
+            destructiveSubmit = true,
+            onSubmitClick = {
+                redactConfirmingEvent?.let { event ->
+                    onActionSelected(TimelineItemAction.Redact, event)
+                }
+                redactConfirmingEvent = null
+            },
+            onDismiss = { redactConfirmingEvent = null },
+        )
+    }
 
-    customReactionBottomSheet()
+    // Правка форка: размытый фон под меню долгого нажатия, как в Telegram — попап отделяется
+    // от чата и не сливается с ним. Штатного блюра на Android 10 нет, поэтому снимок окна через
+    // PixelCopy (rememberBlurredBackdrop). Рисуется отдельным окном (Popup) под шторкой: сама
+    // шторка живёт в своём окне выше, скрим у неё лёгкий, поэтому блюр просвечивает.
+    val actionTarget = state.actionListState.target as? ActionListState.Target.Success
+    val bubbleBounds = messageActionsAnchor.bubbleBounds
+
+    val onSelectActionCommon: (TimelineItemAction, TimelineItem.Event) -> Unit = { action, event ->
+        if (action == TimelineItemAction.EndPoll) {
+            endPollConfirmingEvent = event
+        } else if (action == TimelineItemAction.Redact) {
+            redactConfirmingEvent = event
+        } else {
+            onActionSelected(action, event)
+        }
+    }
+    if (actionTarget != null && bubbleBounds != null) {
+        // Правка форка (фаза 2): координаты пузыря есть — привязанное меню. Блюр рисуется
+        // внутри оверлея нижним слоем: отдельным окном он приезжал асинхронно и ложился
+        // поверх меню.
+        MessageActionsOverlay(
+            target = actionTarget,
+            bubbleLeft = bubbleBounds.left.toInt(),
+            bubbleTop = bubbleBounds.top.toInt(),
+            bubbleRight = bubbleBounds.right.toInt(),
+            bubbleBottom = bubbleBounds.bottom.toInt(),
+            onSelectAction = onSelectActionCommon,
+            onCustomReactionClick = { event ->
+                state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
+            },
+            onEmojiReactionClick = ::onEmojiReactionClick,
+            // Правка форка (фаза 3): пикер эмодзи разворачивается внутри оверлея.
+            customReactionState = state.customReactionState,
+            emojiPickerRenderer = emojiPickerRenderer,
+            onSelectEmoji = { uniqueId, emoji ->
+                state.eventSink(MessagesEvent.ToggleReaction(emoji.unicode, uniqueId))
+            },
+            onDismiss = {
+                messageActionsAnchor.bubbleBounds = null
+                state.actionListState.eventSink(ActionListEvent.Clear)
+                state.customReactionState.eventSink(CustomReactionEvent.DismissCustomReactionSheet)
+            },
+        )
+    } else {
+        // Откат на шторку снизу (нажали не по пузырю, координат нет). Ей блюр приходит
+        // отдельным окном — тут гонки нет, шторка появляется анимацией снизу.
+        val actionListBackdrop = rememberBlurredBackdrop(enabled = actionTarget != null)
+        if (actionTarget != null && actionListBackdrop != null) {
+            Popup {
+                Image(
+                    bitmap = actionListBackdrop,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        ActionListView(
+            state = state.actionListState,
+            onSelectAction = onSelectActionCommon,
+            onCustomReactionClick = { event ->
+                state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
+            },
+            onEmojiReactionClick = ::onEmojiReactionClick,
+            onVerifiedUserSendFailureClick = { event ->
+                state.timelineState.eventSink(TimelineEvent.ComputeVerifiedUserSendFailure(event))
+            },
+        )
+    }
+
+    // Привязанный оверлей рисует пикер эмодзи сам (инлайн). Шторку снизу оставляем только для
+    // фолбэка (нажали не по пузырю, координат нет), иначе пикер показался бы дважды.
+    if (actionTarget == null || bubbleBounds == null) {
+        customReactionBottomSheet()
+    }
 
     ReactionSummaryView(state = state.reactionSummaryState)
     ReadReceiptBottomSheet(
@@ -458,7 +687,7 @@ fun MessagesView(
 }
 
 @Composable
-internal fun RowScope.MessagesMenuActions(
+internal fun RowScope.TgMessagesMenuActions(
     displayThreads: Boolean,
     roomCallState: RoomCallState,
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
@@ -505,8 +734,6 @@ private fun MessagesViewContent(
     onReadReceiptClick: (TimelineItem.Event) -> Unit,
     onMessageLongClick: (TimelineItem.Event) -> Unit,
     onGalleryItemClick: ((TimelineItem.Event, Int) -> Unit),
-    onSendLocationClick: () -> Unit,
-    onCreatePollClick: () -> Unit,
     onViewAllPinnedMessagesClick: () -> Unit,
     onJoinCallClick: (isAudioCall: Boolean) -> Unit,
     forceJumpToBottomVisibility: Boolean,
@@ -517,16 +744,8 @@ private fun MessagesViewContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .navigationBarsPadding()
             .imePadding(),
     ) {
-        AttachmentsBottomSheet(
-            state = state.composerState,
-            onSendLocationClick = onSendLocationClick,
-            onCreatePollClick = onCreatePollClick,
-            enableTextFormatting = state.enableTextFormatting,
-        )
-
         if (state.voiceMessageComposerState.showPermissionRationaleDialog) {
             VoiceMessagePermissionRationaleDialog(
                 onContinue = {
@@ -545,7 +764,7 @@ private fun MessagesViewContent(
         }
 
         Box {
-            val scrollBehavior = PinnedMessagesBannerViewDefaults.rememberScrollBehavior(
+            val scrollBehavior = TgPinnedMessagesBannerViewDefaults.rememberScrollBehavior(
                 pinnedMessagesCount = (state.pinnedMessagesBannerState as? PinnedMessagesBannerState.Visible)?.pinnedMessagesCount() ?: 0,
             )
             val density = LocalDensity.current
@@ -553,28 +772,62 @@ private fun MessagesViewContent(
             // date badge offset so the badge sits below whichever banners are currently showing.
             var topBannersHeightDp by remember { mutableStateOf(0.dp) }
 
-            TimelineView(
-                state = state.timelineState,
-                timelineProtectionState = state.timelineProtectionState,
-                onUserDataClick = onUserDataClick,
-                onLinkClick = { link -> onLinkClick(link, false) },
-                onContentClick = onContentClick,
-                onGalleryItemClick = onGalleryItemClick,
-                onMessageLongClick = onMessageLongClick,
-                onSwipeToReply = onSwipeToReply,
-                onReactionClick = onReactionClick,
-                onReactionLongClick = onReactionLongClick,
-                onMoreReactionsClick = onMoreReactionsClick,
-                onReadReceiptClick = onReadReceiptClick,
-                onJoinCallClick = onJoinCallClick,
-                forceJumpToBottomVisibility = forceJumpToBottomVisibility,
-                nestedScrollConnection = scrollBehavior.nestedScrollConnection,
-                floatingDateTopOffset = topBannersHeightDp,
-            )
+            // Larpgram: запрос показать лист стикер-пака (originalJson события + mxc стикера),
+            // выставляется по тапу на стикер через LocalOpenStickerPack.
+            var stickerPackRequest by remember { mutableStateOf<Pair<String?, String?>?>(null) }
+
+            // Правка форка: загрузчик медиа для кружочков. Кладём его прямо здесь, вокруг
+            // таймлайна: кружочек рисуется глубоко внутри него, и протаскивать загрузчик
+            // параметрами пришлось бы через апстримовские компоненты, то есть ловить
+            // конфликты при каждом ребейзе.
+            CompositionLocalProvider(
+                LocalCircleMediaLoader provides state.circleMediaLoader,
+                LocalOpenStickerPack provides { originalJson, stickerUrl ->
+                    stickerPackRequest = originalJson to stickerUrl
+                },
+            ) {
+                // Правка форка: список ленты отдаём якорю меню долгого нажатия (см. onMessageLongClick).
+                val timelineListState = rememberLazyListState()
+                LocalMessageActionsAnchor.current?.listState = timelineListState
+                TimelineView(
+                    lazyListState = timelineListState,
+                    state = state.timelineState,
+                    timelineProtectionState = state.timelineProtectionState,
+                    onUserDataClick = onUserDataClick,
+                    onLinkClick = { link -> onLinkClick(link, false) },
+                    onContentClick = onContentClick,
+                    onGalleryItemClick = onGalleryItemClick,
+                    onMessageLongClick = onMessageLongClick,
+                    onSwipeToReply = onSwipeToReply,
+                    onReactionClick = onReactionClick,
+                    onReactionLongClick = onReactionLongClick,
+                    onMoreReactionsClick = onMoreReactionsClick,
+                    onReadReceiptClick = onReadReceiptClick,
+                    onJoinCallClick = onJoinCallClick,
+                    forceJumpToBottomVisibility = forceJumpToBottomVisibility,
+                    nestedScrollConnection = scrollBehavior.nestedScrollConnection,
+                    floatingDateTopOffset = topBannersHeightDp,
+                )
+            }
+
+            // Larpgram: лист стикер-пака по тапу на стикер.
+            val packRequest = stickerPackRequest
+            val packSource = state.imagePackSource
+            if (packRequest != null && packSource != null) {
+                StickerPackSheet(
+                    originalJson = packRequest.first,
+                    stickerUrl = packRequest.second,
+                    imagePackSource = packSource,
+                    onDismiss = { stickerPackRequest = null },
+                )
+            }
 
             if (state.timelineState.timelineMode !is Timeline.Mode.Thread) {
                 Column(
-                    modifier = Modifier.onSizeChanged { topBannersHeightDp = with(density) { it.height.toDp() } },
+                    modifier = Modifier
+                        .onSizeChanged { topBannersHeightDp = with(density) { it.height.toDp() } }
+                        // Правка форка: плашки — под плавающей шапкой.
+                        .padding(top = LocalChatTopOverlayHeight.current),
                 ) {
                     AnimatedVisibility(
                         visible = state.pinnedMessagesBannerState is PinnedMessagesBannerState.Visible && scrollBehavior.isVisible,
@@ -586,7 +839,7 @@ private fun MessagesViewContent(
                                 TimelineEvent.FocusOnEvent(eventId = eventId, debounce = FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS.milliseconds)
                             )
                         }
-                        PinnedMessagesBannerView(
+                        TgPinnedMessagesBannerView(
                             state = state.pinnedMessagesBannerState,
                             onClick = ::focusOnPinnedEvent,
                             onViewAllClick = onViewAllPinnedMessagesClick,
@@ -601,18 +854,49 @@ private fun MessagesViewContent(
                 }
             }
 
-            knockRequestsBannerView()
+            Box(modifier = Modifier.padding(top = LocalChatTopOverlayHeight.current)) {
+                knockRequestsBannerView()
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessagesViewComposerBottomSheetContents(
     state: MessagesState,
     onRoomSuccessorClick: (RoomId) -> Unit,
     onLinkClick: (String, Boolean) -> Unit,
+    mediaPanel: TgMediaPanelController,
+    emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)?,
 ) {
     val contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
+
+    // Правка форка: стикеры и гифки — вкладки панели Telegram под полем ввода (TgMediaPanel).
+    val stickerPickerState = state.stickerPickerState
+    val gifPickerState = state.gifPickerState
+    val localView = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+    // Панель живёт дольше вкладки, поэтому при открытии GIF просим перечитать данные. Иначе
+    // список недавних гифок остаётся таким, каким был при первом показе.
+    LaunchedEffect(mediaPanel.isVisible, mediaPanel.tab) {
+        if (mediaPanel.isVisible && mediaPanel.tab == TgMediaPanelTab.Gif) {
+            gifPickerState?.eventSink(GifPickerEvents.Retry)
+        }
+    }
+    val markdownState = (state.composerState.textEditorState as? TextEditorState.Markdown)?.state
+
+    // Правка форка: сообщение о неудачной отправке стикера живёт СНАРУЖИ шторки. Внутри
+    // его бы никто не увидел: шторка закрывается в тот же момент, когда стикер уходит.
+    if (stickerPickerState != null) {
+        StickerSendErrorDialog(state = stickerPickerState)
+    }
+
+    // Правка форка: запись кружочка занимает весь экран поверх чата.
+    state.circleRecorderState?.let { circleState ->
+        CircleRecorderView(state = circleState)
+    }
+
     when {
         state.successorRoom != null -> {
             SuccessorRoomBanner(
@@ -621,6 +905,14 @@ private fun MessagesViewComposerBottomSheetContents(
                     .padding(contentPadding),
                 roomSuccessor = state.successorRoom,
                 onRoomSuccessorClick = onRoomSuccessorClick
+            )
+        }
+        // Правка форка (роумлесс, ф4 блок): заблокированный собеседник ЛС — вместо композера
+        // полоса «Разблокировать». Приоритет выше canSendMessage (в ЛС писать технически можно).
+        state.isUserBlocked -> {
+            BlockedUserBar(
+                onUnblock = { state.eventSink(MessagesEvent.UnblockUser) },
+                modifier = Modifier.padding(contentPadding),
             )
         }
         state.userEventPermissions.canSendMessage -> {
@@ -646,10 +938,79 @@ private fun MessagesViewComposerBottomSheetContents(
                     MessageComposerView(
                         state = state.composerState,
                         voiceMessageState = state.voiceMessageComposerState,
-                        modifier = Modifier.fillMaxWidth(),
+                        // Правка форка: вес без заполнения — панель эмодзи под полем меряется первой,
+                        // иначе поле ввода (fillMaxSize внутри) забирает всю высоту шторки.
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false),
+                        // Правка форка: кнопка слева открывает панель эмодзи/GIF/стикеров вместо
+                        // клавиатуры, а при открытой панели возвращает клавиатуру.
+                        onStickerClick = {
+                            if (mediaPanel.isVisible) {
+                                coroutineScope.launch {
+                                    state.composerState.textEditorState.requestFocus()
+                                    localView.showKeyboardOnFocusedInput()
+                                }
+                            } else {
+                                mediaPanel.open()
+                                localView.hideKeyboard()
+                            }
+                        },
+                        isMediaPanelOpen = mediaPanel.isVisible,
+                        // Правка форка: запись кружочка жестами, как в Telegram.
+                        // Держишь — пишется, отпустил — улетело, свайп вверх фиксирует,
+                        // свайп влево отменяет.
+                        circleRecordGestures = state.circleRecorderState?.let { circleState ->
+                            CircleRecordGestures(
+                                onStart = {
+                                    circleState.eventSink(CircleRecorderEvents.Open)
+                                    circleState.eventSink(CircleRecorderEvents.StartRecording)
+                                },
+                                onLock = { circleState.eventSink(CircleRecorderEvents.LockRecording) },
+                                onCancel = { circleState.eventSink(CircleRecorderEvents.CancelRecording) },
+                                onFinish = { circleState.eventSink(CircleRecorderEvents.StopAndSend) },
+                            )
+                        },
                     )
                 }
+                TgMediaPanel(
+                    controller = mediaPanel,
+                    onBackspace = { markdownState?.deleteBeforeCursor() },
+                    emojiContent = { modifier ->
+                        emojiKeyboard?.invoke(modifier) { emoji -> markdownState?.insertAtCursor(emoji) }
+                    },
+                    gifContent = gifPickerState?.let { gifState ->
+                        @Composable { modifier ->
+                            GifPickerView(
+                                state = gifState,
+                                onGifClick = { gif -> gifState.eventSink(GifPickerEvents.SendGif(gif)) },
+                                modifier = modifier,
+                                fillHeight = true,
+                                onSearchFocusChange = { mediaPanel.isSearchFocused = it },
+                            )
+                        }
+                    },
+                    stickerContent = stickerPickerState?.let { stickerState ->
+                        @Composable { modifier ->
+                            TgStickerPanel(
+                                state = stickerState,
+                                onStickerClick = { image -> stickerState.eventSink(StickerPickerEvents.SendSticker(image)) },
+                                modifier = modifier,
+                            )
+                        }
+                    },
+                )
             }
+        }
+        state.isChannel -> {
+            // Telegram-style channel subscriber bar: instead of the composer, a read-only
+            // subscriber gets a mute/unmute pill. Comments live under each post; unsubscribe
+            // lives in the channel profile.
+            ChannelSubscriberBar(
+                isMuted = state.isChannelMuted,
+                onToggleMute = { state.eventSink(MessagesEvent.ToggleChannelMute) },
+                modifier = Modifier.padding(contentPadding),
+            )
         }
         else -> {
             CantSendMessageBanner(Modifier.padding(contentPadding))
@@ -694,8 +1055,8 @@ private fun SuccessorRoomBanner(
 
 @PreviewsDayNight
 @Composable
-internal fun MessagesViewPreview(@PreviewParameter(MessagesStatePreviewParam::class) state: MessagesState) = ElementPreview {
-    MessagesView(
+internal fun TgMessagesViewPreview(@PreviewParameter(MessagesStatePreviewParam::class) state: MessagesState) = ElementPreview {
+    TgMessagesView(
         state = state,
         onBackClick = {},
         onRoomDetailsClick = {},
@@ -710,17 +1071,18 @@ internal fun MessagesViewPreview(@PreviewParameter(MessagesStatePreviewParam::cl
         forceJumpToBottomVisibility = true,
         knockRequestsBannerView = {},
         customReactionBottomSheet = {},
+        emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onThreadsListClick = {},
     )
 }
 
 @Preview
 @Composable
-internal fun MessagesViewA11yPreview() = ElementPreview {
+internal fun TgMessagesViewA11yPreview() = ElementPreview {
     val content = aTimelineItemTextContent(
         body = "A message content"
     )
-    MessagesView(
+    TgMessagesView(
         state = aMessagesState(
             roomName = "A DM with a very looong name",
             dmUserVerificationState = IdentityState.VerificationViolation,
@@ -768,5 +1130,6 @@ internal fun MessagesViewA11yPreview() = ElementPreview {
         forceJumpToBottomVisibility = true,
         knockRequestsBannerView = {},
         customReactionBottomSheet = {},
+        emojiPickerRenderer = NoOpEmojiPickerRenderer,
     )
 }

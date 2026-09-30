@@ -32,7 +32,7 @@ import io.element.android.features.messages.impl.MessagesEvent
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.MessagesPresenter
 import io.element.android.features.messages.impl.MessagesState
-import io.element.android.features.messages.impl.MessagesView
+import io.element.android.features.messages.impl.TgMessagesView
 import io.element.android.features.messages.impl.actionlist.ActionListPresenter
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemActionPostProcessor
 import io.element.android.features.messages.impl.attachments.Attachment
@@ -281,7 +281,7 @@ class ThreadedMessagesNode(
                     }
                 }
 
-                MessagesView(
+                TgMessagesView(
                     state = state,
                     onBackClick = this::navigateUp,
                     onRoomDetailsClick = {},

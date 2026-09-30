@@ -303,7 +303,7 @@ class MessagesNode(
                     else -> Unit
                 }
             }
-            MessagesView(
+            TgMessagesView(
                 state = state,
                 onBackClick = { state.eventSink(MessagesEvent.MarkAsFullyReadAndExit) },
                 onRoomDetailsClick = callback::navigateToRoomDetails,
