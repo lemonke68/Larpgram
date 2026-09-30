@@ -933,19 +933,25 @@ class RoomListPresenterTest {
         announcementService = announcementService,
         coldStartWatcher = FakeAnalyticsColdStartWatcher(),
         featureFlagService = featureFlagService,
-        // Зависимости форка: почта и обновления для баннеров.
-        accountEmailStatus = accountEmailStatus,
-        updateChecker = updateChecker,
-        updateInstaller = updateInstaller,
-        recoveryKeyAutoProvisioner = recoveryKeyAutoProvisioner,
-        pinnedChatsStore = PinnedChatsStore(
+        // Зависимости форка: баннеры почты и обновлений, строки Telegram.
+        forkBanners = RoomListForkBanners(
             client = client,
-            sessionCoroutineScope = backgroundScope,
+            accountEmailStatus = accountEmailStatus,
+            updateChecker = updateChecker,
+            updateInstaller = updateInstaller,
+            recoveryKeyAutoProvisioner = recoveryKeyAutoProvisioner,
         ),
-        chatCleanupService = chatCleanupService,
-        draftPreviews = draftPreviews,
-        typingTracker = RoomListTypingTracker(client),
-        dateFormatter = FakeDateFormatter(),
-        savedMessages = NoOpSavedMessages(),
+        forkRows = RoomListForkRows(
+            client = client,
+            pinnedChatsStore = PinnedChatsStore(
+                client = client,
+                sessionCoroutineScope = backgroundScope,
+            ),
+            chatCleanupService = chatCleanupService,
+            draftPreviews = draftPreviews,
+            typingTracker = RoomListTypingTracker(client),
+            dateFormatter = FakeDateFormatter(),
+            savedMessages = NoOpSavedMessages(),
+        ),
     )
 }

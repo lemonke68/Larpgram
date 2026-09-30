@@ -31,8 +31,6 @@ import io.element.android.features.messages.impl.crypto.sendfailure.resolve.Reso
 import io.element.android.features.messages.impl.timeline.components.MessageShieldData
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactory
 import io.element.android.features.messages.impl.timeline.factories.TimelineItemsFactoryConfig
-import io.element.android.features.messages.impl.timeline.factories.dropEmptyDaySeparators
-import io.element.android.features.messages.impl.timeline.groups.canBeGrouped
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemReadMarkerModel
@@ -47,22 +45,17 @@ import io.element.android.features.poll.api.actions.EndPollAction
 import io.element.android.features.poll.api.actions.SendPollResponseAction
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.libraries.architecture.Presenter
-import io.element.android.libraries.channelcomments.ChannelDiscussion
 import io.element.android.libraries.chatcleanup.api.ChatCleanupService
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
-import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
-import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.core.asEventId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.room.roomMembers
-import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
@@ -76,11 +69,8 @@ import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.finishLongRunningTransaction
 import io.element.android.services.analyticsproviders.api.AnalyticsUserData
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
@@ -90,7 +80,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -101,7 +90,6 @@ const val FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS = 200L
 class TimelinePresenter(
     timelineItemsFactoryCreator: TimelineItemsFactory.Creator,
     private val room: JoinedRoom,
-    private val matrixClient: MatrixClient,
     private val dispatchers: CoroutineDispatchers,
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
@@ -124,6 +112,8 @@ class TimelinePresenter(
     private val savedMessages: SavedMessages,
     // Правка форка: «Очистить историю» из меню ⋮ прячет всё до отметки.
     private val chatCleanupService: ChatCleanupService,
+    // Правка форка: комментарии канала.
+    private val timelineChannelComments: TimelineChannelComments,
 ) : Presenter<TimelineState> {
     private val tag = "TimelinePresenter"
 
@@ -336,7 +326,7 @@ class TimelinePresenter(
                     )
                 }
                 is TimelineEvent.OpenChannelPostComments -> sessionCoroutineScope.launch {
-                    openChannelPostComments(event.event)
+                    timelineChannelComments.openPostComments(event.event, navigator)
                 }
                 is TimelineEvent.ValidateMedia -> {
                     timelineProtectionState.eventSink(TimelineProtectionEvent.ValidateContent(event.mediaSources, event.validationState))
@@ -355,20 +345,11 @@ class TimelinePresenter(
                     cleared.items
                 }
                 .onEach { newTimelineItems ->
-                    // Larpgram: a channel hides membership/state service messages (Telegram-style —
-                    // no "joined"/"invited"/"changed name" noise in the broadcast feed).
-                    val isChannelRoom = (room.info().roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
-                    // «Избранное»: «создал комнату», «вошёл» и прочий шум создания тоже прячем.
-                    val isSavedMessages = room.roomId == savedMessages.roomId.value
-                    val rendered = if (isChannelRoom || isSavedMessages) {
-                        newTimelineItems.filterNot(::isChannelServiceItem)
-                    } else {
-                        newTimelineItems
-                    }.let { items ->
-                        // После фильтра канала/«Избранного» не оставляем плашку дня без сообщений
-                        // (пустой новый канал показывал одинокое «Сегодня»).
-                        if (isChannelRoom || isSavedMessages) items.dropEmptyDaySeparators() else items
-                    }
+                    // Правка форка: канал и «Избранное» без служебных строк (TimelineChannelComments).
+                    val rendered = timelineChannelComments.filterServiceItems(
+                        items = newTimelineItems,
+                        isSavedMessages = room.roomId == savedMessages.roomId.value,
+                    )
                     timelineItemIndexer.process(rendered)
                     timelineItems = rendered.toImmutableList()
 
@@ -483,56 +464,10 @@ class TimelinePresenter(
             perms.userEventPermissions()
         }
         val isChannel = (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
-        // The channel's linked discussion group, resolved once. Gates the per-post "Comments"
-        // button on image posts (whose comment link isn't in their own content, only in the mirror).
-        val channelDiscussionRoomId by produceState<RoomId?>(null, isChannel) {
-            value = if (isChannel) resolveChannelDiscussionRoomId() else null
-        }
-        // Правка форка (роумлесс, gap D): счётчик «N комментариев» на чипе поста. Комментарии —
-        // это реплаи-тред на зеркало поста в дискуссии, поэтому число = numberOfReplies треда.
-        // Ключа `comment_id` в ThreadListItem нет, поэтому root-eventId сопоставляем с comment_id
-        // по сырому JSON зеркала в таймлайне дискуссии. Мягкий фолбэк: пусто → чип без числа.
-        val channelCommentCounts by produceState<ImmutableMap<String, Long>>(
-            persistentMapOf(),
-            isChannel,
-            channelDiscussionRoomId,
-        ) {
-            val discussionId = channelDiscussionRoomId
-            if (!isChannel || discussionId == null) {
-                value = persistentMapOf()
-                return@produceState
-            }
-            val discussion = matrixClient.getJoinedRoom(discussionId) ?: run {
-                value = persistentMapOf()
-                return@produceState
-            }
-            discussion.use { d ->
-                val threadsService = d.threadsListService
-                try {
-                    combine(
-                        threadsService.subscribeToItemUpdates().onStart { threadsService.paginate() },
-                        d.liveTimeline.timelineItems,
-                    ) { threadItems, timelineItems ->
-                        // root eventId -> comment_id, из сырого JSON зеркал в дискуссии.
-                        val commentIdByEvent = timelineItems.asSequence()
-                            .filterIsInstance<MatrixTimelineItem.Event>()
-                            .mapNotNull { item ->
-                                val raw = item.event.timelineItemDebugInfoProvider().originalJson ?: return@mapNotNull null
-                                val commentId = ChannelDiscussion.commentIdFromMirror(raw) ?: return@mapNotNull null
-                                val eventId = item.event.eventId?.value ?: return@mapNotNull null
-                                eventId to commentId
-                            }
-                            .toMap()
-                        threadItems.mapNotNull { threadItem ->
-                            val commentId = commentIdByEvent[threadItem.rootEvent.eventId.value] ?: return@mapNotNull null
-                            commentId to threadItem.numberOfReplies
-                        }.toMap().toImmutableMap()
-                    }.collect { value = it }
-                } finally {
-                    threadsService.destroy()
-                }
-            }
-        }
+        // Правка форка: дискуссия канала и счётчики комментариев (TimelineChannelComments).
+        val channelComments = timelineChannelComments.present(isChannel)
+        val channelDiscussionRoomId = channelComments.discussionRoomId
+        val channelCommentCounts = channelComments.commentCounts
         val savedMessagesRoomId by savedMessages.roomId.collectAsState()
         val timelineRoomInfo by remember(typingNotificationState, roomCallState, roomInfo, channelDiscussionRoomId, channelCommentCounts, savedMessagesRoomId) {
             derivedStateOf {
@@ -695,65 +630,6 @@ class TimelinePresenter(
             }
         }
         return null
-    }
-
-    /**
-     * Open the comments for a channel post: read the discussion room + correlation id from the
-     * post's raw content, find the mirror message with that id in the discussion group, and open
-     * its thread. Falls back to opening the discussion room if the mirror can't be located.
-     */
-    private suspend fun openChannelPostComments(post: TimelineItem.Event) {
-        // Open the post's comment thread (its mirror in the discussion group) — post at top,
-        // comments below, like Telegram. Text posts embed the discussion + a correlation id in
-        // their own content; image posts don't (SDK send), so their mirror is correlated by the
-        // post's own event id instead.
-        val textRef = post.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) }
-        val discussionId: RoomId
-        val commentId: String
-        if (textRef != null) {
-            discussionId = RoomId(textRef.first)
-            commentId = textRef.second
-        } else {
-            discussionId = resolveChannelDiscussionRoomId() ?: run {
-                Timber.tag(tag).w("No discussion group for channel post ${post.eventId}")
-                return
-            }
-            commentId = post.eventId?.value ?: return
-        }
-        // Open the post's comment thread — the mirror (post) at top, comments below — in the
-        // discussion room, like Telegram's comments screen.
-        val mirrorEventId = findMirrorEventId(discussionId, commentId = commentId)
-        if (mirrorEventId != null) {
-            navigator.navigateToRoomThread(discussionId, threadRootId = ThreadId(mirrorEventId.value))
-        } else {
-            // Mirror not in the loaded discussion window (rare) — fall back to the discussion room.
-            navigator.navigateToRoom(discussionId, eventId = null, serverNames = emptyList())
-        }
-    }
-
-    private suspend fun resolveChannelDiscussionRoomId(): RoomId? =
-        ChannelDiscussion.resolveDiscussionRoomId(room, matrixClient)
-
-    /** A membership/state/profile service item (or a group of them) hidden from a channel feed. */
-    private fun isChannelServiceItem(item: TimelineItem): Boolean = when (item) {
-        is TimelineItem.GroupedEvents -> true
-        is TimelineItem.Event -> item.canBeGrouped()
-        else -> false
-    }
-
-    private suspend fun findMirrorEventId(discussionId: RoomId, commentId: String): EventId? {
-        val discussion = matrixClient.getJoinedRoom(discussionId) ?: return null
-        return discussion.use { room ->
-            room.liveTimeline.timelineItems.first()
-                .asSequence()
-                .filterIsInstance<MatrixTimelineItem.Event>()
-                .firstOrNull { item ->
-                    val originalJson = item.event.timelineItemDebugInfoProvider().originalJson
-                    originalJson != null && ChannelDiscussion.commentIdFromMirror(originalJson) == commentId
-                }
-                ?.event
-                ?.eventId
-        }
     }
 }
 

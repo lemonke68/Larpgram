@@ -30,10 +30,6 @@ import io.element.android.features.announcement.api.AnnouncementService
 import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.into
-import io.element.android.features.home.impl.model.ChatType
-import io.element.android.features.home.impl.model.LatestEvent
-import io.element.android.features.home.impl.model.RoomListRoomSummary
-import io.element.android.features.home.impl.model.TypingPreview
 import io.element.android.features.home.impl.search.GlobalSearchState
 import io.element.android.features.home.impl.search.RoomListSearchEvent
 import io.element.android.features.home.impl.search.RoomListSearchState
@@ -47,36 +43,21 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteS
 import io.element.android.features.leaveroom.api.LeaveRoomEvent
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
-import io.element.android.libraries.accountemail.api.AccountEmailStatus
-import io.element.android.libraries.appupdate.api.UpdateChecker
-import io.element.android.libraries.appupdate.api.UpdateInstallState
-import io.element.android.libraries.appupdate.api.UpdateInstaller
-import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
-import io.element.android.libraries.chatcleanup.api.ChatCleanupService
-import io.element.android.libraries.dateformatter.api.DateFormatter
-import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
-import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
-import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
-import io.element.android.libraries.matrix.ui.drafts.DraftPreview
-import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
-import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsColdStartWatcher
 import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.CoroutineScope
@@ -84,9 +65,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -111,24 +90,9 @@ class RoomListPresenter(
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
     private val globalSearchPresenter: Presenter<GlobalSearchState>,
     private val featureFlagService: FeatureFlagService,
-    // Правка форка: баннер с напоминанием привязать почту.
-    private val accountEmailStatus: AccountEmailStatus,
-    // Правка форка: баннер с предложением обновиться.
-    private val updateChecker: UpdateChecker,
-    // Правка форка: скачать и поставить обновление по тапу на баннер.
-    private val updateInstaller: UpdateInstaller,
-    // Правка форка: молча заводим ключ восстановления + escrow свежему аккаунту, чтобы новые/
-    // сброшенные сессии восстанавливались кодом с почты и не ловили UTD.
-    private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
-    // Правка форка (роумлесс): свой пин чатов поверх списка (account data).
-    private val pinnedChatsStore: PinnedChatsStore,
-    // Правка форка: «удалить у обоих» для ЛС через наш серверный Synapse purge.
-    private val chatCleanupService: ChatCleanupService,
-    // Правка форка: «Черновик:» и «печатает…» в строке чата.
-    private val draftPreviews: DraftPreviews,
-    private val typingTracker: RoomListTypingTracker,
-    private val dateFormatter: DateFormatter,
-    private val savedMessages: SavedMessages,
+    // Правка форка: баннеры почты, сессий и обновления; строки и свайпы Telegram.
+    private val forkBanners: RoomListForkBanners,
+    private val forkRows: RoomListForkRows,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -146,65 +110,12 @@ class RoomListPresenter(
             roomListDataSource.launchIn(this)
         }
 
-        // Правка форка: молча заводим ключ восстановления + escrow, если у аккаунта его ещё нет
-        // (идемпотентно, гейт внутри по RecoveryState.DISABLED).
-        LaunchedEffect(Unit) {
-            recoveryKeyAutoProvisioner.ensureProvisioned()
-        }
-
         var securityBannerDismissed by rememberSaveable { mutableStateOf(false) }
 
-        // Правка форка: баннер про почту.
-        //
-        // Спрашиваем один раз за показ экрана, а не подпиской: адрес сам собой не
-        // появляется и не исчезает, а привязка происходит в браузере, после чего человек
-        // всё равно возвращается в приложение заново.
-        //
-        // hasEmail() == false, а не != true: null означает «не дозвонились до сервера», и
-        // на нём баннер показывать нельзя, иначе он выскочит в самолётном режиме у того,
-        // у кого почта давно привязана.
-        var connectEmailBannerDismissed by rememberSaveable { mutableStateOf(false) }
-        val accountNeedsEmail by produceState(false) {
-            value = !accountEmailStatus.isBannerHidden() && accountEmailStatus.hasEmail() == false
-        }
-        // Адрес спрашиваем только когда баннер и правда нужен: у тех, кто почту уже
-        // привязал, это лишний поход в сеть на каждом открытии списка чатов.
-        val accountManagementUrl by produceState<String?>(null, accountNeedsEmail) {
-            value = if (accountNeedsEmail) {
-                client.getAccountManagementUrl(AccountManagementAction.Profile).getOrNull()
-            } else {
-                null
-            }
-        }
-        // Правка форка: баннер про очистку старых сессий. isLastDevice == false означает, что
-        // у аккаунта есть другие сессии — обычно брошенная старая после переустановки без
-        // разлогина. Дважды не спорим с флагом: реальное значение приходит быстрее сетевого
-        // запроса URL ниже, поэтому ложного мелькания на одном устройстве нет.
-        var cleanUpSessionsBannerDismissed by rememberSaveable { mutableStateOf(false) }
-        val isLastDevice by encryptionService.isLastDevice.collectAsState()
-        val hasOtherSessions = !isLastDevice
-        val manageSessionsUrl by produceState<String?>(null, hasOtherSessions, cleanUpSessionsBannerDismissed) {
-            value = if (hasOtherSessions && !cleanUpSessionsBannerDismissed) {
-                client.getAccountManagementUrl(AccountManagementAction.DevicesList).getOrNull()
-            } else {
-                null
-            }
-        }
-
-        // Правка форка: баннер обновления. Спрашиваем манифест один раз за показ экрана, как и
-        // почту. check() уже отсекает старые и отклонённые версии, поэтому здесь достаточно
-        // проверить, что вернулось Available. Ход загрузки и установки — из UpdateInstaller.
-        var updateBannerDismissed by rememberSaveable { mutableStateOf(false) }
+        // Правка форка: баннеры почты, сессий и обновления (RoomListForkBanners).
+        val forkBannersState = forkBanners.present()
         // Не compose-состояние: смена видимого диапазона не должна пересобирать экран.
         val visibleRangeFlow = remember { MutableStateFlow(IntRange.EMPTY) }
-        val updateStatus by produceState<UpdateStatus>(UpdateStatus.Unknown) {
-            value = updateChecker.check()
-        }
-        val updateInstallState by updateInstaller.state.collectAsState()
-        val updateBanner = (updateStatus as? UpdateStatus.Available)
-            // Пока идёт установка, баннер не прячем, даже если его закрыли раньше.
-            ?.takeIf { !updateBannerDismissed || updateInstallState != UpdateInstallState.Idle }
-            ?.let { UpdateBannerState(versionName = it.versionName, installState = updateInstallState) }
 
         val showNewNotificationSoundBanner by remember {
             announcementService.announcementsToShowFlow().map { announcements ->
@@ -229,24 +140,10 @@ class RoomListPresenter(
                 RoomListEvent.DismissNewNotificationSoundBanner -> coroutineScope.launch {
                     announcementService.onAnnouncementDismissed(Announcement.NewNotificationSound)
                 }
-                RoomListEvent.DismissConnectEmailBanner -> {
-                    connectEmailBannerDismissed = true
-                    coroutineScope.launch { accountEmailStatus.hideBanner() }
-                }
-                RoomListEvent.DismissCleanUpSessionsBanner -> {
-                    cleanUpSessionsBannerDismissed = true
-                }
-                RoomListEvent.DismissUpdateBanner -> {
-                    updateBannerDismissed = true
-                    // Запоминаем именно эту версию, чтобы следующая, ещё более свежая, снова
-                    // показала баннер. Если статус ещё не подъехал — прячем только на сессию.
-                    (updateStatus as? UpdateStatus.Available)?.let { available ->
-                        coroutineScope.launch { updateChecker.dismiss(available.versionCode) }
-                    }
-                }
-                RoomListEvent.InstallUpdate -> {
-                    (updateStatus as? UpdateStatus.Available)?.let(updateInstaller::install)
-                }
+                RoomListEvent.DismissConnectEmailBanner,
+                RoomListEvent.DismissCleanUpSessionsBanner,
+                RoomListEvent.DismissUpdateBanner,
+                RoomListEvent.InstallUpdate -> forkBannersState.eventSink(event)
                 RoomListEvent.ToggleSearchResults -> searchState.eventSink(RoomListSearchEvent.ToggleSearchVisibility)
                 is RoomListEvent.ShowContextMenu -> {
                     coroutineScope.showContextMenu(event, contextMenu)
@@ -258,11 +155,11 @@ class RoomListPresenter(
                     leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(event.roomId, needsConfirmation = event.needsConfirmation))
                 }
                 is RoomListEvent.SetRoomIsFavorite -> coroutineScope.setRoomIsFavorite(event.roomId, event.isFavorite)
-                is RoomListEvent.SetRoomIsMuted -> coroutineScope.setRoomIsMuted(event.roomId, event.isMuted)
-                is RoomListEvent.SetRoomIsPinned -> pinnedChatsStore.setPinned(event.roomId, event.isPinned)
-                is RoomListEvent.DeleteRoom -> chatCleanupService.deleteChat(event.roomId)
-                is RoomListEvent.DeleteRoomForBoth -> chatCleanupService.deleteChatForBoth(event.roomId)
-                is RoomListEvent.BlockUser -> coroutineScope.blockUser(event.roomId, event.userId)
+                is RoomListEvent.SetRoomIsMuted,
+                is RoomListEvent.SetRoomIsPinned,
+                is RoomListEvent.DeleteRoom,
+                is RoomListEvent.DeleteRoomForBoth,
+                is RoomListEvent.BlockUser -> forkRows.handleEvent(event, coroutineScope)
                 is RoomListEvent.MarkAsRead -> coroutineScope.markAsRead(event.roomId)
                 is RoomListEvent.MarkAsUnread -> coroutineScope.markAsUnread(event.roomId)
                 is RoomListEvent.AcceptInvite -> {
@@ -294,13 +191,11 @@ class RoomListPresenter(
 
         val contentState = roomListContentState(
             securityBannerDismissed,
-            // Баннер про почту показываем, только если знаем, куда вести человека.
-            showConnectEmailBanner = accountNeedsEmail && !connectEmailBannerDismissed && accountManagementUrl != null,
-            accountManagementUrl = accountManagementUrl,
-            // То же и с сессиями: без адреса страницы управления вести некуда.
-            showCleanUpSessionsBanner = hasOtherSessions && !cleanUpSessionsBannerDismissed && manageSessionsUrl != null,
-            manageSessionsUrl = manageSessionsUrl,
-            updateBanner = updateBanner,
+            showConnectEmailBanner = forkBannersState.showConnectEmailBanner,
+            accountManagementUrl = forkBannersState.accountManagementUrl,
+            showCleanUpSessionsBanner = forkBannersState.showCleanUpSessionsBanner,
+            manageSessionsUrl = forkBannersState.manageSessionsUrl,
+            updateBanner = forkBannersState.updateBanner,
             showNewNotificationSoundBanner,
             showUnreadCount,
             visibleRangeFlow = visibleRangeFlow,
@@ -396,35 +291,12 @@ class RoomListPresenter(
         showUnreadCount: Boolean,
         visibleRangeFlow: StateFlow<IntRange>,
     ): RoomListContentState {
-        // Правка форка (роумлесс): помеченные пином комнаты поднимаем наверх списка в порядке
-        // пина. Сортировкой SDK и diff-кэшем не рулим — переставляем уже готовый список здесь.
+        // Правка форка: пины, черновики, «печатает…» и очистка истории поверх строк (RoomListForkRows).
         val roomSummaries by produceState(initialValue = AsyncData.Loading()) {
-            combine(
-                roomListDataSource.roomSummariesFlow,
-                pinnedChatsStore.pinnedFlow.combine(chatCleanupService.clearedHistory, ::Pair),
-                draftPreviews.drafts,
-                typingTracker.typing,
-                savedMessages.roomId,
-            ) { summaries, (pinnedIds, clearedHistory), drafts, typing, savedRoomId ->
-                // Правка форка: «Избранное» всегда закреплено сверху (план, ф4.5), остальные пины — под ним.
-                applyPins(summaries, listOfNotNull(savedRoomId) + pinnedIds.filterNot { it == savedRoomId })
-                    .map { it.withDraftAndTyping(drafts[it.roomId], typing[it.roomId]) }
-                    // «Избранное»: «Вы присоединились к комнате» — шум создания, строку оставляем пустой.
-                    .map { if (it.roomId == savedRoomId && it.isLatestEventService) it.copy(latestEvent = LatestEvent.None) else it }
-                    .map { if (it.isLocalDm()) it.copy(canDeleteForBoth = true) else it }
-                    // История очищена (меню ⋮ в чате): последнее сообщение из-под отметки не показываем.
-                    .map { it.withoutClearedLatestEvent(clearedHistory[it.roomId]) }
-                    .toImmutableList()
-            }.collect { value = AsyncData.Success(it) }
+            forkRows.decorate(roomListDataSource.roomSummariesFlow).collect { value = AsyncData.Success(it) }
         }
-        // Правка форка: «печатает…» слушаем только у видимых строк.
         LaunchedEffect(Unit) {
-            val scope = this
-            combine(visibleRangeFlow, snapshotFlow { roomSummaries.dataOrNull().orEmpty() }) { range, summaries ->
-                range.mapNotNull { summaries.getOrNull(it) }.associate { it.roomId to it.isDm }
-            }
-                .distinctUntilChangedBy { it.keys }
-                .collect { rooms -> typingTracker.track(scope, rooms) }
+            forkRows.trackTypingOfVisibleRows(this, visibleRangeFlow, snapshotFlow { roomSummaries.dataOrNull().orEmpty() })
         }
         val loadingState by roomListDataSource.loadingState.collectAsState()
         val showEmpty by remember {
@@ -510,73 +382,6 @@ class RoomListPresenter(
                 .onSuccess {
                     analyticsService.captureInteraction(name = Interaction.Name.MobileRoomListRoomContextMenuFavouriteToggle)
                 }
-        }
-    }
-
-    /**
-     * Правка форка: черновик и «печатает…» поверх строки. Правило TG (`DialogCell`): черновик
-     * прячется, если после него пришло непрочитанное сообщение; время у строки — время черновика,
-     * если он новее последнего сообщения.
-     */
-    private fun RoomListRoomSummary.withDraftAndTyping(draft: DraftPreview?, typing: TypingPreview?): RoomListRoomSummary {
-        val lastEventAt = latestEventTimestampMillis ?: 0L
-        val shownDraft = draft?.takeUnless { hasNewContent && lastEventAt > it.savedAtMillis }
-        if (shownDraft == null && typing == null) return this
-        return copy(
-            draft = shownDraft?.text,
-            typing = typing,
-            timestamp = if (shownDraft != null && shownDraft.savedAtMillis > lastEventAt) {
-                dateFormatter.format(timestamp = shownDraft.savedAtMillis, mode = DateFormatterMode.TimeOrDate, useRelative = true)
-            } else {
-                timestamp
-            },
-        )
-    }
-
-    private fun RoomListRoomSummary.isLocalDm(): Boolean =
-        chatType == ChatType.Dm && dmUserId != null && dmUserId.domainName == client.sessionId.domainName
-
-    // Правка форка (роумлесс), ф2 пин: закреплённые комнаты наверх, в порядке пина; помечаем
-    // isPinned для строки/меню. Пин ставится только на ROOM, поэтому инвайты не трогаются.
-    private fun applyPins(
-        summaries: ImmutableList<RoomListRoomSummary>,
-        pinnedIds: List<RoomId>,
-    ): ImmutableList<RoomListRoomSummary> {
-        if (pinnedIds.isEmpty()) return summaries
-        val pinnedSet = pinnedIds.toSet()
-        val byId = summaries.associateBy { it.roomId }
-        val pinnedRooms = pinnedIds.mapNotNull { byId[it]?.copy(isPinned = true) }
-        val rest = summaries.filterNot { it.roomId in pinnedSet }
-        return (pinnedRooms + rest).toImmutableList()
-    }
-
-    // Правка форка (роумлесс), ф4 блок (только ЛС): односторонняя TG-стена — ignoreUser +
-    // выйти/забыть личку. Будущие инвайты автоотклоняет BlockedInviteAutoDecliner, композер
-    // гасит messages по ignoredUsersFlow. Собеседник берётся из строки, иначе из участников.
-    private fun CoroutineScope.blockUser(roomId: RoomId, userId: UserId?) = launch {
-        client.getRoom(roomId)?.use { room ->
-            val peer = userId ?: room.getMembers().getOrNull()
-                ?.firstOrNull { it.userId != client.sessionId }?.userId
-            if (peer != null) {
-                client.ignoreUser(peer)
-            }
-            room.leave().onSuccess { room.forget() }
-        }
-    }
-
-    private fun CoroutineScope.setRoomIsMuted(roomId: RoomId, isMuted: Boolean) = launch {
-        val notificationSettings = client.notificationSettingsService
-        if (isMuted) {
-            notificationSettings.muteRoom(roomId)
-        } else {
-            client.getRoom(roomId)?.use { room ->
-                val info = room.info()
-                notificationSettings.unmuteRoom(
-                    roomId = roomId,
-                    isEncrypted = info.isEncrypted == true,
-                    isOneToOne = info.isDm,
-                )
-            }
         }
     }
 

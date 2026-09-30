@@ -1907,7 +1907,6 @@ class TimelinePresenterTest {
         return TimelinePresenter(
             timelineItemsFactoryCreator = aTimelineItemsFactoryCreator(),
             room = room,
-            matrixClient = FakeMatrixClient(),
             dispatchers = testCoroutineDispatchers(),
             sessionCoroutineScope = this,
             navigator = messagesNavigator,
@@ -1927,6 +1926,7 @@ class TimelinePresenterTest {
             timelineProtectionPresenter = timelineProtectionPresenter,
             savedMessages = NoOpSavedMessages(),
             chatCleanupService = chatCleanupService,
+            timelineChannelComments = TimelineChannelComments(room, FakeMatrixClient()),
         )
     }
 }
