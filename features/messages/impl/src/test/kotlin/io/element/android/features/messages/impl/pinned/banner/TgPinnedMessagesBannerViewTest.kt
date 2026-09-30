@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2024, 2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: тесты `TgPinnedMessagesBannerView` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -13,21 +15,20 @@ package io.element.android.features.messages.impl.pinned.banner
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.libraries.matrix.api.core.EventId
-import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EnsureNeverCalled
 import io.element.android.tests.testutils.EnsureNeverCalledWithParam
 import io.element.android.tests.testutils.EventsRecorder
-import io.element.android.tests.testutils.clickOn
 import io.element.android.tests.testutils.ensureCalledOnce
 import io.element.android.tests.testutils.ensureCalledOnceWithParam
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import org.junit.Test
 
-class PinnedMessagesBannerViewTest : RobolectricTest() {
+class TgPinnedMessagesBannerViewTest : RobolectricTest() {
     @Test
     fun `clicking on the banner invoke expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<PinnedMessagesBannerEvent>()
@@ -56,7 +57,8 @@ class PinnedMessagesBannerViewTest : RobolectricTest() {
                 state = state,
                 onViewAllClick = callback
             )
-            clickOn(CommonStrings.screen_room_pinned_banner_view_all_button_title)
+            // Правка форка: «Посмотреть все» — значок списка в пилюле Telegram.
+            onNodeWithContentDescription("View All").performClick()
         }
     }
 }
@@ -67,7 +69,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setPinnedMessagesBannerView(
     onViewAllClick: () -> Unit = EnsureNeverCalled(),
 ) {
     setContent {
-        PinnedMessagesBannerView(
+        TgPinnedMessagesBannerView(
             state = state,
             onClick = onClick,
             onViewAllClick = onViewAllClick

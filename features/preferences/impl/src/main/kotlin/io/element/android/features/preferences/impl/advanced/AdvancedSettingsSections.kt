@@ -145,7 +145,7 @@ fun ColumnScope.MediaUploadSection(state: AdvancedSettingsState) {
             )
 
             if (displaySelectorDialog) {
-                VideoQualitySelectorDialog(
+                TgVideoQualitySelectorDialog(
                     selectedPreset = state.mediaOptimizationState.videoPreset,
                     onSubmit = { preset ->
                         state.eventSink(AdvancedSettingsEvent.SetVideoUploadQuality(preset))
@@ -159,7 +159,7 @@ fun ColumnScope.MediaUploadSection(state: AdvancedSettingsState) {
 }
 
 @Composable
-internal fun VideoQualitySelectorDialog(
+internal fun TgVideoQualitySelectorDialog(
     selectedPreset: VideoCompressionPreset,
     onSubmit: (VideoCompressionPreset) -> Unit,
     onDismiss: () -> Unit

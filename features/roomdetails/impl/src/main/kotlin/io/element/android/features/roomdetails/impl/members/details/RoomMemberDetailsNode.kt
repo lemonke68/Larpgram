@@ -19,8 +19,8 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import im.vector.app.features.analytics.plan.MobileScreen
 import io.element.android.annotations.ContributesNode
+import io.element.android.features.userprofile.shared.TgUserProfileView
 import io.element.android.features.userprofile.shared.UserProfileNodeHelper
-import io.element.android.features.userprofile.shared.UserProfileView
 import io.element.android.libraries.architecture.NodeInputs
 import io.element.android.libraries.architecture.inputs
 import io.element.android.libraries.di.RoomScope
@@ -78,7 +78,7 @@ class RoomMemberDetailsNode(
 
         val state = presenter.present()
 
-        UserProfileView(
+        TgUserProfileView(
             state = state,
             modifier = modifier,
             goBack = this::navigateUp,

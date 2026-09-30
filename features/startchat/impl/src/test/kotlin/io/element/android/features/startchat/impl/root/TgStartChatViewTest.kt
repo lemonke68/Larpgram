@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: тесты `TgStartChatView` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -16,7 +18,6 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
-import io.element.android.features.startchat.impl.R
 import io.element.android.features.startchat.impl.userlist.aRecentDirectRoomList
 import io.element.android.features.startchat.impl.userlist.aUserListState
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -33,7 +34,7 @@ import io.element.android.tests.testutils.robolectric.RobolectricTest
 import org.junit.Test
 import org.robolectric.annotation.Config
 
-class StartChatViewTest : RobolectricTest() {
+class TgStartChatViewTest : RobolectricTest() {
     @Test
     fun `clicking on back invokes the expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<StartChatEvent>(expectEvents = false)
@@ -49,7 +50,7 @@ class StartChatViewTest : RobolectricTest() {
     }
 
     @Test
-    fun `clicking on New room invokes the expected callback`() = runAndroidComposeUiTest {
+    fun `clicking on New group invokes the expected callback`() = runAndroidComposeUiTest {
         val eventsRecorder = EventsRecorder<StartChatEvent>(expectEvents = false)
         ensureCalledOnce {
             setStartChatView(
@@ -58,7 +59,21 @@ class StartChatViewTest : RobolectricTest() {
                 ),
                 onNewRoomClick = it
             )
-            clickOn(R.string.screen_create_room_action_create_room)
+            clickOn(CommonStrings.larpgram_new_group)
+        }
+    }
+
+    @Test
+    fun `clicking on New channel invokes the expected callback`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<StartChatEvent>(expectEvents = false)
+        ensureCalledOnce {
+            setStartChatView(
+                aCreateRoomRootState(
+                    eventSink = eventsRecorder,
+                ),
+                onNewChannelClick = it
+            )
+            clickOn(CommonStrings.larpgram_new_channel)
         }
     }
 
@@ -98,35 +113,6 @@ class StartChatViewTest : RobolectricTest() {
             onNodeWithText(firstRoom.matrixUser.getBestName()).performClick()
         }
     }
-
-    @Config(qualifiers = "h1024dp")
-    @Test
-    fun `clicking on Join room by address invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<StartChatEvent>(expectEvents = false)
-        ensureCalledOnce {
-            setStartChatView(
-                aCreateRoomRootState(
-                    eventSink = eventsRecorder,
-                ),
-                onJoinRoomByAddressClick = it
-            )
-            clickOn(R.string.screen_start_chat_join_room_by_address_action)
-        }
-    }
-
-    @Test
-    fun `clicking on room directory invokes the expected callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<StartChatEvent>(expectEvents = false)
-        ensureCalledOnce {
-            setStartChatView(
-                aCreateRoomRootState(
-                    eventSink = eventsRecorder,
-                ),
-                onRoomDirectorySearchClick = it
-            )
-            clickOn(R.string.screen_room_directory_search_title)
-        }
-    }
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setStartChatView(
@@ -135,18 +121,16 @@ private fun AndroidComposeUiTest<ComponentActivity>.setStartChatView(
     onNewRoomClick: () -> Unit = EnsureNeverCalled(),
     onOpenDM: (RoomId) -> Unit = EnsureNeverCalledWithParam(),
     onInviteFriendsClick: () -> Unit = EnsureNeverCalled(),
-    onJoinRoomByAddressClick: () -> Unit = EnsureNeverCalled(),
-    onRoomDirectorySearchClick: () -> Unit = EnsureNeverCalled(),
+    onNewChannelClick: () -> Unit = EnsureNeverCalled(),
 ) {
     setContent {
-        StartChatView(
+        TgStartChatView(
             state = state,
             onCloseClick = onCloseClick,
             onNewRoomClick = onNewRoomClick,
             onOpenDM = onOpenDM,
             onInviteFriendsClick = onInviteFriendsClick,
-            onJoinByAddressClick = onJoinRoomByAddressClick,
-            onRoomDirectorySearchClick = onRoomDirectorySearchClick,
+            onNewChannelClick = onNewChannelClick,
         )
     }
 }

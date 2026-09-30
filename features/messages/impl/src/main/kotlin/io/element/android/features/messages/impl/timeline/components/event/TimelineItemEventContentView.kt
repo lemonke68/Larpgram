@@ -187,7 +187,7 @@ fun TimelineItemEventContentView(
                         contentValidationState = contentValidationState,
                     )
                 }
-                is TimelineItemGalleryContent -> TimelineItemGalleryView(
+                is TimelineItemGalleryContent -> TgTimelineItemGalleryView(
                     eventId = eventId,
                     content = content,
                     onGalleryItemClick = { index -> onGalleryItemClick(index) },

@@ -17,6 +17,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -25,12 +26,16 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.architecture.coverage.ExcludeFromCoverage
+import io.element.android.libraries.designsystem.components.dialogs.ListDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
+import io.element.android.libraries.designsystem.components.preferences.PreferenceDropdown
 import io.element.android.libraries.designsystem.components.preferences.PreferencePage
+import io.element.android.libraries.designsystem.components.preferences.PreferenceSwitch
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.ElementPreviewBlack
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
@@ -48,8 +53,11 @@ import io.element.android.libraries.designsystem.utils.snackbar.LocalSnackbarDis
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
+import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import io.element.android.libraries.ui.strings.CommonStrings
+import io.element.android.services.analytics.compose.LocalAnalyticsService
+import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
 import kotlin.math.roundToInt
 
 @Composable
@@ -59,6 +67,8 @@ fun AdvancedSettingsView(
     onOpenAppSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val analyticsService = LocalAnalyticsService.current
+
     val snackbarDispatcher = LocalSnackbarDispatcher.current
     val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = snackbarMessage)
@@ -74,8 +84,14 @@ fun AdvancedSettingsView(
             )
         }
     ) {
-        // Правка форка: экран разбит на секции (оформление, медиа, модерация) в отдельных функциях.
-        AppearanceThemeItem(state)
+        PreferenceDropdown(
+            title = stringResource(id = CommonStrings.common_appearance),
+            selectedOption = state.theme,
+            options = state.availableThemeOptions,
+            onSelectOption = { themeOption ->
+                state.eventSink(AdvancedSettingsEvent.SetTheme(themeOption))
+            }
+        )
         ListItem(
             content = {
                 Text(text = stringResource(id = CommonStrings.action_view_source))
@@ -88,10 +104,105 @@ fun AdvancedSettingsView(
             ),
             onClick = { state.eventSink(AdvancedSettingsEvent.SetDeveloperModeEnabled(!state.isDeveloperModeEnabled)) }
         )
-        SharePresenceItem(state)
-        MediaUploadSection(state)
+        ListItem(
+            content = {
+                Text(text = stringResource(id = R.string.screen_advanced_settings_share_presence))
+            },
+            supportingContent = {
+                Text(text = stringResource(id = R.string.screen_advanced_settings_share_presence_description))
+            },
+            trailingContent = ListItemContent.Switch(
+                checked = state.isSharePresenceEnabled,
+            ),
+            onClick = { state.eventSink(AdvancedSettingsEvent.SetSharePresenceEnabled(!state.isSharePresenceEnabled)) }
+        )
+        val compressImages = state.mediaOptimizationState?.shouldCompressImages
 
-        ModerationAndSafetySection(state)
+        when (state.mediaOptimizationState) {
+            null -> Unit
+            is MediaOptimizationState.AllMedia -> {
+                ListItem(
+                    content = {
+                        Text(text = stringResource(id = R.string.screen_advanced_settings_media_compression_title))
+                    },
+                    supportingContent = {
+                        Text(text = stringResource(id = R.string.screen_advanced_settings_media_compression_description))
+                    },
+                    trailingContent = ListItemContent.Switch(
+                        checked = compressImages ?: false,
+                    ),
+                    onClick = {
+                        val newValue = !(compressImages ?: false)
+                        analyticsService.captureInteraction(
+                            if (newValue) {
+                                Interaction.Name.MobileSettingsOptimizeMediaUploadsEnabled
+                            } else {
+                                Interaction.Name.MobileSettingsOptimizeMediaUploadsDisabled
+                            }
+                        )
+                        state.eventSink(AdvancedSettingsEvent.SetCompressMedia(newValue))
+                    }
+                )
+            }
+            is MediaOptimizationState.Split -> {
+                ListItem(
+                    content = {
+                        Text(text = stringResource(id = R.string.screen_advanced_settings_optimise_image_upload_quality_title))
+                    },
+                    supportingContent = {
+                        Text(text = stringResource(id = R.string.screen_advanced_settings_optimise_image_upload_quality_description))
+                    },
+                    trailingContent = ListItemContent.Switch(
+                        checked = compressImages ?: false,
+                    ),
+                    onClick = {
+                        val newValue = !(compressImages ?: false)
+                        analyticsService.captureInteraction(
+                            if (newValue) {
+                                Interaction.Name.MobileSettingsOptimizeMediaUploadsEnabled
+                            } else {
+                                Interaction.Name.MobileSettingsOptimizeMediaUploadsDisabled
+                            }
+                        )
+                        state.eventSink(AdvancedSettingsEvent.SetCompressMedia(newValue))
+                    }
+                )
+
+                var displaySelectorDialog by remember { mutableStateOf(false) }
+
+                ListItem(
+                    content = {
+                        Text(text = stringResource(id = R.string.screen_advanced_settings_optimise_video_upload_quality_title))
+                    },
+                    supportingContent = {
+                        val description = stringResource(id = R.string.screen_advanced_settings_optimise_video_upload_quality_description)
+                        val quality = when (state.mediaOptimizationState.videoPreset) {
+                            VideoCompressionPreset.LOW -> stringResource(id = R.string.screen_advanced_settings_optimise_video_upload_quality_low)
+                            VideoCompressionPreset.STANDARD -> stringResource(id = R.string.screen_advanced_settings_optimise_video_upload_quality_standard)
+                            VideoCompressionPreset.HIGH -> stringResource(id = R.string.screen_advanced_settings_optimise_video_upload_quality_high)
+                        }
+                        val descriptionWithValue = remember(quality) {
+                            String.format(description, quality)
+                        }
+                        Text(text = descriptionWithValue)
+                    },
+                    onClick = { displaySelectorDialog = true },
+                )
+
+                if (displaySelectorDialog) {
+                    VideoQualitySelectorDialog(
+                        selectedPreset = state.mediaOptimizationState.videoPreset,
+                        onSubmit = { preset ->
+                            state.eventSink(AdvancedSettingsEvent.SetVideoUploadQuality(preset))
+                            displaySelectorDialog = false
+                        },
+                        onDismiss = { displaySelectorDialog = false },
+                    )
+                }
+            }
+        }
+
+        ModerationAndSafety(state)
         if (state.liveLocationMinimumDistanceUpdate != null) {
             LiveLocationUpdatesSection(
                 value = state.liveLocationMinimumDistanceUpdate,
@@ -101,6 +212,127 @@ fun AdvancedSettingsView(
                 onOpenAppPermissionsClick = onOpenAppSettingsClick,
             )
         }
+    }
+}
+
+@Composable
+private fun VideoQualitySelectorDialog(
+    selectedPreset: VideoCompressionPreset,
+    onSubmit: (VideoCompressionPreset) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val videoPresets = VideoCompressionPreset.entries
+    var localSelectedPreset by remember { mutableStateOf(selectedPreset) }
+    ListDialog(
+        title = stringResource(CommonStrings.dialog_video_quality_selector_title),
+        subtitle = stringResource(CommonStrings.dialog_default_video_quality_selector_subtitle),
+        onSubmit = { onSubmit(localSelectedPreset) },
+        onDismissRequest = onDismiss,
+        applyPaddingToContents = false,
+    ) {
+        for (preset in videoPresets) {
+            val isSelected = preset == localSelectedPreset
+            item(
+                key = preset,
+                contentType = preset,
+            ) {
+                val title = when (preset) {
+                    VideoCompressionPreset.LOW -> stringResource(R.string.screen_advanced_settings_optimise_video_upload_quality_low)
+                    VideoCompressionPreset.STANDARD -> stringResource(R.string.screen_advanced_settings_optimise_video_upload_quality_standard)
+                    VideoCompressionPreset.HIGH -> stringResource(R.string.screen_advanced_settings_optimise_video_upload_quality_high)
+                }
+                val subtitle = when (preset) {
+                    VideoCompressionPreset.LOW -> stringResource(CommonStrings.common_video_quality_low_description)
+                    VideoCompressionPreset.STANDARD -> stringResource(CommonStrings.common_video_quality_standard_description)
+                    VideoCompressionPreset.HIGH -> stringResource(CommonStrings.common_video_quality_high_description)
+                }
+                ListItem(
+                    content = {
+                        Text(
+                            text = title,
+                            style = ElementTheme.typography.fontBodyLgMedium,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = subtitle,
+                            style = ElementTheme.typography.fontBodyMdRegular,
+                            color = ElementTheme.colors.textSecondary,
+                        )
+                    },
+                    leadingContent = ListItemContent.RadioButton(
+                        selected = isSelected,
+                    ),
+                    onClick = {
+                        localSelectedPreset = preset
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModerationAndSafety(
+    state: AdvancedSettingsState,
+    modifier: Modifier = Modifier,
+) {
+    PreferenceCategory(
+        modifier = modifier,
+        title = stringResource(R.string.screen_advanced_settings_moderation_and_safety_section_title),
+        showTopDivider = true
+    ) {
+        PreferenceSwitch(
+            title = stringResource(R.string.screen_advanced_settings_hide_invite_avatars_toggle_title),
+            isChecked = state.mediaPreviewConfigState.hideInviteAvatars,
+            onCheckedChange = {
+                state.eventSink(AdvancedSettingsEvent.SetHideInviteAvatars(it))
+            },
+            enabled = !state.mediaPreviewConfigState.setHideInviteAvatarsAction.isLoading()
+        )
+        ListSectionHeader(
+            title = stringResource(R.string.screen_advanced_settings_show_media_timeline_title),
+            hasDivider = false,
+            description = {
+                ListSupportingText(
+                    text = stringResource(R.string.screen_advanced_settings_show_media_timeline_subtitle),
+                    contentPadding = ListSupportingTextDefaults.Padding.None,
+                )
+            }
+        )
+        ListItem(
+            content = { Text(text = stringResource(R.string.screen_advanced_settings_show_media_timeline_always_hide)) },
+            leadingContent = ListItemContent.RadioButton(
+                selected = state.mediaPreviewConfigState.timelineMediaPreviewValue == MediaPreviewValue.Off,
+                compact = true
+            ),
+            onClick = {
+                state.eventSink(AdvancedSettingsEvent.SetTimelineMediaPreviewValue(MediaPreviewValue.Off))
+            },
+            enabled = !state.mediaPreviewConfigState.setTimelineMediaPreviewAction.isLoading()
+        )
+        ListItem(
+            content = { Text(text = stringResource(R.string.screen_advanced_settings_show_media_timeline_private_rooms)) },
+            leadingContent = ListItemContent.RadioButton(
+                selected = state.mediaPreviewConfigState.timelineMediaPreviewValue == MediaPreviewValue.Private,
+                compact = true
+            ),
+            onClick = {
+                state.eventSink(AdvancedSettingsEvent.SetTimelineMediaPreviewValue(MediaPreviewValue.Private))
+            },
+            enabled = !state.mediaPreviewConfigState.setTimelineMediaPreviewAction.isLoading()
+        )
+        ListItem(
+            content = { Text(text = stringResource(R.string.screen_advanced_settings_show_media_timeline_always_show)) },
+            leadingContent = ListItemContent.RadioButton(
+                selected = state.mediaPreviewConfigState.timelineMediaPreviewValue == MediaPreviewValue.On,
+                compact = true
+            ),
+            onClick = {
+                state.eventSink(AdvancedSettingsEvent.SetTimelineMediaPreviewValue(MediaPreviewValue.On))
+            },
+            enabled = !state.mediaPreviewConfigState.setTimelineMediaPreviewAction.isLoading()
+        )
     }
 }
 

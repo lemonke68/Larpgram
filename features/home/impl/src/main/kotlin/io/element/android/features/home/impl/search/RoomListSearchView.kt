@@ -46,7 +46,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.home.impl.components.RoomSummaryRow
+import io.element.android.features.home.impl.components.TgRoomSummaryRow
 import io.element.android.features.home.impl.contentType
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListEvent
@@ -197,7 +197,7 @@ private fun RoomListSearchContent(
                     items = state.results,
                     contentType = { room -> room.contentType() },
                 ) { room ->
-                    RoomSummaryRow(
+                    TgRoomSummaryRow(
                         room = room,
                         hideInviteAvatars = hideInvitesAvatars,
                         // TODO

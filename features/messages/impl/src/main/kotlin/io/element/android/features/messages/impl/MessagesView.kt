@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -53,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
@@ -104,8 +102,8 @@ import io.element.android.features.messages.impl.messagecomposer.rememberTgMedia
 import io.element.android.features.messages.impl.messagecomposer.showKeyboardOnFocusedInput
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsPickerView
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
-import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerView
-import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerViewDefaults
+import io.element.android.features.messages.impl.pinned.banner.TgPinnedMessagesBannerView
+import io.element.android.features.messages.impl.pinned.banner.TgPinnedMessagesBannerViewDefaults
 import io.element.android.features.messages.impl.timeline.FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineView
@@ -764,7 +762,7 @@ private fun MessagesViewContent(
         }
 
         Box {
-            val scrollBehavior = PinnedMessagesBannerViewDefaults.rememberScrollBehavior(
+            val scrollBehavior = TgPinnedMessagesBannerViewDefaults.rememberScrollBehavior(
                 pinnedMessagesCount = (state.pinnedMessagesBannerState as? PinnedMessagesBannerState.Visible)?.pinnedMessagesCount() ?: 0,
             )
             val density = LocalDensity.current
@@ -839,7 +837,7 @@ private fun MessagesViewContent(
                                 TimelineEvent.FocusOnEvent(eventId = eventId, debounce = FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS.milliseconds)
                             )
                         }
-                        PinnedMessagesBannerView(
+                        TgPinnedMessagesBannerView(
                             state = state.pinnedMessagesBannerState,
                             onClick = ::focusOnPinnedEvent,
                             onViewAllClick = onViewAllPinnedMessagesClick,
@@ -1015,69 +1013,6 @@ private fun MessagesViewComposerBottomSheetContents(
         else -> {
             CantSendMessageBanner(Modifier.padding(contentPadding))
         }
-    }
-}
-
-@Composable
-private fun ChannelSubscriberBar(
-    isMuted: Boolean,
-    onToggleMute: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(ElementTheme.colors.bgSubtleSecondary)
-            .padding(vertical = 12.dp, horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Telegram's channel bottom bar is a single centred pill. Tap toggles notifications;
-        // the label and icon describe the action about to happen.
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(percent = 50))
-                .clickable(onClick = onToggleMute)
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector = if (isMuted) CompoundIcons.Notifications() else CompoundIcons.NotificationsOff(),
-                contentDescription = null,
-                tint = ElementTheme.colors.iconPrimary,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = stringResource(
-                    id = if (isMuted) R.string.screen_channel_unmute else R.string.screen_channel_mute
-                ),
-                color = ElementTheme.colors.textPrimary,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-    }
-}
-
-// Правка форка (роумлесс, ф4 блок): своя сторона TG-стены. Полоса вместо композера,
-// тап снимает блок (unignoreUser).
-@Composable
-private fun BlockedUserBar(
-    onUnblock: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(ElementTheme.colors.bgSubtleSecondary)
-            .clickable(onClick = onUnblock)
-            .padding(vertical = 12.dp, horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = stringResource(id = R.string.screen_room_unblock_user),
-            color = ElementTheme.colors.textCriticalPrimary,
-            style = MaterialTheme.typography.bodyLarge,
-        )
     }
 }
 

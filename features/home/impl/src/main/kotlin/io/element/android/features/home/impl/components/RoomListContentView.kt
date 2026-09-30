@@ -321,7 +321,7 @@ private fun RoomsViewList(
             contentType = { _, room -> room.contentType() },
         ) { index, room ->
             val summaryRow = @Composable {
-                RoomSummaryRow(
+                TgRoomSummaryRow(
                     room = room,
                     hideInviteAvatars = hideInvitesAvatars,
                     isInviteSeen = room.displayType == RoomSummaryDisplayType.INVITE &&

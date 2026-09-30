@@ -87,7 +87,6 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.components.messages.MessageDeliveryState
-import io.element.android.libraries.designsystem.components.messages.MessageDeliveryTicks
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toSp
@@ -283,44 +282,6 @@ private fun ActionListViewContent(
                 }
             }
         }
-    }
-}
-
-/**
- * Правка форка: полупрозрачный грей телеграмного меню.
- *
- * Высокая, но не полная непрозрачность: сквозь меню должен угадываться размытый фон, но текст
- * действий обязан читаться. Значения подобраны на эмуляторе поверх `rememberBlurredBackdrop`.
- */
-@Composable
-@ReadOnlyComposable
-internal fun larpgramActionSheetColor(): Color = if (ElementTheme.isLightTheme) {
-    // Правка форка: прозрачнее по просьбе юзера — сквозь меню заметен размытый фон.
-    Color(0xFFFFFFFF).copy(alpha = 0.72f)
-} else {
-    Color(0xFF1C1C1E).copy(alpha = 0.70f)
-}
-
-/** Строка «галочка + время отправки» в шапке меню действий. */
-@Composable
-internal fun DeliveryStatusRow(
-    state: MessageDeliveryState,
-    sentTime: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MessageDeliveryTicks(state = state)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = sentTime,
-            style = ElementTheme.typography.fontBodyMdRegular,
-            color = ElementTheme.colors.textSecondary,
-        )
     }
 }
 

@@ -31,7 +31,8 @@ class AdvancedSettingsNode(
     override fun View(modifier: Modifier) {
         val state = presenter.present()
         val context = LocalContext.current
-        AdvancedSettingsView(
+        // Правка форка: экран «Дополнительно» форка, элементовский оставлен как в апстриме (C-009).
+        TgAdvancedSettingsView(
             state = state,
             modifier = modifier,
             onBackClick = ::navigateUp,

@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2024, 2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: тесты `TgUserProfileView` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -13,6 +15,7 @@ package io.element.android.features.userprofile
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
@@ -20,7 +23,7 @@ import io.element.android.features.userprofile.api.UserProfileEvent
 import io.element.android.features.userprofile.api.UserProfileState
 import io.element.android.features.userprofile.api.UserProfileVerificationState
 import io.element.android.features.userprofile.shared.R
-import io.element.android.features.userprofile.shared.UserProfileView
+import io.element.android.features.userprofile.shared.TgUserProfileView
 import io.element.android.features.userprofile.shared.aUserProfileState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -45,7 +48,7 @@ import io.element.android.tests.testutils.robolectric.RobolectricTest
 import org.junit.Test
 import org.robolectric.annotation.Config
 
-class UserProfileViewTest : RobolectricTest() {
+class TgUserProfileViewTest : RobolectricTest() {
     @Test
     fun `on back button click - the expected callback is called`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
@@ -83,6 +86,7 @@ class UserProfileViewTest : RobolectricTest() {
             setUserProfileView(
                 onShareUser = callback,
             )
+            openMenu()
             clickOn(CommonStrings.action_share)
         }
     }
@@ -96,7 +100,7 @@ class UserProfileViewTest : RobolectricTest() {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(CommonStrings.action_message)
+        clickOn(CommonStrings.larpgram_profile_action_chat)
         eventsRecorder.assertSingle(UserProfileEvent.StartDM)
     }
 
@@ -110,7 +114,7 @@ class UserProfileViewTest : RobolectricTest() {
                 ),
                 onStartCall = callback,
             )
-            clickOn(CommonStrings.action_call)
+            clickOn(CommonStrings.larpgram_profile_action_call)
         }
     }
 
@@ -137,7 +141,8 @@ class UserProfileViewTest : RobolectricTest() {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(R.string.screen_dm_details_block_user)
+        openMenu()
+        clickOn(CommonStrings.larpgram_profile_menu_block)
         eventsRecorder.assertSingle(UserProfileEvent.BlockUser(needsConfirmation = true))
     }
 
@@ -177,7 +182,8 @@ class UserProfileViewTest : RobolectricTest() {
                 eventSink = eventsRecorder,
             ),
         )
-        clickOn(R.string.screen_dm_details_unblock_user)
+        openMenu()
+        clickOn(CommonStrings.larpgram_profile_menu_unblock)
         eventsRecorder.assertSingle(UserProfileEvent.UnblockUser(needsConfirmation = true))
     }
 
@@ -216,9 +222,15 @@ class UserProfileViewTest : RobolectricTest() {
                 state = aUserProfileState(userId = A_USER_ID, verificationState = UserProfileVerificationState.UNVERIFIED),
                 onVerifyClick = callback,
             )
+            // Правка форка: подтверждение переехало в меню ⋮.
+            openMenu()
             clickOn(CommonStrings.common_verify_user)
         }
     }
+}
+
+private fun AndroidComposeUiTest<ComponentActivity>.openMenu() {
+    onNode(hasContentDescription(activity!!.getString(CommonStrings.action_open_context_menu))).performClick()
 }
 
 private fun AndroidComposeUiTest<ComponentActivity>.setUserProfileView(
@@ -233,7 +245,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setUserProfileView(
     openAvatarPreview: (String, String) -> Unit = EnsureNeverCalledWithTwoParams(),
 ) {
     setContent {
-        UserProfileView(
+        TgUserProfileView(
             state = state,
             onShareUser = onShareUser,
             onOpenDm = onDmStarted,

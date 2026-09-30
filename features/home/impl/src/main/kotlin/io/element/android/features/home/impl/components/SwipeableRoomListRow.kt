@@ -337,7 +337,7 @@ private fun SwipeableRowLayoutPreviewHost(
         onActionClick = {},
         onContentTapWhileOpen = {},
         content = {
-            RoomSummaryRow(
+            TgRoomSummaryRow(
                 room = room,
                 hideInviteAvatars = false,
                 isInviteSeen = false,

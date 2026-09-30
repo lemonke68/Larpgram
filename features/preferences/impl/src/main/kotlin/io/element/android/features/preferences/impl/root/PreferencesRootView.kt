@@ -8,31 +8,25 @@
 
 package io.element.android.features.preferences.impl.root
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.preferences.impl.R
+import io.element.android.features.preferences.impl.user.UserPreferences
 import io.element.android.features.preferences.impl.userstatus.UserStatusState
 import io.element.android.features.preferences.impl.userstatus.UserStatusView
 import io.element.android.libraries.architecture.AsyncAction
@@ -48,6 +42,7 @@ import io.element.android.libraries.designsystem.preview.PreviewWithLargeHeight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
+import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.CommonDrawables
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
@@ -56,39 +51,45 @@ import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.components.MatrixUserRow
-import io.element.android.libraries.matrix.ui.saved.SavedMessagesAvatar
 import io.element.android.libraries.ui.strings.CommonStrings
-import timber.log.Timber
 
 @Composable
 fun PreferencesRootView(
     state: PreferencesRootState,
     emojiPickerRenderer: EmojiPickerRenderer,
-    onBackClick: (() -> Unit)?,
+    onBackClick: () -> Unit,
     onAddAccountClick: () -> Unit,
-    onOpenCategory: (SettingsCategory) -> Unit,
-    onOpenUserProfile: (MatrixUser) -> Unit,
-    onOpenAbout: () -> Unit,
+    onSecureBackupClick: () -> Unit,
+    onManageAccountClick: (url: String) -> Unit,
+    onLinkNewDeviceClick: () -> Unit,
+    onOpenAnalytics: () -> Unit,
     onOpenRageShake: () -> Unit,
-    onOpenLabs: () -> Unit,
+    onOpenLockScreenSettings: () -> Unit,
+    onOpenAbout: () -> Unit,
     onOpenDeveloperSettings: () -> Unit,
     onOpenAdvancedSettings: () -> Unit,
+    onOpenLabs: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
+    onOpenUserProfile: (MatrixUser) -> Unit,
+    onOpenBlockedUsers: () -> Unit,
+    onSignOutClick: () -> Unit,
+    onDeactivateClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onOpenSavedMessages: () -> Unit = {},
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
 
     Box(modifier = modifier) {
+        // Include pref from other modules
         PreferencePage(
             onBackClick = onBackClick,
             title = stringResource(id = CommonStrings.common_settings),
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            containerColor = tgSettingsPageColor(),
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) {
-            // Правка форка: шапка TG — крупный аватар с камерой, имя и @имя по центру.
-            TgSettingsProfileHeader(
+            UserPreferences(
+                modifier = Modifier.clickable {
+                    onOpenUserProfile(state.myUser)
+                },
                 matrixUser = state.myUser,
-                onClick = { onOpenUserProfile(state.myUser) },
             )
             if (state.isMultiAccountEnabled) {
                 MultiAccountSection(
@@ -103,26 +104,32 @@ fun PreferencesRootView(
                     showTopDivider = !state.isMultiAccountEnabled,
                 )
             }
-            // Правка форка: «Избранное» отдельной карточкой над категориями, как в TG.
-            TgSettingsGroup {
-                TgSettingsItem(
-                    title = stringResource(CommonStrings.larpgram_saved_messages),
-                    color = SAVED_MESSAGES_COLOR,
-                    iconVector = SavedMessagesAvatar.icon,
-                    trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
-                    onClick = onOpenSavedMessages,
-                )
-            }
-            // TG-категории (Ф2): один верхнеуровневый список, каждая строка ведёт в свой под-экран.
-            CategoriesSection(onOpenCategory = onOpenCategory)
-            // «О приложении» — аналог блока «Помощь» в TG-настройках.
-            AppInfoSection(
+            // 'Account' section
+            ManageAccountSection(
+                state = state,
+                onManageAccountClick = onManageAccountClick,
+                onLinkNewDeviceClick = onLinkNewDeviceClick,
+                onOpenBlockedUsers = onOpenBlockedUsers
+            )
+            // 'Manage my app' section
+            ManageAppSection(
+                state = state,
+                onOpenNotificationSettings = onOpenNotificationSettings,
+                onOpenLockScreenSettings = onOpenLockScreenSettings,
+                onSecureBackupClick = onSecureBackupClick,
+            )
+
+            // General section
+            GeneralSection(
                 state = state,
                 onOpenAbout = onOpenAbout,
+                onOpenAnalytics = onOpenAnalytics,
                 onOpenRageShake = onOpenRageShake,
-                onOpenLabs = onOpenLabs,
-                onOpenDeveloperSettings = onOpenDeveloperSettings,
                 onOpenAdvancedSettings = onOpenAdvancedSettings,
+                onOpenDeveloperSettings = onOpenDeveloperSettings,
+                onOpenLabs = onOpenLabs,
+                onSignOutClick = onSignOutClick,
+                onDeactivateClick = onDeactivateClick,
             )
             // Version
             Footer(
@@ -133,11 +140,6 @@ fun PreferencesRootView(
                     null
                 }
             )
-            // Правка форка: корень вкладки лежит под плавающей панелью вкладок — отступ, чтобы
-            // строка версии прокручивалась выше неё (аудит A-030). Как bottom = 96.dp у списка чатов.
-            if (onBackClick == null) {
-                Spacer(modifier = Modifier.height(80.dp))
-            }
         }
         state.userStatusState?.let {
             UserStatusUpdateIndicator(it.updateStatusAction)
@@ -146,90 +148,15 @@ fun PreferencesRootView(
 }
 
 @Composable
-private fun ColumnScope.CategoriesSection(
-    onOpenCategory: (SettingsCategory) -> Unit,
-) {
-    val context = LocalContext.current
-    TgSettingsGroup {
-        SettingsCategory.entries.filter { it.isAvailable }.forEach { category ->
-            TgSettingsItem(
-                title = stringResource(category.titleRes),
-                subtitle = stringResource(category.subtitleRes),
-                color = category.color,
-                iconVector = category.icon,
-                trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
-                onClick = {
-                    if (category == SettingsCategory.Language) {
-                        openAppLanguageSettings(context)
-                    } else {
-                        onOpenCategory(category)
-                    }
-                },
-            )
-        }
-    }
-}
-
-// Цвет иконки «Избранного» в настройках TG.
-private val SAVED_MESSAGES_COLOR = Color(0xFF3D9DE0)
-
-/** Правка форка: системный выбор языка приложения (Android 13+), как «Язык» в TG. */
-private fun openAppLanguageSettings(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-    val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
-    runCatching { context.startActivity(intent) }
-        .onFailure { Timber.w(it, "Не открылся системный выбор языка") }
-}
-
-@Composable
-private fun ColumnScope.AppInfoSection(
-    state: PreferencesRootState,
-    onOpenAbout: () -> Unit,
-    onOpenRageShake: () -> Unit,
-    onOpenLabs: () -> Unit,
-    onOpenDeveloperSettings: () -> Unit,
-    onOpenAdvancedSettings: () -> Unit,
-) {
-    TgSettingsGroup {
-        TgSettingsItem(
-            title = stringResource(id = CommonStrings.common_about),
-            color = TgSettingsColors.Blue,
-            iconVector = CompoundIcons.Info(),
-            onClick = onOpenAbout,
-        )
-        // Полный экран «Дополнительно» (dev-режим, live-location и пр. — то, что не легло в категории).
-        TgSettingsItem(
-            title = stringResource(id = CommonStrings.common_advanced_settings),
-            color = TgSettingsColors.Gray,
-            iconVector = CompoundIcons.Settings(),
-            onClick = onOpenAdvancedSettings,
-        )
-        if (state.canReportBug) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_report_a_problem),
-                color = TgSettingsColors.Orange,
-                iconVector = CompoundIcons.ChatProblem(),
-                onClick = onOpenRageShake,
-            )
-        }
-        if (state.showLabsItem) {
-            TgSettingsItem(
-                title = stringResource(id = io.element.android.features.preferences.impl.R.string.screen_labs_title),
-                color = TgSettingsColors.Purple,
-                iconVector = CompoundIcons.Labs(),
-                onClick = onOpenLabs,
-            )
-        }
-        // В конце, чтобы случайный 8-кратный тап по версии ничего не ломал.
-        if (state.showDeveloperSettings) {
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.common_developer_options),
-                color = TgSettingsColors.Gray,
-                iconVector = CompoundIcons.Code(),
-                onClick = onOpenDeveloperSettings,
-            )
-        }
-    }
+private fun BoxScope.UserStatusUpdateIndicator(updateStatusAction: AsyncAction<Unit>) {
+    AsyncActionIndicator(
+        asyncAction = updateStatusAction,
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .statusBarsPadding(),
+        loading = { AsyncIndicator.Loading(text = stringResource(CommonStrings.common_saving)) },
+        failure = { _ -> AsyncIndicator.Failure(text = stringResource(CommonStrings.common_failed)) },
+    )
 }
 
 @Composable
@@ -290,15 +217,132 @@ private fun ColumnScope.MultiAccountSection(
 }
 
 @Composable
-private fun BoxScope.UserStatusUpdateIndicator(updateStatusAction: AsyncAction<Unit>) {
-    AsyncActionIndicator(
-        asyncAction = updateStatusAction,
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .statusBarsPadding(),
-        loading = { AsyncIndicator.Loading(text = stringResource(CommonStrings.common_saving)) },
-        failure = { _ -> AsyncIndicator.Failure(text = stringResource(CommonStrings.common_failed)) },
+private fun ColumnScope.ManageAppSection(
+    state: PreferencesRootState,
+    onOpenNotificationSettings: () -> Unit,
+    onOpenLockScreenSettings: () -> Unit,
+    onSecureBackupClick: () -> Unit,
+) {
+    ListItem(
+        content = { Text(stringResource(id = R.string.screen_notification_settings_title)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Notifications())),
+        onClick = onOpenNotificationSettings,
     )
+    ListItem(
+        content = { Text(stringResource(id = CommonStrings.common_screen_lock)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
+        onClick = onOpenLockScreenSettings,
+    )
+    if (state.showSecureBackup) {
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.common_encryption)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Key())),
+            trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
+            onClick = onSecureBackupClick,
+        )
+    }
+    HorizontalDivider()
+}
+
+@Composable
+private fun ColumnScope.ManageAccountSection(
+    state: PreferencesRootState,
+    onManageAccountClick: (url: String) -> Unit,
+    onLinkNewDeviceClick: () -> Unit,
+    onOpenBlockedUsers: () -> Unit,
+) {
+    state.accountManagementUrl?.let { url ->
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.action_manage_account_and_devices)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.UserProfile())),
+            trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.PopOut())),
+            onClick = { onManageAccountClick(url) },
+        )
+    }
+    if (state.showLinkNewDevice) {
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.common_link_new_device)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Devices())),
+            onClick = onLinkNewDeviceClick,
+        )
+    }
+    if (state.showBlockedUsersItem) {
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.common_blocked_users)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Block())),
+            onClick = onOpenBlockedUsers,
+            trailingContent = ListItemContent.Text(state.nbOfBlockedUsers.toString()),
+        )
+    }
+    if (state.accountManagementUrl != null || state.showLinkNewDevice || state.showBlockedUsersItem) {
+        HorizontalDivider()
+    }
+}
+
+@Composable
+private fun ColumnScope.GeneralSection(
+    state: PreferencesRootState,
+    onOpenAbout: () -> Unit,
+    onOpenAnalytics: () -> Unit,
+    onOpenRageShake: () -> Unit,
+    onOpenAdvancedSettings: () -> Unit,
+    onOpenLabs: () -> Unit,
+    onOpenDeveloperSettings: () -> Unit,
+    onSignOutClick: () -> Unit,
+    onDeactivateClick: () -> Unit,
+) {
+    ListItem(
+        content = { Text(stringResource(id = CommonStrings.common_advanced_settings)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Settings())),
+        onClick = onOpenAdvancedSettings,
+    )
+    if (state.showLabsItem) {
+        ListItem(
+            content = { Text(stringResource(id = R.string.screen_labs_title)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Labs())),
+            onClick = onOpenLabs,
+        )
+    }
+    ListItem(
+        content = { Text(stringResource(id = CommonStrings.common_about)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Info())),
+        onClick = onOpenAbout,
+    )
+    if (state.canReportBug) {
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.common_report_a_problem)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChatProblem())),
+            onClick = onOpenRageShake
+        )
+    }
+    if (state.showAnalyticsSettings) {
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.common_analytics)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Chart())),
+            onClick = onOpenAnalytics,
+        )
+    }
+    HorizontalDivider()
+    ListItem(
+        content = { Text(stringResource(id = CommonStrings.action_signout)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Close())),
+        style = ListItemStyle.Destructive,
+        onClick = onSignOutClick,
+    )
+    if (state.canDeactivateAccount) {
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.action_delete_account)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
+            style = ListItemStyle.Destructive,
+            onClick = onDeactivateClick,
+        )
+    }
+    // Put developer settings at the end, so nothing bad happens if the user clicks 8 times to enable the entry
+    AnimatedVisibility(
+        visible = state.showDeveloperSettings,
+    ) {
+        DeveloperPreferencesView(onOpenDeveloperSettings)
+    }
 }
 
 @Composable
@@ -315,6 +359,15 @@ private fun ColumnScope.Footer(
         text = version,
         style = ElementTheme.typography.fontBodySmRegular,
         color = ElementTheme.colors.textSecondary,
+    )
+}
+
+@Composable
+private fun DeveloperPreferencesView(onOpenDeveloperSettings: () -> Unit) {
+    ListItem(
+        content = { Text(stringResource(id = CommonStrings.common_developer_options)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Code())),
+        onClick = onOpenDeveloperSettings
     )
 }
 
@@ -340,12 +393,20 @@ private fun ContentToPreview(state: PreferencesRootState) {
         emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onBackClick = {},
         onAddAccountClick = {},
-        onOpenCategory = {},
-        onOpenUserProfile = {},
-        onOpenAbout = {},
+        onOpenAnalytics = {},
         onOpenRageShake = {},
-        onOpenLabs = {},
         onOpenDeveloperSettings = {},
         onOpenAdvancedSettings = {},
+        onOpenLabs = {},
+        onOpenAbout = {},
+        onSecureBackupClick = {},
+        onManageAccountClick = {},
+        onLinkNewDeviceClick = {},
+        onOpenNotificationSettings = {},
+        onOpenLockScreenSettings = {},
+        onOpenUserProfile = {},
+        onOpenBlockedUsers = {},
+        onSignOutClick = {},
+        onDeactivateClick = {},
     )
 }

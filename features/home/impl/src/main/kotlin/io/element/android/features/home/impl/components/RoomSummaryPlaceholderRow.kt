@@ -40,7 +40,8 @@ internal fun RoomSummaryPlaceholderRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(minHeight)
+            // Правка форка: высота строки Telegram (TgRoomSummaryRow).
+            .height(tgRoomSummaryMinHeight)
             .padding(horizontal = 16.dp),
     ) {
         Box(

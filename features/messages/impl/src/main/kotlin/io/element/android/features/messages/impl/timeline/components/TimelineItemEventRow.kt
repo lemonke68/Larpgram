@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -46,7 +45,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -57,7 +55,6 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -73,7 +70,6 @@ import androidx.constraintlayout.compose.ConstrainScope
 import androidx.constraintlayout.compose.ConstraintLayout
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
@@ -108,7 +104,6 @@ import io.element.android.features.messages.impl.timeline.protection.TimelinePro
 import io.element.android.features.messages.impl.timeline.protection.mustBeProtected
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.channelcomments.ChannelDiscussion
-import io.element.android.libraries.designsystem.colors.AvatarColorsProvider
 import io.element.android.libraries.designsystem.components.EqualWidthColumn
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
@@ -124,7 +119,6 @@ import io.element.android.libraries.designsystem.swipe.rememberSwipeableActionsS
 import io.element.android.libraries.designsystem.text.toPx
 import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
 import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
-import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.EventId
@@ -150,10 +144,6 @@ import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToView
 import io.element.android.libraries.matrix.ui.messages.reply.content
 import io.element.android.libraries.matrix.ui.messages.reply.eventId
-import io.element.android.libraries.matrix.ui.messages.sender.SenderName
-import io.element.android.libraries.matrix.ui.messages.sender.SenderNameMode
-import io.element.android.libraries.testtags.TestTags
-import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.strings.CommonPlurals
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
@@ -370,146 +360,6 @@ fun TimelineItemEventRow(
         // Правка форка: аватарки прочтения убраны. Те же два факта, отправлено и прочитано,
         // теперь показывают галочки внутри пузыря (MessageDeliveryTicks), а два индикатора
         // одного и того же — лишний шум. Telegram аватарки под сообщением не рисует.
-    }
-}
-
-// Larpgram (роумлесс, gap D): TG-чип «Комментарии», влитый нижней секцией в карточку поста канала.
-// Ширину получает от PostWithCommentsFooter (= ширина контента поста); текст на weight ужимается на
-// узком посте. Без делителя — по требованию дизайна.
-@Composable
-private fun ChannelPostCommentsFooter(
-    count: Long?,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = CompoundIcons.Chat(),
-            contentDescription = null,
-            tint = ElementTheme.colors.textActionAccent,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        // weight + ellipsis: на узком посте (вертикальное медиа) текст ужимается/обрезается, а не
-        // раздвигает рамку — ширину задаёт контент поста (см. PostWithCommentsFooter).
-        Text(
-            text = if (count != null && count > 0) {
-                pluralStringResource(id = R.plurals.channel_comments_count, count = count.toInt(), count.toInt())
-            } else {
-                stringResource(id = R.string.screen_channel_comments)
-            },
-            style = ElementTheme.typography.fontBodyMdMedium,
-            color = ElementTheme.colors.textActionAccent,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Icon(
-            imageVector = CompoundIcons.ChevronRight(),
-            contentDescription = null,
-            tint = ElementTheme.colors.iconTertiary,
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-// Larpgram: круглый бабл комментариев под безпузырным постом канала (стикер/гифка/кружок), где влить
-// чип в карточку некуда. TG-стиль: компактный круг «иконка (+число)», без слова «Комментарии» — оно
-// раздувало пилюлю под мелким стикером. CircleShape → круг при пустом счётчике, стадион при числе.
-@Composable
-private fun StandaloneChannelCommentsChip(
-    count: Long?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val hasCount = count != null && count > 0
-    val a11yLabel = if (hasCount) {
-        pluralStringResource(id = R.plurals.channel_comments_count, count = count!!.toInt(), count.toInt())
-    } else {
-        stringResource(id = R.string.screen_channel_comments)
-    }
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(ElementTheme.colors.bgSubtleSecondary)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = a11yLabel }
-            .padding(horizontal = if (hasCount) 10.dp else 7.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = CompoundIcons.Chat(),
-            contentDescription = null,
-            tint = ElementTheme.colors.textActionAccent,
-            modifier = Modifier.size(18.dp),
-        )
-        if (hasCount) {
-            Spacer(modifier = Modifier.width(5.dp))
-            Text(
-                text = count!!.toInt().toString(),
-                style = ElementTheme.typography.fontBodyMdMedium,
-                color = ElementTheme.colors.textActionAccent,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-/**
- * Larpgram: колонка «контент поста + футер комментариев», где футер ПРИНИМАЕТ ширину контента, а не
- * навязывает свою (в отличие от [EqualWidthColumn], который берёт максимум). Контент меряется первым;
- * футер меряется с фиксированной шириной = ширине контента, поэтому рамка комментов всегда точно по
- * размеру поста — голосовое, картинка, текст, узкое вертикальное медиа.
- */
-@Composable
-private fun PostWithCommentsFooter(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-    footer: @Composable () -> Unit,
-) {
-    SubcomposeLayout(modifier = modifier) { constraints ->
-        val contentPlaceables = subcompose("content", content).map { it.measure(constraints) }
-        val width = contentPlaceables.maxOfOrNull { it.width } ?: 0
-        val contentHeight = contentPlaceables.sumOf { it.height }
-        val footerConstraints = constraints.copy(minWidth = width, maxWidth = width)
-        val footerPlaceables = subcompose("footer", footer).map { it.measure(footerConstraints) }
-        val footerHeight = footerPlaceables.sumOf { it.height }
-        layout(width, contentHeight + footerHeight) {
-            var y = 0
-            contentPlaceables.forEach {
-                it.placeRelative(0, y)
-                y += it.height
-            }
-            footerPlaceables.forEach {
-                it.placeRelative(0, y)
-                y += it.height
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChannelCommentsDivider() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        HorizontalDivider(modifier = Modifier.weight(1f))
-        Text(
-            text = stringResource(id = R.string.screen_channel_comments),
-            style = ElementTheme.typography.fontBodySmMedium,
-            color = ElementTheme.colors.textSecondary,
-            modifier = Modifier.padding(horizontal = 12.dp),
-        )
-        HorizontalDivider(modifier = Modifier.weight(1f))
     }
 }
 
@@ -901,46 +751,6 @@ private fun TimelineItemEventRowContent(
             )
         }
     }
-}
-
-@Composable
-private fun MessageSenderAvatar(
-    senderAvatar: AvatarData,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Avatar(
-        modifier = modifier
-            .testTag(TestTags.timelineItemSenderAvatar)
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .clearAndSetSemantics {
-                hideFromAccessibility()
-            },
-        avatarData = senderAvatar,
-        avatarType = AvatarType.User,
-    )
-}
-
-/** Правка форка: имя отправителя рисуется первой строкой внутри пузыря, цветом его аватара. */
-@Composable
-private fun BubbleSenderName(
-    senderId: UserId,
-    senderProfile: ProfileDetails,
-    senderAvatar: AvatarData,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val avatarColors = AvatarColorsProvider.provide(senderAvatar.id)
-    SenderName(
-        modifier = modifier
-            .testTag(TestTags.timelineItemSenderName)
-            .clip(RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick),
-        senderId = senderId,
-        senderProfile = senderProfile,
-        senderNameMode = SenderNameMode.Timeline(avatarColors.foreground),
-    )
 }
 
 @Suppress("MultipleEmitters") // False positive

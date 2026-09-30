@@ -55,7 +55,8 @@ class PreferencesRootNode(
     override fun View(modifier: Modifier) {
         val state = presenter.present()
         val coroutineScope = rememberCoroutineScope()
-        PreferencesRootView(
+        // Правка форка: корень настроек Telegram, элементовский PreferencesRootView не трогаем (C-009).
+        TgPreferencesRootView(
             state = state,
             emojiPickerRenderer = emojiPickerRenderer,
             modifier = modifier,

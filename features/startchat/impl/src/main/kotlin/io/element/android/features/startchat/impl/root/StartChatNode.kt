@@ -48,7 +48,7 @@ class StartChatNode(
     override fun View(modifier: Modifier) {
         val state = presenter.present()
         val activity = requireNotNull(LocalActivity.current)
-        StartChatView(
+        TgStartChatView(
             state = state,
             modifier = modifier,
             onCloseClick = this::navigateUp,
