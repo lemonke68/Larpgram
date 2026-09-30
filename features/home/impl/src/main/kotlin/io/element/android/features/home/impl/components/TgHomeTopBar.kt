@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Правка форка: шапка списка чатов Telegram с папками-пилюлями. Заменяет элементовский `HomeTopBar`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -26,7 +27,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -53,6 +53,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -60,17 +62,15 @@ import androidx.compose.ui.unit.dp
 import io.element.android.appconfig.RoomListConfig
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.home.impl.HomeNavigationBarItem
-import io.element.android.features.home.impl.R
+import io.element.android.features.home.impl.TgHomeTab
 import io.element.android.features.home.impl.filters.RoomListFiltersState
-import io.element.android.features.home.impl.filters.RoomListFiltersView
 import io.element.android.features.home.impl.filters.aRoomListFiltersState
-import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
+import io.element.android.features.home.impl.spacefilters.SpaceFolderPillsView
 import io.element.android.features.home.impl.spacefilters.aSelectedSpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.anUnselectedSpaceFiltersState
+import io.element.android.features.home.impl.spacefilters.availableFilters
 import io.element.android.libraries.designsystem.atomic.atoms.RedIndicatorAtom
-import io.element.android.libraries.designsystem.components.TopAppBarScrollBehaviorLayout
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
@@ -78,7 +78,7 @@ import io.element.android.libraries.designsystem.modifiers.backgroundVerticalGra
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
-import io.element.android.libraries.designsystem.text.AdaptativeTitle
+import io.element.android.libraries.designsystem.theme.aliasScreenTitle
 import io.element.android.libraries.designsystem.theme.components.DropdownMenu
 import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
 import io.element.android.libraries.designsystem.theme.components.Icon
@@ -102,8 +102,8 @@ import kotlinx.collections.immutable.toImmutableList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeTopBar(
-    selectedNavigationItem: HomeNavigationBarItem,
+fun TgHomeTopBar(
+    selectedNavigationItem: TgHomeTab,
     currentUserAndNeighbors: ImmutableList<MatrixUser>,
     showAvatarIndicator: Boolean,
     areSearchResultsDisplayed: Boolean,
@@ -132,62 +132,46 @@ fun HomeTopBar(
                 scrolledContainerColor = Color.Transparent,
             ),
             title = {
-                val displayTitle = when (selectedNavigationItem) {
-                    HomeNavigationBarItem.Chats -> {
-                        when (spaceFiltersState) {
-                            is SpaceFiltersState.Selected -> spaceFiltersState.selectedFilter.spaceRoom.displayName
-                            else -> stringResource(selectedNavigationItem.labelRes)
-                        }
-                    }
-                    HomeNavigationBarItem.Spaces -> null
+                // This top bar only renders on the Chats tab; Settings/Profile host their own.
+                val displayTitle = when (spaceFiltersState) {
+                    is SpaceFiltersState.Selected -> spaceFiltersState.selectedFilter.spaceRoom.displayName
+                    // Правка форка: как в TG, над списком чатов — имя приложения.
+                    else -> "Larpgram"
                 }
-                displayTitle?.let {
-                    val style = when (spaceFiltersState) {
-                        // Space name
-                        is SpaceFiltersState.Selected -> ElementTheme.typography.fontHeadingSmMedium
-                        // "Chats"
-                        else -> ElementTheme.typography.fontHeadingLgBold
-                    }
-                    AdaptativeTitle(
-                        title = displayTitle,
-                        style = style,
-                        twoLinesStyle = ElementTheme.typography.fontHeadingSmMedium,
-                    )
-                }
-            },
-            navigationIcon = {
-                NavigationIcon(
-                    currentUserAndNeighbors = currentUserAndNeighbors,
-                    showAvatarIndicator = showAvatarIndicator,
-                    onAccountSwitch = onAccountSwitch,
-                    onClick = onOpenSettings,
+                Text(
+                    modifier = Modifier.semantics {
+                        heading()
+                    },
+                    style = ElementTheme.typography.aliasScreenTitle,
+                    text = displayTitle,
                 )
             },
+            // Avatar removed from the top-left: the Profile tab covers it now (user request).
+            // The title left-aligns to the default top-app-bar inset.
             actions = {
-                if (selectedNavigationItem == HomeNavigationBarItem.Chats) {
+                if (selectedNavigationItem == TgHomeTab.Chats) {
                     RoomListMenuItems(
                         onToggleSearch = onToggleSearch,
                         onMenuActionClick = onMenuActionClick,
                         canReportBug = canReportBug,
-                        spaceFiltersState = spaceFiltersState,
                     )
                 }
             },
-            // We want a 16dp left padding for the navigationIcon :
-            // 4dp from default TopAppBarHorizontalPadding
-            // 8dp from AccountIcon default padding (48dp touch target around 32dp avatar)
-            // 4dp extra padding using left insets
-            windowInsets = WindowInsets(left = 4.dp),
+            windowInsets = WindowInsets(left = 16.dp),
         )
-        if (displayFilters) {
-            TopAppBarScrollBehaviorLayout(scrollBehavior = scrollBehavior) {
-                RoomListFiltersView(
-                    state = filtersState,
-                    modifier = Modifier
-                        .padding(bottom = 16.dp)
-                        .padding(contentPadding)
-                )
-            }
+        // Telegram-style folder row: only the user's folders (Matrix spaces). Like Telegram,
+        // it appears once there is at least one folder; a fresh account has just "All chats"
+        // and no strip. Element's own quick filters (Unread/People/Rooms) are intentionally
+        // dropped here — folders replace them.
+        val showFolderPills = selectedNavigationItem == TgHomeTab.Chats &&
+            spaceFiltersState.availableFilters().isNotEmpty()
+        if (showFolderPills) {
+            // Закреплено: раньше пилюли жили в TopAppBarScrollBehaviorLayout и сворачивались при
+            // скролле списка. По TG папки-вкладки не уезжают — рендерим их статично под заголовком.
+            SpaceFolderPillsView(
+                state = spaceFiltersState,
+                modifier = Modifier.padding(bottom = 16.dp).padding(contentPadding),
+            )
         }
     }
 }
@@ -197,7 +181,6 @@ private fun RowScope.RoomListMenuItems(
     onToggleSearch: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     canReportBug: Boolean,
-    spaceFiltersState: SpaceFiltersState,
 ) {
     IconButton(
         onClick = onToggleSearch,
@@ -207,7 +190,7 @@ private fun RowScope.RoomListMenuItems(
             contentDescription = stringResource(CommonStrings.action_search),
         )
     }
-    SpaceFilterButton(spaceFiltersState = spaceFiltersState)
+    // Правка форка: «Новое сообщение» переехало в плавающую кнопку над вкладками (как в TG).
     if (RoomListConfig.HAS_DROP_DOWN_MENU) {
         var showMenu by remember { mutableStateOf(false) }
         IconButton(
@@ -255,39 +238,6 @@ private fun RowScope.RoomListMenuItems(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SpaceFilterButton(
-    spaceFiltersState: SpaceFiltersState,
-) {
-    if (spaceFiltersState == SpaceFiltersState.Disabled) return
-
-    fun onClick() {
-        when (spaceFiltersState) {
-            is SpaceFiltersState.Unselected -> spaceFiltersState.eventSink(SpaceFiltersEvent.Unselected.ShowFilters)
-            is SpaceFiltersState.Selected -> spaceFiltersState.eventSink(SpaceFiltersEvent.Selected.ClearSelection)
-            else -> Unit
-        }
-    }
-
-    val isSelected = spaceFiltersState is SpaceFiltersState.Selected
-    IconButton(
-        onClick = ::onClick,
-        colors = if (isSelected) {
-            IconButtonDefaults.iconButtonColors(
-                containerColor = ElementTheme.colors.bgActionPrimaryRest,
-                contentColor = ElementTheme.colors.iconOnSolidPrimary,
-            )
-        } else {
-            IconButtonDefaults.iconButtonColors()
-        },
-    ) {
-        Icon(
-            imageVector = CompoundIcons.Filter(),
-            contentDescription = stringResource(R.string.screen_roomlist_your_spaces),
-        )
     }
 }
 
@@ -452,9 +402,9 @@ private fun StatusEmojiBadge(
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable
-internal fun HomeTopBarPreview() = ElementPreview {
-    HomeTopBar(
-        selectedNavigationItem = HomeNavigationBarItem.Chats,
+internal fun TgHomeTopBarPreview() = ElementPreview {
+    TgHomeTopBar(
+        selectedNavigationItem = TgHomeTab.Chats,
         currentUserAndNeighbors = persistentListOf(aMatrixUser(id = "@id:domain", displayName = USER_NAME_ALICE)),
         showAvatarIndicator = false,
         areSearchResultsDisplayed = false,
@@ -473,9 +423,9 @@ internal fun HomeTopBarPreview() = ElementPreview {
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable
-internal fun HomeTopBarSpaceFiltersSelectedPreview() = ElementPreview {
-    HomeTopBar(
-        selectedNavigationItem = HomeNavigationBarItem.Chats,
+internal fun TgHomeTopBarSpaceFiltersSelectedPreview() = ElementPreview {
+    TgHomeTopBar(
+        selectedNavigationItem = TgHomeTab.Chats,
         currentUserAndNeighbors = persistentListOf(aMatrixUser(id = "@id:domain", displayName = USER_NAME_ALICE)),
         showAvatarIndicator = false,
         areSearchResultsDisplayed = false,
@@ -494,30 +444,9 @@ internal fun HomeTopBarSpaceFiltersSelectedPreview() = ElementPreview {
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable
-internal fun HomeTopBarSpacesPreview() = ElementPreview {
-    HomeTopBar(
-        selectedNavigationItem = HomeNavigationBarItem.Spaces,
-        currentUserAndNeighbors = persistentListOf(aMatrixUser(id = "@id:domain", displayName = USER_NAME_ALICE)),
-        showAvatarIndicator = false,
-        areSearchResultsDisplayed = false,
-        scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
-        onOpenSettings = {},
-        onAccountSwitch = {},
-        onToggleSearch = {},
-        canReportBug = true,
-        displayFilters = false,
-        filtersState = aRoomListFiltersState(),
-        spaceFiltersState = anUnselectedSpaceFiltersState(),
-        onMenuActionClick = {},
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@PreviewsDayNight
-@Composable
-internal fun HomeTopBarWithIndicatorPreview() = ElementPreview {
-    HomeTopBar(
-        selectedNavigationItem = HomeNavigationBarItem.Chats,
+internal fun TgHomeTopBarWithIndicatorPreview() = ElementPreview {
+    TgHomeTopBar(
+        selectedNavigationItem = TgHomeTab.Chats,
         currentUserAndNeighbors = persistentListOf(aMatrixUser(id = "@id:domain", displayName = USER_NAME_ALICE)),
         showAvatarIndicator = true,
         areSearchResultsDisplayed = false,
@@ -536,9 +465,9 @@ internal fun HomeTopBarWithIndicatorPreview() = ElementPreview {
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable
-internal fun HomeTopBarWithStatusPreview() = ElementPreview {
-    HomeTopBar(
-        selectedNavigationItem = HomeNavigationBarItem.Chats,
+internal fun TgHomeTopBarWithStatusPreview() = ElementPreview {
+    TgHomeTopBar(
+        selectedNavigationItem = TgHomeTab.Chats,
         currentUserAndNeighbors = persistentListOf(
             aMatrixUser(
                 id = "@id:domain",
@@ -563,9 +492,9 @@ internal fun HomeTopBarWithStatusPreview() = ElementPreview {
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable
-internal fun HomeTopBarMultiAccountPreview() = ElementPreview {
-    HomeTopBar(
-        selectedNavigationItem = HomeNavigationBarItem.Chats,
+internal fun TgHomeTopBarMultiAccountPreview() = ElementPreview {
+    TgHomeTopBar(
+        selectedNavigationItem = TgHomeTab.Chats,
         currentUserAndNeighbors = aMatrixUserList().take(3).toImmutableList(),
         showAvatarIndicator = false,
         areSearchResultsDisplayed = false,

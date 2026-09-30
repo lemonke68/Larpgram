@@ -35,6 +35,7 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 buildContext = buildContext,
                 plugins = plugins,
                 matrixClient = FakeMatrixClient(),
+                homeTabNodes = HomeTabNodes(
                 preferencesEntryPoint = object : PreferencesEntryPoint {
                     override fun createNode(
                         parentNode: Node,
@@ -57,6 +58,7 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                         callback: UserProfileEntryPoint.Callback,
                     ): Node = lambdaError()
                 },
+                ),
                 presenter = createHomePresenter(),
                 inviteFriendsUseCase = { lambdaError() },
                 analyticsService = FakeAnalyticsService(),

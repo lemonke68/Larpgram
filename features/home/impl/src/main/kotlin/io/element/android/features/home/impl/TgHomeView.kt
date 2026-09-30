@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Правка форка: главный экран Telegram: вкладки «Чаты», «Настройки», «Профиль» с кнопкой «Новое сообщение», папки-пилюли со свайпом. Заменяет элементовский `HomeView`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -13,25 +14,32 @@ package io.element.android.features.home.impl
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -39,17 +47,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.home.impl.components.HomeTopBar
 import io.element.android.features.home.impl.components.RoomListContentView
 import io.element.android.features.home.impl.components.RoomListMenuAction
+import io.element.android.features.home.impl.components.TgHomeTabBar
+import io.element.android.features.home.impl.components.TgHomeTopBar
+import io.element.android.features.home.impl.components.TgNewMessageFab
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListContextMenu
 import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
@@ -61,27 +69,23 @@ import io.element.android.features.home.impl.search.RoomListSearchView
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersView
-import io.element.android.features.home.impl.spaces.HomeSpacesView
+import io.element.android.features.home.impl.spacefilters.SpaceFolderSwipe
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
+import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.FloatingActionButton
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbar
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarItem
-import io.element.android.libraries.designsystem.theme.components.HorizontalFloatingToolbarSeparator
-import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Scaffold
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.lazyColumnContentPadding
 import io.element.android.libraries.designsystem.utils.scaffoldScrollableContentInsets
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeView(
+fun TgHomeView(
     homeState: HomeState,
     onRoomClick: (RoomId, EventId?) -> Unit,
     onSettingsClick: () -> Unit,
@@ -96,6 +100,13 @@ fun HomeView(
     acceptDeclineInviteView: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     leaveRoomView: @Composable () -> Unit,
+    // false когда таб настроек ушёл во вложенный экран: тогда прячем нижний бар.
+    settingsTabAtRoot: Boolean = true,
+    // Content of the Settings/Profile tabs, hosted as child nodes by HomeFlowNode. Null in
+    // previews, where a placeholder is shown instead.
+    settingsContent: (@Composable () -> Unit)? = null,
+    profileContent: (@Composable () -> Unit)? = null,
+    initialTab: TgHomeTab = TgHomeTab.Chats,
 ) {
     val state: RoomListState = homeState.roomListState
     val coroutineScope = rememberCoroutineScope()
@@ -130,6 +141,10 @@ fun HomeView(
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
             onMenuActionClick = onMenuActionClick,
+            settingsTabAtRoot = settingsTabAtRoot,
+            settingsContent = settingsContent,
+            profileContent = profileContent,
+            initialTab = initialTab,
         )
 
         if (state.globalSearchState.isEnabled) {
@@ -169,19 +184,34 @@ private fun HomeScaffold(
     onCreateSpaceClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     modifier: Modifier = Modifier,
+    settingsTabAtRoot: Boolean = true,
+    settingsContent: (@Composable () -> Unit)? = null,
+    profileContent: (@Composable () -> Unit)? = null,
+    initialTab: TgHomeTab = TgHomeTab.Chats,
 ) {
     fun onRoomClick(room: RoomListRoomSummary) {
         onRoomClick(room.roomId)
     }
 
+    // The selected tab lives here: Element's HomePresenter only knows its own Chats/Spaces items.
+    var currentItem by rememberSaveable { mutableStateOf(initialTab) }
+    val isChatsTab = currentItem == TgHomeTab.Chats
+    // Бар видим на списке чатов, корне настроек и профиле. На вложенных экранах настроек прячем,
+    // иначе плавающая плашка перекрывает контент.
+    val isBottomBarVisible = currentItem != TgHomeTab.Settings || settingsTabAtRoot
+
     val appBarState = rememberTopAppBarState()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(appBarState)
+    // Larpgram: папки-пилюли закреплены (не сворачиваются), поэтому бар пиннится, а не enterAlways.
+    // При enterAlways без TopAppBarScrollBehaviorLayout heightOffsetLimit оставался -Float.MAX_VALUE,
+    // и nestedScrollConnection съедал ВЕСЬ вертикальный скролл в несуществующее сворачивание — список
+    // не листался. pinnedScrollBehavior скролл не потребляет.
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(appBarState)
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val roomListState: RoomListState = state.roomListState
 
-    BackHandler(enabled = state.isBackHandlerEnabled) {
-        if (state.currentHomeNavigationBarItem != HomeNavigationBarItem.Chats) {
-            state.eventSink(HomeEvent.SelectHomeNavigationBarItem(HomeNavigationBarItem.Chats))
+    BackHandler(enabled = !isChatsTab || state.roomListState.spaceFiltersState is SpaceFiltersState.Selected) {
+        if (!isChatsTab) {
+            currentItem = TgHomeTab.Chats
         } else {
             val spaceFiltersState = state.roomListState.spaceFiltersState
             if (spaceFiltersState is SpaceFiltersState.Selected) {
@@ -192,14 +222,15 @@ private fun HomeScaffold(
 
     val hazeState = rememberHazeState()
     val roomsLazyListState = rememberLazyListState()
-    val spacesLazyListState = rememberLazyListState()
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            HomeTopBar(
-                selectedNavigationItem = state.currentHomeNavigationBarItem,
-                currentUserAndNeighbors = state.currentUserAndNeighbors,
+            // Chats owns this top bar; Settings/Profile tabs host their own screens with headers.
+            if (isChatsTab) {
+                TgHomeTopBar(
+                    selectedNavigationItem = currentItem,
+                    currentUserAndNeighbors = state.currentUserAndNeighbors,
                 showAvatarIndicator = state.showAvatarIndicator,
                 areSearchResultsDisplayed = if (roomListState.globalSearchState.isEnabled) {
                     roomListState.globalSearchState.isSearchActive
@@ -219,53 +250,62 @@ private fun HomeScaffold(
                     state.eventSink(HomeEvent.SwitchToAccount(it))
                 },
                 scrollBehavior = scrollBehavior,
-                displayFilters = state.displayRoomListFilters,
+                displayFilters = isChatsTab && roomListState.displayFilters,
                 filtersState = roomListState.filtersState,
                 spaceFiltersState = roomListState.spaceFiltersState,
                 canReportBug = state.canReportBug,
-                modifier = Modifier.hazeEffect(
-                    state = hazeState,
-                    style = HazeMaterials.thick(),
+                    modifier = Modifier.hazeEffect(
+                        state = hazeState,
+                        style = HazeMaterials.thick(),
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
             val coroutineScope = rememberCoroutineScope()
-            HomeBottomBar(
-                // The Scaffold uses top-only insets so the scrollable content can go edge-to-edge behind the
-                // navigation bar, so the floating toolbar has to apply the bottom inset itself to avoid overlapping it.
-                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars),
-                currentHomeNavigationBarItem = state.currentHomeNavigationBarItem,
-                onItemClick = { item ->
-                    // scroll to top if selecting the same item
-                    if (item == state.currentHomeNavigationBarItem) {
-                        val lazyListStateTarget = when (item) {
-                            HomeNavigationBarItem.Chats -> roomsLazyListState
-                            HomeNavigationBarItem.Spaces -> spacesLazyListState
+            if (isBottomBarVisible) {
+                // Правка форка: вкладки TG 12 с подписями и кнопка «Новое сообщение» над ними.
+                CompositionLocalProvider(LocalChatGlassState provides hazeState) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // Scaffold даёт контенту уйти под полосу навигации, отступ снизу ставим сами.
+                            .windowInsetsPadding(WindowInsets.navigationBars),
+                    ) {
+                        if (isChatsTab) {
+                            TgNewMessageFab(
+                                onClick = onStartChatClick,
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .padding(end = 16.dp),
+                            )
                         }
-                        coroutineScope.launch {
-                            if (lazyListStateTarget.firstVisibleItemIndex > 10) {
-                                lazyListStateTarget.scrollToItem(10)
-                            }
-                            // Also reset the scrollBehavior height offset as it's not triggered by programmatic scrolls
-                            scrollBehavior.state.heightOffset = 0f
-                            lazyListStateTarget.animateScrollToItem(0)
-                        }
-                    } else {
-                        state.eventSink(HomeEvent.SelectHomeNavigationBarItem(item))
+                        TgHomeTabBar(
+                            selectedItem = currentItem,
+                            currentUser = state.currentUserAndNeighbors.let { users ->
+                                if (users.size == 3) users[1] else users.firstOrNull()
+                            },
+                            onItemClick = { item ->
+                                // scroll to top if selecting the Chats tab while already on it
+                                if (item == currentItem) {
+                                    if (item == TgHomeTab.Chats) {
+                                        coroutineScope.launch {
+                                            if (roomsLazyListState.firstVisibleItemIndex > 10) {
+                                                roomsLazyListState.scrollToItem(10)
+                                            }
+                                            // Also reset the scrollBehavior height offset as it's not triggered by programmatic scrolls
+                                            scrollBehavior.state.heightOffset = 0f
+                                            roomsLazyListState.animateScrollToItem(0)
+                                        }
+                                    }
+                                } else {
+                                    currentItem = item
+                                }
+                            },
+                        )
                     }
-                },
-                floatingActionButton = {
-                    when (state.currentHomeNavigationBarItem) {
-                        HomeNavigationBarItem.Chats -> {
-                            HomeFloatingActionButton(onStartChatClick, CommonStrings.action_create_room)
-                        }
-                        HomeNavigationBarItem.Spaces -> {
-                            HomeFloatingActionButton(onCreateSpaceClick, CommonStrings.action_create_space)
-                        }
-                    }
-                },
-            )
+                }
+            }
         },
         floatingActionButtonPosition = FabPosition.Center,
         contentWindowInsets = scaffoldScrollableContentInsets,
@@ -280,43 +320,50 @@ private fun HomeScaffold(
             val contentPadding = PaddingValues(
                 bottom = 96.dp,
             )
-            when (state.currentHomeNavigationBarItem) {
-                HomeNavigationBarItem.Chats -> {
-                    RoomListContentView(
-                        contentState = roomListState.contentState,
-                        filtersState = roomListState.filtersState,
-                        spaceFiltersState = roomListState.spaceFiltersState,
-                        lazyListState = roomsLazyListState,
-                        hideInvitesAvatars = roomListState.hideInvitesAvatars,
-                        eventSink = roomListState.eventSink,
-                        onSetUpRecoveryClick = onSetUpRecoveryClick,
-                        onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
-                        onRoomClick = ::onRoomClick,
-                        onCreateRoomClick = onStartChatClick,
-                        contentPadding = lazyColumnContentPadding + contentPadding,
-                        modifier = Modifier
-                            .padding(outerPadding)
-                            .consumeWindowInsets(outerPadding)
-                            .hazeSource(state = hazeState)
-                    )
+            when (currentItem) {
+                TgHomeTab.Chats -> {
+                    SpaceFolderSwipe(
+                        state = roomListState.spaceFiltersState,
+                        modifier = Modifier.padding(outerPadding),
+                    ) {
+                        RoomListContentView(
+                            contentState = roomListState.contentState,
+                            filtersState = roomListState.filtersState,
+                            spaceFiltersState = roomListState.spaceFiltersState,
+                            lazyListState = roomsLazyListState,
+                            hideInvitesAvatars = roomListState.hideInvitesAvatars,
+                            eventSink = roomListState.eventSink,
+                            onSetUpRecoveryClick = onSetUpRecoveryClick,
+                            onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
+                            onRoomClick = ::onRoomClick,
+                            onCreateRoomClick = onStartChatClick,
+                            contentPadding = lazyColumnContentPadding + contentPadding,
+                            modifier = Modifier
+                                .consumeWindowInsets(outerPadding)
+                                .hazeSource(state = hazeState)
+                        )
+                    }
                     SpaceFiltersView(roomListState.spaceFiltersState)
                 }
-                HomeNavigationBarItem.Spaces -> {
-                    HomeSpacesView(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(outerPadding)
-                            .consumeWindowInsets(outerPadding)
-                            .hazeSource(state = hazeState),
-                        contentPadding = lazyColumnContentPadding + contentPadding,
-                        state = state.homeSpacesState,
-                        lazyListState = spacesLazyListState,
-                        onSpaceClick = { spaceId ->
-                            onRoomClick(spaceId)
-                        },
-                        onCreateSpaceClick = onCreateSpaceClick,
-                        // TODO use actual callbacks for this
-                        onExploreClick = {},
+                // Settings and Profile tabs render the real feature screens, hosted as child
+                // nodes by HomeFlowNode and passed in as content slots (persistent bottom bar,
+                // Telegram-style in-place switch). In previews the slots are null → placeholder.
+                TgHomeTab.Settings -> {
+                    HomeTabContent(
+                        content = settingsContent,
+                        placeholderLabel = stringResource(TgHomeTab.Settings.labelRes),
+                        outerPadding = outerPadding,
+                        // Правка форка: вкладка — тоже источник размытия для стеклянной панели вкладок.
+                        modifier = Modifier.hazeSource(state = hazeState),
+                    )
+                }
+                TgHomeTab.Profile -> {
+                    HomeTabContent(
+                        content = profileContent,
+                        placeholderLabel = stringResource(TgHomeTab.Profile.labelRes),
+                        outerPadding = outerPadding,
+                        // Правка форка: вкладка — тоже источник размытия для стеклянной панели вкладок.
+                        modifier = Modifier.hazeSource(state = hazeState),
                     )
                 }
             }
@@ -325,54 +372,42 @@ private fun HomeScaffold(
     )
 }
 
+/**
+ * Renders a Settings/Profile tab: the real hosted feature screen when a content slot is
+ * provided (in the running app), or a labelled placeholder otherwise (composable previews).
+ */
 @Composable
-private fun HomeFloatingActionButton(
-    onClick: () -> Unit,
-    contentDescription: Int,
+private fun HomeTabContent(
+    content: (@Composable () -> Unit)?,
+    placeholderLabel: String,
+    outerPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    FloatingActionButton(onClick = onClick, modifier = modifier) {
-        Icon(
-            imageVector = CompoundIcons.Plus(),
-            contentDescription = stringResource(id = contentDescription),
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun HomeBottomBar(
-    currentHomeNavigationBarItem: HomeNavigationBarItem,
-    onItemClick: (HomeNavigationBarItem) -> Unit,
-    modifier: Modifier = Modifier,
-    floatingActionButton: (@Composable () -> Unit)?,
-) {
-    HorizontalFloatingToolbar(
-        floatingActionButton = floatingActionButton,
-        modifier = modifier
-            .zIndex(1f),
-    ) {
-        HomeNavigationBarItem.entries.forEachIndexed { index, item ->
-            if (index > 0) {
-                HorizontalFloatingToolbarSeparator()
-            }
-            val isSelected = currentHomeNavigationBarItem == item
-            HorizontalFloatingToolbarItem(
-                icon = item.icon(isSelected),
-                tooltipLabel = stringResource(item.labelRes),
-                isSelected = isSelected,
-                onClick = { onItemClick(item) },
+    if (content != null) {
+        // The hosted node brings its own header and manages its own insets.
+        Box(modifier = modifier.fillMaxSize()) {
+            content()
+        }
+    } else {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(outerPadding),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = placeholderLabel,
+                style = ElementTheme.typography.fontHeadingMdBold,
+                color = ElementTheme.colors.textSecondary,
             )
         }
     }
 }
 
-internal fun RoomListRoomSummary.contentType() = displayType.ordinal
-
 @PreviewsDayNight
 @Composable
-internal fun HomeViewPreview(@PreviewParameter(HomeStatePreviewParam::class) state: HomeState) = ElementPreview {
-    HomeView(
+internal fun TgHomeViewPreview(@PreviewParameter(HomeStatePreviewParam::class) state: HomeState) = ElementPreview {
+    TgHomeView(
         homeState = state,
         onRoomClick = { _, _ -> },
         onSettingsClick = {},
@@ -391,8 +426,8 @@ internal fun HomeViewPreview(@PreviewParameter(HomeStatePreviewParam::class) sta
 
 @Preview
 @Composable
-internal fun HomeViewA11yPreview() = ElementPreview {
-    HomeView(
+internal fun TgHomeViewA11yPreview() = ElementPreview {
+    TgHomeView(
         homeState = aHomeState(),
         onRoomClick = { _, _ -> },
         onSettingsClick = {},

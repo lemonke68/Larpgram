@@ -96,6 +96,7 @@ class KonsistPreviewTest {
         "HeaderFooterPageScrollablePreview",
         "HomeTopBarMultiAccountPreview",
         "HomeTopBarSpaceFiltersSelectedPreview",
+        "HomeTopBarSpacesPreview",
         "HomeTopBarWithIndicatorPreview",
         "HomeTopBarWithStatusPreview",
         "IconsOtherPreview",

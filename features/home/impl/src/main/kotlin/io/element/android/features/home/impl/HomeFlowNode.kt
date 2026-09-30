@@ -43,11 +43,9 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteV
 import io.element.android.features.invite.api.declineandblock.DeclineInviteAndBlockEntryPoint
 import io.element.android.features.leaveroom.api.LeaveRoomRenderer
 import io.element.android.features.logout.api.direct.DirectLogoutView
-import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.reportroom.api.ReportRoomEntryPoint
 import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRolesEntryPoint
 import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRolesListType
-import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
@@ -62,7 +60,6 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -93,8 +90,8 @@ class HomeFlowNode(
     private val reportRoomEntryPoint: ReportRoomEntryPoint,
     private val declineInviteAndBlockUserEntryPoint: DeclineInviteAndBlockEntryPoint,
     private val changeRoomMemberRolesEntryPoint: ChangeRoomMemberRolesEntryPoint,
-    private val preferencesEntryPoint: PreferencesEntryPoint,
-    private val userProfileEntryPoint: UserProfileEntryPoint,
+    // Правка форка: вкладки Telegram.
+    private val homeTabNodes: HomeTabNodes,
     private val leaveRoomRenderer: LeaveRoomRenderer,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : BaseFlowNode<HomeFlowNode.NavTarget>(
@@ -247,7 +244,9 @@ class HomeFlowNode(
                 loadingJoinedRoomJob.value = AsyncData.Loading(job)
             }
 
-            HomeView(
+            // Правка форка: главный экран Telegram (TgHomeView), элементовский HomeView оставлен как в апстриме (C-009).
+
+            TgHomeView(
                 homeState = state,
                 onRoomClick = ::navigateToRoom,
                 onSettingsClick = callback::navigateToSettings,
@@ -324,64 +323,12 @@ class HomeFlowNode(
                     listType = ChangeRoomMemberRolesListType.SelectNewOwnersWhenLeaving,
                 )
             }
-            NavTarget.TabSettings -> {
-                val settingsCallback = object : PreferencesEntryPoint.Callback {
-                    override fun navigateToAddAccount() = callback.navigateToAddAccount()
-                    override fun navigateToLinkNewDevice() = callback.navigateToLinkNewDevice()
-                    override fun navigateToBugReport() = callback.navigateToBugReport()
-                    override fun navigateToSecureBackup() = callback.navigateToSecureBackup()
-                    override fun navigateToRoomNotificationSettings(roomId: RoomId) =
-                        callback.navigateToRoomNotificationSettings(roomId)
-                    override fun navigateToEvent(roomId: RoomId, eventId: EventId) =
-                        callback.navigateToEvent(roomId, eventId)
-                    override fun navigateToRoom(roomId: RoomId) =
-                        callback.navigateToRoom(roomId = roomId, eventId = null, joinedRoom = null)
-                    override fun onNestedNavigationStateChanged(isAtRoot: Boolean) {
-                        settingsTabAtRoot.value = isAtRoot
-                    }
-                }
-                preferencesEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    params = PreferencesEntryPoint.Params(PreferencesEntryPoint.InitialTarget.Root, isTab = true),
-                    callback = settingsCallback,
-                )
+            // Правка форка: вкладки «Настройки», «Профиль» и редактирование профиля (HomeTabNodes).
+            NavTarget.TabSettings -> homeTabNodes.settings(this, buildContext, callback) { settingsTabAtRoot.value = it }
+            NavTarget.TabProfile -> homeTabNodes.profile(this, buildContext, matrixClient.sessionId, callback) {
+                backstack.push(NavTarget.EditProfile)
             }
-            NavTarget.TabProfile -> {
-                val profileCallback = object : UserProfileEntryPoint.Callback {
-                    override fun navigateToRoom(roomId: RoomId) = callback.navigateToRoom(roomId = roomId, eventId = null, joinedRoom = null)
-                    override fun navigateToSettings() = callback.navigateToSettings()
-                    override fun navigateToEditProfile() {
-                        backstack.push(NavTarget.EditProfile)
-                    }
-                }
-                userProfileEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    params = UserProfileEntryPoint.Params(userId = UserId(matrixClient.sessionId.value)),
-                    callback = profileCallback,
-                )
-            }
-            NavTarget.EditProfile -> {
-                val editProfileCallback = object : PreferencesEntryPoint.Callback {
-                    override fun navigateToAddAccount() = callback.navigateToAddAccount()
-                    override fun navigateToLinkNewDevice() = callback.navigateToLinkNewDevice()
-                    override fun navigateToBugReport() = callback.navigateToBugReport()
-                    override fun navigateToSecureBackup() = callback.navigateToSecureBackup()
-                    override fun navigateToRoomNotificationSettings(roomId: RoomId) =
-                        callback.navigateToRoomNotificationSettings(roomId)
-                    override fun navigateToEvent(roomId: RoomId, eventId: EventId) =
-                        callback.navigateToEvent(roomId, eventId)
-                    override fun navigateToRoom(roomId: RoomId) =
-                        callback.navigateToRoom(roomId = roomId, eventId = null, joinedRoom = null)
-                }
-                preferencesEntryPoint.createNode(
-                    parentNode = this,
-                    buildContext = buildContext,
-                    params = PreferencesEntryPoint.Params(PreferencesEntryPoint.InitialTarget.EditProfile),
-                    callback = editProfileCallback,
-                )
-            }
+            NavTarget.EditProfile -> homeTabNodes.editProfile(this, buildContext, callback)
             NavTarget.Root -> rootNode(buildContext)
         }
     }

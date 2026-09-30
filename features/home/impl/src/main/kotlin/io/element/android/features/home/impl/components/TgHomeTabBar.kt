@@ -43,8 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.home.impl.HomeNavigationBarItem
 import io.element.android.features.home.impl.R
+import io.element.android.features.home.impl.TgHomeTab
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
@@ -61,9 +61,9 @@ private val TAB_BAR_MAX_WIDTH = 480.dp
 
 @Composable
 internal fun TgHomeTabBar(
-    selectedItem: HomeNavigationBarItem,
+    selectedItem: TgHomeTab,
     currentUser: MatrixUser?,
-    onItemClick: (HomeNavigationBarItem) -> Unit,
+    onItemClick: (TgHomeTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -79,7 +79,7 @@ internal fun TgHomeTabBar(
             .tgGlass(RoundedCornerShape(50))
             .padding(4.dp),
     ) {
-        HomeNavigationBarItem.entries.forEach { item ->
+        TgHomeTab.entries.forEach { item ->
             TgTab(
                 item = item,
                 isSelected = item == selectedItem,
@@ -92,7 +92,7 @@ internal fun TgHomeTabBar(
 
 @Composable
 private fun RowScope.TgTab(
-    item: HomeNavigationBarItem,
+    item: TgHomeTab,
     isSelected: Boolean,
     currentUser: MatrixUser?,
     onClick: () -> Unit,
@@ -112,7 +112,7 @@ private fun RowScope.TgTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        if (item == HomeNavigationBarItem.Profile && currentUser != null) {
+        if (item == TgHomeTab.Profile && currentUser != null) {
             Avatar(
                 avatarData = currentUser.getAvatarData(size = AvatarSize.TgTabAvatar),
                 avatarType = AvatarType.User,
