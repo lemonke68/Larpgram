@@ -25,6 +25,7 @@ import io.element.android.libraries.core.meta.BuildType
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.ChatAppearanceStore
 
 val LocalBuildMeta = staticCompositionLocalOf {
     BuildMeta(
@@ -59,6 +60,8 @@ fun ElementThemeApp(
     compoundLight: SemanticColors,
     compoundDark: SemanticColors,
     buildMeta: BuildMeta,
+    // Правка форка: настройки вида чата (ProvideChatAppearance).
+    chatAppearanceStore: ChatAppearanceStore,
     content: @Composable () -> Unit,
 ) {
     val isBlackThemeAllowed by remember {
@@ -79,11 +82,14 @@ fun ElementThemeApp(
     CompositionLocalProvider(
         LocalBuildMeta provides buildMeta,
     ) {
-        ElementTheme(
-            theme = theme,
-            content = content,
-            compoundLight = compoundLight,
-            compoundDark = compoundDark,
-        )
+        // Правка форка: настройки вида чата (ProvideChatAppearance).
+        ProvideChatAppearance(chatAppearanceStore, compoundLight, compoundDark) { compoundLight, compoundDark ->
+            ElementTheme(
+                theme = theme,
+                content = content,
+                compoundLight = compoundLight,
+                compoundDark = compoundDark,
+            )
+        }
     }
 }

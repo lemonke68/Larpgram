@@ -25,6 +25,7 @@ import io.element.android.features.preferences.impl.R
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsState
 import io.element.android.features.preferences.impl.advanced.AppearanceThemeItem
 import io.element.android.features.preferences.impl.advanced.ChatAppearanceSection
+import io.element.android.features.preferences.impl.advanced.ChatAppearanceState
 import io.element.android.features.preferences.impl.advanced.MediaUploadSection
 import io.element.android.features.preferences.impl.advanced.ModerationAndSafetySection
 import io.element.android.features.preferences.impl.advanced.SharePresenceItem
@@ -45,6 +46,7 @@ fun SettingsCategoryView(
     category: SettingsCategory,
     state: PreferencesRootState,
     advancedSettingsState: AdvancedSettingsState,
+    chatAppearanceState: ChatAppearanceState,
     onBackClick: () -> Unit,
     onOpenUserProfile: (io.element.android.libraries.matrix.api.user.MatrixUser) -> Unit,
     onAddAccountClick: () -> Unit,
@@ -89,6 +91,7 @@ fun SettingsCategoryView(
             )
             SettingsCategory.Chats -> ChatsCategory(
                 advancedSettingsState = advancedSettingsState,
+                chatAppearanceState = chatAppearanceState,
                 onOpenChatThemeSettings = onOpenChatThemeSettings,
             )
             SettingsCategory.Data -> DataCategory(advancedSettingsState = advancedSettingsState)
@@ -213,12 +216,13 @@ private fun ColumnScope.PrivacyCategory(
 @Composable
 private fun ColumnScope.ChatsCategory(
     advancedSettingsState: AdvancedSettingsState,
+    chatAppearanceState: ChatAppearanceState,
     onOpenChatThemeSettings: () -> Unit,
 ) {
     // Тема оформления (день/ночь/чёрная) — реальный бэкенд Element.
     AppearanceThemeItem(advancedSettingsState)
     // Larpgram: размер текста, углы, обои + переход на экран «Настройки темы» (пресеты/акцент/пузырь).
-    ChatAppearanceSection(advancedSettingsState, onOpenChatThemeSettings = onOpenChatThemeSettings)
+    ChatAppearanceSection(chatAppearanceState, onOpenChatThemeSettings = onOpenChatThemeSettings)
     // Ещё открыто (TG-фичи без бэкенда): цвет имени, стиль списка чатов, иконка приложения.
 }
 

@@ -20,14 +20,14 @@ import io.element.android.libraries.di.SessionScope
 /**
  * Larpgram: экран «Настройки темы» — пресеты + тонкая настройка обоев/акцента/пузыря.
  * Отдельный от «Настроек чатов», чтобы главный экран не перегружать (как в Telegram).
- * Стейт общий с остальными настройками через [AdvancedSettingsPresenter].
+ * Стейт — [ChatAppearancePresenter].
  */
 @ContributesNode(SessionScope::class)
 @AssistedInject
 class ChatThemeSettingsNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
-    private val presenter: AdvancedSettingsPresenter,
+    private val presenter: ChatAppearancePresenter,
 ) : Node(buildContext, plugins = plugins) {
     @Composable
     override fun View(modifier: Modifier) {

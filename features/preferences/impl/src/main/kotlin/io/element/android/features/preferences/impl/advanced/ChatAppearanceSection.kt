@@ -119,7 +119,7 @@ private enum class ThemeEditTarget(val titleRes: Int) {
 
 @Composable
 fun ColumnScope.ChatAppearanceSection(
-    state: AdvancedSettingsState,
+    state: ChatAppearanceState,
     onOpenChatThemeSettings: () -> Unit,
 ) {
     val isCustomSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_ID
@@ -133,14 +133,14 @@ fun ColumnScope.ChatAppearanceSection(
     val bubbleColor = state.chatBubbleColorArgb?.let { Color(it) }
     var showColorPicker by remember { mutableStateOf(false) }
     var showGradientDialog by remember { mutableStateOf(false) }
-    val pickImage = rememberWallpaperImagePicker { state.eventSink(AdvancedSettingsEvent.SetChatWallpaperImage(it)) }
+    val pickImage = rememberWallpaperImagePicker { state.eventSink(ChatAppearanceEvent.SetChatWallpaperImage(it)) }
 
     TgSettingsGroup {
         SliderRow(
             title = stringResource(R.string.screen_chat_appearance_text_size_title),
             value = state.messageTextSizeSp,
             valueRange = ChatAppearanceDefaults.TEXT_SIZE_MIN_SP..ChatAppearanceDefaults.TEXT_SIZE_MAX_SP,
-            onValueChange = { state.eventSink(AdvancedSettingsEvent.SetMessageTextSize(it)) },
+            onValueChange = { state.eventSink(ChatAppearanceEvent.SetMessageTextSize(it)) },
         )
     }
 
@@ -157,7 +157,7 @@ fun ColumnScope.ChatAppearanceSection(
             title = stringResource(R.string.screen_chat_appearance_corner_radius_title),
             value = state.bubbleCornerRadiusDp,
             valueRange = ChatAppearanceDefaults.BUBBLE_RADIUS_MIN_DP..ChatAppearanceDefaults.BUBBLE_RADIUS_MAX_DP,
-            onValueChange = { state.eventSink(AdvancedSettingsEvent.SetBubbleCornerRadius(it)) },
+            onValueChange = { state.eventSink(ChatAppearanceEvent.SetBubbleCornerRadius(it)) },
         )
     }
 
@@ -171,7 +171,7 @@ fun ColumnScope.ChatAppearanceSection(
             imageUri = imageUri,
             gradient = gradient,
             customColor = customColor,
-            onSelect = { state.eventSink(AdvancedSettingsEvent.SetChatWallpaper(it.id)) },
+            onSelect = { state.eventSink(ChatAppearanceEvent.SetChatWallpaper(it.id)) },
             onEyedropperClick = { showColorPicker = true },
             onPickImage = pickImage,
             onGradientClick = { showGradientDialog = true },
@@ -181,7 +181,7 @@ fun ColumnScope.ChatAppearanceSection(
     TgSettingsGroup {
         ChatListStyleRow(
             threeLine = state.chatListThreeLine,
-            onSelect = { state.eventSink(AdvancedSettingsEvent.SetChatListThreeLine(it)) },
+            onSelect = { state.eventSink(ChatAppearanceEvent.SetChatListThreeLine(it)) },
         )
     }
 
@@ -198,7 +198,7 @@ fun ColumnScope.ChatAppearanceSection(
         ChatWallpaperColorPickerDialog(
             initialColor = customColor ?: previewColor,
             onColorSelected = {
-                state.eventSink(AdvancedSettingsEvent.SetChatWallpaperCustomColor(it.toArgb()))
+                state.eventSink(ChatAppearanceEvent.SetChatWallpaperCustomColor(it.toArgb()))
                 showColorPicker = false
             },
             onDismiss = { showColorPicker = false },
@@ -209,7 +209,7 @@ fun ColumnScope.ChatAppearanceSection(
         ChatWallpaperGradientDialog(
             initial = gradient,
             onApply = {
-                state.eventSink(AdvancedSettingsEvent.SetChatWallpaperGradient(it))
+                state.eventSink(ChatAppearanceEvent.SetChatWallpaperGradient(it))
                 showGradientDialog = false
             },
             onDismiss = { showGradientDialog = false },
@@ -220,7 +220,7 @@ fun ColumnScope.ChatAppearanceSection(
 // ---- Экран «Настройки темы» -----------------------------------------------------------------
 
 @Composable
-fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
+fun ColumnScope.ChatThemeSection(state: ChatAppearanceState) {
     val isCustomSelected = state.chatWallpaperId == ChatWallpaperOption.CUSTOM_ID
     val customColor = state.chatWallpaperCustomColorArgb?.let { Color(it) }
     val selectedWallpaper = ChatWallpaperOption.fromId(state.chatWallpaperId)
@@ -241,7 +241,7 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
     var showBubbleColorPicker by remember { mutableStateOf(false) }
     var showAccentColorPicker by remember { mutableStateOf(false) }
     var showGradientDialog by remember { mutableStateOf(false) }
-    val pickImage = rememberWallpaperImagePicker { state.eventSink(AdvancedSettingsEvent.SetChatWallpaperImage(it)) }
+    val pickImage = rememberWallpaperImagePicker { state.eventSink(ChatAppearanceEvent.SetChatWallpaperImage(it)) }
 
     ChatAppearancePreview(
         messageTextSizeSp = state.messageTextSizeSp,
@@ -256,7 +256,7 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
         SectionLabel(stringResource(R.string.screen_chat_theme_select_title))
         ThemePresetRow(
             selected = selectedTheme,
-            onSelect = { state.eventSink(AdvancedSettingsEvent.ApplyChatTheme(it.id)) },
+            onSelect = { state.eventSink(ChatAppearanceEvent.ApplyChatTheme(it.id)) },
         )
     }
 
@@ -272,21 +272,21 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
                 imageUri = imageUri,
                 gradient = gradient,
                 customColor = customColor,
-                onSelect = { state.eventSink(AdvancedSettingsEvent.SetChatWallpaper(it.id)) },
+                onSelect = { state.eventSink(ChatAppearanceEvent.SetChatWallpaper(it.id)) },
                 onEyedropperClick = { showColorPicker = true },
                 onPickImage = pickImage,
                 onGradientClick = { showGradientDialog = true },
             )
             ThemeEditTarget.Accent -> AccentColorRow(
                 accentColor = accentColor,
-                onSelectDefault = { state.eventSink(AdvancedSettingsEvent.SetChatAccentColor(null)) },
-                onSelectColor = { state.eventSink(AdvancedSettingsEvent.SetChatAccentColor(it.toArgb())) },
+                onSelectDefault = { state.eventSink(ChatAppearanceEvent.SetChatAccentColor(null)) },
+                onSelectColor = { state.eventSink(ChatAppearanceEvent.SetChatAccentColor(it.toArgb())) },
                 onEyedropperClick = { showAccentColorPicker = true },
             )
             ThemeEditTarget.Bubble -> BubbleColorRow(
                 bubbleColor = bubbleColor,
-                onSelectDefault = { state.eventSink(AdvancedSettingsEvent.SetChatBubbleColor(null)) },
-                onSelectColor = { state.eventSink(AdvancedSettingsEvent.SetChatBubbleColor(it.toArgb())) },
+                onSelectDefault = { state.eventSink(ChatAppearanceEvent.SetChatBubbleColor(null)) },
+                onSelectColor = { state.eventSink(ChatAppearanceEvent.SetChatBubbleColor(it.toArgb())) },
                 onEyedropperClick = { showBubbleColorPicker = true },
             )
         }
@@ -296,7 +296,7 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
         ChatWallpaperColorPickerDialog(
             initialColor = customColor ?: previewColor,
             onColorSelected = {
-                state.eventSink(AdvancedSettingsEvent.SetChatWallpaperCustomColor(it.toArgb()))
+                state.eventSink(ChatAppearanceEvent.SetChatWallpaperCustomColor(it.toArgb()))
                 showColorPicker = false
             },
             onDismiss = { showColorPicker = false },
@@ -306,7 +306,7 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
         ChatWallpaperColorPickerDialog(
             initialColor = bubbleColor ?: ElementTheme.colors.messageFromMeBackground,
             onColorSelected = {
-                state.eventSink(AdvancedSettingsEvent.SetChatBubbleColor(it.toArgb()))
+                state.eventSink(ChatAppearanceEvent.SetChatBubbleColor(it.toArgb()))
                 showBubbleColorPicker = false
             },
             onDismiss = { showBubbleColorPicker = false },
@@ -316,7 +316,7 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
         ChatWallpaperColorPickerDialog(
             initialColor = accentColor ?: ElementTheme.colors.iconAccentTertiary,
             onColorSelected = {
-                state.eventSink(AdvancedSettingsEvent.SetChatAccentColor(it.toArgb()))
+                state.eventSink(ChatAppearanceEvent.SetChatAccentColor(it.toArgb()))
                 showAccentColorPicker = false
             },
             onDismiss = { showAccentColorPicker = false },
@@ -326,7 +326,7 @@ fun ColumnScope.ChatThemeSection(state: AdvancedSettingsState) {
         ChatWallpaperGradientDialog(
             initial = gradient,
             onApply = {
-                state.eventSink(AdvancedSettingsEvent.SetChatWallpaperGradient(it))
+                state.eventSink(ChatAppearanceEvent.SetChatWallpaperGradient(it))
                 showGradientDialog = false
             },
             onDismiss = { showGradientDialog = false },
@@ -957,7 +957,7 @@ private fun ThemeSwatch(
 internal fun ChatAppearanceSectionPreview() = ElementPreview {
     Column {
         ChatAppearanceSection(
-            state = aAdvancedSettingsState(
+            state = aChatAppearanceState(
                 messageTextSizeSp = 18,
                 bubbleCornerRadiusDp = 12,
                 chatWallpaperId = ChatWallpaperOption.Navy.id,
@@ -972,7 +972,7 @@ internal fun ChatAppearanceSectionPreview() = ElementPreview {
 internal fun ChatThemeSectionPreview() = ElementPreview {
     Column {
         ChatThemeSection(
-            state = aAdvancedSettingsState(
+            state = aChatAppearanceState(
                 messageTextSizeSp = 18,
                 bubbleCornerRadiusDp = 12,
                 chatWallpaperId = ChatWallpaperOption.Navy.id,

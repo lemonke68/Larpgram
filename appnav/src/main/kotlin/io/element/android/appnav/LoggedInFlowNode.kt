@@ -95,6 +95,7 @@ import io.element.android.libraries.matrix.api.sync.SyncService
 import io.element.android.libraries.matrix.api.verification.SessionVerificationServiceListener
 import io.element.android.libraries.matrix.api.verification.VerificationRequest
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.ChatAppearanceStore
 import io.element.android.libraries.push.api.notifications.conversations.NotificationConversationService
 import io.element.android.libraries.ui.common.nodes.emptyNode
 import io.element.android.services.analytics.api.AnalyticsLongRunningTransaction
@@ -150,6 +151,8 @@ class LoggedInFlowNode(
     private val syncService: SyncService,
     private val enterpriseService: EnterpriseService,
     private val appPreferencesStore: AppPreferencesStore,
+    // Правка форка: настройки вида чата.
+    private val chatAppearanceStore: ChatAppearanceStore,
     private val featureFlagService: FeatureFlagService,
     private val buildMeta: BuildMeta,
     snackbarDispatcher: SnackbarDispatcher,
@@ -765,6 +768,8 @@ class LoggedInFlowNode(
             compoundLight = colors.light,
             compoundDark = colors.dark,
             buildMeta = buildMeta,
+            // Правка форка: настройки вида чата.
+            chatAppearanceStore = chatAppearanceStore,
         ) {
             CompositionLocalProvider(LocalMapTilerConfig provides updatedMapTilerConfig) {
                 val isOnline by syncService.isOnline.collectAsState()

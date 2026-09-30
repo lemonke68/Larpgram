@@ -32,6 +32,7 @@ import io.element.android.libraries.designsystem.theme.ElementThemeApp
 import io.element.android.libraries.di.annotations.AppCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.ChatAppearanceStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
@@ -57,6 +58,10 @@ class IncomingCallActivity : AppCompatActivity() {
 
     @Inject
     lateinit var appPreferencesStore: AppPreferencesStore
+
+    // Правка форка: настройки вида чата.
+    @Inject
+    lateinit var chatAppearanceStore: ChatAppearanceStore
 
     @Inject
     lateinit var featureFlagService: FeatureFlagService
@@ -96,6 +101,8 @@ class IncomingCallActivity : AppCompatActivity() {
                     compoundLight = colors.light,
                     compoundDark = colors.dark,
                     buildMeta = buildMeta,
+                    // Правка форка: настройки вида чата.
+                    chatAppearanceStore = chatAppearanceStore,
                 ) {
                     IncomingCallScreen(
                         notificationData = notificationData,

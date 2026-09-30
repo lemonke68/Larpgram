@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.features.preferences.impl.R
 import io.element.android.features.preferences.impl.advanced.aAdvancedSettingsState
+import io.element.android.features.preferences.impl.advanced.aChatAppearanceState
 import io.element.android.features.preferences.impl.root.PreferencesRootState
 import io.element.android.features.preferences.impl.root.SettingsCategory
 import io.element.android.features.preferences.impl.root.aPreferencesRootState
@@ -141,6 +142,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
             category = category,
             state = state,
             advancedSettingsState = aAdvancedSettingsState(),
+            chatAppearanceState = aChatAppearanceState(),
             onBackClick = onBackClick,
             onOpenUserProfile = onOpenUserProfile,
             onAddAccountClick = onAddAccountClick,

@@ -19,7 +19,7 @@ import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 
 @Composable
 fun ChatThemeSettingsView(
-    state: AdvancedSettingsState,
+    state: ChatAppearanceState,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -37,7 +37,7 @@ fun ChatThemeSettingsView(
 @Composable
 internal fun ChatThemeSettingsViewPreview() = ElementPreview {
     ChatThemeSettingsView(
-        state = aAdvancedSettingsState(
+        state = aChatAppearanceState(
             chatWallpaperId = ChatWallpaperOption.Navy.id,
         ),
         onBackClick = {},

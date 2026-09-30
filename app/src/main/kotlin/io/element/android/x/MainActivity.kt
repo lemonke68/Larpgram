@@ -81,7 +81,9 @@ class MainActivity : NodeActivity() {
             featureFlagService = appBindings.featureFlagService(),
             compoundLight = colors.light,
             compoundDark = colors.dark,
-            buildMeta = appBindings.buildMeta()
+            buildMeta = appBindings.buildMeta(),
+            // Правка форка: настройки вида чата.
+            chatAppearanceStore = appBindings.chatAppearanceStore(),
         ) {
             CompositionLocalProvider(
                 LocalSnackbarDispatcher provides appBindings.snackbarDispatcher(),

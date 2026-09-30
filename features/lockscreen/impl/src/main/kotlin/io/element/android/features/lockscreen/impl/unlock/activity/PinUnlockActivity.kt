@@ -32,6 +32,7 @@ import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.designsystem.theme.ElementThemeApp
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.ChatAppearanceStore
 import kotlinx.coroutines.launch
 
 class PinUnlockActivity : AppCompatActivity() {
@@ -44,6 +45,9 @@ class PinUnlockActivity : AppCompatActivity() {
     @Inject lateinit var presenterFactory: PinUnlockPresenter.Factory
     @Inject lateinit var lockScreenService: LockScreenService
     @Inject lateinit var appPreferencesStore: AppPreferencesStore
+
+    // Правка форка: настройки вида чата.
+    @Inject lateinit var chatAppearanceStore: ChatAppearanceStore
     @Inject lateinit var featureFlagService: FeatureFlagService
     @Inject lateinit var enterpriseService: EnterpriseService
     @Inject lateinit var buildMeta: BuildMeta
@@ -63,6 +67,8 @@ class PinUnlockActivity : AppCompatActivity() {
                 compoundLight = colors.light,
                 compoundDark = colors.dark,
                 buildMeta = buildMeta,
+                // Правка форка: настройки вида чата.
+                chatAppearanceStore = chatAppearanceStore,
             ) {
                 val state = presenter.present()
                 PinUnlockView(
