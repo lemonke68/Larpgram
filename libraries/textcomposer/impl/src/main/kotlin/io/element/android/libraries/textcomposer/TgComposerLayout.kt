@@ -85,7 +85,7 @@ internal fun TgStandardLayout(
     isTextEmpty: Boolean,
     textInput: @Composable () -> Unit,
     voiceRecording: @Composable () -> Unit,
-    endButtonParams: EndButtonParams,
+    endButtonParams: TgEndButtonParams,
     onAddAttachment: () -> Unit,
     onStickerClick: (() -> Unit)?,
     isMediaPanelOpen: Boolean,

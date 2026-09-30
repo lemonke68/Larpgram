@@ -77,7 +77,7 @@ import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.theme.floatingDateBadgeBackground
 import io.element.android.libraries.mediaviewer.api.local.LocalMediaRenderer
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
-import io.element.android.libraries.textcomposer.TextComposer
+import io.element.android.libraries.textcomposer.TgTextComposer
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.textcomposer.model.VoiceMessageState
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -526,7 +526,8 @@ private fun AttachmentsPreviewBottomActions(
     onSendClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    TextComposer(
+    // Правка форка: поле ввода Telegram (C-009).
+    TgTextComposer(
         modifier = modifier,
         state = state.textEditorState,
         voiceMessageState = VoiceMessageState.Idle,

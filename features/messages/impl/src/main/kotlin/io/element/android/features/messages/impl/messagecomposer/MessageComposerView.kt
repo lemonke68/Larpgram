@@ -26,7 +26,7 @@ import io.element.android.libraries.designsystem.components.async.AsyncActionVie
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.textcomposer.CircleRecordGestures
-import io.element.android.libraries.textcomposer.TextComposer
+import io.element.android.libraries.textcomposer.TgTextComposer
 import io.element.android.libraries.textcomposer.model.Suggestion
 import io.element.android.libraries.textcomposer.model.VoiceMessagePlayerEvent
 import io.element.android.libraries.textcomposer.model.VoiceMessageRecorderEvent
@@ -101,7 +101,9 @@ internal fun MessageComposerView(
         voiceMessageState.eventSink(VoiceMessageComposerEvent.PlayerEvent(event))
     }
 
-    TextComposer(
+    // Правка форка: поле ввода Telegram (C-009).
+
+    TgTextComposer(
         modifier = modifier,
         onStickerClick = onStickerClick,
         isMediaPanelOpen = isMediaPanelOpen,
