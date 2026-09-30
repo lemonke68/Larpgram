@@ -63,8 +63,6 @@ fun TgStickerPanel(
     onStickerClick: (ImagePackImage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ImportDialog(state = state)
-
     Box(modifier = modifier.fillMaxSize()) {
         when {
             state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))

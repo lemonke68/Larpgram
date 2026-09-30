@@ -52,7 +52,7 @@ sealed interface ImportState {
     data class Error(val reason: ImportErrorReason) : ImportState
 }
 
-/** Почему пак не добавился; текст — в ресурсах (ImportDialog). */
+/** Почему пак не добавился; текст — в ресурсах (StickerImportDialog). */
 enum class ImportErrorReason {
     NotFound,
     EmptyPack,

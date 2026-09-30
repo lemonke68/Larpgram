@@ -131,6 +131,8 @@ import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageSendingFailedDialog
 import io.element.android.features.roomcall.api.RoomCallState
+import io.element.android.features.stickers.impl.ImportState
+import io.element.android.features.stickers.impl.StickerImportDialog
 import io.element.android.features.stickers.impl.StickerPickerEvents
 import io.element.android.features.stickers.impl.StickerSendErrorDialog
 import io.element.android.features.stickers.impl.TgStickerPanel
@@ -889,6 +891,10 @@ private fun MessagesViewComposerBottomSheetContents(
     // его бы никто не увидел: шторка закрывается в тот же момент, когда стикер уходит.
     if (stickerPickerState != null) {
         StickerSendErrorDialog(state = stickerPickerState)
+        StickerImportDialog(state = stickerPickerState)
+        // Клавиатура для поля диалога не должна сжимать и закрывать панель под ним.
+        val isImportOpen = stickerPickerState.importState !is ImportState.Hidden
+        LaunchedEffect(isImportOpen) { mediaPanel.isDialogOpen = isImportOpen }
     }
 
     // Правка форка: запись кружочка занимает весь экран поверх чата.

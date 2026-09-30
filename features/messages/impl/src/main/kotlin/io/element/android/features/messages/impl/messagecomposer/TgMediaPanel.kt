@@ -79,6 +79,15 @@ class TgMediaPanelController internal constructor(initialKeyboardHeightPx: Int) 
     /** Пока в панели в фокусе поиск (GIF), клавиатура её не закрывает. */
     var isSearchFocused by mutableStateOf(false)
 
+    /**
+     * Открыт диалог поверх панели (добавление стикерпака). Клавиатура поднимается ради его поля,
+     * поэтому панель не сжимается и не закрывается, пока он открыт.
+     */
+    var isDialogOpen by mutableStateOf(false)
+
+    /** Клавиатура поднята не ради поля ввода чата — панель на неё не реагирует. */
+    internal val isKeyboardForeign: Boolean get() = isSearchFocused || isDialogOpen
+
     internal var keyboardHeightPx by mutableIntStateOf(initialKeyboardHeightPx)
 
     internal fun open() {
@@ -135,9 +144,9 @@ fun rememberTgMediaPanelController(): TgMediaPanelController {
     LaunchedEffect(controller.isVisible) {
         if (!controller.isVisible) return@LaunchedEffect
         var wentDown = false
-        snapshotFlow { imeInsets.getBottom(density) to controller.isSearchFocused }.collect { (ime, isSearchFocused) ->
-            if (isSearchFocused) {
-                // Клавиатура поднялась ради поиска; когда поиск отпустят, закрывать по ней можно.
+        snapshotFlow { imeInsets.getBottom(density) to controller.isKeyboardForeign }.collect { (ime, isKeyboardForeign) ->
+            if (isKeyboardForeign) {
+                // Клавиатура поднялась ради поиска или диалога; когда их отпустят, закрывать по ней можно.
                 wentDown = true
                 return@collect
             }
@@ -159,7 +168,7 @@ fun rememberTgMediaPanelController(): TgMediaPanelController {
 fun TgMediaPanelController.visibleHeight(): Dp {
     if (!isVisible) return 0.dp
     val density = LocalDensity.current
-    if (isSearchFocused) return with(density) { keyboardHeightPx.toDp() }
+    if (isKeyboardForeign) return with(density) { keyboardHeightPx.toDp() }
     val ime = WindowInsets.ime.getBottom(density)
     return with(density) { (keyboardHeightPx - ime).coerceAtLeast(0).toDp() }
 }
