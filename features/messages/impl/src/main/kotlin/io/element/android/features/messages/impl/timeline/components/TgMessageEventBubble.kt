@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2022-2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: пузырь сообщения Telegram: форма с хвостиком, цвет своих, радиус из настроек. Заменяет элементовский `MessageEventBubble`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -16,9 +18,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -28,14 +30,17 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.theme.ProvideOutgoingBubbleColors
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
 import io.element.android.features.messages.impl.timeline.model.bubble.BubbleState
 import io.element.android.features.messages.impl.timeline.model.bubble.BubbleStatePreviewParam
@@ -46,7 +51,13 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.text.toPx
+import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleColor
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleLinkColor
 import io.element.android.libraries.designsystem.theme.components.Text
+import io.element.android.libraries.designsystem.theme.contentColorForBubble
+import io.element.android.libraries.designsystem.theme.linkColorForBubble
 import io.element.android.libraries.designsystem.theme.messageFromMeBackground
 import io.element.android.libraries.designsystem.theme.messageFromOtherBackground
 import io.element.android.libraries.testtags.TestTags
@@ -54,13 +65,13 @@ import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
 import io.element.android.libraries.ui.utils.graphics.drawInLayer
 
-private val BUBBLE_RADIUS = 12.dp
+private val BUBBLE_RADIUS = TelegramBubbleShape.BUBBLE_RADIUS
 private val avatarRadius = AvatarSize.TimelineSender.dp / 2
 
 private val MIN_BUBBLE_WIDTH = 80.dp
 
 @Composable
-fun MessageEventBubble(
+fun TgMessageEventBubble(
     state: BubbleState,
     interactionSource: MutableInteractionSource,
     onClick: () -> Unit,
@@ -68,6 +79,9 @@ fun MessageEventBubble(
     modifier: Modifier = Modifier,
     customBackgroundColor: Color? = null,
     borderColor: Color? = null,
+    // Правка форка: стикеры, гифки и кружочки рисуются прямо на обоях. Тогда ни подложки,
+    // ни хвостика, ни отступа под него быть не должно.
+    showBubble: Boolean = true,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     val clickableModifier = if (isTalkbackActive()) {
@@ -83,10 +97,27 @@ fun MessageEventBubble(
             .onKeyboardContextMenuAction(onLongClick)
     }
 
-    val cutTopStart = state.cutTopStart
+    val cutTopStart = state.cutTopStart && showBubble
+    // Larpgram: user-chosen outgoing bubble color (null keeps the themed default).
+    val outgoingBubbleColor = LocalOutgoingBubbleColor.current
     // Ignore state.isHighlighted for now, we need a design decision on it.
-    val backgroundBubbleColor by rememberUpdatedState(customBackgroundColor ?: MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine))
-    val bubbleShape = remember(state) { MessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine) }
+    val backgroundBubbleColor by rememberUpdatedState(
+        when {
+            !showBubble -> Color.Transparent
+            customBackgroundColor != null -> customBackgroundColor
+            state.isMine && outgoingBubbleColor != null -> outgoingBubbleColor
+            else -> TgMessageEventBubbleDefaults.backgroundBubbleColor(state.isMine)
+        }
+    )
+    // Larpgram: user-tunable corner radius from settings.
+    val bubbleRadius = LocalChatBubbleRadius.current
+    val bubbleShape = remember(state, showBubble, bubbleRadius) {
+        if (showBubble) {
+            TgMessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine, bubbleRadius)
+        } else {
+            RectangleShape
+        }
+    }
     val radiusPx = (avatarRadius + SENDER_AVATAR_BORDER_WIDTH).toPx()
     val yOffsetPx = -(NEGATIVE_MARGIN_FOR_BUBBLE + avatarRadius).toPx()
 
@@ -138,43 +169,61 @@ fun MessageEventBubble(
                 .testTag(TestTags.messageBubble)
                 .widthIn(
                     min = MIN_BUBBLE_WIDTH,
-                    max = (constraints.maxWidth * MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO)
+                    max = (constraints.maxWidth * TgMessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO)
                         .toInt()
                         .toDp()
                 )
+                // The tail is drawn inside the bubble bounds, so keep the content off it.
+                .padding(
+                    start = if (state.isMine || !showBubble) 0.dp else TelegramBubbleShape.TAIL_WIDTH,
+                    end = if (state.isMine && showBubble) TelegramBubbleShape.TAIL_WIDTH else 0.dp,
+                )
                 .then(clickableModifier),
-            content = content,
-        )
+        ) {
+            // Larpgram: text, time and link colors of an outgoing bubble are derived from the bubble
+            // itself for contrast. Earlier this only kicked in for a user-chosen bubble color, and the
+            // dark theme default (accent purple) kept a grey timestamp and a purple link on it.
+            if (showBubble && state.isMine) {
+                val themeLinkColor = ElementTheme.colors.textLinkExternal
+                val bubbleContentColor = contentColorForBubble(backgroundBubbleColor)
+                CompositionLocalProvider(
+                    LocalOutgoingBubbleContentColor provides bubbleContentColor,
+                    LocalOutgoingBubbleLinkColor provides linkColorForBubble(backgroundBubbleColor, themeLinkColor),
+                ) {
+                    // Вложенные элементы (файл, опрос, голосовое) берут цвета темы — перекрашиваем
+                    // их тоже, см. ProvideOutgoingBubbleColors.
+                    ProvideOutgoingBubbleColors(contentColor = bubbleContentColor) {
+                        content()
+                    }
+                }
+            } else {
+                content()
+            }
+        }
     }
 }
 
-object MessageEventBubbleDefaults {
-    fun shape(cutTopStart: Boolean, groupPosition: TimelineItemGroupPosition, isMine: Boolean): Shape {
-        val topLeftCorner = if (cutTopStart) 0.dp else BUBBLE_RADIUS
-        return when (groupPosition) {
-            TimelineItemGroupPosition.First -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp, BUBBLE_RADIUS)
-            } else {
-                RoundedCornerShape(topLeftCorner, BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp)
-            }
-            TimelineItemGroupPosition.Middle -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, 0.dp, 0.dp, BUBBLE_RADIUS)
-            } else {
-                RoundedCornerShape(0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS, 0.dp)
-            }
-            TimelineItemGroupPosition.Last -> if (isMine) {
-                RoundedCornerShape(BUBBLE_RADIUS, 0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS)
-            } else {
-                RoundedCornerShape(0.dp, BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS)
-            }
-            TimelineItemGroupPosition.None ->
-                RoundedCornerShape(
-                    topLeftCorner,
-                    BUBBLE_RADIUS,
-                    BUBBLE_RADIUS,
-                    BUBBLE_RADIUS
-                )
-        }
+object TgMessageEventBubbleDefaults {
+    /**
+     * Every bubble is the same shape: uniformly rounded, with a nub on the sender's side. The kit
+     * gives grouped messages no special treatment, so the group position no longer changes the
+     * corners — the only thing that still does is [cutTopStart], which makes room for the avatar.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun shape(
+        cutTopStart: Boolean,
+        groupPosition: TimelineItemGroupPosition,
+        isMine: Boolean,
+        radius: Dp = BUBBLE_RADIUS,
+    ): Shape {
+        return TelegramBubbleShape(
+            topStart = if (cutTopStart) 0.dp else radius,
+            topEnd = radius,
+            bottomEnd = radius,
+            bottomStart = radius,
+            tailSide = if (isMine) BubbleTailSide.End else BubbleTailSide.Start,
+            hasTail = true,
+        )
     }
 
     @Composable
@@ -192,7 +241,7 @@ object MessageEventBubbleDefaults {
 
 @PreviewsDayNight
 @Composable
-internal fun MessageEventBubblePreview(@PreviewParameter(BubbleStatePreviewParam::class) state: BubbleState) = ElementPreview {
+internal fun TgMessageEventBubblePreview(@PreviewParameter(BubbleStatePreviewParam::class) state: BubbleState) = ElementPreview {
     // Due to position offset, surround with a Box
     Box(
         modifier = Modifier
@@ -200,7 +249,7 @@ internal fun MessageEventBubblePreview(@PreviewParameter(BubbleStatePreviewParam
             .padding(vertical = 8.dp),
         contentAlignment = if (state.isMine) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
-        MessageEventBubble(
+        TgMessageEventBubble(
             state = state,
             interactionSource = remember { MutableInteractionSource() },
             onClick = {},

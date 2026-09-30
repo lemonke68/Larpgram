@@ -408,10 +408,10 @@ private fun ThreadSummaryView(
                     shape = RoundedCornerShape(8.dp)
                     clip = true
                 }
-                .background(MessageEventBubbleDefaults.backgroundBubbleColor(isOutgoing))
+                .background(TgMessageEventBubbleDefaults.backgroundBubbleColor(isOutgoing))
                 .niceClickable(onClick)
                 .padding(horizontal = 12.dp, vertical = 10.dp)
-                .widthIn(max = (maxWidth - 24.dp) * MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO),
+                .widthIn(max = (maxWidth - 24.dp) * TgMessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -613,7 +613,7 @@ private fun TimelineItemEventRowContent(
             isMine = isMineLayout,
             timelineRoomInfo = timelineRoomInfo,
         )
-        MessageEventBubble(
+        TgMessageEventBubble(
             modifier = Modifier
                 .onGloballyPositioned { messageActionsAnchor?.register(eventKey, it) }
                 .constrainAs(message) {

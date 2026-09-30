@@ -75,7 +75,7 @@ internal fun TgCallNotifyView(
             .padding(horizontal = 8.dp, vertical = 2.dp),
         contentAlignment = if (event.isMine) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
-        MessageEventBubble(
+        TgMessageEventBubble(
             state = BubbleState(
                 groupPosition = event.groupPosition,
                 isMine = event.isMine,
