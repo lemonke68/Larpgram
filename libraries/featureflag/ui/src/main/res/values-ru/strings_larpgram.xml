@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larpgram: human titles for the developer options feature list. -->
+<resources>
+    <string name="larpgram_feature_showBlockedUsersDetails_title">Подробности о заблокированных</string>
+    <string name="larpgram_feature_showBlockedUsersDetails_description">Имя и аватар в списке заблокированных</string>
+    <string name="larpgram_feature_syncOnPush_title">Синхронизация по пушу</string>
+    <string name="larpgram_feature_syncOnPush_description">Подтягивать чат, когда пришло уведомление</string>
+    <string name="larpgram_feature_onlySignedDevices_title">Только подтверждённые устройства</string>
+    <string name="larpgram_feature_onlySignedDevices_description">Не отдавать ключи устройствам, которые владелец не подтвердил. Ломает переписку с людьми на неподтверждённых устройствах. После смены — перезапуск.</string>
+    <string name="larpgram_feature_logcat_title">Логи в logcat</string>
+    <string name="larpgram_feature_logcat_description">Писать логи ещё и в logcat. Замедляет приложение, после смены — перезапуск.</string>
+    <string name="larpgram_feature_mediaQuality_title">Качество медиа при отправке</string>
+    <string name="larpgram_feature_mediaQuality_description">Выбор качества фото и видео перед отправкой, отдельные настройки для фото и видео.</string>
+    <string name="larpgram_feature_threads_title">Треды</string>
+    <string name="larpgram_feature_threads_description">Сообщения тредов отдельной лентой. После смены — перезапуск.</string>
+    <string name="larpgram_feature_multiAccount_title">Несколько аккаунтов</string>
+    <string name="larpgram_feature_multiAccount_description">Держать несколько аккаунтов и переключаться между ними в настройках.</string>
+    <string name="larpgram_feature_qrLogin_title">Вход по QR-коду</string>
+    <string name="larpgram_feature_qrLogin_description">Войти на другом устройстве, отсканировав QR-код с этого.</string>
+    <string name="larpgram_feature_blackTheme_title">Чёрная тема</string>
+    <string name="larpgram_feature_blackTheme_description">Полностью чёрная тема, бережёт батарею на OLED-экранах.</string>
+    <string name="larpgram_feature_validateNetwork_title">Проверять сеть для уведомлений</string>
+    <string name="larpgram_feature_validateNetwork_description">Забирать сообщения для уведомлений, только когда есть интернет.</string>
+    <string name="larpgram_feature_jumpToUnread_title">Прыжок к непрочитанным</string>
+    <string name="larpgram_feature_jumpToUnread_description">Кнопка «к первому непрочитанному» и счётчик новых на кнопке «вниз».</string>
+    <string name="larpgram_feature_slashCommands_title">Команды через /</string>
+    <string name="larpgram_feature_slashCommands_description">Разбирать команды вида /команда в поле ввода.</string>
+    <string name="larpgram_feature_threadList_title">Список тредов</string>
+    <string name="larpgram_feature_threadList_description">Экран со всеми тредами чата.</string>
+    <string name="larpgram_feature_backPagination_title">Подгрузка истории</string>
+    <string name="larpgram_feature_backPagination_description">Заранее загружать старые сообщения в фоне. После смены — перезапуск.</string>
+    <string name="larpgram_feature_unreadCount_title">Счётчик непрочитанных</string>
+    <string name="larpgram_feature_unreadCount_description">Число непрочитанных в списке чатов вместо точки.</string>
+    <string name="larpgram_feature_gallery_title">Альбомы</string>
+    <string name="larpgram_feature_gallery_description">Выбор нескольких фото и видео и отправка альбомом.</string>
+    <string name="larpgram_feature_knock_title">Запрос на вступление</string>
+    <string name="larpgram_feature_knock_description">Чаты, в которые можно попроситься.</string>
+    <string name="larpgram_feature_messageSearch_title">Поиск по сообщениям</string>
+    <string name="larpgram_feature_messageSearch_description">Локальный индекс для поиска. Ищутся только сообщения, пришедшие после включения.</string>
+</resources>

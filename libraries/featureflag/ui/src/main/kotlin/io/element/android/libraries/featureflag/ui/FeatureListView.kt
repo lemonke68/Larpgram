@@ -43,8 +43,9 @@ private fun FeaturePreferenceView(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     PreferenceCheckbox(
-        title = feature.title,
-        supportingText = feature.description,
+        // Правка форка: русские названия флагов (LarpgramFeatureStrings).
+        title = feature.localizedTitle(),
+        supportingText = feature.localizedDescription(),
         isChecked = feature.isEnabled,
         onCheckedChange = onCheckedChange
     )

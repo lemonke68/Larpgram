@@ -26,7 +26,9 @@ enum class FeatureFlags(
         key = "feature.showBlockedUsersDetails",
         title = "Show blocked users details",
         description = "Show the name and avatar of blocked users in the blocked users list",
-        defaultValue = { false },
+        // Правка форка: включено по умолчанию, выключить можно в «Для разработчиков».
+        // В TG в списке заблокированных видны имена и аватары.
+        defaultValue = { true },
         isFinished = false,
     ),
     SyncOnPush(
@@ -59,7 +61,9 @@ enum class FeatureFlags(
         key = "feature.selectable_media_quality",
         title = "Select media quality per upload",
         description = "You can select the media quality for each attachment you upload.",
-        defaultValue = { false },
+        // Правка форка: включено по умолчанию, выключить можно в «Для разработчиков».
+        // Решение юзера 2026-09-30.
+        defaultValue = { true },
         // False so it's displayed in the developer options screen
         isFinished = false,
     ),
@@ -76,21 +80,27 @@ enum class FeatureFlags(
         title = "Multi accounts",
         description = "Allow the application to connect to multiple accounts at the same time." +
             "\n\nWARNING: this feature is EXPERIMENTAL and UNSTABLE.",
-        defaultValue = { false },
+        // Правка форка: включено по умолчанию, выключить можно в «Для разработчиков».
+        // Несколько аккаунтов есть в TG; решение юзера 2026-09-30.
+        defaultValue = { true },
         isFinished = false,
     ),
     QrCodeLogin(
         key = "feature.qr_code_login",
         title = "QR Code Login",
         description = "Allow logging in on other devices using a QR code.",
-        defaultValue = { false },
+        // Правка форка: включено по умолчанию, выключить можно в «Для разработчиков».
+        // Сервер поддерживает MSC4108 (проверено 2026-10-01); решение юзера 2026-09-30.
+        defaultValue = { true },
         isFinished = false,
     ),
     AllowBlackTheme(
         key = "feature.allow_black_theme",
         title = "Black theme",
         description = "Allow selecting the black appearance theme for battery saving on OLED.",
-        defaultValue = { false },
+        // Правка форка: включено по умолчанию, выключить можно в «Для разработчиков».
+        // Безвредно: только лишний пункт в выборе темы.
+        defaultValue = { true },
         isFinished = false,
     ),
     ValidateNetworkWhenSchedulingNotificationFetching(
@@ -106,7 +116,9 @@ enum class FeatureFlags(
         title = "Jump to unread messages",
         description = "Show a button to jump to the read marker, plus a count badge on the scroll-to-bottom button " +
             "when new messages arrive while scrolled away.",
-        defaultValue = { false },
+        // Правка форка: включено по умолчанию, выключить можно в «Для разработчиков».
+        // В TG есть; решение юзера 2026-09-30.
+        defaultValue = { true },
         isFinished = false,
     ),
     SlashCommand(

@@ -382,7 +382,10 @@ class AdvancedSettingsPresenterTest {
         appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(),
         sessionPreferencesStore: InMemorySessionPreferencesStore = InMemorySessionPreferencesStore(),
         mediaPreviewConfigStateStore: MediaPreviewConfigStateStore = FakeMediaPreviewConfigStateStore(),
-        featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(),
+        featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(
+            // Правка форка: форк включил эти флаги по умолчанию, тесты Element проверяют выключенные.
+            initialState = mapOf(FeatureFlags.SelectableMediaQuality.key to false, FeatureFlags.AllowBlackTheme.key to false),
+        ),
     ) = AdvancedSettingsPresenter(
         appPreferencesStore = appPreferencesStore,
         sessionPreferencesStore = sessionPreferencesStore,

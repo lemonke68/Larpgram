@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -48,6 +49,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.preview.ElementPreviewLight
 import io.element.android.libraries.designsystem.preview.PreviewWithLargeHeight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
+import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -257,38 +259,47 @@ private fun ColumnScope.UserStatusSection(
     )
 }
 
+/**
+ * Другие аккаунты карточкой, как список аккаунтов TG: аватар, имя и @id, ниже «Добавить аккаунт»
+ * цветом акцента. Тап по аккаунту переключает на него.
+ */
 @Composable
 private fun ColumnScope.MultiAccountSection(
     state: PreferencesRootState,
     onAddAccountClick: () -> Unit,
 ) {
-    HorizontalDivider(
-        thickness = 8.dp,
-        color = ElementTheme.colors.bgSubtleSecondary,
-    )
-    state.otherSessions.forEach { matrixUser ->
-        MatrixUserRow(
-            modifier = Modifier
-                .clickable {
-                    state.eventSink(PreferencesRootEvent.SwitchToSession(matrixUser.userId))
+    TgSettingsGroup {
+        state.otherSessions.forEach { matrixUser ->
+            MatrixUserRow(
+                modifier = Modifier
+                    .clickable {
+                        state.eventSink(PreferencesRootEvent.SwitchToSession(matrixUser.userId))
+                    }
+                    .padding(top = 2.dp, bottom = 2.dp, end = 8.dp),
+                matrixUser = matrixUser,
+                avatarSize = AvatarSize.AccountItem,
+                verticalSpaceWidth = 16.dp,
+            )
+        }
+        ListItem(
+            leadingContent = ListItemContent.Custom {
+                Box(modifier = Modifier.size(AvatarSize.AccountItem.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = CompoundIcons.Plus(),
+                        contentDescription = null,
+                        tint = ElementTheme.colors.textActionAccent,
+                    )
                 }
-                .padding(top = 2.dp, bottom = 2.dp, end = 8.dp),
-            matrixUser = matrixUser,
-            avatarSize = AvatarSize.AccountItem,
-            verticalSpaceWidth = 16.dp,
+            },
+            content = {
+                Text(
+                    text = stringResource(CommonStrings.common_add_another_account),
+                    color = ElementTheme.colors.textActionAccent,
+                )
+            },
+            onClick = onAddAccountClick,
         )
     }
-    ListItem(
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Plus())),
-        content = {
-            Text(stringResource(CommonStrings.common_add_another_account))
-        },
-        onClick = onAddAccountClick,
-    )
-    HorizontalDivider(
-        thickness = 8.dp,
-        color = ElementTheme.colors.bgSubtleSecondary,
-    )
 }
 
 @Composable

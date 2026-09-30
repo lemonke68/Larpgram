@@ -331,7 +331,10 @@ class PreferencesRootPresenterTest {
         showDeveloperSettingsProvider: ShowDeveloperSettingsProvider = ShowDeveloperSettingsProvider(aBuildMeta(BuildType.DEBUG)),
         rageshakeFeatureAvailability: RageshakeFeatureAvailability = RageshakeFeatureAvailability { flowOf(true) },
         indicatorService: IndicatorService = FakeIndicatorService(),
-        featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
+        featureFlagService: FeatureFlagService = FakeFeatureFlagService(
+            // Правка форка: форк включил эти флаги по умолчанию, тесты Element проверяют выключенные.
+            initialState = mapOf(FeatureFlags.MultiAccount.key to false, FeatureFlags.QrCodeLogin.key to false),
+        ),
         sessionStore: SessionStore = InMemorySessionStore(),
         sessionEnterpriseService: SessionEnterpriseService = FakeSessionEnterpriseService(),
     ) = PreferencesRootPresenter(

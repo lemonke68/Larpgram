@@ -208,7 +208,10 @@ class BlockedUsersPresenterTest {
 
     private fun aBlockedUsersPresenter(
         matrixClient: FakeMatrixClient = FakeMatrixClient(),
-        featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
+        featureFlagService: FeatureFlagService = FakeFeatureFlagService(
+            // Правка форка: форк включил эти флаги по умолчанию, тесты Element проверяют выключенные.
+            initialState = mapOf(FeatureFlags.ShowBlockedUsersDetails.key to false),
+        ),
         clipboardHelper: FakeClipboardHelper = FakeClipboardHelper(),
         snackbarDispatcher: SnackbarDispatcher = SnackbarDispatcher(),
     ) = BlockedUsersPresenter(

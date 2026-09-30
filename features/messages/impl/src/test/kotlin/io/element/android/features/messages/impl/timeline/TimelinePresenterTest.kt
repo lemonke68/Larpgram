@@ -1897,7 +1897,10 @@ class TimelinePresenterTest {
         sendPollResponseAction: SendPollResponseAction = FakeSendPollResponseAction(),
         sessionPreferencesStore: InMemorySessionPreferencesStore = InMemorySessionPreferencesStore(),
         timelineItemIndexer: TimelineItemIndexer = TimelineItemIndexer(),
-        featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(),
+        featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(
+            // Правка форка: форк включил эти флаги по умолчанию, тесты Element проверяют выключенные.
+            initialState = mapOf(FeatureFlags.JumpToUnread.key to false),
+        ),
         liveLocationShareManager: FakeActiveLiveLocationShareManager = FakeActiveLiveLocationShareManager(),
         markAsFullyRead: MarkAsFullyRead = FakeMarkAsFullyRead { _, _ -> },
         timelineProtectionPresenter: Presenter<TimelineProtectionState> = { aTimelineProtectionState() },

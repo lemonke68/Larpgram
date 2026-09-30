@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Larpgram: human titles for the developer options feature list. -->
+<resources>
+    <string name="larpgram_feature_showBlockedUsersDetails_title">Show blocked users details</string>
+    <string name="larpgram_feature_showBlockedUsersDetails_description">Show the name and avatar of blocked users in the blocked users list</string>
+    <string name="larpgram_feature_syncOnPush_title">Sync on push</string>
+    <string name="larpgram_feature_syncOnPush_description">Subscribe to room sync when a push is received</string>
+    <string name="larpgram_feature_onlySignedDevices_title">Exclude insecure devices when sending/receiving messages</string>
+    <string name="larpgram_feature_onlySignedDevices_description">Do not share keys with devices their owners have not verified. Breaks chatting with people on unverified devices. Restart the app after changing.</string>
+    <string name="larpgram_feature_logcat_title">Print logs to logcat</string>
+    <string name="larpgram_feature_logcat_description">Print logs to logcat in addition to log files. Restart the app after changing.</string>
+    <string name="larpgram_feature_mediaQuality_title">Select media quality per upload</string>
+    <string name="larpgram_feature_mediaQuality_description">Choose the quality of each photo or video before sending.</string>
+    <string name="larpgram_feature_threads_title">Threads</string>
+    <string name="larpgram_feature_threads_description">Show thread messages in their own timeline. Restart the app after changing.</string>
+    <string name="larpgram_feature_multiAccount_title">Multiple accounts</string>
+    <string name="larpgram_feature_multiAccount_description">Stay signed in to several accounts and switch between them in Settings.</string>
+    <string name="larpgram_feature_qrLogin_title">Link a device by QR code</string>
+    <string name="larpgram_feature_qrLogin_description">Sign in on another device by scanning a QR code from this one.</string>
+    <string name="larpgram_feature_blackTheme_title">Black theme</string>
+    <string name="larpgram_feature_blackTheme_description">Allow the pure black theme that saves battery on OLED screens.</string>
+    <string name="larpgram_feature_validateNetwork_title">Check the connection before fetching notifications</string>
+    <string name="larpgram_feature_validateNetwork_description">Only fetch events for notifications when the device is online.</string>
+    <string name="larpgram_feature_jumpToUnread_title">Jump to unread messages</string>
+    <string name="larpgram_feature_jumpToUnread_description">A button to jump to the first unread message and a count badge on the scroll-down button.</string>
+    <string name="larpgram_feature_slashCommands_title">Slash commands</string>
+    <string name="larpgram_feature_slashCommands_description">Parse /commands typed in the message field.</string>
+    <string name="larpgram_feature_threadList_title">Thread list</string>
+    <string name="larpgram_feature_threadList_description">A screen with all threads of a chat.</string>
+    <string name="larpgram_feature_backPagination_title">Preload chat history</string>
+    <string name="larpgram_feature_backPagination_description">Load older messages in the background. Restart the app after changing.</string>
+    <string name="larpgram_feature_unreadCount_title">Unread counter</string>
+    <string name="larpgram_feature_unreadCount_description">Show the number of unread messages in the chat list.</string>
+    <string name="larpgram_feature_gallery_title">Albums</string>
+    <string name="larpgram_feature_gallery_description">Select several photos or videos and send them as an album.</string>
+    <string name="larpgram_feature_knock_title">Ask to join</string>
+    <string name="larpgram_feature_knock_description">Allow creating chats that people can ask to join.</string>
+    <string name="larpgram_feature_messageSearch_title">Message search</string>
+    <string name="larpgram_feature_messageSearch_description">Index messages locally to search them. Only messages received while enabled are indexed.</string>
+</resources>
