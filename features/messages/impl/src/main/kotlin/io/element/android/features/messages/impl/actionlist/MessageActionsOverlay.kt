@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2026 Larpgram.
- * Правка форка: меню долгого нажатия, привязанное к сообщению (фаза 2).
+ * Правка форка: меню долгого нажатия, привязанное к сообщению (фаза 2, переделка 2026-10-01).
  *
  * Вместо шторки снизу — как в Telegram: нажатое сообщение остаётся на месте чётким, фон под
  * ним размыт, над сообщением плашка реакций, под ним меню действий.
@@ -16,36 +16,57 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -55,49 +76,50 @@ import io.element.android.features.messages.impl.actionlist.model.TimelineItemAc
 import io.element.android.features.messages.impl.timeline.a11y.a11yReactionAction
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
-import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
-import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
+import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
-import io.element.android.libraries.designsystem.utils.rememberSharpRegion
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import kotlinx.collections.immutable.ImmutableSet
+import kotlin.math.roundToInt
 
 // Замеры по chat_menu_*.png: меню и плашка — одна скруглённая карточка, ширина меню около 250,
 // зазор от сообщения 8. Реакции сидят в такой же скруглённой плашке над сообщением.
 private val MENU_CORNER = 14.dp
-private val MENU_WIDTH = 250.dp
+private val MENU_WIDTH = 280.dp
+private val MENU_MIN_WIDTH = 200.dp
+
+// Пункт меню — `ActionBarMenuSubItem` Telegram: высота 48, отступы 18, иконка 24, текст 16sp с
+// отступом 43 от начала пункта, в одну строку.
+private val MENU_ITEM_HEIGHT = 48.dp
+private val MENU_ITEM_PADDING = 18.dp
+private val MENU_ICON_SIZE = 24.dp
+private val MENU_TEXT_START = 43.dp
 private val GAP = 8.dp
 private val PILL_CORNER = 24.dp
-
-// Плашку реакций надо разместить над сообщением. Точную высоту знать неоткуда до раскладки,
-// поэтому резервируем оценку: одна перекомпоновка ради идеального пикселя не стоит сложности.
-private val PILL_RESERVE = 60.dp
 private val SCREEN_EDGE_PADDING = 8.dp
 
-// Радиус скругления снимка пузыря: близко к телу пузыря форка (20dp).
-private val BUBBLE_SNAPSHOT_CORNER = 18.dp
-private val MIN_SNAPSHOT_HEIGHT = 96.dp
+// Пока пузырь сдвигается (прячется клавиатура), ждём, чтобы его координаты не менялись столько
+// кадров подряд, но не дольше тайм-аута.
+private const val STABLE_FRAMES = 3
+private const val SETTLE_TIMEOUT_MS = 600L
 
 /**
- * Меню долгого нажатия вокруг сообщения.
+ * Меню долгого нажатия вокруг сообщения, как в Telegram (`ChatActivity.createMenu`).
  *
- * Фон уже размыт отдельным слоем в [io.element.android.features.messages.impl.MessagesView];
- * этот оверлей прозрачный и лежит поверх, рисуя чёткую копию пузыря, плашку реакций и меню.
- *
- * @param bubbleLeft/Top/Right/Bottom экранные координаты пузыря в пикселях (из boundsInWindow).
+ * Сообщение рисуется целиком поверх размытого фона, обрезанное только полосой ленты между
+ * шапкой и полем ввода. Копия пузыря — из его собственного слоя ([MessageActionsAnchor.snapshotFor]),
+ * а не снимок экрана: форма и хвост те же, чужие оверлеи в неё не попадают. Плашка реакций — над
+ * видимой частью пузыря, меню — под ней. Если меню под пузырём не влезает, всё вместе поднимается
+ * на свободное место сверху, а остаток меню наезжает на пузырь (пузырь не сжимается, меню
+ * листается). Под полупрозрачным меню и плашкой виден размытый фон, а не чёткий пузырь.
  */
 @Composable
 fun MessageActionsOverlay(
     target: ActionListState.Target.Success,
-    bubbleLeft: Int,
-    bubbleTop: Int,
-    bubbleRight: Int,
-    bubbleBottom: Int,
+    anchor: MessageActionsAnchor,
     onSelectAction: (TimelineItemAction, TimelineItem.Event) -> Unit,
     onEmojiReactionClick: (String, TimelineItem.Event) -> Unit,
     onCustomReactionClick: (TimelineItem.Event) -> Unit,
@@ -110,18 +132,41 @@ fun MessageActionsOverlay(
     modifier: Modifier = Modifier,
 ) {
     val event = target.event
-    val bubble = rememberSharpRegion(bubbleLeft, bubbleTop, bubbleRight, bubbleBottom, enabled = true)
+    val eventKey = event.id.value
+    var bubbleRect by remember { mutableStateOf(anchor.unclippedBoundsFor(eventKey)) }
+    var bubble by remember { mutableStateOf<ImageBitmap?>(null) }
+    var isSettled by remember { mutableStateOf(false) }
     // Блюр рисуется здесь же, внутри окна оверлея, а не отдельным попапом: отдельное окно
-    // приезжало асинхронно и ложилось поверх меню (гонка порядка окон).
-    val backdrop = rememberBlurredBackdrop(enabled = true)
+    // приезжало асинхронно и ложилось поверх меню (гонка порядка окон). Снимаем фон, когда
+    // лента встала на место: иначе в размытие попадала уезжающая клавиатура.
+    val backdrop = rememberBlurredBackdrop(enabled = isSettled)
+    LaunchedEffect(eventKey) {
+        // Клавиатура могла ещё уезжать, и лента вместе с ней: берём место пузыря, когда оно
+        // перестало меняться, и только тогда снимаем копию.
+        val start = System.currentTimeMillis()
+        var stableFrames = 0
+        var last = anchor.unclippedBoundsFor(eventKey)
+        while (stableFrames < STABLE_FRAMES && System.currentTimeMillis() - start < SETTLE_TIMEOUT_MS) {
+            withFrameNanos { }
+            val current = anchor.unclippedBoundsFor(eventKey)
+            if (current == last) stableFrames++ else stableFrames = 0
+            last = current
+        }
+        bubbleRect = last
+        bubble = anchor.snapshotFor(eventKey)
+        isSettled = true
+    }
 
     Popup(
         onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true),
     ) {
+        // Всё считаем в координатах экрана: окно попапа и окно приложения начинаются не в одной точке.
+        var popupOrigin by remember { mutableStateOf<Offset?>(null) }
         BoxWithConstraints(
             modifier = modifier
                 .fillMaxSize()
+                .onGloballyPositioned { popupOrigin = it.positionOnScreen() }
                 .pointerInput(Unit) { detectTapGestures { onDismiss() } },
         ) {
             if (backdrop != null) {
@@ -132,115 +177,138 @@ fun MessageActionsOverlay(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            val density = LocalDensity.current
-            val bubbleWidthDp = with(density) { (bubbleRight - bubbleLeft).toDp() }
-            val bubbleLeftDp = with(density) { bubbleLeft.toDp() }
-            val bubbleRightGapDp = with(density) { (constraints.maxWidth - bubbleRight).toDp() }
-
-            // Группу двигаем по вертикали так, чтобы она целиком влезла на экран: держим пузырь
-            // близко к его исходному Y, но не даём меню уехать за нижний край (замечание юзера,
-            // как в Telegram). Для этого нужна измеренная высота группы, отсюда onSizeChanged.
-            val screenHeightPx = constraints.maxHeight
-            val minTopPx = with(density) { SCREEN_EDGE_PADDING.roundToPx() }
-            val bottomMarginPx = with(density) { 24.dp.roundToPx() }
-            val pillReservePx = with(density) { (PILL_RESERVE + GAP).roundToPx() }
-            var groupHeightPx by remember { mutableStateOf(0) }
-            // Правка форка: высокий пузырь (опрос, длинный текст) вместе с меню не влезает, и
-            // нижние пункты уезжали за экран. Тогда показываем низ пузыря, обрезая верх: всё,
-            // кроме снимка, остаётся как есть, поэтому его высота — остаток экрана.
-            var snapshotHeightPx by remember { mutableStateOf(0) }
-            val fullBubbleHeightPx = bubbleBottom - bubbleTop
-            val shownBubbleHeightPx = if (groupHeightPx == 0 || snapshotHeightPx == 0) {
-                fullBubbleHeightPx
-            } else {
-                val restPx = groupHeightPx - snapshotHeightPx
-                val fitPx = screenHeightPx - minTopPx - bottomMarginPx - restPx
-                fullBubbleHeightPx.coerceAtMost(fitPx.coerceAtLeast(with(density) { MIN_SNAPSHOT_HEIGHT.roundToPx() }))
-            }
-            val desiredTopPx = bubbleTop - pillReservePx
-            val yOffsetPx = if (groupHeightPx == 0) {
-                desiredTopPx.coerceAtLeast(minTopPx)
-            } else {
-                val maxTop = (screenHeightPx - groupHeightPx - bottomMarginPx).coerceAtLeast(minTopPx)
-                desiredTopPx.coerceIn(minTopPx, maxTop)
-            }
+            if (!isSettled) return@BoxWithConstraints
+            val origin = popupOrigin ?: return@BoxWithConstraints
+            val rect = bubbleRect?.translate(-origin.x, -origin.y) ?: return@BoxWithConstraints
+            val bandTop = anchor.visibleTopPx - origin.y
+            val bandBottom = anchor.visibleBottomPx - origin.y
 
             // Пикер активен, только если его состояние загружено ИМЕННО для этого сообщения:
             // иначе стухшее состояние от прошлого «+» развернуло бы пикер сразу при открытии.
             val pickerTarget = (customReactionState.target as? CustomReactionState.Target.Success)
                 ?.takeIf { it.event.eventOrTransactionId == event.eventOrTransactionId }
 
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset { IntOffset(0, yOffsetPx) }
-                    .onSizeChanged { groupHeightPx = it.height }
-                    .fillMaxWidth()
-                    .padding(
-                        // Когда развёрнут пикер — симметричные отступы во всю ширину, а не
-                        // привязка к краю пузыря: пикеру нужно место под сетку эмодзи.
-                        start = when {
-                            pickerTarget != null -> SCREEN_EDGE_PADDING
-                            event.isMine -> SCREEN_EDGE_PADDING
-                            else -> bubbleLeftDp
-                        },
-                        end = when {
-                            pickerTarget != null -> SCREEN_EDGE_PADDING
-                            event.isMine -> bubbleRightGapDp
-                            else -> SCREEN_EDGE_PADDING
-                        },
-                    ),
-                horizontalAlignment = if (event.isMine) Alignment.End else Alignment.Start,
-            ) {
-                if (pickerTarget != null) {
-                    // Развёрнутый пикер эмодзи вместо плашки и меню: над сообщением, как в Telegram.
-                    EmojiPickerPanel(
-                        target = pickerTarget,
-                        selectedEmoji = customReactionState.selectedEmoji,
-                        emojiPickerRenderer = emojiPickerRenderer,
-                        onSelectEmoji = { emoji ->
-                            onSelectEmoji(pickerTarget.event.eventOrTransactionId, emoji)
-                            onDismiss()
+            val density = LocalDensity.current
+            val statusBarTop = WindowInsets.statusBars.getTop(density)
+            val navBarBottom = WindowInsets.navigationBars.getBottom(density)
+            val edgePx = with(density) { SCREEN_EDGE_PADDING.roundToPx() }
+            val gapPx = with(density) { GAP.roundToPx() }
+            val cornerPx = with(density) { MENU_CORNER.toPx() }
+            val visibleTop = rect.top.coerceAtLeast(bandTop).roundToInt()
+            val visibleBottom = rect.bottom.coerceAtMost(bandBottom).roundToInt().coerceAtLeast(visibleTop)
+            val bubbleLeft = rect.left.roundToInt()
+            val bubbleRight = rect.right.roundToInt()
+            // Где легли плашка и меню (в координатах пузыря): там вместо чёткого пузыря — фон.
+            var coveredRects by remember { mutableStateOf(emptyList<Rect>()) }
+
+            Layout(
+                content = {
+                    val bubbleBitmap = bubble
+                    Box(
+                        modifier = Modifier.drawBehind {
+                            if (bubbleBitmap == null) return@drawBehind
+                            val holes = Path().apply {
+                                coveredRects.forEach { addRoundRect(RoundRect(it, CornerRadius(cornerPx))) }
+                            }
+                            clipRect(top = visibleTop - rect.top, bottom = visibleBottom - rect.top) {
+                                clipPath(holes, clipOp = ClipOp.Difference) {
+                                    drawImage(bubbleBitmap)
+                                }
+                            }
                         },
                     )
-                    Spacer(modifier = Modifier.height(GAP))
-                    BubbleSnapshot(
-                        bubble = bubble,
-                        widthDp = bubbleWidthDp,
-                        heightDp = with(density) { shownBubbleHeightPx.toDp() },
-                        modifier = Modifier.onSizeChanged { snapshotHeightPx = it.height },
-                    )
-                } else {
-                    if (target.displayEmojiReactions) {
-                        ReactionPill(
-                            recentEmojis = target.recentEmojis,
-                            onEmojiClick = { emoji ->
-                                onEmojiReactionClick(emoji, event)
+                    if (pickerTarget != null) {
+                        // Развёрнутый пикер эмодзи вместо плашки и меню: над сообщением, как в Telegram.
+                        EmojiPickerPanel(
+                            target = pickerTarget,
+                            selectedEmoji = customReactionState.selectedEmoji,
+                            emojiPickerRenderer = emojiPickerRenderer,
+                            onSelectEmoji = { emoji ->
+                                onSelectEmoji(pickerTarget.event.eventOrTransactionId, emoji)
                                 onDismiss()
                             },
-                            // «+» не закрывает оверлей: он грузит состояние пикера, после чего
-                            // тот разворачивается прямо здесь (ветка pickerTarget выше).
-                            onCustomReactionClick = { onCustomReactionClick(event) },
                         )
-                        Spacer(modifier = Modifier.height(GAP))
+                    } else {
+                        if (target.displayEmojiReactions) {
+                            ReactionPill(
+                                recentEmojis = target.recentEmojis,
+                                onEmojiClick = { emoji ->
+                                    onEmojiReactionClick(emoji, event)
+                                    onDismiss()
+                                },
+                                // «+» не закрывает оверлей: он грузит состояние пикера, после чего
+                                // тот разворачивается прямо здесь (ветка pickerTarget выше).
+                                onCustomReactionClick = { onCustomReactionClick(event) },
+                            )
+                        } else {
+                            Spacer(modifier = Modifier)
+                        }
+                        ActionsMenu(
+                            target = target,
+                            onActionClick = { action ->
+                                onSelectAction(action, event)
+                                onDismiss()
+                            },
+                        )
                     }
+                },
+                modifier = Modifier.fillMaxSize(),
+            ) { measurables, constraints ->
+                val width = constraints.maxWidth
+                val height = constraints.maxHeight
+                val minY = statusBarTop + edgePx
+                val maxBottom = height - navBarBottom - edgePx
+                val bubblePlaceable = measurables[0].measure(
+                    Constraints.fixed(rect.width.roundToInt().coerceAtLeast(0), rect.height.roundToInt().coerceAtLeast(0))
+                )
+                val childConstraints = Constraints(maxWidth = width - 2 * edgePx, maxHeight = (maxBottom - minY).coerceAtLeast(0))
 
-                    BubbleSnapshot(
-                        bubble = bubble,
-                        widthDp = bubbleWidthDp,
-                        heightDp = with(density) { shownBubbleHeightPx.toDp() },
-                        modifier = Modifier.onSizeChanged { snapshotHeightPx = it.height },
+                fun xFor(childWidth: Int): Int {
+                    val x = if (event.isMine) bubbleRight - childWidth else bubbleLeft
+                    return x.coerceIn(edgePx, (width - edgePx - childWidth).coerceAtLeast(edgePx))
+                }
+
+                fun Placeable.rectAt(x: Int, y: Int, shift: Int) =
+                    Rect(x - rect.left, y - (rect.top - shift), x - rect.left + width, y - (rect.top - shift) + this.height)
+
+                if (measurables.size == 2) {
+                    // Пикер: над сообщением; не влезает — под ним; и там нет места — от верха экрана.
+                    val picker = measurables[1].measure(childConstraints)
+                    val above = visibleTop - gapPx - picker.height
+                    val below = visibleBottom + gapPx
+                    val y = when {
+                        above >= minY -> above
+                        below + picker.height <= maxBottom -> below
+                        else -> minY
+                    }
+                    val x = (width - picker.width) / 2
+                    coveredRects = listOf(picker.rectAt(x, y, 0))
+                    layout(width, height) {
+                        bubblePlaceable.place(bubbleLeft, rect.top.roundToInt())
+                        picker.place(x, y)
+                    }
+                } else {
+                    val pill = measurables[1].measure(childConstraints)
+                    val pillBlock = if (pill.height > 0) pill.height + gapPx else 0
+                    val menu = measurables[2].measure(
+                        childConstraints.copy(maxHeight = (maxBottom - minY - pillBlock).coerceAtLeast(0))
                     )
-
-                    Spacer(modifier = Modifier.height(GAP))
-
-                    ActionsMenu(
-                        target = target,
-                        onActionClick = { action ->
-                            onSelectAction(action, event)
-                            onDismiss()
-                        },
-                    )
+                    // Меню под пузырём не влезает — поднимаем всё на свободное место сверху.
+                    val overflow = visibleBottom + gapPx + menu.height - maxBottom
+                    val roomAbove = visibleTop - pillBlock - minY
+                    val shift = overflow.coerceIn(0, roomAbove.coerceAtLeast(0))
+                    val pillY = (visibleTop - shift - pillBlock).coerceAtLeast(minY)
+                    val menuMinY = pillY + pillBlock
+                    val below = visibleBottom - shift + gapPx
+                    val menuY = if (below + menu.height <= maxBottom) below else (maxBottom - menu.height).coerceAtLeast(menuMinY)
+                    val pillX = xFor(pill.width)
+                    val menuX = xFor(menu.width)
+                    coveredRects = listOf(pill.rectAt(pillX, pillY, shift), menu.rectAt(menuX, menuY, shift))
+                    layout(width, height) {
+                        bubblePlaceable.place(bubbleLeft, rect.top.roundToInt() - shift)
+                        pill.place(pillX, pillY)
+                        menu.place(menuX, menuY)
+                    }
                 }
             }
         }
@@ -285,32 +353,6 @@ private fun ReactionPill(
     }
 }
 
-// Снимок пузыря на своём месте, скруглённый под форму пузыря: иначе углы прямоугольного
-// снимка показывают обои, а на размытом фоне это читается рамкой. Пока снимок готовится
-// (доли кадра) — отступ его размера, чтобы ничего не прыгало.
-@Composable
-private fun BubbleSnapshot(
-    bubble: ImageBitmap?,
-    widthDp: Dp,
-    heightDp: Dp,
-    modifier: Modifier = Modifier,
-) {
-    if (bubble != null) {
-        // Crop по низу: если высоту урезали, остаётся низ пузыря со временем и кнопками.
-        Image(
-            bitmap = bubble,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.BottomCenter,
-            modifier = modifier
-                .size(widthDp, heightDp)
-                .clip(RoundedCornerShape(BUBBLE_SNAPSHOT_CORNER)),
-        )
-    } else {
-        Spacer(modifier = modifier.size(widthDp, heightDp))
-    }
-}
-
 // Развёрнутый пикер эмодзи (та же сетка, что в шторке реакций, только инлайн в оверлее).
 // Высота ограничена, чтобы над сообщением осталось место; внутри сетка скроллится сама.
 @Composable
@@ -349,9 +391,12 @@ private fun ActionsMenu(
     val event = target.event
     Column(
         modifier = modifier
-            .widthIn(max = MENU_WIDTH)
+            .width(IntrinsicSize.Max)
+            .widthIn(min = MENU_MIN_WIDTH, max = MENU_WIDTH)
             .clip(RoundedCornerShape(MENU_CORNER))
-            .background(larpgramActionSheetColor()),
+            .background(larpgramActionSheetColor())
+            // Высоту ограничивает оверлей: всё, что не влезло между плашкой и низом экрана, листается.
+            .verticalScroll(rememberScrollState()),
     ) {
         val deliveryState = event.deliveryStateForMenu()
         if (event.isMine && deliveryState != null) {
@@ -359,14 +404,42 @@ private fun ActionsMenu(
             HorizontalDivider()
         }
         target.actions.forEach { action ->
-            // Контейнер у designsystem ListItem прозрачный по умолчанию, поэтому единый грей
-            // карточки не рвётся.
-            ListItem(
-                content = { Text(text = stringResource(id = action.titleRes)) },
-                leadingContent = ListItemContent.Icon(IconSource.Resource(action.icon)),
-                style = if (action.destructive) ListItemStyle.Destructive else ListItemStyle.Default,
+            TgMenuItem(
+                action = action,
                 onClick = { onActionClick(action) },
             )
         }
+    }
+}
+
+@Composable
+private fun TgMenuItem(
+    action: TimelineItemAction,
+    onClick: () -> Unit,
+) {
+    val color = if (action.destructive) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textPrimary
+    val iconColor = if (action.destructive) ElementTheme.colors.iconCriticalPrimary else ElementTheme.colors.iconSecondary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(MENU_ITEM_HEIGHT)
+            .clickable(onClick = onClick)
+            .padding(horizontal = MENU_ITEM_PADDING),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            resourceId = action.icon,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(MENU_ICON_SIZE),
+        )
+        Spacer(modifier = Modifier.width(MENU_TEXT_START - MENU_ICON_SIZE))
+        Text(
+            text = stringResource(id = action.titleRes),
+            color = color,
+            style = ElementTheme.typography.fontBodyLgRegular,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

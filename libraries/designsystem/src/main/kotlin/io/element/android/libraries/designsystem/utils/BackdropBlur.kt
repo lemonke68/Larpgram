@@ -80,61 +80,6 @@ fun rememberBlurredBackdrop(enabled: Boolean): ImageBitmap? {
     return backdrop
 }
 
-/**
- * Резкий снимок прямоугольной области окна активити, в полном разрешении.
- *
- * Нужен меню долгого нажатия: фон под ним размыт, но само нажатое сообщение должно
- * остаться чётким. Снимаем именно окно активити, поэтому размытый слой и меню, лежащие в
- * своих окнах поверх, в снимок не попадают — в кадре чистый чат.
- *
- * `left`/`top`/`right`/`bottom` — в пикселях окна (то же, что даёт `boundsInWindow`).
- */
-@Composable
-fun rememberSharpRegion(left: Int, top: Int, right: Int, bottom: Int, enabled: Boolean): ImageBitmap? {
-    val context = LocalContext.current
-    val isPreview = LocalInspectionMode.current
-    var region by remember { mutableStateOf<ImageBitmap?>(null) }
-
-    LaunchedEffect(enabled, left, top, right, bottom) {
-        if (!enabled || isPreview) {
-            region = null
-            return@LaunchedEffect
-        }
-        region = captureRegion(context, left, top, right, bottom)
-    }
-    return region
-}
-
-private suspend fun captureRegion(context: Context, left: Int, top: Int, right: Int, bottom: Int): ImageBitmap? {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
-    val window = context.findActivity()?.window ?: return null
-    val width = right - left
-    val height = bottom - top
-    if (width <= 0 || height <= 0) return null
-
-    return runCatching {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        suspendCancellableCoroutine { continuation ->
-            PixelCopy.request(
-                window,
-                android.graphics.Rect(left, top, right, bottom),
-                bitmap,
-                { result ->
-                    if (result == PixelCopy.SUCCESS) {
-                        continuation.resume(bitmap.asImageBitmap())
-                    } else {
-                        Timber.w("PixelCopy области вернул $result")
-                        bitmap.recycle()
-                        continuation.resume(null)
-                    }
-                },
-                Handler(Looper.getMainLooper()),
-            )
-        }
-    }.onFailure { Timber.w(it, "не удалось снять область для меню долгого нажатия") }
-        .getOrNull()
-}
-
 private suspend fun captureBlurred(context: Context): ImageBitmap? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
     val window = context.findActivity()?.window ?: return null

@@ -44,8 +44,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -503,7 +506,11 @@ private fun TimelineItemEventRowContent(
     // несколько точек входа (пузырь, содержимое, время), и в группах оно уходило мимо обёртки.
     val messageActionsAnchor = LocalMessageActionsAnchor.current
     val eventKey = event.id.value
-    DisposableEffect(messageActionsAnchor, eventKey) {
+    // Пузырь рисует себя через слой: меню долгого нажатия берёт из него копию пузыря целиком,
+    // со своей формой и хвостом, а не снимок экрана с шапкой и полем ввода поверх.
+    val bubbleLayer = rememberGraphicsLayer()
+    DisposableEffect(messageActionsAnchor, eventKey, bubbleLayer) {
+        messageActionsAnchor?.registerLayer(eventKey, bubbleLayer)
         onDispose { messageActionsAnchor?.unregister(eventKey) }
     }
 
@@ -606,6 +613,16 @@ private fun TimelineItemEventRowContent(
         TgMessageEventBubble(
             modifier = Modifier
                 .onGloballyPositioned { messageActionsAnchor?.register(eventKey, it) }
+                .then(
+                    if (messageActionsAnchor != null) {
+                        Modifier.drawWithContent {
+                            bubbleLayer.record { this@drawWithContent.drawContent() }
+                            drawLayer(bubbleLayer)
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
                 .constrainAs(message) {
                     // Правка форка: пузырь больше не привязан к низу блока отправителя, аватар
                     // теперь стоит сбоку. Место под аватар держится отступом слева.

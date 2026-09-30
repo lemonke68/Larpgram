@@ -136,4 +136,6 @@
     <string name="search_from_your_messages_header">"Сообщения"</string>
     <string name="search_no_results_title">"Ничего не найдено"</string>
     <string name="search_no_results_subtitle">"По запросу «%1$s» ничего нет."</string>
+    <!-- Меню долгого нажатия: пункты TG в одну строку («Копировать ссылку», как в Telegram). -->
+    <string name="action_copy_link_to_message">"Копировать ссылку"</string>
 </resources>

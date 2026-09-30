@@ -15,7 +15,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,21 +43,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -232,9 +229,6 @@ fun TgMessagesView(
     // Правка форка: шапка Telegram плавает поверх ленты (обои под статус-баром); в треде — апстримовская.
     val isThreadTimeline = state.timelineState.timelineMode is Timeline.Mode.Thread
     var headerOverlayHeight by remember { mutableStateOf(0.dp) }
-    // Правка форка: низ шапки в координатах окна (со статус-баром) — для выдвигания пузыря
-    // перед меню долгого нажатия. headerOverlayHeight статус-бар не учитывает.
-    var headerBottomInWindowPx by remember { mutableFloatStateOf(0f) }
     val floatingComposer = !state.composerState.showTextFormatting && state.composerState.suggestions.isEmpty()
 
     // This is needed because the composer is inside an AndroidView that can't be affected by the FocusManager in Compose
@@ -243,7 +237,6 @@ fun TgMessagesView(
     // Правка форка: якорь меню долгого нажатия. Пузыри регистрируют сюда координаты по id,
     // onMessageLongClick читает их. Объявлен до обработчика, чтобы тот его видел.
     val messageActionsAnchor = remember { MessageActionsAnchor() }
-    val anchorScope = rememberCoroutineScope()
     val density = LocalDensity.current
 
     fun hidingKeyboard(block: () -> Unit) {
@@ -267,29 +260,6 @@ fun TgMessagesView(
         // Правка форка: координаты пузыря для привязанного меню. Один общий обработчик на все
         // пути открытия, поэтому спрашиваем по id, а не ловим в колбэке конкретного нажатия.
         messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
-        // Правка форка: пузырь частично под шапкой — сначала выдвигаем его, как Telegram, иначе
-        // шапка попадает в снимок пузыря в меню.
-        val bounds = messageActionsAnchor.bubbleBounds
-        val listState = messageActionsAnchor.listState
-        val headerBottomPx = headerBottomInWindowPx + with(density) { 8.dp.toPx() }
-        val bubbleTop = messageActionsAnchor.unclippedTopFor(event.id.value)
-        if (bounds != null && listState != null && bubbleTop != null && bubbleTop < headerBottomPx) {
-            anchorScope.launch {
-                // Лента перевёрнута (новые снизу): положительный сдвиг опускает содержимое.
-                listState.scrollBy(headerBottomPx - bubbleTop)
-                withFrameNanos { }
-                messageActionsAnchor.bubbleBounds = messageActionsAnchor.boundsFor(event.id.value)
-                hidingKeyboard {
-                    state.actionListState.eventSink(
-                        ActionListEvent.ComputeForMessage(
-                            event = event,
-                            userEventPermissions = state.userEventPermissions,
-                        )
-                    )
-                }
-            }
-            return
-        }
         hidingKeyboard {
             state.actionListState.eventSink(
                 ActionListEvent.ComputeForMessage(
@@ -418,7 +388,7 @@ fun TgMessagesView(
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
                                     .onSizeChanged { headerOverlayHeight = with(density) { it.height.toDp() } }
-                                    .onGloballyPositioned { headerBottomInWindowPx = it.boundsInWindow().bottom },
+                                    .onGloballyPositioned { messageActionsAnchor.visibleTopPx = it.positionOnScreen().y + it.size.height },
                             )
                         }
 
@@ -450,6 +420,8 @@ fun TgMessagesView(
             Column(
                 modifier = Modifier
                     .onSizeChanged { composerOverlayHeight = with(density) { it.height.toDp() } }
+                    // Правка форка: верх поля ввода — нижняя граница пузыря в меню долгого нажатия.
+                    .onGloballyPositioned { messageActionsAnchor.visibleBottomPx = it.positionOnScreen().y }
                     // Открытая панель эмодзи сама доходит до низа экрана, полосу навигации учитывает она.
                     .then(if (mediaPanel.isVisible) Modifier else Modifier.navigationBarsPadding())
             ) {
@@ -603,10 +575,7 @@ fun TgMessagesView(
         // поверх меню.
         MessageActionsOverlay(
             target = actionTarget,
-            bubbleLeft = bubbleBounds.left.toInt(),
-            bubbleTop = bubbleBounds.top.toInt(),
-            bubbleRight = bubbleBounds.right.toInt(),
-            bubbleBottom = bubbleBounds.bottom.toInt(),
+            anchor = messageActionsAnchor,
             onSelectAction = onSelectActionCommon,
             onCustomReactionClick = { event ->
                 state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
@@ -796,9 +765,7 @@ private fun MessagesViewContent(
                     stickerPackRequest = originalJson to stickerUrl
                 },
             ) {
-                // Правка форка: список ленты отдаём якорю меню долгого нажатия (см. onMessageLongClick).
                 val timelineListState = rememberLazyListState()
-                LocalMessageActionsAnchor.current?.listState = timelineListState
                 TgTimelineView(
                     lazyListState = timelineListState,
                     state = state.timelineState,

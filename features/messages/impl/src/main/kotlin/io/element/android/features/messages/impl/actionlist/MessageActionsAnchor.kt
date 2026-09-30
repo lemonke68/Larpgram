@@ -8,15 +8,18 @@
 
 package io.element.android.features.messages.impl.actionlist
 
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.positionOnScreen
+import androidx.compose.ui.unit.toSize
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 
 /**
  * Куда привязать всплывающее меню: экранные координаты нажатого пузыря.
@@ -28,6 +31,7 @@ import androidx.compose.ui.layout.positionInWindow
  */
 class MessageActionsAnchor {
     private val coordinates = mutableMapOf<String, LayoutCoordinates>()
+    private val layers = mutableMapOf<String, GraphicsLayer>()
 
     /**
      * Координаты нажатого пузыря для открытого меню. State, потому что оверлей появляется по
@@ -36,29 +40,39 @@ class MessageActionsAnchor {
     var bubbleBounds: Rect? by mutableStateOf(null)
 
     /**
-     * Правка форка: список ленты, чтобы перед меню выдвинуть пузырь из-под шапки. Пузырь в меню —
-     * снимок экрана, и шапка поверх пузыря попадала в снимок (находка сессии 2026-09-27, N-1).
+     * Полоса экрана, где лента видна: от низа шапки до верха поля ввода. Пузырь в меню обрезается
+     * по ней, как в Telegram (`ChatActivity`, отрисовка `scrimView` между шапкой и полем ввода).
      */
-    var listState: LazyListState? = null
+    var visibleTopPx: Float = 0f
+    var visibleBottomPx: Float = Float.MAX_VALUE
 
     fun register(id: String, layoutCoordinates: LayoutCoordinates) {
         coordinates[id] = layoutCoordinates
     }
 
+    /** Слой, в который пузырь рисует себя: из него меню берёт точную копию пузыря целиком. */
+    fun registerLayer(id: String, layer: GraphicsLayer) {
+        layers[id] = layer
+    }
+
     fun unregister(id: String) {
         coordinates.remove(id)
+        layers.remove(id)
     }
 
     /** `boundsInWindow` пузыря по id, либо null (пузырь ушёл с экрана или ещё не размещён). */
     fun boundsFor(id: String): Rect? =
         coordinates[id]?.takeIf { it.isAttached }?.boundsInWindow()
 
-    /**
-     * Верх пузыря в окне без обрезки краем ленты. `boundsInWindow` для пузыря, ушедшего под верх
-     * списка, даёт 0, и сдвиг «выдвинуть из-под шапки» получался меньше нужного.
-     */
-    fun unclippedTopFor(id: String): Float? =
-        coordinates[id]?.takeIf { it.isAttached }?.positionInWindow()?.y
+    /** Пузырь на экране целиком, без обрезки краями ленты. */
+    fun unclippedBoundsFor(id: String): Rect? =
+        coordinates[id]?.takeIf { it.isAttached }?.let { Rect(it.positionOnScreen(), it.size.toSize()) }
+
+    /** Копия пузыря: его форма, хвост и содержимое, без шапки и поля ввода поверх. */
+    suspend fun snapshotFor(id: String): ImageBitmap? {
+        val layer = layers[id]?.takeIf { !it.isReleased && it.size.width > 0 && it.size.height > 0 } ?: return null
+        return runCatchingExceptions { layer.toImageBitmap() }.getOrNull()
+    }
 }
 
 /**
