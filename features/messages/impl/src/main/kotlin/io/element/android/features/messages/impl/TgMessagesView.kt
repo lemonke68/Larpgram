@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
- * Copyright (c) 2026 Larpgram.
  * Правка форка: экран чата Telegram: плавающая шапка и поле ввода, меню вложений, меню долгого нажатия у пузыря. Заменяет элементовский `MessagesView`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.

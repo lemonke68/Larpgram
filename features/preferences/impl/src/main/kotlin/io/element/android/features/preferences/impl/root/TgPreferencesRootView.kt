@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
- * Copyright (c) 2026 Larpgram.
  * Правка форка: корень настроек в стиле Telegram (категории, «Избранное», шапка профиля).
  * Заменяет элементовский `PreferencesRootView`, который оставлен как в апстриме (аудит C-009).
  *

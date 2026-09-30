@@ -16,19 +16,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Color
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
 import io.element.android.compound.tokens.generated.SemanticColors
-import io.element.android.compound.tokens.withLarpgramAccent
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.core.meta.BuildType
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
-import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
-import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 
 val LocalBuildMeta = staticCompositionLocalOf {
     BuildMeta(
@@ -71,45 +67,6 @@ fun ElementThemeApp(
     val theme by remember(isBlackThemeAllowed) {
         appPreferencesStore.getThemeFlow().mapToTheme(allowBlackTheme = isBlackThemeAllowed)
     }.collectAsState(initial = Theme.System)
-    // Larpgram: chat appearance customization, provided app-wide for the timeline to read.
-    val messageTextSizeSp by remember {
-        appPreferencesStore.getMessageTextSizeSpFlow()
-    }.collectAsState(initial = DEFAULT_MESSAGE_TEXT_SIZE_SP)
-    val bubbleCornerRadiusDp by remember {
-        appPreferencesStore.getBubbleCornerRadiusDpFlow()
-    }.collectAsState(initial = DEFAULT_BUBBLE_CORNER_RADIUS_DP)
-    val chatWallpaperId by remember {
-        appPreferencesStore.getChatWallpaperIdFlow()
-    }.collectAsState(initial = null)
-    val chatWallpaperCustomColorArgb by remember {
-        appPreferencesStore.getChatWallpaperCustomColorArgbFlow()
-    }.collectAsState(initial = null)
-    val chatBubbleColorArgb by remember {
-        appPreferencesStore.getChatBubbleColorArgbFlow()
-    }.collectAsState(initial = null)
-    val chatAccentColorArgb by remember {
-        appPreferencesStore.getChatAccentColorArgbFlow()
-    }.collectAsState(initial = null)
-    val chatWallpaperImageUri by remember {
-        appPreferencesStore.getChatWallpaperImageUriFlow()
-    }.collectAsState(initial = null)
-    val chatListThreeLine by remember {
-        appPreferencesStore.getChatListThreeLineFlow()
-    }.collectAsState(initial = false)
-    val chatWallpaperGradientSpec by remember {
-        appPreferencesStore.getChatWallpaperGradientFlow()
-    }.collectAsState(initial = null)
-    val chatWallpaperGradient = remember(chatWallpaperGradientSpec) {
-        ChatWallpaperGradient.parse(chatWallpaperGradientSpec)
-    }
-    // Larpgram: a chosen accent rebuilds the whole accent family on top of the themed palettes.
-    val accentColor = chatAccentColorArgb?.let { Color(it) }
-    val effectiveCompoundLight = remember(compoundLight, accentColor) {
-        accentColor?.let { compoundLight.withLarpgramAccent(it, isLight = true) } ?: compoundLight
-    }
-    val effectiveCompoundDark = remember(compoundDark, accentColor) {
-        accentColor?.let { compoundDark.withLarpgramAccent(it, isLight = false) } ?: compoundDark
-    }
     LaunchedEffect(theme) {
         AppCompatDelegate.setDefaultNightMode(
             when (theme) {
@@ -121,20 +78,12 @@ fun ElementThemeApp(
     }
     CompositionLocalProvider(
         LocalBuildMeta provides buildMeta,
-        LocalMessageTextScale provides ChatAppearanceDefaults.textScaleFor(messageTextSizeSp),
-        LocalChatBubbleRadius provides ChatAppearanceDefaults.bubbleRadiusFor(bubbleCornerRadiusDp),
-        LocalChatWallpaperId provides (chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id),
-        LocalChatWallpaperCustomColor provides chatWallpaperCustomColorArgb?.let { Color(it) },
-        LocalChatWallpaperImageUri provides chatWallpaperImageUri,
-        LocalChatWallpaperGradient provides chatWallpaperGradient,
-        LocalChatListThreeLine provides chatListThreeLine,
-        LocalOutgoingBubbleColor provides chatBubbleColorArgb?.let { Color(it) },
     ) {
         ElementTheme(
             theme = theme,
             content = content,
-            compoundLight = effectiveCompoundLight,
-            compoundDark = effectiveCompoundDark,
+            compoundLight = compoundLight,
+            compoundDark = compoundDark,
         )
     }
 }

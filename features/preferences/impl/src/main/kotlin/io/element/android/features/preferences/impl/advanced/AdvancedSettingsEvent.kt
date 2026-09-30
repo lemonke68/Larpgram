@@ -21,16 +21,4 @@ sealed interface AdvancedSettingsEvent {
     data class SetTimelineMediaPreviewValue(val value: MediaPreviewValue) : AdvancedSettingsEvent
     data class SetHideInviteAvatars(val value: Boolean) : AdvancedSettingsEvent
     data class SetLiveLocationMinimumDistanceUpdate(val value: Int) : AdvancedSettingsEvent
-
-    // Larpgram: chat appearance customization.
-    data class SetMessageTextSize(val sizeSp: Int) : AdvancedSettingsEvent
-    data class SetBubbleCornerRadius(val radiusDp: Int) : AdvancedSettingsEvent
-    data class SetChatWallpaper(val id: String) : AdvancedSettingsEvent
-    data class SetChatWallpaperCustomColor(val argb: Int) : AdvancedSettingsEvent
-    data class SetChatBubbleColor(val argb: Int?) : AdvancedSettingsEvent
-    data class SetChatAccentColor(val argb: Int?) : AdvancedSettingsEvent
-    data class SetChatWallpaperImage(val uri: String?) : AdvancedSettingsEvent
-    data class SetChatWallpaperGradient(val spec: String?) : AdvancedSettingsEvent
-    data class SetChatListThreeLine(val enabled: Boolean) : AdvancedSettingsEvent
-    data class ApplyChatTheme(val themeId: String) : AdvancedSettingsEvent
 }

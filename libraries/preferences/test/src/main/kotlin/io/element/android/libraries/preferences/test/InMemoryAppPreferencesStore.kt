@@ -12,8 +12,6 @@ import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.matrix.api.tracing.LogLevel
 import io.element.android.libraries.matrix.api.tracing.TraceLogPack
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
-import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
-import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.NotificationSound
 import io.element.android.libraries.preferences.api.store.NotificationSoundChannelConfig
 import kotlinx.coroutines.flow.Flow
@@ -28,16 +26,6 @@ class InMemoryAppPreferencesStore(
     timelineMediaPreviewValue: MediaPreviewValue? = null,
     theme: String? = null,
     liveLocationMinimumDistanceUpdate: Int = 10,
-    // Правка форка: оформление чатов.
-    messageTextSizeSp: Int = DEFAULT_MESSAGE_TEXT_SIZE_SP,
-    bubbleCornerRadiusDp: Int = DEFAULT_BUBBLE_CORNER_RADIUS_DP,
-    chatWallpaperId: String? = null,
-    chatWallpaperCustomColorArgb: Int? = null,
-    chatBubbleColorArgb: Int? = null,
-    chatAccentColorArgb: Int? = null,
-    chatWallpaperImageUri: String? = null,
-    chatListThreeLine: Boolean = false,
-    chatWallpaperGradient: String? = null,
     logLevel: LogLevel = LogLevel.INFO,
     traceLogPacks: Set<TraceLogPack> = emptySet(),
     homeserverHistory: List<String> = emptyList(),
@@ -52,15 +40,6 @@ class InMemoryAppPreferencesStore(
     private val customElementCallBaseUrl = MutableStateFlow(customElementCallBaseUrl)
     private val theme = MutableStateFlow(theme)
     private val liveLocationMinimumDistanceUpdate = MutableStateFlow(liveLocationMinimumDistanceUpdate)
-    private val messageTextSizeSp = MutableStateFlow(messageTextSizeSp)
-    private val bubbleCornerRadiusDp = MutableStateFlow(bubbleCornerRadiusDp)
-    private val chatWallpaperId = MutableStateFlow(chatWallpaperId)
-    private val chatWallpaperCustomColorArgb = MutableStateFlow(chatWallpaperCustomColorArgb)
-    private val chatBubbleColorArgb = MutableStateFlow(chatBubbleColorArgb)
-    private val chatAccentColorArgb = MutableStateFlow(chatAccentColorArgb)
-    private val chatWallpaperImageUri = MutableStateFlow(chatWallpaperImageUri)
-    private val chatListThreeLine = MutableStateFlow(chatListThreeLine)
-    private val chatWallpaperGradient = MutableStateFlow(chatWallpaperGradient)
     private val logLevel = MutableStateFlow(logLevel)
     private val tracingLogPacks = MutableStateFlow(traceLogPacks)
     private val homeserverHistory = MutableStateFlow(homeserverHistory)
@@ -103,78 +82,6 @@ class InMemoryAppPreferencesStore(
 
     override fun getLiveLocationMinimumDistanceInMetersUpdateFlow(): Flow<Int> {
         return liveLocationMinimumDistanceUpdate
-    }
-
-    override suspend fun setMessageTextSizeSp(value: Int) {
-        messageTextSizeSp.value = value
-    }
-
-    override fun getMessageTextSizeSpFlow(): Flow<Int> {
-        return messageTextSizeSp
-    }
-
-    override suspend fun setBubbleCornerRadiusDp(value: Int) {
-        bubbleCornerRadiusDp.value = value
-    }
-
-    override fun getBubbleCornerRadiusDpFlow(): Flow<Int> {
-        return bubbleCornerRadiusDp
-    }
-
-    override suspend fun setChatWallpaperId(id: String) {
-        chatWallpaperId.value = id
-    }
-
-    override fun getChatWallpaperIdFlow(): Flow<String?> {
-        return chatWallpaperId
-    }
-
-    override suspend fun setChatWallpaperCustomColorArgb(argb: Int) {
-        chatWallpaperCustomColorArgb.value = argb
-    }
-
-    override fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?> {
-        return chatWallpaperCustomColorArgb
-    }
-
-    override suspend fun setChatBubbleColorArgb(argb: Int?) {
-        chatBubbleColorArgb.value = argb
-    }
-
-    override fun getChatBubbleColorArgbFlow(): Flow<Int?> {
-        return chatBubbleColorArgb
-    }
-
-    override suspend fun setChatAccentColorArgb(argb: Int?) {
-        chatAccentColorArgb.value = argb
-    }
-
-    override fun getChatAccentColorArgbFlow(): Flow<Int?> {
-        return chatAccentColorArgb
-    }
-
-    override suspend fun setChatWallpaperImageUri(uri: String?) {
-        chatWallpaperImageUri.value = uri
-    }
-
-    override fun getChatWallpaperImageUriFlow(): Flow<String?> {
-        return chatWallpaperImageUri
-    }
-
-    override suspend fun setChatListThreeLine(enabled: Boolean) {
-        chatListThreeLine.value = enabled
-    }
-
-    override fun getChatListThreeLineFlow(): Flow<Boolean> {
-        return chatListThreeLine
-    }
-
-    override suspend fun setChatWallpaperGradient(spec: String?) {
-        chatWallpaperGradient.value = spec
-    }
-
-    override fun getChatWallpaperGradientFlow(): Flow<String?> {
-        return chatWallpaperGradient
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

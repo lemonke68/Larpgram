@@ -14,19 +14,14 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.toArgb
 import dev.zacsweers.metro.Inject
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
 import io.element.android.libraries.architecture.Presenter
-import io.element.android.libraries.designsystem.theme.ChatThemeOption
-import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
-import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
-import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -61,35 +56,6 @@ class AdvancedSettingsPresenter(
         val liveLocationMinimumDistanceUpdate by produceState<Int?>(null) {
             appPreferencesStore.getLiveLocationMinimumDistanceInMetersUpdateFlow().collect { value = it }
         }
-
-        // Larpgram: chat appearance customization.
-        val messageTextSizeSp by remember {
-            appPreferencesStore.getMessageTextSizeSpFlow()
-        }.collectAsState(initial = DEFAULT_MESSAGE_TEXT_SIZE_SP)
-        val bubbleCornerRadiusDp by remember {
-            appPreferencesStore.getBubbleCornerRadiusDpFlow()
-        }.collectAsState(initial = DEFAULT_BUBBLE_CORNER_RADIUS_DP)
-        val chatWallpaperId by remember {
-            appPreferencesStore.getChatWallpaperIdFlow()
-        }.collectAsState(initial = null)
-        val chatWallpaperCustomColorArgb by remember {
-            appPreferencesStore.getChatWallpaperCustomColorArgbFlow()
-        }.collectAsState(initial = null)
-        val chatBubbleColorArgb by remember {
-            appPreferencesStore.getChatBubbleColorArgbFlow()
-        }.collectAsState(initial = null)
-        val chatAccentColorArgb by remember {
-            appPreferencesStore.getChatAccentColorArgbFlow()
-        }.collectAsState(initial = null)
-        val chatWallpaperImageUri by remember {
-            appPreferencesStore.getChatWallpaperImageUriFlow()
-        }.collectAsState(initial = null)
-        val chatListThreeLine by remember {
-            appPreferencesStore.getChatListThreeLineFlow()
-        }.collectAsState(initial = false)
-        val chatWallpaperGradientSpec by remember {
-            appPreferencesStore.getChatWallpaperGradientFlow()
-        }.collectAsState(initial = null)
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
@@ -158,52 +124,6 @@ class AdvancedSettingsPresenter(
                 is AdvancedSettingsEvent.SetLiveLocationMinimumDistanceUpdate -> sessionCoroutineScope.launch {
                     appPreferencesStore.setLiveLocationMinimumDistanceInMetersUpdate(event.value)
                 }
-                is AdvancedSettingsEvent.SetMessageTextSize -> sessionCoroutineScope.launch {
-                    appPreferencesStore.setMessageTextSizeSp(event.sizeSp)
-                }
-                is AdvancedSettingsEvent.SetBubbleCornerRadius -> sessionCoroutineScope.launch {
-                    appPreferencesStore.setBubbleCornerRadiusDp(event.radiusDp)
-                }
-                is AdvancedSettingsEvent.SetChatWallpaper -> sessionCoroutineScope.launch {
-                    appPreferencesStore.setChatWallpaperId(event.id)
-                }
-                is AdvancedSettingsEvent.SetChatWallpaperCustomColor -> sessionCoroutineScope.launch {
-                    // Сохраняем цвет и переключаем выбор на кастомный маркер-id.
-                    appPreferencesStore.setChatWallpaperCustomColorArgb(event.argb)
-                    appPreferencesStore.setChatWallpaperId(ChatWallpaperOption.CUSTOM_ID)
-                }
-                is AdvancedSettingsEvent.SetChatBubbleColor -> sessionCoroutineScope.launch {
-                    appPreferencesStore.setChatBubbleColorArgb(event.argb)
-                }
-                is AdvancedSettingsEvent.SetChatAccentColor -> sessionCoroutineScope.launch {
-                    appPreferencesStore.setChatAccentColorArgb(event.argb)
-                }
-                is AdvancedSettingsEvent.SetChatListThreeLine -> sessionCoroutineScope.launch {
-                    appPreferencesStore.setChatListThreeLine(event.enabled)
-                }
-                is AdvancedSettingsEvent.SetChatWallpaperGradient -> sessionCoroutineScope.launch {
-                    // Градиент задан: сохраняем спеку и переводим id обоев на «градиент». Сброс (null)
-                    // — очищаем и возвращаем паттерн.
-                    appPreferencesStore.setChatWallpaperGradient(event.spec)
-                    appPreferencesStore.setChatWallpaperId(
-                        if (event.spec != null) ChatWallpaperOption.CUSTOM_GRADIENT_ID else ChatWallpaperOption.DEFAULT.id
-                    )
-                }
-                is AdvancedSettingsEvent.SetChatWallpaperImage -> sessionCoroutineScope.launch {
-                    // Фото выбрано: сохраняем URI и переводим маркер обоев на «фото». Сброс (null) —
-                    // очищаем URI и возвращаем обои к дефолтному паттерну.
-                    appPreferencesStore.setChatWallpaperImageUri(event.uri)
-                    appPreferencesStore.setChatWallpaperId(
-                        if (event.uri != null) ChatWallpaperOption.CUSTOM_IMAGE_ID else ChatWallpaperOption.DEFAULT.id
-                    )
-                }
-                is AdvancedSettingsEvent.ApplyChatTheme -> sessionCoroutineScope.launch {
-                    // Пресет = связка: ставим обои, цвет пузыря и акцент разом, палитра согласована.
-                    val theme = ChatThemeOption.entries.first { it.id == event.themeId }
-                    appPreferencesStore.setChatWallpaperId(theme.wallpaper.id)
-                    appPreferencesStore.setChatBubbleColorArgb(theme.bubbleColor?.toArgb())
-                    appPreferencesStore.setChatAccentColorArgb(theme.accentColor?.toArgb())
-                }
                 is AdvancedSettingsEvent.SetCompressImages -> sessionCoroutineScope.launch {
                     sessionPreferencesStore.setOptimizeImages(event.compress)
                 }
@@ -221,15 +141,6 @@ class AdvancedSettingsPresenter(
             availableThemeOptions = availableThemeOptions,
             mediaPreviewConfigState = mediaPreviewConfigState,
             liveLocationMinimumDistanceUpdate = liveLocationMinimumDistanceUpdate,
-            messageTextSizeSp = messageTextSizeSp,
-            bubbleCornerRadiusDp = bubbleCornerRadiusDp,
-            chatWallpaperId = chatWallpaperId ?: ChatWallpaperOption.DEFAULT.id,
-            chatWallpaperCustomColorArgb = chatWallpaperCustomColorArgb,
-            chatBubbleColorArgb = chatBubbleColorArgb,
-            chatAccentColorArgb = chatAccentColorArgb,
-            chatWallpaperImageUri = chatWallpaperImageUri,
-            chatWallpaperGradientSpec = chatWallpaperGradientSpec,
-            chatListThreeLine = chatListThreeLine,
             eventSink = ::handleEvent,
         )
     }

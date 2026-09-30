@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
- * Copyright (c) 2026 Larpgram.
  * Правка форка: строка сообщения Telegram: пузыри, аватар внизу серии, реакции и подвал комментариев. Заменяет элементовский `TimelineItemEventRow`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
@@ -60,7 +59,6 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
@@ -75,14 +73,11 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
-import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
 import io.element.android.features.messages.impl.timeline.components.event.TimelineItemEventContentView
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayout
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayoutData
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
-import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
-import io.element.android.features.messages.impl.timeline.model.TimelineItemReactions
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
 import io.element.android.features.messages.impl.timeline.model.bubble.BubbleState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAttachmentsContent
@@ -97,8 +92,6 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
-import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
-import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.ensureActiveLiveLocation
 import io.element.android.features.messages.impl.timeline.model.event.isBubbleless
 import io.element.android.features.messages.impl.timeline.model.event.isEmojiOnly
@@ -113,7 +106,6 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.modifiers.niceClickable
 import io.element.android.libraries.designsystem.preview.ElementPreview
-import io.element.android.libraries.designsystem.preview.PreviewWithExtraLargeHeight
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
 import io.element.android.libraries.designsystem.swipe.SwipeableActionsState
@@ -131,7 +123,6 @@ import io.element.android.libraries.matrix.api.timeline.item.EmbeddedEventInfo
 import io.element.android.libraries.matrix.api.timeline.item.ThreadSummary
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageContent
-import io.element.android.libraries.matrix.api.timeline.item.event.MessageShield
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileDetails
 import io.element.android.libraries.matrix.api.timeline.item.event.TextMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.getAvatarUrl
@@ -151,7 +142,6 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
 import io.element.android.libraries.ui.utils.text.detect
 import io.element.android.wysiwyg.link.Link
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -329,7 +319,7 @@ fun TgTimelineItemEventRow(
         }
 
         if (displayThreadSummaries && timelineMode !is Timeline.Mode.Thread && event.threadInfo is TimelineItemThreadInfo.ThreadRoot) {
-            ThreadSummaryView(
+            TgThreadSummaryView(
                 modifier = if (event.isMine) {
                     Modifier
                         .align(Alignment.End)
@@ -393,7 +383,7 @@ private fun rememberTimelineItemAccessibilityActions(
 }
 
 @Composable
-private fun ThreadSummaryView(
+private fun TgThreadSummaryView(
     threadSummary: ThreadSummary,
     latestEventText: String?,
     isOutgoing: Boolean,
@@ -1153,225 +1143,6 @@ private fun MessageEventBubbleContent(
 
 @PreviewsDayNight
 @Composable
-internal fun TgTimelineItemEventRowPreview() = ElementPreview {
-    Column {
-        sequenceOf(false, true).forEach { isMine ->
-            ATimelineItemEventRow(
-                event = aTimelineItemEvent(
-                    senderDisplayName = "Sender with a super long name that should ellipsize",
-                    isMine = isMine,
-                    content = aTimelineItemTextContent(
-                        body = "A long text which will be displayed on several lines and" +
-                            " hopefully can be manually adjusted to test different behaviors."
-                    ),
-                    groupPosition = TimelineItemGroupPosition.First,
-                ),
-            )
-            ATimelineItemEventRow(
-                event = aTimelineItemEvent(
-                    isMine = isMine,
-                    content = aTimelineItemImageContent(
-                        aspectRatio = 2.5f
-                    ),
-                    groupPosition = TimelineItemGroupPosition.Last,
-                ),
-            )
-        }
-    }
-}
-
-@PreviewsDayNight
-@Composable
-internal fun TgTimelineItemEventRowWithThreadSummaryPreview() = ElementPreview {
-    Column {
-        sequenceOf(false, true).forEach { isMine ->
-            ATimelineItemEventRow(
-                event = aTimelineItemEvent(
-                    senderDisplayName = "Sender with a super long name that should ellipsize",
-                    isMine = isMine,
-                    content = aTimelineItemTextContent(
-                        body = "A long text which will be displayed on several lines and" +
-                            " hopefully can be manually adjusted to test different behaviors."
-                    ),
-                    groupPosition = TimelineItemGroupPosition.First,
-                    threadInfo = TimelineItemThreadInfo.ThreadRoot(
-                        latestEventText = "This is the latest message in the thread",
-                        summary = ThreadSummary(
-                            latestEvent = AsyncData.Success(
-                                EmbeddedEventInfo(
-                                    eventOrTransactionId = EventOrTransactionId.Event(EventId("\$event-id")),
-                                    content = MessageContent(
-                                        body = "This is the latest message in the thread",
-                                        inReplyTo = null,
-                                        isEdited = false,
-                                        threadInfo = null,
-                                        type = TextMessageType("This is the latest message in the thread", null)
-                                    ),
-                                    senderId = UserId("@user:id"),
-                                    senderProfile = ProfileDetails.Ready(
-                                        displayName = USER_NAME_ALICE,
-                                        avatarUrl = null,
-                                        displayNameAmbiguous = false,
-                                        displayedStatus = null,
-                                    ),
-                                    timestamp = 0L,
-                                )
-                            ),
-                            numberOfReplies = 20L,
-                        )
-                    )
-                ),
-                displayThreadSummaries = true,
-            )
-        }
-    }
-}
-
-@PreviewWithExtraLargeHeight
-@Composable
-internal fun TgTimelineItemEventRowRtlContentPreview() = ElementPreview {
-    Column {
-        Text(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.LightGray)
-                .padding(8.dp),
-            text = "LTR layout direction",
-            textAlign = TextAlign.Center,
-            style = ElementTheme.typography.fontHeadingMdBold,
-        )
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            sequenceOf(false, true).forEach { isMine ->
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "ظَة وَدَاع يَسْتَغْرِب فِيهَ"
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.First,
-                    )
-                )
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "ظَة وَدَاع يَسْتَغْرِب فِيهَ",
-                            isEdited = true,
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.Middle,
-                        messageShield = MessageShield.UnknownDevice(isCritical = true),
-                    )
-                )
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "ظَة وَدَاع \nيَسْتَغْرِب فِيهَ"
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.Middle,
-                    )
-                )
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "ظَة وَدَاع يَسْتَغْرِب فِيهَا اَلشَّاعِر أَنْ لَا يَبْكِي مِنْ أَلَم اَلْفِرَاق،" +
-                                " وَيَصِف حَالَة اَلْمُودِعِينَ"
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.Last,
-                    )
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.LightGray)
-                .padding(8.dp),
-            text = "RTL layout direction",
-            textAlign = TextAlign.Center,
-            style = ElementTheme.typography.fontHeadingMdBold,
-        )
-
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            sequenceOf(false, true).forEach { isMine ->
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "ظَة وَدَاع يَسْتَغْرِب فِيهَا اَلشَّاعِر أَنْ لَا يَبْكِي مِنْ أَلَم اَلْفِرَاق،" +
-                                " وَيَصِف حَالَة اَلْمُودِعِينَ",
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.First,
-                    )
-                )
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "Testing\nLTR Line\nBreaks.",
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.Middle,
-                    )
-                )
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "Testing a very long LTR text in an RTL layout."
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.Middle,
-                    )
-                )
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "Testing LTR in RTL layout.",
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.Last,
-                        messageShield = MessageShield.UnknownDevice(isCritical = true),
-                    )
-                )
-                ATimelineItemEventRow(
-                    event = aTimelineItemEvent(
-                        senderDisplayName = "Sender with a super long name that should ellipsize",
-                        isMine = isMine,
-                        content = aTimelineItemTextContent(
-                            body = "Testing LTR in RTL layout.",
-                            isEdited = true,
-                        ),
-                        timelineItemReactions = TimelineItemReactions(persistentListOf()),
-                        groupPosition = TimelineItemGroupPosition.Last,
-                        messageShield = MessageShield.UnknownDevice(isCritical = true),
-                    )
-                )
-            }
-        }
-    }
-}
-
-@PreviewsDayNight
-@Composable
 internal fun TgThreadSummaryViewPreview() {
     ElementPreview {
         val body = "This is the latest message in the thread"
@@ -1399,7 +1170,7 @@ internal fun TgThreadSummaryViewPreview() {
             numberOfReplies = 12,
         )
 
-        ThreadSummaryView(
+        TgThreadSummaryView(
             threadSummary = threadSummary,
             latestEventText = "Some event with a very long text that should get clipped",
             isOutgoing = true,

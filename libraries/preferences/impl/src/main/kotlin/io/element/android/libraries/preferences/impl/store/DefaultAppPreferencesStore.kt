@@ -21,8 +21,6 @@ import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.matrix.api.tracing.LogLevel
 import io.element.android.libraries.matrix.api.tracing.TraceLogPack
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
-import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
-import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.NotificationSound
 import io.element.android.libraries.preferences.api.store.NotificationSound.Companion.toStored
 import io.element.android.libraries.preferences.api.store.NotificationSoundChannelConfig
@@ -37,15 +35,6 @@ private val themeKey = stringPreferencesKey("theme")
 private val hideInviteAvatarsKey = booleanPreferencesKey("hideInviteAvatars")
 private val timelineMediaPreviewValueKey = stringPreferencesKey("timelineMediaPreviewValue")
 private val liveLocationMinimumDistanceUpdateKey = intPreferencesKey("liveLocationMinimumDistanceUpdate")
-private val messageTextSizeSpKey = intPreferencesKey("larpgramMessageTextSizeSp")
-private val bubbleCornerRadiusDpKey = intPreferencesKey("larpgramBubbleCornerRadiusDp")
-private val chatWallpaperIdKey = stringPreferencesKey("larpgramChatWallpaperId")
-private val chatWallpaperCustomColorKey = intPreferencesKey("larpgramChatWallpaperCustomColor")
-private val chatBubbleColorKey = intPreferencesKey("larpgramChatBubbleColor")
-private val chatAccentColorKey = intPreferencesKey("larpgramChatAccentColor")
-private val chatWallpaperImageUriKey = stringPreferencesKey("larpgramChatWallpaperImageUri")
-private val chatListThreeLineKey = booleanPreferencesKey("larpgramChatListThreeLine")
-private val chatWallpaperGradientKey = stringPreferencesKey("larpgramChatWallpaperGradient")
 private val logLevelKey = stringPreferencesKey("logLevel")
 private val traceLogPacksKey = stringPreferencesKey("traceLogPacks")
 private val homeserverHistoryKey = stringPreferencesKey("homeserverHistory")
@@ -118,102 +107,6 @@ class DefaultAppPreferencesStore(
         return store.data.map { prefs ->
             prefs[liveLocationMinimumDistanceUpdateKey] ?: 10
         }
-    }
-
-    override suspend fun setMessageTextSizeSp(value: Int) {
-        store.edit { prefs -> prefs[messageTextSizeSpKey] = value }
-    }
-
-    override fun getMessageTextSizeSpFlow(): Flow<Int> {
-        return store.data.map { prefs -> prefs[messageTextSizeSpKey] ?: DEFAULT_MESSAGE_TEXT_SIZE_SP }
-    }
-
-    override suspend fun setBubbleCornerRadiusDp(value: Int) {
-        store.edit { prefs -> prefs[bubbleCornerRadiusDpKey] = value }
-    }
-
-    override fun getBubbleCornerRadiusDpFlow(): Flow<Int> {
-        return store.data.map { prefs -> prefs[bubbleCornerRadiusDpKey] ?: DEFAULT_BUBBLE_CORNER_RADIUS_DP }
-    }
-
-    override suspend fun setChatWallpaperId(id: String) {
-        store.edit { prefs -> prefs[chatWallpaperIdKey] = id }
-    }
-
-    override fun getChatWallpaperIdFlow(): Flow<String?> {
-        return store.data.map { prefs -> prefs[chatWallpaperIdKey] }
-    }
-
-    override suspend fun setChatWallpaperCustomColorArgb(argb: Int) {
-        store.edit { prefs -> prefs[chatWallpaperCustomColorKey] = argb }
-    }
-
-    override fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?> {
-        return store.data.map { prefs -> prefs[chatWallpaperCustomColorKey] }
-    }
-
-    override suspend fun setChatBubbleColorArgb(argb: Int?) {
-        store.edit { prefs ->
-            if (argb != null) {
-                prefs[chatBubbleColorKey] = argb
-            } else {
-                prefs.remove(chatBubbleColorKey)
-            }
-        }
-    }
-
-    override fun getChatBubbleColorArgbFlow(): Flow<Int?> {
-        return store.data.map { prefs -> prefs[chatBubbleColorKey] }
-    }
-
-    override suspend fun setChatAccentColorArgb(argb: Int?) {
-        store.edit { prefs ->
-            if (argb != null) {
-                prefs[chatAccentColorKey] = argb
-            } else {
-                prefs.remove(chatAccentColorKey)
-            }
-        }
-    }
-
-    override fun getChatAccentColorArgbFlow(): Flow<Int?> {
-        return store.data.map { prefs -> prefs[chatAccentColorKey] }
-    }
-
-    override suspend fun setChatWallpaperImageUri(uri: String?) {
-        store.edit { prefs ->
-            if (uri != null) {
-                prefs[chatWallpaperImageUriKey] = uri
-            } else {
-                prefs.remove(chatWallpaperImageUriKey)
-            }
-        }
-    }
-
-    override fun getChatWallpaperImageUriFlow(): Flow<String?> {
-        return store.data.map { prefs -> prefs[chatWallpaperImageUriKey] }
-    }
-
-    override suspend fun setChatListThreeLine(enabled: Boolean) {
-        store.edit { prefs -> prefs[chatListThreeLineKey] = enabled }
-    }
-
-    override fun getChatListThreeLineFlow(): Flow<Boolean> {
-        return store.data.map { prefs -> prefs[chatListThreeLineKey] ?: false }
-    }
-
-    override suspend fun setChatWallpaperGradient(spec: String?) {
-        store.edit { prefs ->
-            if (spec != null) {
-                prefs[chatWallpaperGradientKey] = spec
-            } else {
-                prefs.remove(chatWallpaperGradientKey)
-            }
-        }
-    }
-
-    override fun getChatWallpaperGradientFlow(): Flow<String?> {
-        return store.data.map { prefs -> prefs[chatWallpaperGradientKey] }
     }
 
     @Deprecated("Use MediaPreviewService instead. Kept only for migration.")

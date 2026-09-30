@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2026 Element Creations Ltd.
- * Copyright (c) 2026 Larpgram.
  * Правка форка: альбом Telegram: сетка фото и видео в одном пузыре. Заменяет элементовский `TimelineItemGalleryView`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.

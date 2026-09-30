@@ -13,12 +13,6 @@ import io.element.android.libraries.matrix.api.tracing.LogLevel
 import io.element.android.libraries.matrix.api.tracing.TraceLogPack
 import kotlinx.coroutines.flow.Flow
 
-/** Larpgram: baseline message text size, mapping to text scale 1.0 in the timeline. */
-const val DEFAULT_MESSAGE_TEXT_SIZE_SP = 16
-
-/** Larpgram: baseline message bubble corner radius, matching [TelegramBubbleShape] defaults. */
-const val DEFAULT_BUBBLE_CORNER_RADIUS_DP = 20
-
 /**
  * Local, app-wide user preferences that are not tied to a session, stored on the device only.
  *
@@ -57,42 +51,6 @@ interface AppPreferencesStore {
 
     /** The minimum distance in metres between two live location updates; defaults to 10. */
     fun getLiveLocationMinimumDistanceInMetersUpdateFlow(): Flow<Int>
-
-    /** Larpgram: message text size in sp (device-local). Default [DEFAULT_MESSAGE_TEXT_SIZE_SP]. */
-    suspend fun setMessageTextSizeSp(value: Int)
-    fun getMessageTextSizeSpFlow(): Flow<Int>
-
-    /** Message bubble corner radius in dp. Default [DEFAULT_BUBBLE_CORNER_RADIUS_DP]. */
-    suspend fun setBubbleCornerRadiusDp(value: Int)
-    fun getBubbleCornerRadiusDpFlow(): Flow<Int>
-
-    /** Selected chat wallpaper id (see ChatWallpaperOption). Null flow value means the default. */
-    suspend fun setChatWallpaperId(id: String)
-    fun getChatWallpaperIdFlow(): Flow<String?>
-
-    /** ARGB color chosen with the wallpaper eyedropper. Used only when the id is the custom one. */
-    suspend fun setChatWallpaperCustomColorArgb(argb: Int)
-    fun getChatWallpaperCustomColorArgbFlow(): Flow<Int?>
-
-    /** Outgoing ("Мои сообщения") bubble color, ARGB. Null clears it back to the themed default. */
-    suspend fun setChatBubbleColorArgb(argb: Int?)
-    fun getChatBubbleColorArgbFlow(): Flow<Int?>
-
-    /** App accent color, ARGB. Null keeps the default brand accent. */
-    suspend fun setChatAccentColorArgb(argb: Int?)
-    fun getChatAccentColorArgbFlow(): Flow<Int?>
-
-    /** User-picked chat wallpaper photo, as a persistable content URI string. Null = no photo. */
-    suspend fun setChatWallpaperImageUri(uri: String?)
-    fun getChatWallpaperImageUriFlow(): Flow<String?>
-
-    /** Chat list row density: true = three-line (two preview lines), false = two-line (one). */
-    suspend fun setChatListThreeLine(enabled: Boolean)
-    fun getChatListThreeLineFlow(): Flow<Boolean>
-
-    /** Two-colour gradient wallpaper spec ("start:end:angle"). Null = no gradient set. */
-    suspend fun setChatWallpaperGradient(spec: String?)
-    fun getChatWallpaperGradientFlow(): Flow<String?>
 
     /**
      * Only used to clear the local value once it has been migrated to the server.

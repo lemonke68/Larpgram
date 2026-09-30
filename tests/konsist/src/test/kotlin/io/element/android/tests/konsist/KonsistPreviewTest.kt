@@ -215,7 +215,8 @@ class KonsistPreviewTest {
             .scopeFromProject()
             .functions()
             .withAllAnnotationsOf(PreviewsDayNight::class)
-            .withoutName(previewNameExceptions)
+            // Правка форка: Tg-копии экранов Element (аудит C-009) наследуют исключения своих оригиналов.
+            .withoutName(previewNameExceptions + previewNameExceptions.map { "Tg$it" })
             // We can't check Enterprise previews because they are in a different repo, and they aren't present for FOSS
             .withoutEnterpriseFunctions()
             .assertTrue(

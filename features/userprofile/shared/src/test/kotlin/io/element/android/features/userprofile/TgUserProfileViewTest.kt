@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2024, 2025 New Vector Ltd.
- * Copyright (c) 2026 Larpgram.
  * Правка форка: тесты `TgUserProfileView` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.

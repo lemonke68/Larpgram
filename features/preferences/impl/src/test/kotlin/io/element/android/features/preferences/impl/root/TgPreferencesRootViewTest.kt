@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2026 Element Creations Ltd.
- * Copyright (c) 2026 Larpgram.
  * Правка форка: тесты `TgPreferencesRootView` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
