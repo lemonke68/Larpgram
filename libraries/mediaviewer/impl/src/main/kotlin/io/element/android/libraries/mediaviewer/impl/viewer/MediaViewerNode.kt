@@ -162,7 +162,8 @@ class MediaViewerNode(
             colors = colors,
         ) {
             val state = presenter.present()
-            MediaViewerView(
+            // Правка форка: просмотр медиа Telegram, элементовский оставлен как в апстриме (C-009).
+            TgMediaViewerView(
                 state = state,
                 textFileViewer = textFileViewer,
                 modifier = modifier,
