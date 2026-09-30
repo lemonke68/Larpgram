@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2026 Larpgram.
- * Правка форка: аватар и имя отправителя в пузыре Telegram. Вынесено из `TimelineItemEventRow.kt` (аудит C-009).
+ * Правка форка: аватар и имя отправителя в пузыре Telegram. Вынесено из `TgTimelineItemEventRow.kt` (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.

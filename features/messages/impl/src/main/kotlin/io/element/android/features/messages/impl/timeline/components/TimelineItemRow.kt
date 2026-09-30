@@ -161,7 +161,8 @@ internal fun TimelineItemRow(
                     }
                     else -> {
                         val a11yVoiceMessage = stringResource(CommonStrings.a11y_voice_message)
-                        TimelineItemEventRow(
+                        // Правка форка: строка сообщения Telegram (C-009).
+                        TgTimelineItemEventRow(
                             modifier = Modifier
                                 .semantics(mergeDescendants = true) {
                                     contentDescription = if (timelineItem.content is TimelineItemVoiceContent) {

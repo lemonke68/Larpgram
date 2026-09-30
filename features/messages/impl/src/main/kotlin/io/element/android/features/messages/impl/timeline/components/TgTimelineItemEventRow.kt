@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: строка сообщения Telegram: пузыри, аватар внизу серии, реакции и подвал комментариев. Заменяет элементовский `TimelineItemEventRow`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -29,10 +31,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
@@ -42,8 +44,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
@@ -51,8 +55,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -68,35 +72,40 @@ import androidx.constraintlayout.compose.ConstrainScope
 import androidx.constraintlayout.compose.ConstraintLayout
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
+import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
 import io.element.android.features.messages.impl.timeline.components.event.TimelineItemEventContentView
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayout
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayoutData
-import io.element.android.features.messages.impl.timeline.components.receipt.ReadReceiptViewState
-import io.element.android.features.messages.impl.timeline.components.receipt.TimelineItemReadReceiptView
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
 import io.element.android.features.messages.impl.timeline.model.TimelineItemReactions
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
 import io.element.android.features.messages.impl.timeline.model.bubble.BubbleState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAttachmentsContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAudioContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemGalleryContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.ensureActiveLiveLocation
+import io.element.android.features.messages.impl.timeline.model.event.isBubbleless
+import io.element.android.features.messages.impl.timeline.model.event.isEmojiOnly
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.messages.impl.timeline.protection.mustBeProtected
 import io.element.android.libraries.architecture.AsyncData
-import io.element.android.libraries.designsystem.colors.AvatarColorsProvider
+import io.element.android.libraries.channelcomments.ChannelDiscussion
 import io.element.android.libraries.designsystem.components.EqualWidthColumn
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
@@ -110,6 +119,8 @@ import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
 import io.element.android.libraries.designsystem.swipe.SwipeableActionsState
 import io.element.android.libraries.designsystem.swipe.rememberSwipeableActionsState
 import io.element.android.libraries.designsystem.text.toPx
+import io.element.android.libraries.designsystem.theme.LocalChatBubbleRadius
+import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleContentColor
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.EventId
@@ -135,10 +146,6 @@ import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToView
 import io.element.android.libraries.matrix.ui.messages.reply.content
 import io.element.android.libraries.matrix.ui.messages.reply.eventId
-import io.element.android.libraries.matrix.ui.messages.sender.SenderName
-import io.element.android.libraries.matrix.ui.messages.sender.SenderNameMode
-import io.element.android.libraries.testtags.TestTags
-import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.strings.CommonPlurals
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
@@ -149,17 +156,16 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// The bubble has a negative margin to be placed a bit upper regarding the sender
-// information and overlap the avatar.
-val NEGATIVE_MARGIN_FOR_BUBBLE = (-8).dp
+// Правка форка, замеры по макету редизайна 2023: аватар 44dp стоит в 16dp от края, пузырь
+// начинается через 9dp после него. Отступ держится и без аватара, чтобы группа не гуляла.
+private val AVATAR_START_MARGIN = 16.dp
+private val BUBBLE_INCOMING_OFFSET = AVATAR_START_MARGIN + 44.dp + 9.dp
 
-// Width of the transparent border around the sender avatar
-val SENDER_AVATAR_BORDER_WIDTH = 3.dp
-
-private val BUBBLE_INCOMING_OFFSET = 16.dp
+// Правка форка: ободок пузыря вокруг медиа без подписи. Замер по макету редизайна 2023.
+private val MEDIA_BUBBLE_INSET = 4.dp
 
 @Composable
-fun TimelineItemEventRow(
+fun TgTimelineItemEventRow(
     event: TimelineItem.Event,
     timelineMode: Timeline.Mode,
     timelineRoomInfo: TimelineRoomInfo,
@@ -202,11 +208,18 @@ fun TimelineItemEventRow(
     val coroutineScope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
 
-    val onContentClick = if (event.mustBeProtected()) {
-        // In this case, let the content handle the click
-        {}
-    } else {
-        onEventClick
+    // Larpgram: тап по стикеру открывает его пак (добавить/удалить), а не общий обработчик клика.
+    val openStickerPack = LocalOpenStickerPack.current
+    val stickerContent = event.content as? TimelineItemStickerContent
+    val onContentClick: () -> Unit = when {
+        stickerContent != null -> {
+            { openStickerPack(event.debugInfo.originalJson, stickerContent.mediaSource.safeUrl) }
+        }
+        event.mustBeProtected() -> {
+            // In this case, let the content handle the click
+            {}
+        }
+        else -> onEventClick
     }
 
     fun onUserDataClick() {
@@ -218,6 +231,20 @@ fun TimelineItemEventRow(
         val inReplyToEventId = event.inReplyTo?.eventId() ?: return
         inReplyToClick(inReplyToEventId)
     }
+
+    // Larpgram: in a channel comment thread the first item is the post (its mirror). Mark it as
+    // a header by separating it from the comments below with a "Комментарии" divider, like
+    // Telegram's "Discussion started". Detected: thread mode, this event is the root, and it
+    // carries our mirror marker.
+    val threadMode = timelineMode as? Timeline.Mode.Thread
+    val isChannelCommentRoot = threadMode != null &&
+        event.eventId?.value == threadMode.threadRootId.value &&
+        remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentIdFromMirror(it) != null } ?: false
+        }
+    // Правка форка: пост наверху обсуждения рисуем как пост канала — слева, без аватара и имени
+    // того, кто его зеркалил, как пересланный пост канала в TG.
+    val rowRoomInfo = if (isChannelCommentRoot) timelineRoomInfo.copy(isChannel = true) else timelineRoomInfo
 
     val canReply = timelineRoomInfo.userHasPermissionToSendMessage && event.canBeRepliedTo
     val accessibilityActions = rememberTimelineItemAccessibilityActions(
@@ -237,20 +264,23 @@ fun TimelineItemEventRow(
             Spacer(modifier = Modifier.height(2.dp))
         }
         if (canReply) {
-            val state: SwipeableActionsState = rememberSwipeableActionsState()
+            // Правка форка: ответ — свайпом влево, как в Telegram (`ChatActivity`, swipe-to-reply).
+            // Свайп вправо от края экрана на Android и так занят жестом «назад».
+            val state: SwipeableActionsState = rememberSwipeableActionsState(swipeToStart = true)
             val offset = state.offset.floatValue
             val swipeThresholdPx = 40.dp.toPx()
             val thresholdCrossed = abs(offset) > swipeThresholdPx
             SwipeSensitivity(3f) {
                 Box(Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.matchParentSize()) {
-                        ReplySwipeIndicator({ offset / 120 })
+                        Spacer(modifier = Modifier.weight(1f))
+                        ReplySwipeIndicator({ -offset / 120 }, fromEnd = true)
                     }
                     TimelineItemEventRowContent(
                         event = event,
                         timelineMode = timelineMode,
                         timelineProtectionState = timelineProtectionState,
-                        timelineRoomInfo = timelineRoomInfo,
+                        timelineRoomInfo = rowRoomInfo,
                         interactionSource = interactionSource,
                         onContentClick = onContentClick,
                         onLongClick = onLongClick,
@@ -284,7 +314,7 @@ fun TimelineItemEventRow(
                 event = event,
                 timelineMode = timelineMode,
                 timelineProtectionState = timelineProtectionState,
-                timelineRoomInfo = timelineRoomInfo,
+                timelineRoomInfo = rowRoomInfo,
                 interactionSource = interactionSource,
                 onContentClick = onContentClick,
                 onLongClick = onLongClick,
@@ -318,16 +348,13 @@ fun TimelineItemEventRow(
             )
         }
 
-        // Read receipts / Send state
-        TimelineItemReadReceiptView(
-            state = ReadReceiptViewState(
-                sendState = event.localSendState,
-                isLastOutgoingMessage = isLastOutgoingMessage,
-                receipts = event.readReceiptState.receipts,
-            ),
-            onReadReceiptsClick = { onReadReceiptClick(event) },
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        if (isChannelCommentRoot) {
+            ChannelCommentsDivider()
+        }
+
+        // Правка форка: аватарки прочтения убраны. Те же два факта, отправлено и прочитано,
+        // теперь показывают галочки внутри пузыря (MessageDeliveryTicks), а два индикатора
+        // одного и того же — лишний шум. Telegram аватарки под сообщением не рисует.
     }
 }
 
@@ -481,7 +508,19 @@ private fun TimelineItemEventRowContent(
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
-    fun ConstrainScope.linkStartOrEnd(event: TimelineItem.Event) = if (event.isMine) {
+    // Правка форка: пузырь регистрирует свои координаты по id сообщения, чтобы меню долгого
+    // нажатия встало вокруг него. Регистрация, а не обёртка колбэка: у долгого нажатия
+    // несколько точек входа (пузырь, содержимое, время), и в группах оно уходило мимо обёртки.
+    val messageActionsAnchor = LocalMessageActionsAnchor.current
+    val eventKey = event.id.value
+    DisposableEffect(messageActionsAnchor, eventKey) {
+        onDispose { messageActionsAnchor?.unregister(eventKey) }
+    }
+
+    // Правка форка: посты канала всегда слева и в «чужом» цвете — и у автора тоже, как в TG.
+    val isMineLayout = event.isMine && !timelineRoomInfo.isChannel
+
+    fun ConstrainScope.linkStartOrEnd() = if (isMineLayout) {
         end.linkTo(parent.end)
     } else {
         start.linkTo(parent.start)
@@ -497,22 +536,22 @@ private fun TimelineItemEventRowContent(
             message,
             reactions,
             pinIcon,
+            channelComments,
         ) = createRefs()
 
-        // Sender
-        if (event.showSenderInformation && !timelineRoomInfo.isDm) {
-            MessageSenderInformation(
-                event.senderId,
-                event.senderProfile,
+        // Правка форка: аватар больше не наезжает на угол пузыря сверху, а стоит слева от него
+        // и прижат к низу группы, как в макете. Имя отправителя переехало внутрь пузыря, см.
+        // MessageEventBubbleContent.
+        // Правка форка: в канале TG посты пишет сам канал — ни аватара, ни имени автора.
+        if (event.showSenderAvatar && !timelineRoomInfo.isDm && !timelineRoomInfo.isChannel) {
+            MessageSenderAvatar(
                 event.senderAvatar,
                 onUserDataClick,
                 Modifier
                     .constrainAs(sender) {
-                        top.linkTo(parent.top)
-                        // Required for correct RTL layout
-                        start.linkTo(parent.start)
+                        bottom.linkTo(message.bottom)
+                        start.linkTo(parent.start, margin = AVATAR_START_MARGIN)
                     }
-                    .padding(horizontal = 16.dp)
                     .zIndex(1f),
             )
         }
@@ -534,25 +573,57 @@ private fun TimelineItemEventRowContent(
             background to border
         }
 
+        // Larpgram (роумлесс, gap D): TG-чип «Комментарии» под постом канала, влитый в карточку.
+        // Старые текстовые посты несут ссылку на дискуссию в своём контенте; новые текстовые, медиа
+        // и стикеры зеркалятся в дискуссию по id поста, поэтому чип у них есть, когда у канала есть
+        // дискуссия.
+        val hasTextComments = remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) != null } ?: false
+        }
+        val isMirroredPost = event.content is TimelineItemImageContent ||
+            event.content is TimelineItemVideoContent ||
+            event.content is TimelineItemAudioContent ||
+            event.content is TimelineItemVoiceContent ||
+            event.content is TimelineItemFileContent ||
+            event.content is TimelineItemGalleryContent ||
+            event.content is TimelineItemStickerContent ||
+            event.content is TimelineItemTextBasedContent
+        val showChannelComments = timelineRoomInfo.isChannel &&
+            (hasTextComments || (isMirroredPost && timelineRoomInfo.channelDiscussionRoomId != null))
+        // Число комментариев: текстовый пост коррелируется по correlation-id из своего контента,
+        // медиа-пост — по своему eventId (в его зеркале comment_id = eventId поста). Нет числа
+        // (дискуссия ещё не загружена) → подпись без числа.
+        val commentKey = remember(event.id) {
+            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it)?.second }
+                ?: event.eventId?.value
+        }
+        val commentCount = commentKey?.let { timelineRoomInfo.channelCommentCounts[it] }
+        val commentsFooter: (@Composable () -> Unit)? = if (showChannelComments) {
+            { ChannelPostCommentsFooter(count = commentCount, onClick = { eventSink(TimelineEvent.OpenChannelPostComments(event)) }) }
+        } else {
+            null
+        }
+
+        // Правка форка: реакции рисуются внутри пузыря (A-008), если пузырь есть.
+        val reactionsInBubble = event.reactionsState.reactions.isNotEmpty() && !event.content.isBubbleless
+
         // Message bubble
         val bubbleState = BubbleState(
             groupPosition = event.groupPosition,
-            isMine = event.isMine,
+            isMine = isMineLayout,
             timelineRoomInfo = timelineRoomInfo,
         )
         MessageEventBubble(
             modifier = Modifier
+                .onGloballyPositioned { messageActionsAnchor?.register(eventKey, it) }
                 .constrainAs(message) {
-                    val topMargin = if (bubbleState.cutTopStart) {
-                        NEGATIVE_MARGIN_FOR_BUBBLE
-                    } else {
-                        0.dp
-                    }
-                    top.linkTo(sender.bottom, margin = topMargin)
-                    if (event.isMine) {
+                    // Правка форка: пузырь больше не привязан к низу блока отправителя, аватар
+                    // теперь стоит сбоку. Место под аватар держится отступом слева.
+                    top.linkTo(parent.top)
+                    if (isMineLayout) {
                         end.linkTo(parent.end, margin = 16.dp)
                     } else {
-                        val startMargin = if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
+                        val startMargin = if (timelineRoomInfo.isDm || timelineRoomInfo.isChannel) 16.dp else BUBBLE_INCOMING_OFFSET
                         start.linkTo(parent.start, margin = startMargin)
                     }
                 },
@@ -562,6 +633,8 @@ private fun TimelineItemEventRowContent(
             onLongClick = onLongClick,
             customBackgroundColor = dangerousContentBubbleColor,
             borderColor = borderColor,
+            // Правка форка: стикеры, гифки и кружочки рисуются прямо на обоях, без подложки.
+            showBubble = !event.content.isBubbleless,
         ) {
             MessageEventBubbleContent(
                 event = event,
@@ -570,12 +643,40 @@ private fun TimelineItemEventRowContent(
                 onMessageLongClick = onLongClick,
                 inReplyToClick = inReplyToClick,
                 eventSink = eventSink,
+                showSenderName = event.showSenderInformation &&
+                    !timelineRoomInfo.isDm &&
+                    !timelineRoomInfo.isChannel &&
+                    !event.content.isBubbleless,
+                onSenderNameClick = onUserDataClick,
+                isChannel = timelineRoomInfo.isChannel,
+                // Чип-футер только для постов с пузырём; на безпузырном контенте (стикеры/кружочки)
+                // карточки нет — влить некуда, поэтому не показываем.
+                commentsFooter = commentsFooter.takeUnless { event.content.isBubbleless },
+                reactionsFooter = if (reactionsInBubble) {
+                    { timestamp ->
+                        TgBubbleReactions(
+                            reactions = event.reactionsState.reactions,
+                            isMine = isMineLayout,
+                            isDm = timelineRoomInfo.isDm,
+                            isChannel = timelineRoomInfo.isChannel,
+                            userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
+                            onReactionClick = onReactionClick,
+                            onReactionLongClick = onReactionLongClick,
+                            timestamp = timestamp,
+                            modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 2.dp, bottom = 6.dp),
+                        )
+                    }
+                } else {
+                    null
+                },
                 eventContentView = eventContentView,
             )
         }
 
         // Pin icon
-        val isEventPinned = timelineRoomInfo.pinnedEventIds.contains(event.eventId)
+        // Правка форка: в Telegram у закреплённого сообщения значка сбоку нет — закреп видно в
+        // плашке под шапкой.
+        val isEventPinned = SHOW_PIN_ICON && timelineRoomInfo.pinnedEventIds.contains(event.eventId)
         if (isEventPinned) {
             Icon(
                 imageVector = CompoundIcons.PinSolid(),
@@ -586,7 +687,7 @@ private fun TimelineItemEventRowContent(
                     .size(16.dp)
                     .constrainAs(pinIcon) {
                         top.linkTo(message.top)
-                        if (event.isMine) {
+                        if (isMineLayout) {
                             end.linkTo(message.start, margin = 8.dp)
                         } else {
                             start.linkTo(message.end, margin = 8.dp)
@@ -595,71 +696,55 @@ private fun TimelineItemEventRowContent(
             )
         }
 
+        // Larpgram: у безпузырного поста канала (стикер/гифка/кружок) карточки нет — влить чип
+        // некуда, а снизу он раздвигал вертикальный ритм. Ставим круглый бабл СБОКУ от контента
+        // (по образцу pinIcon), низом по низу — тот же ряд, дефолтный спейсинг до следующего поста.
+        if (event.content.isBubbleless && timelineRoomInfo.isChannel && timelineRoomInfo.channelDiscussionRoomId != null) {
+            StandaloneChannelCommentsChip(
+                count = commentCount,
+                onClick = { eventSink(TimelineEvent.OpenChannelPostComments(event)) },
+                modifier = Modifier
+                    .constrainAs(channelComments) {
+                        bottom.linkTo(message.bottom)
+                        if (isMineLayout) {
+                            end.linkTo(message.start, margin = 8.dp)
+                        } else {
+                            start.linkTo(message.end, margin = 8.dp)
+                        }
+                    }
+                    .zIndex(1f),
+            )
+        }
+
         // Reactions
-        if (event.reactionsState.reactions.isNotEmpty()) {
+        // Правка форка: снаружи пузыря только у безпузырного контента (стикер, гифка, кружок).
+        if (event.reactionsState.reactions.isNotEmpty() && !reactionsInBubble) {
             TimelineItemReactionsView(
                 reactionsState = event.reactionsState,
                 userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
-                isOutgoing = event.isMine,
+                isOutgoing = isMineLayout,
                 onReactionClick = onReactionClick,
                 onReactionLongClick = onReactionLongClick,
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
+                showAddButton = false,
                 modifier = Modifier
                     .constrainAs(reactions) {
                         top.linkTo(message.bottom, margin = (-4).dp)
-                        linkStartOrEnd(event)
+                        linkStartOrEnd()
                     }
                     .zIndex(1f)
                     .padding(
                         // Note: due to the applied constraints, start is left for other's message and right for mine
                         // In design we want a offset of 6.dp compare to the bubble, so start is 22.dp (16 + 6)
                         start = when {
-                            event.isMine -> 22.dp
-                            timelineRoomInfo.isDm -> 22.dp
+                            isMineLayout -> 22.dp
+                            timelineRoomInfo.isDm || timelineRoomInfo.isChannel -> 22.dp
                             else -> 22.dp + BUBBLE_INCOMING_OFFSET
                         },
                         end = 16.dp
                     )
             )
         }
-    }
-}
-
-@Composable
-private fun MessageSenderInformation(
-    senderId: UserId,
-    senderProfile: ProfileDetails,
-    senderAvatar: AvatarData,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val avatarColors = AvatarColorsProvider.provide(senderAvatar.id)
-    Row(
-        modifier = modifier
-            // Add external clickable modifier with no indicator so the touch target is larger than just the display name
-            .clickable(onClick = onClick, enabled = true, interactionSource = remember { MutableInteractionSource() }, indication = null)
-            .clearAndSetSemantics {
-                hideFromAccessibility()
-            }
-    ) {
-        Avatar(
-            modifier = Modifier
-                .testTag(TestTags.timelineItemSenderAvatar)
-                .clip(CircleShape)
-                .clickable(onClick = onClick),
-            avatarData = senderAvatar,
-            avatarType = AvatarType.User,
-        )
-        SenderName(
-            modifier = Modifier
-                .testTag(TestTags.timelineItemSenderName)
-                .clip(RoundedCornerShape(6.dp))
-                .clickable(onClick = onClick)
-                .padding(horizontal = 4.dp),
-            senderId = senderId,
-            senderProfile = senderProfile,
-            senderNameMode = SenderNameMode.Timeline(avatarColors.foreground),
-        )
     }
 }
 
@@ -672,10 +757,21 @@ private fun MessageEventBubbleContent(
     onMessageLongClick: () -> Unit,
     inReplyToClick: () -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
+    // Larpgram: пост канала — в плашке времени показываем просмотры вместо тиков доставки.
+    isChannel: Boolean,
+    // Правка форка: имя отправителя рисуется внутри пузыря, первой строкой.
+    showSenderName: Boolean,
+    onSenderNameClick: () -> Unit,
     @SuppressLint("ModifierParameter")
     // need to rename this modifier to prevent linter false positives
     @Suppress("ModifierNaming")
     bubbleModifier: Modifier = Modifier,
+    // Larpgram (роумлесс): необязательная нижняя секция пузыря — TG-чип «Комментарии», влитый
+    // в карточку поста (наследует ширину и фон пузыря). null для не-каналов и обычных сообщений.
+    commentsFooter: (@Composable () -> Unit)? = null,
+    // Правка форка: реакции внутри пузыря под содержимым, как в Telegram (аудит A-008).
+    // Время передаётся в ряд реакций, чтобы стоять с ними в одной строке.
+    reactionsFooter: (@Composable (timestamp: (@Composable () -> Unit)?) -> Unit)? = null,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
     // Long clicks are not not automatically propagated from a `clickable`
@@ -723,13 +819,16 @@ private fun MessageEventBubbleContent(
                     TimelineEventTimestampView(
                         event = event,
                         eventSink = eventSink,
+                        showViewCount = isChannel,
+                        // Полупрозрачная тёмная плашка поверх медиа + белый текст, как в Telegram.
+                        contentColor = Color.White,
                         modifier = Modifier
-                            // Outer padding
-                            .padding(horizontal = 4.dp, vertical = 4.dp)
-                            .background(ElementTheme.colors.bgSubtleSecondary, RoundedCornerShape(10.0.dp))
+                            // Отступ от угла: плашка сидит ВНУТРИ медиа, а не на рамке поста.
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
                             .align(Alignment.BottomEnd)
-                            // Inner padding
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            // Внутренний отступ плашки (компактнее).
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
                     )
                 }
             TimestampPosition.Aligned -> @Composable {
@@ -762,6 +861,7 @@ private fun MessageEventBubbleContent(
                                     event = event,
                                     eventSink = eventSink,
                                     isLayoutDirectionMismatched = originalLayoutDirection != contentDirection,
+                                    showViewCount = isChannel,
                                     modifier = Modifier
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
@@ -770,17 +870,31 @@ private fun MessageEventBubbleContent(
                     )
                 }
             }
-            TimestampPosition.Below ->
+            TimestampPosition.Below -> {
+                // Правка форка: без пузыря (крупные эмодзи) время — на тёмной плашке, как в Overlay.
+                val onWallpaper = event.content.isBubbleless
                 Column(modifier) {
                     content {}
                     TimelineEventTimestampView(
                         event = event,
                         eventSink = eventSink,
+                        showViewCount = isChannel,
+                        contentColor = if (onWallpaper) Color.White else null,
                         modifier = Modifier
                             .align(Alignment.End)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .then(
+                                if (onWallpaper) {
+                                    Modifier
+                                        .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                } else {
+                                    Modifier
+                                }
+                            )
                     )
                 }
+            }
             TimestampPosition.Hidden -> Box(modifier) { content {} }
         }
     }
@@ -795,6 +909,11 @@ private fun MessageEventBubbleContent(
         modifier: Modifier = Modifier,
         canShrinkContent: Boolean = false,
     ) {
+        // Правка форка: при реакциях в пузыре время уходит в их строку, как в Telegram (A-008).
+        val timeInReactions = reactionsFooter != null &&
+            timestampPosition != TimestampPosition.Overlay &&
+            timestampPosition != TimestampPosition.Hidden
+        val contentTimestampPosition = if (timeInReactions) TimestampPosition.Hidden else timestampPosition
         val timestampLayoutModifier =
             if (inReplyToDetails != null && timestampPosition == TimestampPosition.Overlay) {
                 Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
@@ -802,17 +921,18 @@ private fun MessageEventBubbleContent(
                 Modifier
             }
 
-        val topPadding = if (inReplyToDetails != null) 0.dp else 8.dp
+        // Имя внутри пузыря уже даёт верхний отступ, второй раз он не нужен.
+        val topPadding = if (inReplyToDetails != null || showSenderName) 0.dp else 8.dp
         val contentModifier = when (paddingBehaviour) {
             ContentPadding.Textual ->
-                Modifier.padding(start = 12.dp, end = 12.dp, top = topPadding, bottom = 8.dp)
-            ContentPadding.Media -> {
-                if (inReplyToDetails == null) {
-                    Modifier
-                } else {
-                    Modifier.clip(RoundedCornerShape(10.dp))
-                }
-            }
+                Modifier.padding(start = 12.dp, end = 12.dp, top = topPadding, bottom = if (timeInReactions) 4.dp else 8.dp)
+            // Правка форка: картинка не должна доходить до краёв пузыря. В Telegram вокруг неё
+            // остаётся ободок в 4dp, и хвостик читается как продолжение пузыря, а не как кусок
+            // другого цвета рядом с картинкой. Радиус картинки на эти же 4dp меньше, чтобы
+            // ободок был одинаковой толщины и на углах.
+            ContentPadding.Media -> Modifier
+                .padding(MEDIA_BUBBLE_INSET)
+                .clip(RoundedCornerShape((LocalChatBubbleRadius.current - MEDIA_BUBBLE_INSET).coerceAtLeast(0.dp)))
             ContentPadding.CaptionedMedia ->
                 Modifier.padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = 8.dp)
             ContentPadding.InvalidContent -> Modifier.padding(top = topPadding, bottom = 8.dp)
@@ -825,7 +945,7 @@ private fun MessageEventBubbleContent(
         }
         val contentWithTimestamp = @Composable {
             WithTimestampLayout(
-                timestampPosition = timestampPosition,
+                timestampPosition = contentTimestampPosition,
                 eventSink = eventSink,
                 canShrinkContent = canShrinkContent,
                 modifier = timestampLayoutModifier.semantics(mergeDescendants = false) {
@@ -834,6 +954,16 @@ private fun MessageEventBubbleContent(
                 },
                 content = { onContentLayoutChange ->
                     eventContentView(contentModifier, onContentLayoutChange)
+                }
+            )
+        }
+
+        val reactionsRow = @Composable {
+            reactionsFooter?.invoke(
+                if (timeInReactions) {
+                    { TimelineEventTimestampView(event = event, eventSink = eventSink, showViewCount = isChannel) }
+                } else {
+                    null
                 }
             )
         }
@@ -856,13 +986,19 @@ private fun MessageEventBubbleContent(
             }
 
             val contentHasError = currentContentValidationState.hasError() || inReplyTo is InReplyToDetails.Error
-            val borderColor = if (contentHasError) ElementTheme.colors.borderCriticalSubtle else ElementTheme.colors.separatorPrimary
-            val backgroundColor = if (contentHasError) ElementTheme.colors.bgCriticalSubtle else ElementTheme.colors.bgCanvasDefault
+            // Правка форка: цитата как в Telegram — полупрозрачный оттенок пузыря с цветной чертой
+            // слева, без рамки. Непрозрачный тёмный прямоугольник выбивался из оранжевого пузыря
+            // (аудит A-010). В своём пузыре цвет берём от текста пузыря, в чужом — акцент.
+            val quoteColor = LocalOutgoingBubbleContentColor.current ?: ElementTheme.colors.textActionAccent
+            val backgroundColor = if (contentHasError) ElementTheme.colors.bgCriticalSubtle else quoteColor.copy(alpha = 0.14f)
+            val barColor = if (contentHasError) ElementTheme.colors.borderCriticalSubtle else quoteColor
             Box(
                 modifier = talkbackCompatModifier
-                    .border(1.dp, borderColor, shape)
                     .background(backgroundColor, shape)
-                    .padding(4.dp)
+                    .drawBehind {
+                        drawRect(color = barColor, size = size.copy(width = 3.dp.toPx()))
+                    }
+                    .padding(start = 7.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
             ) {
                 val contentValidationState = rememberEventContentValidationState(eventId = inReplyTo.eventId(), eventContent = inReplyTo.content())
                 val updatedEventSink by rememberUpdatedState(eventSink)
@@ -874,20 +1010,79 @@ private fun MessageEventBubbleContent(
                     inReplyTo = inReplyTo,
                     contentValidationValue = currentContentValidationState,
                     hideImage = timelineProtectionState.hideMediaContent(inReplyTo.eventId()),
+                    containerColor = Color.Transparent,
+                )
+            }
+        }
+        // Правка форка: имя отправителя первой строкой в пузыре, выше цитаты и содержимого.
+        val senderName = @Composable {
+            if (showSenderName) {
+                BubbleSenderName(
+                    senderId = event.senderId,
+                    senderProfile = event.senderProfile,
+                    senderAvatar = event.senderAvatar,
+                    onClick = onSenderNameClick,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp),
                 )
             }
         }
         if (inReplyToDetails != null) {
             // Use SubComposeLayout only if necessary as it can have consequences on the performance.
             EqualWidthColumn(spacing = 8.dp) {
+                senderName()
                 threadDecoration()
                 inReplyTo(inReplyToDetails)
                 contentWithTimestamp()
+                reactionsRow()
+                commentsFooter?.invoke()
             }
+        } else if (commentsFooter != null) {
+            // Larpgram: футер комментариев принимает ширину контента поста (PostWithCommentsFooter),
+            // поэтому рамка следует за размером поста/медиа, а не наоборот.
+            PostWithCommentsFooter(
+                modifier = modifier,
+                content = {
+                    // Правка форка: ряд реакций во всю ширину поста, время справа.
+                    ContentWithReactionsColumn(
+                        content = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                threadDecoration()
+                                // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    senderName()
+                                    contentWithTimestamp()
+                                }
+                            }
+                        },
+                        reactions = { reactionsRow() },
+                    )
+                },
+                footer = { commentsFooter() },
+            )
+        } else if (reactionsFooter != null) {
+            // Правка форка: ряд реакций во всю ширину пузыря, время справа.
+            ContentWithReactionsColumn(
+                modifier = modifier,
+                content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        threadDecoration()
+                        // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            senderName()
+                            contentWithTimestamp()
+                        }
+                    }
+                },
+                reactions = { reactionsRow() },
+            )
         } else {
             Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 threadDecoration()
-                contentWithTimestamp()
+                // Имя и текст стоят вплотную, между ними 2dp, а не общие для колонки 8dp.
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    senderName()
+                    contentWithTimestamp()
+                }
             }
         }
     }
@@ -906,9 +1101,21 @@ private fun MessageEventBubbleContent(
         when (val content = event.content) {
             is TimelineItemImageContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
             is TimelineItemVideoContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
-            is TimelineItemGalleryContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
-            is TimelineItemAttachmentsContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
+            // Правка форка: без подписи плашка времени висит полупрозрачной пилюлей в углу медиа
+            // (как в Telegram), а не отдельной строкой под альбомом — та резервировала спейсинг и
+            // делала рамку «жирной». С подписью время встаёт в хвост подписи (Aligned), без своей строки.
+            is TimelineItemGalleryContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
+            is TimelineItemAttachmentsContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
             is TimelineItemStickerContent -> TimestampPosition.Overlay
+            // Правка форка: сообщение из одних эмодзи рисуется без пузыря, поэтому время
+            // берёт ту же плашку, что у стикеров и кружочков, но под эмодзи, а не поверх:
+            // поверх оно закрывало пол-эмодзи (аудит A-006). Без плашки время повисло бы
+            // прямо на обоях и не читалось.
+            is TimelineItemTextBasedContent -> if (content.isEmojiOnly) {
+                TimestampPosition.Below
+            } else {
+                TimestampPosition.Default
+            }
             is TimelineItemLocationContent -> {
                 val content = content.ensureActiveLiveLocation()
                 val shouldHide = content.mode is TimelineItemLocationContent.Mode.Live &&
@@ -927,7 +1134,7 @@ private fun MessageEventBubbleContent(
         when (event.content) {
             is TimelineItemImageContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
             is TimelineItemVideoContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
-            is TimelineItemGalleryContent -> ContentPadding.CaptionedMedia
+            is TimelineItemGalleryContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
             is TimelineItemAttachmentsContent -> ContentPadding.CaptionedMedia
             is TimelineItemStickerContent,
             is TimelineItemLocationContent -> ContentPadding.Media
@@ -946,7 +1153,7 @@ private fun MessageEventBubbleContent(
 
 @PreviewsDayNight
 @Composable
-internal fun TimelineItemEventRowPreview() = ElementPreview {
+internal fun TgTimelineItemEventRowPreview() = ElementPreview {
     Column {
         sequenceOf(false, true).forEach { isMine ->
             ATimelineItemEventRow(
@@ -975,7 +1182,7 @@ internal fun TimelineItemEventRowPreview() = ElementPreview {
 
 @PreviewsDayNight
 @Composable
-internal fun TimelineItemEventRowWithThreadSummaryPreview() = ElementPreview {
+internal fun TgTimelineItemEventRowWithThreadSummaryPreview() = ElementPreview {
     Column {
         sequenceOf(false, true).forEach { isMine ->
             ATimelineItemEventRow(
@@ -1022,7 +1229,7 @@ internal fun TimelineItemEventRowWithThreadSummaryPreview() = ElementPreview {
 
 @PreviewWithExtraLargeHeight
 @Composable
-internal fun TimelineItemEventRowRtlContentPreview() = ElementPreview {
+internal fun TgTimelineItemEventRowRtlContentPreview() = ElementPreview {
     Column {
         Text(
             modifier = Modifier
@@ -1165,7 +1372,7 @@ internal fun TimelineItemEventRowRtlContentPreview() = ElementPreview {
 
 @PreviewsDayNight
 @Composable
-internal fun ThreadSummaryViewPreview() {
+internal fun TgThreadSummaryViewPreview() {
     ElementPreview {
         val body = "This is the latest message in the thread"
         val threadSummary = ThreadSummary(
@@ -1200,3 +1407,5 @@ internal fun ThreadSummaryViewPreview() {
         )
     }
 }
+
+private const val SHOW_PIN_ICON = false
