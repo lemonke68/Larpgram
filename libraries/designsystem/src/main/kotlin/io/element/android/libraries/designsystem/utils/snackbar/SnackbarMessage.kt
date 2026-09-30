@@ -21,6 +21,8 @@ import kotlin.random.Random
  * @param isDisplayed Used to track if the current message is already displayed or not.
  * @param id The unique identifier of the message. The default value is a random long.
  * @param action The action to be performed when the action is clicked.
+ * @param countdownEndsAtMillis Правка форка: плашка Telegram с обратным отсчётом до этого момента
+ *  (`System.currentTimeMillis()`), см. [TgUndoSnackbarVisuals]. Действие — [actionResId].
  */
 data class SnackbarMessage(
     @StringRes val messageResId: Int,
@@ -29,4 +31,7 @@ data class SnackbarMessage(
     val isDisplayed: AtomicBoolean = AtomicBoolean(false),
     val id: Long = Random.nextLong(),
     val action: () -> Unit = {},
+    // Правка форка: отсчёт TG-плашки «Отменить».
+    val countdownEndsAtMillis: Long? = null,
+    val countdownTotalMillis: Long = 5_000L,
 )

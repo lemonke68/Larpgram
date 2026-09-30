@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="larpgram_delete_both_pending">Чат удалится у обоих</string>
+    <string name="larpgram_undo">Отменить</string>
     <string name="larpgram_delete_both_failed">Не удалось удалить у обоих</string>
 </resources>

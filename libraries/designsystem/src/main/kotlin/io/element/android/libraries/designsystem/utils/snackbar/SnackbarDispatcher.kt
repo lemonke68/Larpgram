@@ -9,6 +9,7 @@
 package io.element.android.libraries.designsystem.utils.snackbar
 
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -21,6 +22,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.random.Random
 
 /**
  * A global dispatcher of [SnackbarMessage] to be displayed in [Snackbar] via a [SnackbarHostState].
@@ -41,6 +44,19 @@ class SnackbarDispatcher {
     fun post(message: SnackbarMessage) {
         snackBarMessageQueue.add(message)
         currentMessage.value = snackBarMessageQueue.firstOrNull()
+    }
+
+    /**
+     * Правка форка: плашку с отсчётом, которую показывал уходящий экран, отдать следующему.
+     * Удаление из меню чата постит «Отменить» ещё на экране чата, тот сразу закрывается, и без
+     * этого плашка пропадала вместе с ним — вместе с возможностью отменить.
+     */
+    @Synchronized
+    fun handOver(message: SnackbarMessage) {
+        if (snackBarMessageQueue.firstOrNull()?.id != message.id) return
+        val fresh = message.copy(id = Random.nextLong(), isDisplayed = AtomicBoolean(false))
+        snackBarMessageQueue[0] = fresh
+        currentMessage.value = fresh
     }
 
     @Synchronized
@@ -67,6 +83,9 @@ fun rememberSnackbarHostState(snackbarMessage: SnackbarMessage?): SnackbarHostSt
     val snackbarMessageText = snackbarMessage?.let {
         stringResource(id = snackbarMessage.messageResId)
     } ?: return snackbarHostState
+    // Правка форка: кнопка действия и её обработка. Апстрим не передавал actionResId в плашку
+    // и не вызывал action, так что «Отменить» не показывалась нигде.
+    val actionLabel = snackbarMessage.actionResId?.let { stringResource(id = it) }
 
     val dispatcher = LocalSnackbarDispatcher.current
     LaunchedEffect(snackbarMessage.id) {
@@ -74,16 +93,36 @@ fun rememberSnackbarHostState(snackbarMessage: SnackbarMessage?): SnackbarHostSt
         // This will prevent the message from appearing in any other active SnackbarHosts
         if (snackbarMessage.isDisplayed.getAndSet(true).not()) {
             try {
-                snackbarHostState.showSnackbar(
-                    message = snackbarMessageText,
-                    duration = snackbarMessage.duration,
-                )
+                val countdownEndsAt = snackbarMessage.countdownEndsAtMillis
+                val result = if (countdownEndsAt != null && actionLabel != null) {
+                    snackbarHostState.showSnackbar(
+                        TgUndoSnackbarVisuals(
+                            message = snackbarMessageText,
+                            actionLabel = actionLabel,
+                            endsAtMillis = countdownEndsAt,
+                            totalMillis = snackbarMessage.countdownTotalMillis,
+                        )
+                    )
+                } else {
+                    snackbarHostState.showSnackbar(
+                        message = snackbarMessageText,
+                        actionLabel = actionLabel,
+                        duration = snackbarMessage.duration,
+                    )
+                }
+                if (result == SnackbarResult.ActionPerformed) snackbarMessage.action()
                 // The snackbar item was displayed and dismissed, clear its message
                 dispatcher.clear()
             } catch (e: CancellationException) {
                 // The snackbar was being displayed when the coroutine was cancelled,
                 // so we need to clear its message
-                dispatcher.clear()
+                // Правка форка: недосчитанную плашку «Отменить» не теряем, её покажет следующий экран.
+                val countdownEndsAt = snackbarMessage.countdownEndsAtMillis
+                if (countdownEndsAt != null && countdownEndsAt > System.currentTimeMillis()) {
+                    dispatcher.handOver(snackbarMessage)
+                } else {
+                    dispatcher.clear()
+                }
                 throw e
             }
         }

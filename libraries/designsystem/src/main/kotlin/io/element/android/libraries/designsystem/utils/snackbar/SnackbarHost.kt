@@ -21,6 +21,12 @@ import io.element.android.libraries.designsystem.theme.components.Snackbar
 @Composable
 fun SnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) {
     androidx.compose.material3.SnackbarHost(hostState, modifier) { data ->
+        // Правка форка: плашка Telegram с отсчётом и «Отменить».
+        val undoVisuals = data.visuals as? TgUndoSnackbarVisuals
+        if (undoVisuals != null) {
+            TgUndoSnackbar(data = data, visuals = undoVisuals)
+            return@SnackbarHost
+        }
         Snackbar(
             // Add default padding
             modifier = Modifier.padding(12.dp),

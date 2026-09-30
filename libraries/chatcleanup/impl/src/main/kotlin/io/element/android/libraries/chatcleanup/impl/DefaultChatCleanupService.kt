@@ -19,7 +19,6 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -92,9 +91,11 @@ class DefaultChatCleanupService(
         snackbarDispatcher.post(
             SnackbarMessage(
                 messageResId = R.string.larpgram_delete_both_pending,
-                actionResId = CommonStrings.action_cancel,
+                actionResId = R.string.larpgram_undo,
                 duration = SnackbarDuration.Long,
                 action = { cancelDeleteForBoth(roomId) },
+                countdownEndsAtMillis = System.currentTimeMillis() + DELETE_FOR_BOTH_UNDO_MS,
+                countdownTotalMillis = DELETE_FOR_BOTH_UNDO_MS,
             )
         )
     }

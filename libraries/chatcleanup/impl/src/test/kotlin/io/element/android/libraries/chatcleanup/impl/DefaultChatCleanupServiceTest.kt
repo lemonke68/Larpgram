@@ -16,6 +16,7 @@ import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID_2
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -125,9 +126,28 @@ class DefaultChatCleanupServiceTest {
         assertThat(service.clearedHistory.value).isEmpty()
     }
 
+    @Test
+    fun `the banner counts down and its undo cancels the delete`() = runTest {
+        val deleted = mutableListOf<RoomId>()
+        val dispatcher = SnackbarDispatcher()
+        val service = createService(deleted = deleted, snackbarDispatcher = dispatcher)
+        val before = System.currentTimeMillis()
+        service.deleteChatForBoth(A_ROOM_ID)
+
+        val banner = dispatcher.snackbarMessage.first()!!
+        assertThat(banner.actionResId).isEqualTo(R.string.larpgram_undo)
+        assertThat(banner.countdownTotalMillis).isEqualTo(DELETE_FOR_BOTH_UNDO_MS)
+        assertThat(banner.countdownEndsAtMillis!! - before).isAtLeast(DELETE_FOR_BOTH_UNDO_MS)
+        banner.action()
+        advanceTimeBy(DELETE_FOR_BOTH_UNDO_MS + 1)
+        runCurrent()
+        assertThat(deleted).isEmpty()
+    }
+
     private fun TestScope.createService(
         client: FakeMatrixClient = FakeMatrixClient(),
         deleted: MutableList<RoomId> = mutableListOf(),
+        snackbarDispatcher: SnackbarDispatcher = SnackbarDispatcher(),
     ) = DefaultChatCleanupService(
         client = client,
         keyEscrowService = FakeKeyEscrowService(
@@ -136,7 +156,7 @@ class DefaultChatCleanupServiceTest {
                 true
             },
         ),
-        snackbarDispatcher = SnackbarDispatcher(),
+        snackbarDispatcher = snackbarDispatcher,
         sessionCoroutineScope = backgroundScope,
     )
 }
