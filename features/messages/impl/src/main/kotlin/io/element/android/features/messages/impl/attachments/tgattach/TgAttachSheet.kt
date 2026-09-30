@@ -139,7 +139,14 @@ import kotlin.math.roundToInt
 internal sealed interface TgAttachAction {
     data object Dismiss : TgAttachAction
     data class Send(val media: List<GalleryMedia>, val caption: String?, val compress: Boolean) : TgAttachAction
-    data class Preview(val media: List<GalleryMedia>) : TgAttachAction
+
+    /** Предпросмотр [media]; остальное — чтобы после «Назад» открыть меню таким же. */
+    data class Preview(
+        val media: List<GalleryMedia>,
+        val restoreSelection: List<GalleryMedia> = emptyList(),
+        val caption: String = "",
+        val isExpanded: Boolean = false,
+    ) : TgAttachAction
     data object CameraPhoto : TgAttachAction
     data object CameraVideo : TgAttachAction
     data object SystemGallery : TgAttachAction
@@ -166,6 +173,8 @@ internal fun TgAttachSheet(
     enableTextFormatting: Boolean,
     onAction: (TgAttachAction) -> Unit,
     modifier: Modifier = Modifier,
+    restore: TgAttachRestore? = null,
+    onRestored: () -> Unit = {},
 ) {
     var isShown by remember { mutableStateOf(false) }
     LaunchedEffect(isVisible) {
@@ -179,6 +188,8 @@ internal fun TgAttachSheet(
         onAction = onAction,
         onClosed = { isShown = false },
         modifier = modifier,
+        restore = restore,
+        onRestored = onRestored,
     )
 }
 
@@ -190,6 +201,8 @@ private fun TgAttachSheetContent(
     onAction: (TgAttachAction) -> Unit,
     onClosed: () -> Unit,
     modifier: Modifier = Modifier,
+    restore: TgAttachRestore? = null,
+    onRestored: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -235,8 +248,13 @@ private fun TgAttachSheetContent(
         value = if (access == GalleryAccess.None) emptyList() else GalleryMediaStore.load(context)
     }
 
-    val selection = remember { mutableStateListOf<GalleryMedia>() }
-    var caption by remember { mutableStateOf("") }
+    // После «Назад» с предпросмотра меню открывается с тем же выбором и подписью, как в TG.
+    val selection = remember { mutableStateListOf<GalleryMedia>().apply { restore?.let { addAll(it.selection) } } }
+    var caption by remember { mutableStateOf(restore?.caption.orEmpty()) }
+    val restoreExpanded = remember { restore?.isExpanded == true }
+    LaunchedEffect(Unit) {
+        if (restore != null) onRestored()
+    }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val fullHeight = constraints.maxHeight.toFloat()
@@ -289,7 +307,7 @@ private fun TgAttachSheetContent(
             if (target == fullHeight) close(notify = true) else animateTo(target, velocity)
         }
 
-        LaunchedEffect(Unit) { animateTo(partialTop) }
+        LaunchedEffect(Unit) { animateTo(if (restoreExpanded) 0f else partialTop) }
         LaunchedEffect(closeRequested) {
             if (closeRequested) close(notify = false)
         }
@@ -363,7 +381,10 @@ private fun TgAttachSheetContent(
                 onDrag = ::dragBy,
                 onDragStopped = ::settle,
                 onClose = { close(notify = true) },
-                onPreviewSelection = { onAction(TgAttachAction.Preview(selection.toList())) },
+                onPreviewSelection = {
+                    val picked = selection.toList()
+                    onAction(TgAttachAction.Preview(picked, restoreSelection = picked, caption = caption, isExpanded = isExpanded))
+                },
                 onSendUncompressed = {
                     onAction(TgAttachAction.Send(selection.toList(), caption.trim().ifEmpty { null }, compress = false))
                 },
@@ -375,7 +396,10 @@ private fun TgAttachSheetContent(
                 selection = selection,
                 bottomPadding = barHeight + navBarBottom,
                 onRequestAccess = ::requestAccess,
-                onAction = onAction,
+                onAction = { action ->
+                    // Одиночный тап открывает предпросмотр; после «Назад» — то же меню без выбора.
+                    onAction(if (action is TgAttachAction.Preview) action.copy(caption = caption, isExpanded = isExpanded) else action)
+                },
                 modifier = Modifier
                     .weight(1f)
                     .hazeSource(sheetHaze),

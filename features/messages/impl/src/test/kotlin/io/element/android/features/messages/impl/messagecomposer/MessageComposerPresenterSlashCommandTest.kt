@@ -16,6 +16,7 @@ import io.element.android.features.location.api.LocationService
 import io.element.android.features.location.test.FakeLocationService
 import io.element.android.features.messages.impl.FakeMessagesNavigator
 import io.element.android.features.messages.impl.MessagesNavigator
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.draft.FakeComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
@@ -318,6 +319,7 @@ class MessageComposerPresenterSlashCommandTest {
             mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
             snackbarDispatcher = snackbarDispatcher,
             draftPreviews = NoOpDraftPreviews(),
+            attachSheetMemory = TgAttachSheetMemory(),
         ),
         mentionSpanProvider = mentionSpanProvider,
         pillificationHelper = textPillificationHelper,

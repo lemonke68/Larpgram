@@ -12,6 +12,7 @@ package io.element.android.features.messages.impl.messagecomposer
 
 import dev.zacsweers.metro.Inject
 import io.element.android.features.messages.impl.attachments.tgattach.GalleryMedia
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.attachments.tgattach.UncompressedMediaConfig
 import io.element.android.features.messages.impl.attachments.tgattach.sendGalleryMediaNow
 import io.element.android.libraries.channelcomments.ChannelDiscussion
@@ -37,6 +38,8 @@ class ComposerForkActions(
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val draftPreviews: DraftPreviews,
+    /** Меню вложений, из которого ушли на предпросмотр: «Назад» открывает его снова. */
+    val attachSheetMemory: TgAttachSheetMemory,
 ) {
     /** Отправка из меню вложений Telegram сразу, без экрана предпросмотра. */
     suspend fun sendGalleryMedia(

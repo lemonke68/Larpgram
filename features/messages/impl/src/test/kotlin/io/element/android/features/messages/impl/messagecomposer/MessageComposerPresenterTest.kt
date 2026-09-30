@@ -25,6 +25,7 @@ import io.element.android.features.messages.impl.FakeMessagesNavigator
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.tgattach.GalleryMedia
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.draft.FakeComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
@@ -1807,6 +1808,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
             mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
             snackbarDispatcher = snackbarDispatcher,
             draftPreviews = draftPreviews,
+            attachSheetMemory = TgAttachSheetMemory(),
         ),
         mentionSpanProvider = mentionSpanProvider,
         pillificationHelper = textPillificationHelper,

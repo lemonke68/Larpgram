@@ -27,6 +27,7 @@ import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.AttachmentImageEditor
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.AttachmentImageEditorState
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.AttachmentImageEdits
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorPresenter
 import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorState
 import io.element.android.features.messages.impl.attachments.video.VideoCompressionPresetSelector
@@ -81,6 +82,8 @@ class AttachmentsPreviewPresenter(
     // Larpgram: needed to mirror a channel image post into its discussion group for comments.
     private val room: JoinedRoom,
     private val matrixClient: MatrixClient,
+    // Правка форка: «Назад» отсюда возвращает меню вложений Telegram, если пришли из него.
+    private val attachSheetMemory: TgAttachSheetMemory,
 ) : Presenter<AttachmentsPreviewState> {
     @AssistedFactory
     interface Factory {
@@ -308,6 +311,7 @@ class AttachmentsPreviewPresenter(
                     ongoingSendAttachmentJob.value?.cancel()
 
                     // Dismiss the screen
+                    attachSheetMemory.onPreviewCancelled()
                     dismiss(
                         attachments = editedAttachments,
                         sendActionState = sendActionState,
@@ -583,6 +587,7 @@ class AttachmentsPreviewPresenter(
         onSuccess = {
             mediaUploadInfos.forEach { cleanUp(it) }
             sendActionState.value = SendActionState.Done
+            attachSheetMemory.onPreviewSent()
             onDoneListener()
         },
         onFailure = { error ->

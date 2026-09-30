@@ -36,6 +36,7 @@ import io.element.android.features.location.api.LocationService
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.error.sendAttachmentError
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachRestore
 import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.RoomAliasSuggestionsDataSource
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
@@ -216,6 +217,19 @@ class MessageComposerPresenter(
             mutableStateOf(false)
         }
         var showAttachmentSourcePicker: Boolean by remember { mutableStateOf(false) }
+        // Правка форка: «Назад» с предпросмотра возвращает меню вложений Telegram; отправка оттуда
+        // тратит ответ, начатый до меню (TgAttachSheetMemory).
+        val attachRestore by forkActions.attachSheetMemory.restore.collectAsState()
+        LaunchedEffect(attachRestore) {
+            if (attachRestore != null) showAttachmentSourcePicker = true
+        }
+        val resetModeAfterPreview by forkActions.attachSheetMemory.resetComposerMode.collectAsState()
+        LaunchedEffect(resetModeAfterPreview) {
+            if (resetModeAfterPreview) {
+                resetComposerModeAfterAttaching()
+                forkActions.attachSheetMemory.onComposerModeReset()
+            }
+        }
 
         val sendTypingNotifications by remember {
             sessionPreferencesStore.isSendTypingNotificationsEnabled()
@@ -362,7 +376,11 @@ class MessageComposerPresenter(
                 }
                 is MessageComposerEvent.PreviewGalleryMedia -> {
                     showAttachmentSourcePicker = false
-                    handlePickedMediaList(event.media.map { it.uri })
+                    forkActions.attachSheetMemory.onOpenPreview(
+                        TgAttachRestore(selection = event.restoreSelection, caption = event.caption, isExpanded = event.isSheetExpanded)
+                    )
+                    // Ответ не сбрасываем: после «Назад» он ещё нужен, сбросит отправка с предпросмотра.
+                    handlePickedMediaList(event.media.map { it.uri }, resetComposerMode = false)
                 }
                 is MessageComposerEvent.ToggleTextFormatting -> {
                     showAttachmentSourcePicker = false
@@ -663,6 +681,8 @@ class MessageComposerPresenter(
         uri: Uri?,
         mimeType: String? = null,
         sendAsFile: Boolean = false,
+        // Правка форка: из меню вложений Telegram режим сбрасывается после отправки, не здесь.
+        resetComposerMode: Boolean = true,
     ) {
         uri ?: return
         val localMedia = localMediaFactory.createFromUri(
@@ -675,16 +695,18 @@ class MessageComposerPresenter(
         val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
         navigator.navigateToPreviewAttachments(persistentListOf(mediaAttachment), inReplyToEventId)
 
-        resetComposerModeAfterAttaching()
+        if (resetComposerMode) resetComposerModeAfterAttaching()
     }
 
     private fun handlePickedMediaList(
         uris: List<Uri>,
         sendAsFile: Boolean = false,
+        // Правка форка: см. handlePickedMedia.
+        resetComposerMode: Boolean = true,
     ) {
         if (uris.isEmpty()) return
         if (uris.size == 1) {
-            handlePickedMedia(uris.first(), sendAsFile = sendAsFile)
+            handlePickedMedia(uris.first(), sendAsFile = sendAsFile, resetComposerMode = resetComposerMode)
             return
         }
         val attachments = uris.map { uri ->
@@ -699,7 +721,7 @@ class MessageComposerPresenter(
         val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
         navigator.navigateToPreviewAttachments(attachments, inReplyToEventId)
 
-        resetComposerModeAfterAttaching()
+        if (resetComposerMode) resetComposerModeAfterAttaching()
     }
 
     private fun resetComposerModeAfterAttaching() {

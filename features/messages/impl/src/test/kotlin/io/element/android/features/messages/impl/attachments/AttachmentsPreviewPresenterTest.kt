@@ -22,6 +22,7 @@ import io.element.android.features.messages.impl.attachments.preview.imageeditor
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.EditedLocalMedia
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.NormalizedCropRect
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.assertIsSimilarTo
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorState
 import io.element.android.features.messages.impl.attachments.video.VideoCompressionPresetSelector
 import io.element.android.features.messages.impl.attachments.video.VideoUploadEstimation
@@ -1007,6 +1008,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
             room = room,
             matrixClient = FakeMatrixClient(),
+            attachSheetMemory = TgAttachSheetMemory(),
         )
     }
 

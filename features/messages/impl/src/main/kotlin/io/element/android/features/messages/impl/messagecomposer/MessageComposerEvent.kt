@@ -33,7 +33,13 @@ sealed interface MessageComposerEvent {
 
     // Правка форка: меню вложений Telegram — отправка выбранного прямо из шторки и предпросмотр.
     data class SendGalleryMedia(val media: List<GalleryMedia>, val caption: String?, val compress: Boolean) : MessageComposerEvent
-    data class PreviewGalleryMedia(val media: List<GalleryMedia>) : MessageComposerEvent
+    data class PreviewGalleryMedia(
+        val media: List<GalleryMedia>,
+        // Что вернуть в меню вложений после «Назад» с предпросмотра.
+        val restoreSelection: List<GalleryMedia> = media,
+        val caption: String = "",
+        val isSheetExpanded: Boolean = false,
+    ) : MessageComposerEvent
 
     data class ToggleTextFormatting(val enabled: Boolean) : MessageComposerEvent
     data class Error(val error: Throwable) : MessageComposerEvent

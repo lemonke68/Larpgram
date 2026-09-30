@@ -11,6 +11,7 @@ package io.element.android.features.messages.impl
 
 import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachRestore
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
 import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.imagepacks.api.ImagePackSource
@@ -39,6 +40,8 @@ data class TgChatState(
     val circleMediaLoader: MatrixMediaLoader?,
     /** Источник стикер-паков: по тапу на стикер показываем его пак. */
     val imagePackSource: ImagePackSource?,
+    /** Меню вложений, которое надо открыть снова после «Назад» с предпросмотра; null — не надо. */
+    val attachRestore: TgAttachRestore?,
     val eventSink: (TgChatEvent) -> Unit,
 )
 
@@ -48,6 +51,9 @@ sealed interface TgChatEvent {
 
     /** Снять блок с собеседника ЛС (unignoreUser). */
     data object UnblockUser : TgChatEvent
+
+    /** Меню вложений открыто снова из [TgChatState.attachRestore]. */
+    data object AttachRestored : TgChatEvent
 }
 
 fun aTgChatState(
@@ -71,5 +77,6 @@ fun aTgChatState(
     chatCleanupState = null,
     circleMediaLoader = null,
     imagePackSource = null,
+    attachRestore = null,
     eventSink = eventSink,
 )

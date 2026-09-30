@@ -512,6 +512,8 @@ fun TgMessagesView(
     }
     TgAttachSheet(
         isVisible = showAttachSheet,
+        restore = state.tg.attachRestore,
+        onRestored = { state.tg.eventSink(TgChatEvent.AttachRestored) },
         canShareLocation = state.composerState.canShareLocation,
         enableTextFormatting = state.enableTextFormatting,
         onAction = { action ->
@@ -519,7 +521,14 @@ fun TgMessagesView(
             when (action) {
                 TgAttachAction.Dismiss -> composerSink(MessageComposerEvent.DismissAttachmentMenu)
                 is TgAttachAction.Send -> composerSink(MessageComposerEvent.SendGalleryMedia(action.media, action.caption, action.compress))
-                is TgAttachAction.Preview -> composerSink(MessageComposerEvent.PreviewGalleryMedia(action.media))
+                is TgAttachAction.Preview -> composerSink(
+                    MessageComposerEvent.PreviewGalleryMedia(
+                        media = action.media,
+                        restoreSelection = action.restoreSelection,
+                        caption = action.caption,
+                        isSheetExpanded = action.isExpanded,
+                    )
+                )
                 TgAttachAction.CameraPhoto -> composerSink(MessageComposerEvent.PickAttachmentSource.PhotoFromCamera)
                 TgAttachAction.CameraVideo -> composerSink(MessageComposerEvent.PickAttachmentSource.VideoFromCamera)
                 TgAttachAction.SystemGallery -> composerSink(MessageComposerEvent.PickAttachmentSource.FromGallery)

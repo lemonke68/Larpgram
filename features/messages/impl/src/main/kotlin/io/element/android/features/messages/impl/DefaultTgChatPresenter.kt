@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
+import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
 import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.architecture.Presenter
@@ -39,12 +40,14 @@ class DefaultTgChatPresenter(
     private val gifPickerPresenter: Presenter<GifPickerState>,
     private val circleRecorderPresenter: Presenter<CircleRecorderState>,
     private val chatCleanupPresenter: Presenter<ChatCleanupState>,
+    private val attachSheetMemory: TgAttachSheetMemory,
 ) : Presenter<TgChatState> {
     @Composable
     override fun present(): TgChatState {
         val coroutineScope = rememberCoroutineScope()
         val roomInfo by room.roomInfoFlow.collectAsState()
         val savedMessagesRoomId by savedMessages.roomId.collectAsState()
+        val attachRestore by attachSheetMemory.restore.collectAsState()
         // Канал Telegram: писать могут только админы. Подписчик вместо поля ввода видит полосу звука,
         // комментарии — под каждым постом.
         val isChannel = (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
@@ -81,6 +84,7 @@ class DefaultTgChatPresenter(
                 TgChatEvent.UnblockUser -> dmPeerUserId?.let { peer ->
                     coroutineScope.launch { matrixClient.unignoreUser(peer) }
                 }
+                TgChatEvent.AttachRestored -> attachSheetMemory.onRestored()
             }
         }
 
@@ -98,6 +102,7 @@ class DefaultTgChatPresenter(
             chatCleanupState = chatCleanupPresenter.present(),
             circleMediaLoader = matrixClient.matrixMediaLoader,
             imagePackSource = imagePackSource,
+            attachRestore = attachRestore,
             eventSink = ::handleEvent,
         )
     }
