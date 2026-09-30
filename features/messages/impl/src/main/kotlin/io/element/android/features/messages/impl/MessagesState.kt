@@ -8,11 +8,8 @@
 
 package io.element.android.features.messages.impl
 
-import io.element.android.features.circles.impl.CircleRecorderState
-import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.impl.actionlist.ActionListState
-import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
@@ -24,15 +21,11 @@ import io.element.android.features.messages.impl.timeline.components.receipt.bot
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
-import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
-import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.core.RoomId
-import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
-import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
 import kotlinx.collections.immutable.ImmutableList
@@ -68,34 +61,9 @@ data class MessagesState(
     val successorRoom: SuccessorRoom?,
     val threads: Threads,
     val showLiveLocationShareBanner: Boolean,
-    /** True if this room is a broadcast channel (only elevated users can post). */
-    val isChannel: Boolean,
-    /** Whether the current user has muted this channel's notifications. Only meaningful for a channel. */
-    val isChannelMuted: Boolean,
-    /** Subscriber (joined member) count shown in a channel's header, or null if not a channel. */
-    val channelSubscriberCount: Long?,
-    /**
-     * Правка форка (роумлесс, ф4 блок): собеседник в ЛС заблокирован (в ignoredUsers). Композер
-     * гасим, вместо него полоса «Разблокировать» — своя сторона TG-стены.
-     */
-    val isUserBlocked: Boolean,
-    /**
-     * Правка форка: шапка чата Telegram. Собеседник ЛС (для «в сети / был(а)») и число
-     * участников группы для подзаголовка.
-     */
-    val dmUserId: UserId?,
-    val memberCount: Long?,
     val eventSink: (MessagesEvent) -> Unit,
-    // Правка форка: пикеры стикеров и гифок, запись кружочка. null в превью и тестах.
-    val stickerPickerState: StickerPickerState?,
-    val gifPickerState: GifPickerState?,
-    val circleRecorderState: CircleRecorderState?,
-    // Правка форка: пункты «Очистить историю» и «Удалить чат» в меню ⋮; null в превью и тестах.
-    val chatCleanupState: ChatCleanupState?,
-    // Загрузчик медиа для проигрывания кружочков в таймлайне; null в превью и тестах.
-    val circleMediaLoader: MatrixMediaLoader?,
-    // Источник стикер-паков: по тапу на стикер показываем его пак (добавить/удалить).
-    val imagePackSource: ImagePackSource?,
+    // Правка форка: всё, что нужно экрану чата Telegram сверх элементовского состояния.
+    val tg: TgChatState,
 ) {
     val isTombstoned = successorRoom != null
 

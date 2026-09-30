@@ -27,15 +27,12 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import im.vector.app.features.analytics.plan.PinUnpinAction
 import io.element.android.appconfig.MessageComposerConfig
-import io.element.android.features.circles.impl.CircleRecorderState
-import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.location.api.live.ActiveLiveLocationShareManager
 import io.element.android.features.location.api.live.isCurrentlySharing
 import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
-import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
@@ -61,7 +58,6 @@ import io.element.android.features.messages.impl.voicemessages.composer.DefaultV
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationEvent
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
-import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
@@ -78,8 +74,6 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.emoji.api.recentemojis.AddRecentEmoji
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
-import io.element.android.libraries.imagepacks.api.ImagePackSource
-import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.toThreadId
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
@@ -87,7 +81,6 @@ import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
-import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.timeline.Timeline
@@ -96,7 +89,6 @@ import io.element.android.libraries.matrix.ui.messages.reply.map
 import io.element.android.libraries.matrix.ui.model.dmUserStatus
 import io.element.android.libraries.matrix.ui.model.getAvatarData
 import io.element.android.libraries.matrix.ui.room.getDirectRoomMember
-import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
@@ -127,14 +119,8 @@ class MessagesPresenter(
     private val pinnedMessagesBannerPresenter: Presenter<PinnedMessagesBannerState>,
     private val roomCallStatePresenter: Presenter<RoomCallState>,
     private val roomMemberModerationPresenter: Presenter<RoomMemberModerationState>,
-    // Правка форка: пикеры стикеров и гифок.
-    private val stickerPickerPresenter: Presenter<StickerPickerState>,
-    private val gifPickerPresenter: Presenter<GifPickerState>,
-    private val circleRecorderPresenter: Presenter<CircleRecorderState>,
-    // Правка форка: «Очистить историю» и «Удалить чат» в меню ⋮.
-    private val chatCleanupPresenter: Presenter<ChatCleanupState>,
-    // Larpgram: по тапу на стикер показываем его пак (добавить/удалить).
-    private val imagePackSource: ImagePackSource,
+    // Правка форка: состояние экрана чата Telegram (пикеры, каналы, блок, меню ⋮).
+    private val tgChatPresenter: Presenter<TgChatState>,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val dispatchers: CoroutineDispatchers,
     private val clipboardHelper: ClipboardHelper,
@@ -149,10 +135,6 @@ class MessagesPresenter(
     private val markAsFullyRead: MarkAsFullyRead,
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
-    // Правка форка: загрузчик медиа для проигрывания кружочков прямо в таймлайне.
-    private val matrixClient: MatrixClient,
-    // Правка форка: в «Избранном» подзаголовка «1 участник» нет, как в TG.
-    private val savedMessages: SavedMessages,
 ) : Presenter<MessagesState> {
     @AssistedFactory
     interface Factory {
@@ -177,7 +159,6 @@ class MessagesPresenter(
 
         val coroutineScope = rememberCoroutineScope()
         val roomInfo by room.roomInfoFlow.collectAsState()
-        val savedMessagesRoomId by savedMessages.roomId.collectAsState()
         val localCoroutineScope = rememberCoroutineScope()
         val composerState = composerPresenter.present()
         val voiceMessageComposerState = voiceMessageComposerPresenter.present()
@@ -203,37 +184,6 @@ class MessagesPresenter(
 
         val userEventPermissions by room.permissionsAsState(UserEventPermissions.DEFAULT) { perms ->
             perms.userEventPermissions()
-        }
-
-        // Telegram-style channel: a broadcast room where only elevated users can post. A read-only
-        // subscriber gets the mute pill instead of the composer (comments live under each post).
-        val isChannel by remember {
-            derivedStateOf { (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L }
-        }
-        // Правка форка: состояние звука нужно не только каналу — пункт «Выключить уведомления» в
-        // меню шапки Telegram есть у любого чата. Поле называется по-старому, считается для всех.
-        val isChannelMuted by produceState(initialValue = false, isChannel) {
-            matrixClient.notificationSettingsService.notificationSettingsChangeFlow
-                .onStart { emit(Unit) }
-                .collect {
-                    val info = room.info()
-                    val settings = matrixClient.notificationSettingsService.getRoomNotificationSettings(
-                        roomId = room.roomId,
-                        isEncrypted = info.isEncrypted == true,
-                        isOneToOne = info.isDm,
-                    ).getOrNull()
-                    value = settings?.mode == RoomNotificationMode.MUTE
-                }
-        }
-
-        // Правка форка (роумлесс, ф4 блок): собеседник ЛС в ignoredUsers → своя сторона стены.
-        // Композер гасим, показываем полосу «Разблокировать». Реактивно на ignoredUsersFlow.
-        val dmPeerUserId by remember {
-            derivedStateOf { if (roomInfo.isDm) roomInfo.heroes.firstOrNull()?.userId else null }
-        }
-        val ignoredUsers by matrixClient.ignoredUsersFlow.collectAsState()
-        val isUserBlocked by remember {
-            derivedStateOf { dmPeerUserId?.let { it in ignoredUsers } == true }
         }
 
         val roomAvatar by remember {
@@ -347,33 +297,10 @@ class MessagesPresenter(
                         markingAsReadAndExiting.set(false)
                     }
                 }
-                is MessagesEvent.ToggleChannelMute -> {
-                    localCoroutineScope.launch {
-                        val service = matrixClient.notificationSettingsService
-                        if (isChannelMuted) {
-                            val info = room.info()
-                            service.unmuteRoom(
-                                roomId = room.roomId,
-                                isEncrypted = info.isEncrypted == true,
-                                isOneToOne = info.isDm,
-                            )
-                        } else {
-                            service.muteRoom(room.roomId)
-                        }
-                    }
-                }
-                is MessagesEvent.UnblockUser -> {
-                    dmPeerUserId?.let { peer ->
-                        localCoroutineScope.launch { matrixClient.unignoreUser(peer) }
-                    }
-                }
             }
         }
 
-        val stickerPickerState = stickerPickerPresenter.present()
-        val gifPickerState = gifPickerPresenter.present()
-        val circleRecorderState = circleRecorderPresenter.present()
-        val chatCleanupState = chatCleanupPresenter.present()
+        val tgChatState = tgChatPresenter.present()
 
         return MessagesState(
             roomId = room.roomId,
@@ -409,18 +336,7 @@ class MessagesPresenter(
                 hasUnreadThreads = false,
             ),
             showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom && timelineState.timelineMode !is Timeline.Mode.Thread,
-            stickerPickerState = stickerPickerState,
-            gifPickerState = gifPickerState,
-            circleRecorderState = circleRecorderState,
-            chatCleanupState = chatCleanupState,
-            circleMediaLoader = matrixClient.matrixMediaLoader,
-            imagePackSource = imagePackSource,
-            isChannel = isChannel,
-            isChannelMuted = isChannelMuted,
-            channelSubscriberCount = if (isChannel) roomInfo.joinedMembersCount else null,
-            isUserBlocked = isUserBlocked,
-            dmUserId = dmPeerUserId,
-            memberCount = roomInfo.joinedMembersCount.takeUnless { room.roomId == savedMessagesRoomId },
+            tg = tgChatState,
             eventSink = ::handleEvent,
         )
     }

@@ -44,9 +44,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.messages.impl.MessagesEvent
 import io.element.android.features.messages.impl.MessagesState
 import io.element.android.features.messages.impl.R
+import io.element.android.features.messages.impl.TgChatEvent
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupDialog
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupDialogType
 import io.element.android.features.messages.impl.chatcleanup.ChatKind
@@ -85,7 +85,7 @@ internal fun TgChatHeader(
 ) {
     val subtitle = headerSubtitle(state = state, dmPresence = dmPresence)
     var cleanupDialog by remember { mutableStateOf<ChatCleanupDialogType?>(null) }
-    val cleanupState = state.chatCleanupState
+    val cleanupState = state.tg.chatCleanupState
     val dialogType = cleanupDialog
     if (cleanupState != null && dialogType != null) {
         ChatCleanupDialog(
@@ -241,13 +241,13 @@ private fun HeaderMenu(
                 )
             }
             HeaderMenuItem(
-                icon = if (state.isChannelMuted) CompoundIcons.Notifications() else CompoundIcons.NotificationsOff(),
+                icon = if (state.tg.isMuted) CompoundIcons.Notifications() else CompoundIcons.NotificationsOff(),
                 text = stringResource(
-                    if (state.isChannelMuted) R.string.larpgram_header_menu_unmute else R.string.larpgram_header_menu_mute
+                    if (state.tg.isMuted) R.string.larpgram_header_menu_unmute else R.string.larpgram_header_menu_mute
                 ),
                 onClick = {
                     expanded = false
-                    state.eventSink(MessagesEvent.ToggleChannelMute)
+                    state.tg.eventSink(TgChatEvent.ToggleMute)
                 },
             )
             HeaderMenuItem(
@@ -276,7 +276,7 @@ private fun HeaderMenu(
                     onRoomDetailsClick()
                 },
             )
-            val cleanupState = state.chatCleanupState
+            val cleanupState = state.tg.chatCleanupState
             if (cleanupState?.canClearHistory == true) {
                 HeaderMenuItem(
                     icon = CompoundIcons.History(),
@@ -340,21 +340,21 @@ private fun headerSubtitle(state: MessagesState, dmPresence: UserPresence?): Hea
     if (typing.renderTypingNotifications && typing.typingMembers.isNotEmpty()) {
         val names = typing.typingMembers.map { it.disambiguatedDisplayName }
         val text = when {
-            state.dmUserId != null -> stringResource(CommonStrings.larpgram_typing)
+            state.tg.dmUserId != null -> stringResource(CommonStrings.larpgram_typing)
             names.size == 1 -> stringResource(CommonStrings.larpgram_typing_one, names[0])
             names.size == 2 -> stringResource(CommonStrings.larpgram_typing_two, names[0], names[1])
             else -> stringResource(CommonStrings.larpgram_typing_many, names[0], names.size - 1)
         }
         return HeaderSubtitle(text, isAccent = true)
     }
-    if (state.isChannel) {
-        val count = state.channelSubscriberCount ?: return null
+    if (state.tg.isChannel) {
+        val count = state.tg.channelSubscriberCount ?: return null
         return HeaderSubtitle(pluralStringResource(CommonPlurals.larpgram_subscriber_count, count.toInt(), count.toInt()), isAccent = false)
     }
-    if (state.dmUserId != null) {
+    if (state.tg.dmUserId != null) {
         return presenceText(dmPresence).let { HeaderSubtitle(it.text, isAccent = it.isOnline) }
     }
-    val members = state.memberCount ?: return null
+    val members = state.tg.memberCount ?: return null
     return HeaderSubtitle(pluralStringResource(CommonPlurals.larpgram_member_count, members.toInt(), members.toInt()), isAccent = false)
 }
 

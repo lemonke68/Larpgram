@@ -781,7 +781,7 @@ private fun MessagesViewContent(
             // параметрами пришлось бы через апстримовские компоненты, то есть ловить
             // конфликты при каждом ребейзе.
             CompositionLocalProvider(
-                LocalCircleMediaLoader provides state.circleMediaLoader,
+                LocalCircleMediaLoader provides state.tg.circleMediaLoader,
                 LocalOpenStickerPack provides { originalJson, stickerUrl ->
                     stickerPackRequest = originalJson to stickerUrl
                 },
@@ -812,7 +812,7 @@ private fun MessagesViewContent(
 
             // Larpgram: лист стикер-пака по тапу на стикер.
             val packRequest = stickerPackRequest
-            val packSource = state.imagePackSource
+            val packSource = state.tg.imagePackSource
             if (packRequest != null && packSource != null) {
                 StickerPackSheet(
                     originalJson = packRequest.first,
@@ -873,8 +873,8 @@ private fun MessagesViewComposerBottomSheetContents(
     val contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
 
     // Правка форка: стикеры и гифки — вкладки панели Telegram под полем ввода (TgMediaPanel).
-    val stickerPickerState = state.stickerPickerState
-    val gifPickerState = state.gifPickerState
+    val stickerPickerState = state.tg.stickerPickerState
+    val gifPickerState = state.tg.gifPickerState
     val localView = LocalView.current
     val coroutineScope = rememberCoroutineScope()
     // Панель живёт дольше вкладки, поэтому при открытии GIF просим перечитать данные. Иначе
@@ -893,7 +893,7 @@ private fun MessagesViewComposerBottomSheetContents(
     }
 
     // Правка форка: запись кружочка занимает весь экран поверх чата.
-    state.circleRecorderState?.let { circleState ->
+    state.tg.circleRecorderState?.let { circleState ->
         CircleRecorderView(state = circleState)
     }
 
@@ -909,9 +909,9 @@ private fun MessagesViewComposerBottomSheetContents(
         }
         // Правка форка (роумлесс, ф4 блок): заблокированный собеседник ЛС — вместо композера
         // полоса «Разблокировать». Приоритет выше canSendMessage (в ЛС писать технически можно).
-        state.isUserBlocked -> {
+        state.tg.isUserBlocked -> {
             BlockedUserBar(
-                onUnblock = { state.eventSink(MessagesEvent.UnblockUser) },
+                onUnblock = { state.tg.eventSink(TgChatEvent.UnblockUser) },
                 modifier = Modifier.padding(contentPadding),
             )
         }
@@ -960,7 +960,7 @@ private fun MessagesViewComposerBottomSheetContents(
                         // Правка форка: запись кружочка жестами, как в Telegram.
                         // Держишь — пишется, отпустил — улетело, свайп вверх фиксирует,
                         // свайп влево отменяет.
-                        circleRecordGestures = state.circleRecorderState?.let { circleState ->
+                        circleRecordGestures = state.tg.circleRecorderState?.let { circleState ->
                             CircleRecordGestures(
                                 onStart = {
                                     circleState.eventSink(CircleRecorderEvents.Open)
@@ -1002,13 +1002,13 @@ private fun MessagesViewComposerBottomSheetContents(
                 )
             }
         }
-        state.isChannel -> {
+        state.tg.isChannel -> {
             // Telegram-style channel subscriber bar: instead of the composer, a read-only
             // subscriber gets a mute/unmute pill. Comments live under each post; unsubscribe
             // lives in the channel profile.
             ChannelSubscriberBar(
-                isMuted = state.isChannelMuted,
-                onToggleMute = { state.eventSink(MessagesEvent.ToggleChannelMute) },
+                isMuted = state.tg.isMuted,
+                onToggleMute = { state.tg.eventSink(TgChatEvent.ToggleMute) },
                 modifier = Modifier.padding(contentPadding),
             )
         }

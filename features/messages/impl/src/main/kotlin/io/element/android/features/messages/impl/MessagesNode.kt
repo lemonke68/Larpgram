@@ -365,7 +365,7 @@ class MessagesNode(
                 },
                 // Правка форка (фаза 3): тот же рендерер для инлайн-пикера в привязанном оверлее.
                 emojiPickerRenderer = emojiPickerRenderer,
-                dmPresence = userPresenceFetcher.rememberPresence(state.dmUserId),
+                dmPresence = userPresenceFetcher.rememberPresence(state.tg.dmUserId),
                 emojiKeyboard = { keyboardModifier, onEmoji ->
                     val emojiKeyboardState = emojiKeyboardPresenter.present()
                     emojiKeyboardRenderer.Render(

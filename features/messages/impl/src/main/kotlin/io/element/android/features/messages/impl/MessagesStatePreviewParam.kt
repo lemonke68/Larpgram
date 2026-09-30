@@ -47,7 +47,6 @@ import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
-import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.tombstone.SuccessorRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
@@ -131,13 +130,8 @@ fun aMessagesState(
     ),
     isCurrentlySharingLiveLocationInRoom: Boolean = false,
     dmUserStatus: DisplayedStatus? = null,
-    // Правка форка: каналы.
-    isChannel: Boolean = false,
-    isChannelMuted: Boolean = false,
-    channelSubscriberCount: Long? = null,
-    isUserBlocked: Boolean = false,
-    dmUserId: UserId? = null,
-    memberCount: Long? = null,
+    // Правка форка: состояние экрана чата Telegram.
+    tg: TgChatState = aTgChatState(),
     eventSink: (MessagesEvent) -> Unit = {},
 ) = MessagesState(
     roomId = RoomId("!id:domain"),
@@ -169,18 +163,7 @@ fun aMessagesState(
     threads = threads,
     showLiveLocationShareBanner = isCurrentlySharingLiveLocationInRoom,
     dmUserStatus = dmUserStatus,
-    isChannel = isChannel,
-    isChannelMuted = isChannelMuted,
-    channelSubscriberCount = channelSubscriberCount,
-    isUserBlocked = isUserBlocked,
-    dmUserId = dmUserId,
-    memberCount = memberCount,
-    stickerPickerState = null,
-    gifPickerState = null,
-    circleRecorderState = null,
-    chatCleanupState = null,
-    circleMediaLoader = null,
-    imagePackSource = null,
+    tg = tg,
     eventSink = eventSink,
 )
 

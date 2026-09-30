@@ -13,15 +13,11 @@ package io.element.android.features.messages.impl
 import androidx.lifecycle.Lifecycle
 import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.PinUnpinAction
-import io.element.android.features.circles.impl.CircleRecorderMode
-import io.element.android.features.circles.impl.CircleRecorderState
-import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.location.test.FakeActiveLiveLocationShareManager
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.anActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
-import io.element.android.features.messages.impl.chatcleanup.aChatCleanupState
 import io.element.android.features.messages.impl.crypto.identity.anIdentityChangeState
 import io.element.android.features.messages.impl.fixtures.aMessageEvent
 import io.element.android.features.messages.impl.link.aLinkState
@@ -48,8 +44,6 @@ import io.element.android.features.messages.test.timeline.FakeHtmlConverterProvi
 import io.element.android.features.messages.test.timeline.voicemessages.composer.FakeDefaultVoiceMessageComposerPresenterFactory
 import io.element.android.features.roomcall.api.aStandByCallState
 import io.element.android.features.roommembermoderation.api.RoomMemberModerationState
-import io.element.android.features.stickers.impl.ImportState
-import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.androidutils.clipboard.FakeClipboardHelper
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
@@ -107,7 +101,6 @@ import io.element.android.libraries.matrix.test.room.threads.FakeThreadsListServ
 import io.element.android.libraries.matrix.test.timeline.FakeTimeline
 import io.element.android.libraries.matrix.test.timeline.aTimelineItemDebugInfo
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
-import io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.textcomposer.model.aTextEditorStateMarkdown
@@ -1506,44 +1499,8 @@ class MessagesPresenterTest {
             markAsFullyRead = markAsFullyRead,
             liveLocationShareManager = liveLocationShareManager,
             sessionCoroutineScope = backgroundScope,
-            // Правка форка: пикеры стикеров и гифок. Тестам они не интересны, поэтому
-            // отдаём пустое состояние, лишь бы граф собрался.
-            stickerPickerPresenter = {
-                StickerPickerState(
-                    packs = persistentListOf(),
-                    selectedPackIndex = 0,
-                    isLoading = false,
-                    importState = ImportState.Hidden,
-                    sendError = null,
-                    eventSink = {},
-                )
-            },
-            chatCleanupPresenter = { aChatCleanupState() },
-            circleRecorderPresenter = {
-                CircleRecorderState(
-                    mode = CircleRecorderMode.Hidden,
-                    elapsedMillis = 0L,
-                    isFrontCamera = true,
-                    needsPermission = false,
-                    recorder = null,
-                    isLocked = false,
-                    eventSink = {},
-                )
-            },
-            gifPickerPresenter = {
-                GifPickerState(
-                    query = "",
-                    gifs = persistentListOf(),
-                    isLoading = false,
-                    hasFailed = false,
-                    isShowingRecent = true,
-                    eventSink = {},
-                )
-            },
-            // Правка форка: клиент нужен только ради загрузчика медиа для кружочков.
-            matrixClient = matrixClient,
-            savedMessages = NoOpSavedMessages(),
-            imagePackSource = NoPacksImagePackSource,
+            // Правка форка: состояние экрана чата Telegram тестам не интересно.
+            tgChatPresenter = { aTgChatState() },
         )
     }
 }
