@@ -9,13 +9,10 @@
 package io.element.android.libraries.mediaupload.impl
 
 import android.net.Uri
-import android.system.ErrnoException
-import android.system.Os
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.androidutils.hash.hash
 import io.element.android.libraries.core.extensions.flatMap
 import io.element.android.libraries.core.extensions.flatMapCatching
-import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.EventId
@@ -23,7 +20,6 @@ import io.element.android.libraries.matrix.api.media.MediaUploadHandler
 import io.element.android.libraries.matrix.api.room.CreateTimelineParams
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
-import io.element.android.libraries.matrix.api.timeline.item.event.LarpgramAlbum
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfig
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
 import io.element.android.libraries.mediaupload.api.MediaPreProcessor
@@ -171,65 +167,19 @@ class DefaultMediaSender(
             .handleSendResult(mediaId(uri))
     }
 
-    /**
-     * Правка форка: альбом уходит не галереей MSC4274, а отдельными обычными медиа-сообщениями
-     * с общей меткой в имени файла ([LarpgramAlbum]). Галерею понимает только Element X с флагом,
-     * остальные клиенты показывали «неподдерживаемое событие». Подпись и ответ — у первой части,
-     * как у альбома в Telegram. Все части сначала ставятся в очередь отправки (порядок сохраняется,
-     * в ленте сразу появляется весь альбом), потом ждём загрузку каждой.
-     */
     override suspend fun sendGallery(
         mediaUploadInfos: List<MediaUploadInfo>,
         caption: String?,
         formattedCaption: String?,
         inReplyToEventId: EventId?,
     ): Result<Unit> {
-        val galleryLogId = "album[${mediaUploadInfos.size} items]"
+        val galleryLogId = "gallery[${mediaUploadInfos.size} items]"
         Timber.d("Sending $galleryLogId")
-        val albumId = LarpgramAlbum.newAlbumId()
-        val parts = mediaUploadInfos.mapIndexed { index, info ->
-            val name = LarpgramAlbum.filename(albumId, index, mediaUploadInfos.size, info.file.extension)
-            info.withFile(linkOrCopy(info.file, name))
+        // Правка форка: альбом Larpgram — отдельными медиа, а не галереей MSC4274 (LarpgramAlbumSender).
+        return getTimeline().flatMap { timeline ->
+            timeline.sendLarpgramAlbum(mediaUploadInfos, caption, formattedCaption, inReplyToEventId) { ongoingUploadJobs[Job] = it }
         }
-        return getTimeline()
-            .flatMapCatching { timeline ->
-                val handlers = parts.mapIndexed { index, part ->
-                    timeline.enqueueMedia(
-                        uploadInfo = part,
-                        caption = caption.takeIf { index == 0 },
-                        formattedCaption = formattedCaption.takeIf { index == 0 },
-                        inReplyToEventId = inReplyToEventId.takeIf { index == 0 },
-                    ).getOrThrow()
-                }
-                handlers.lastOrNull()?.let { ongoingUploadJobs[Job] = it }
-                handlers.forEach { it.await().getOrThrow() }
-                Result.success(Unit)
-            }
-            .also {
-                parts.zip(mediaUploadInfos)
-                    .filter { (part, original) -> part.file != original.file }
-                    .forEach { (part, _) -> part.file.delete() }
-            }
             .handleSendResult(galleryLogId)
-    }
-
-    /**
-     * Файл части альбома под именем-меткой. Жёсткая ссылка вместо переименования: исходный файл
-     * должен остаться на месте, экран предпросмотра переиспользует его при повторной отправке.
-     */
-    private fun linkOrCopy(source: File, name: String): File {
-        val target = File(source.parentFile, name)
-        target.delete()
-        try {
-            Os.link(source.path, target.path)
-        } catch (e: ErrnoException) {
-            Timber.w(e, "Hard link failed, copying album part")
-        }
-        if (target.exists()) return target
-        // Не вышло и скопировать — фото всё равно уйдут, только без мозаики у получателя.
-        return runCatchingExceptions { source.copyTo(target, overwrite = true) }
-            .onFailure { Timber.w(it, "Could not name album part, sending it as is") }
-            .getOrDefault(source)
     }
 
     private fun Result<Unit>.handleSendResult(mediaId: String) = this
@@ -251,25 +201,7 @@ class DefaultMediaSender(
         formattedCaption: String?,
         inReplyToEventId: EventId?,
     ): Result<Unit> {
-        val handler = enqueueMedia(uploadInfo, caption, formattedCaption, inReplyToEventId)
-
-        // We handle the cancellations here manually, so we suppress the warning
-        @Suppress("RunCatchingNotAllowed")
-        return handler
-            .mapCatching { uploadHandler ->
-                Timber.d("Added ongoing upload job, total: ${ongoingUploadJobs.size + 1}")
-                ongoingUploadJobs[Job] = uploadHandler
-                uploadHandler.await()
-            }
-    }
-
-    private suspend fun Timeline.enqueueMedia(
-        uploadInfo: MediaUploadInfo,
-        caption: String?,
-        formattedCaption: String?,
-        inReplyToEventId: EventId?,
-    ): Result<MediaUploadHandler> {
-        return when (uploadInfo) {
+        val handler = when (uploadInfo) {
             is MediaUploadInfo.Image -> {
                 sendImage(
                     file = uploadInfo.file,
@@ -317,6 +249,15 @@ class DefaultMediaSender(
                 )
             }
         }
+
+        // We handle the cancellations here manually, so we suppress the warning
+        @Suppress("RunCatchingNotAllowed")
+        return handler
+            .mapCatching { uploadHandler ->
+                Timber.d("Added ongoing upload job, total: ${ongoingUploadJobs.size + 1}")
+                ongoingUploadJobs[Job] = uploadHandler
+                uploadHandler.await()
+            }
     }
 
     private suspend fun getTimeline(): Result<Timeline> {
@@ -332,14 +273,6 @@ class DefaultMediaSender(
      * Clean up any temporary files or resources used during the media processing.
      */
     override fun cleanUp() = preProcessor.cleanUp()
-}
-
-private fun MediaUploadInfo.withFile(file: File): MediaUploadInfo = when (this) {
-    is MediaUploadInfo.Image -> copy(file = file)
-    is MediaUploadInfo.Video -> copy(file = file)
-    is MediaUploadInfo.Audio -> copy(file = file)
-    is MediaUploadInfo.VoiceMessage -> copy(file = file)
-    is MediaUploadInfo.AnyFile -> copy(file = file)
 }
 
 private fun mediaId(uri: Uri?): String = uri?.path.orEmpty().hash()
