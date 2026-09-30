@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Copyright (c) 2026 Larpgram.
+ * Правка форка: лента чата Telegram: обои, стекло под полем ввода, отступы под плавающие шапку и поле. Заменяет элементовский `TimelineView`, он оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -78,11 +80,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import dev.chrisbanes.haze.hazeSource
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.crypto.sendfailure.resolve.ResolveVerifiedUserSendFailureView
 import io.element.android.features.messages.impl.timeline.components.FloatingDateBadgeOverlay
+import io.element.android.features.messages.impl.timeline.components.SavedMessagesEmptyView
 import io.element.android.features.messages.impl.timeline.components.TimelineItemRow
+import io.element.android.features.messages.impl.timeline.components.chatWallpaper
+import io.element.android.features.messages.impl.timeline.components.selectedChatWallpaper
 import io.element.android.features.messages.impl.timeline.components.toText
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.aFakeTimelineItemPresenterFactories
@@ -96,6 +102,9 @@ import io.element.android.features.messages.impl.timeline.protection.aTimelinePr
 import io.element.android.libraries.androidutils.system.copyToClipboard
 import io.element.android.libraries.designsystem.atomic.atoms.UnreadIndicatorAtom
 import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
+import io.element.android.libraries.designsystem.components.glass.LocalChatBottomOverlayHeight
+import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
+import io.element.android.libraries.designsystem.components.glass.LocalChatTopOverlayHeight
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.roundToPx
@@ -123,7 +132,7 @@ import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun TimelineView(
+fun TgTimelineView(
     state: TimelineState,
     timelineProtectionState: TimelineProtectionState,
     onUserDataClick: (MatrixUser) -> Unit,
@@ -191,7 +200,15 @@ fun TimelineView(
 
     // Animate alpha when timeline is first displayed, to avoid flashes or glitching when viewing rooms
     AnimatedVisibility(visible = true, enter = fadeIn()) {
-        Box(modifier) {
+        // Правка форка: обои переписки. Выбор юзера, см. ChatWallpaper / selectedChatWallpaper.
+        // Правка форка: лента — источник размытия для стеклянных панелей (поле ввода поверх неё).
+        val chatGlassState = LocalChatGlassState.current
+        val bottomOverlay = LocalChatBottomOverlayHeight.current
+        Box(
+            modifier
+                .chatWallpaper(selectedChatWallpaper())
+                .then(if (chatGlassState != null) Modifier.hazeSource(chatGlassState) else Modifier)
+        ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -199,7 +216,9 @@ fun TimelineView(
                     .testTag(TestTags.timeline),
                 state = lazyListState,
                 reverseLayout = true,
-                contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues() + PaddingValues(top = 64.dp, bottom = 8.dp),
+                contentPadding =
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues() +
+                        PaddingValues(top = 64.dp + LocalChatTopOverlayHeight.current, bottom = 8.dp + bottomOverlay),
             ) {
                 items(
                     items = state.timelineItems,
@@ -258,6 +277,11 @@ fun TimelineView(
                 onMarkAllAsRead = ::onMarkAllAsRead,
                 onFocusOnEvent = ::onFocusOnEvent,
             )
+
+            // Правка форка: пустое «Избранное» — подсказка TG посередине ленты.
+            if (state.timelineRoomInfo.isSavedMessages && state.timelineItems.none { it is TimelineItem.Event }) {
+                SavedMessagesEmptyView(modifier = Modifier.align(Alignment.Center))
+            }
 
             FloatingDateBadgeOverlay(
                 lazyListState = lazyListState,
@@ -439,7 +463,8 @@ private fun BoxScope.TimelineScrollHelper(
     Column(
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(end = 24.dp, bottom = 16.dp)
+            // Правка форка: над плавающим полем ввода.
+            .padding(end = 24.dp, bottom = 16.dp + LocalChatBottomOverlayHeight.current)
     ) {
         JumpToPositionButton(
             icon = CompoundIcons.ChevronUp(),
@@ -512,7 +537,7 @@ private fun JumpToPositionButton(
                     .apply { targetState = menuExpanded }
                 if (menuTransitionState.currentState || menuTransitionState.targetState) {
                     val gapPx = with(LocalDensity.current) { 8.dp.roundToPx() }
-                    val positionProvider = remember(gapPx) { CenterStartOfAnchorPositionProvider(gapPx) }
+                    val positionProvider = remember(gapPx) { TgCenterStartOfAnchorPositionProvider(gapPx) }
                     Popup(
                         popupPositionProvider = positionProvider,
                         onDismissRequest = { menuExpanded = false },
@@ -581,7 +606,7 @@ private fun JumpToPositionButton(
 
 @PreviewsDayNight
 @Composable
-internal fun TimelineViewPreview(
+internal fun TgTimelineViewPreview(
     @PreviewParameter(TimelineItemEventContentPreviewParam::class) content: TimelineItemEventContent
 ) = ElementPreview {
     val timelineItems = aTimelineItemList(content)
@@ -591,7 +616,7 @@ internal fun TimelineViewPreview(
     CompositionLocalProvider(
         LocalTimelineItemPresenterFactories provides aFakeTimelineItemPresenterFactories(),
     ) {
-        TimelineView(
+        TgTimelineView(
             state = aTimelineState(
                 timelineItems = timelineItems,
                 timelineRoomInfo = aTimelineRoomInfo(
@@ -635,7 +660,7 @@ private fun TimelineViewWithReadMarker(
     CompositionLocalProvider(
         LocalTimelineItemPresenterFactories provides aFakeTimelineItemPresenterFactories(),
     ) {
-        TimelineView(
+        TgTimelineView(
             state = aTimelineState(
                 timelineItems = timelineItems,
                 displayJumpToUnread = true,
@@ -665,13 +690,13 @@ private fun TimelineViewWithReadMarker(
 
 @PreviewsDayNight
 @Composable
-internal fun TimelineViewWithReadMarkerJumpToUnreadIndicatorOnlyPreview() = ElementPreview {
+internal fun TgTimelineViewWithReadMarkerJumpToUnreadIndicatorOnlyPreview() = ElementPreview {
     TimelineViewWithReadMarker(hasUnreadAbove = false, hasUnreadBelow = false)
 }
 
 @PreviewsDayNight
 @Composable
-internal fun TimelineViewWithReadMarkerBothIndicatorsPreview() = ElementPreview {
+internal fun TgTimelineViewWithReadMarkerBothIndicatorsPreview() = ElementPreview {
     TimelineViewWithReadMarker(hasUnreadAbove = true, hasUnreadBelow = true)
 }
 
@@ -680,7 +705,7 @@ internal fun TimelineViewWithReadMarkerBothIndicatorsPreview() = ElementPreview 
  * center matches the anchor's. Adapts to localized menu widths and FAB size; coerced to stay
  * on-screen.
  */
-private class CenterStartOfAnchorPositionProvider(
+private class TgCenterStartOfAnchorPositionProvider(
     private val gapPx: Int,
 ) : PopupPositionProvider {
     override fun calculatePosition(

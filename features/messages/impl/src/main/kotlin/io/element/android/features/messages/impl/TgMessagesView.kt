@@ -107,8 +107,8 @@ import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBan
 import io.element.android.features.messages.impl.pinned.banner.TgPinnedMessagesBannerView
 import io.element.android.features.messages.impl.pinned.banner.TgPinnedMessagesBannerViewDefaults
 import io.element.android.features.messages.impl.timeline.FOCUS_ON_PINNED_EVENT_DEBOUNCE_DURATION_IN_MILLIS
+import io.element.android.features.messages.impl.timeline.TgTimelineView
 import io.element.android.features.messages.impl.timeline.TimelineEvent
-import io.element.android.features.messages.impl.timeline.TimelineView
 import io.element.android.features.messages.impl.timeline.aGroupedEvents
 import io.element.android.features.messages.impl.timeline.aTimelineItemDaySeparator
 import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
@@ -789,7 +789,7 @@ private fun MessagesViewContent(
                 // Правка форка: список ленты отдаём якорю меню долгого нажатия (см. onMessageLongClick).
                 val timelineListState = rememberLazyListState()
                 LocalMessageActionsAnchor.current?.listState = timelineListState
-                TimelineView(
+                TgTimelineView(
                     lazyListState = timelineListState,
                     state = state.timelineState,
                     timelineProtectionState = state.timelineProtectionState,
