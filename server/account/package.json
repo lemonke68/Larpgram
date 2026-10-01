@@ -1,0 +1,23 @@
+{
+  "name": "larpgram-account",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Регистрация и сброс пароля Larpgram из приложения: код на почту, аккаунты — в MAS.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true
+  }
+}

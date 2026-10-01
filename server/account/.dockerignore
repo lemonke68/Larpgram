@@ -1,0 +1,11 @@
+# Секреты и данные не должны попадать в слой образа (COPY . .).
+.env
+*.db
+*.db-wal
+*.db-shm
+data/
+node_modules/
+test/
+DEPLOY.md
+.gitignore
+.dockerignore

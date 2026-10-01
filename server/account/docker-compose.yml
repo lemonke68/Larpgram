@@ -1,0 +1,33 @@
+services:
+  account:
+    build: .
+    container_name: larpgram-account
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - account-data:/data
+    networks:
+      # web — для Traefik и для admin API MAS по имени контейнера; matrix-exim-relay — письма
+      # через тот же релей, что и MAS.
+      - web
+      - matrix-exim-relay
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # Как key-escrow: живём на хосте push под своим путём, priority выше host-only роутера sygnal.
+      - "traefik.http.routers.larpgram-account.rule=Host(`push.mango-kokos.ru`) && PathPrefix(`/account`)"
+      - "traefik.http.routers.larpgram-account.entrypoints=websecure"
+      - "traefik.http.routers.larpgram-account.tls.certresolver=myresolver"
+      - "traefik.http.routers.larpgram-account.priority=100"
+      - "traefik.http.routers.larpgram-account.middlewares=larpgram-account-stripprefix"
+      - "traefik.http.middlewares.larpgram-account-stripprefix.stripprefix.prefixes=/account"
+      - "traefik.http.services.larpgram-account.loadbalancer.server.port=8080"
+
+volumes:
+  account-data:
+
+networks:
+  web:
+    external: true
+  matrix-exim-relay:
+    external: true
