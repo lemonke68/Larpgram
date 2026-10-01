@@ -106,8 +106,10 @@ enum class SettingsCategory(
     val directTarget: DirectTarget?
         get() = when (this) {
             Notifications -> DirectTarget.Notifications
+            // Свой экран сеансов вместо ссылки на страницу MAS.
+            Devices -> DirectTarget.Devices
             else -> null
         }
 
-    enum class DirectTarget { Notifications }
+    enum class DirectTarget { Notifications, Devices }
 }

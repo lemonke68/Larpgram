@@ -20,6 +20,7 @@ import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.navmodel.backstack.BackStack
 import com.bumble.appyx.navmodel.backstack.operation.pop
 import com.bumble.appyx.navmodel.backstack.operation.push
+import com.bumble.appyx.navmodel.backstack.operation.replace
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
@@ -29,12 +30,15 @@ import io.element.android.features.lockscreen.api.LockScreenEntryPoint
 import io.element.android.features.logout.api.LogoutEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.preferences.impl.about.AboutNode
+import io.element.android.features.preferences.impl.account.TgAccountEmailNode
+import io.element.android.features.preferences.impl.account.TgAccountPasswordNode
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsNode
 import io.element.android.features.preferences.impl.advanced.ChatThemeSettingsNode
 import io.element.android.features.preferences.impl.analytics.AnalyticsSettingsNode
 import io.element.android.features.preferences.impl.blockedusers.BlockedUsersNode
 import io.element.android.features.preferences.impl.category.SettingsCategoryNode
 import io.element.android.features.preferences.impl.developer.DeveloperSettingsNode
+import io.element.android.features.preferences.impl.devices.TgDevicesNode
 import io.element.android.features.preferences.impl.labs.LabsNode
 import io.element.android.features.preferences.impl.notifications.NotificationSettingsNode
 import io.element.android.features.preferences.impl.notifications.edit.EditDefaultNotificationSettingNode
@@ -140,6 +144,17 @@ class PreferencesFlowNode(
 
         @Parcelize
         data object OssLicenses : NavTarget
+
+        // Правка форка: свой экран сеансов и привязки устройства.
+        @Parcelize
+        data object TgDevices : NavTarget
+
+        // Правка форка: почта и пароль в приложении вместо страницы MAS.
+        @Parcelize
+        data object TgAccountEmail : NavTarget
+
+        @Parcelize
+        data object TgAccountPassword : NavTarget
     }
 
     private val callback: PreferencesEntryPoint.Callback = callback()
@@ -153,6 +168,7 @@ class PreferencesFlowNode(
                         // промежуточный экран-категорию.
                         when (category.directTarget) {
                             SettingsCategory.DirectTarget.Notifications -> backstack.push(NavTarget.NotificationSettings)
+                            SettingsCategory.DirectTarget.Devices -> backstack.push(NavTarget.TgDevices)
                             null -> backstack.push(NavTarget.Category(category))
                         }
                     }
@@ -206,6 +222,14 @@ class PreferencesFlowNode(
 
                     override fun navigateToLinkNewDevice() {
                         callback.navigateToLinkNewDevice()
+                    }
+
+                    override fun navigateToAccountEmail() {
+                        backstack.push(NavTarget.TgAccountEmail)
+                    }
+
+                    override fun navigateToAccountPassword() {
+                        backstack.push(NavTarget.TgAccountPassword)
                     }
 
                     override fun navigateToBlockedUsers() {
@@ -274,6 +298,20 @@ class PreferencesFlowNode(
                     }
                 }
                 createNode<AboutNode>(buildContext, listOf(callback))
+            }
+            NavTarget.TgDevices -> {
+                createNode<TgDevicesNode>(buildContext)
+            }
+            NavTarget.TgAccountEmail -> {
+                createNode<TgAccountEmailNode>(buildContext)
+            }
+            NavTarget.TgAccountPassword -> {
+                val callback = object : TgAccountPasswordNode.Callback {
+                    override fun navigateToEmail() {
+                        backstack.replace(NavTarget.TgAccountEmail)
+                    }
+                }
+                createNode<TgAccountPasswordNode>(buildContext, listOf(callback))
             }
             NavTarget.AnalyticsSettings -> {
                 createNode<AnalyticsSettingsNode>(buildContext)

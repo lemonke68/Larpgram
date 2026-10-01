@@ -51,6 +51,8 @@ fun SettingsCategoryView(
     onOpenUserProfile: (io.element.android.libraries.matrix.api.user.MatrixUser) -> Unit,
     onAddAccountClick: () -> Unit,
     onLinkNewDeviceClick: () -> Unit,
+    onEmailClick: () -> Unit,
+    onPasswordClick: () -> Unit,
     onOpenBlockedUsers: () -> Unit,
     onSecureBackupClick: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
@@ -72,7 +74,8 @@ fun SettingsCategoryView(
                 state = state,
                 onOpenUserProfile = onOpenUserProfile,
                 onAddAccountClick = onAddAccountClick,
-                onManageAccountClick = onManageAccountClick,
+                onEmailClick = onEmailClick,
+                onPasswordClick = onPasswordClick,
                 onSignOutClick = onSignOutClick,
                 onDeactivateClick = onDeactivateClick,
             )
@@ -110,7 +113,8 @@ private fun ColumnScope.AccountCategory(
     state: PreferencesRootState,
     onOpenUserProfile: (io.element.android.libraries.matrix.api.user.MatrixUser) -> Unit,
     onAddAccountClick: () -> Unit,
-    onManageAccountClick: (url: String) -> Unit,
+    onEmailClick: () -> Unit,
+    onPasswordClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onDeactivateClick: () -> Unit,
 ) {
@@ -122,17 +126,19 @@ private fun ColumnScope.AccountCategory(
             iconVector = CompoundIcons.UserProfile(),
             onClick = { onOpenUserProfile(state.myUser) },
         )
-        state.accountManagementUrl?.let { url ->
-            TgSettingsItem(
-                title = stringResource(id = CommonStrings.action_manage_account_and_devices),
-                color = TgSettingsColors.Cyan,
-                iconVector = CompoundIcons.UserProfile(),
-                trailingContent = ListItemContent.Icon(
-                    io.element.android.libraries.designsystem.theme.components.IconSource.Vector(CompoundIcons.PopOut())
-                ),
-                onClick = { onManageAccountClick(url) },
-            )
-        }
+        // Почта и пароль — свои экраны (account/), а не страница MAS в браузере.
+        TgSettingsItem(
+            title = stringResource(R.string.larpgram_settings_email),
+            color = TgSettingsColors.Cyan,
+            iconVector = CompoundIcons.Email(),
+            onClick = onEmailClick,
+        )
+        TgSettingsItem(
+            title = stringResource(R.string.larpgram_settings_password),
+            color = TgSettingsColors.Teal,
+            iconVector = CompoundIcons.Key(),
+            onClick = onPasswordClick,
+        )
         if (state.isMultiAccountEnabled) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_add_another_account),

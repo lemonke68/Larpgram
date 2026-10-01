@@ -35,6 +35,13 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
         // Opens the current user's edit-profile screen directly (TG-style profile actions).
         @Parcelize
         data object EditProfile : InitialTarget
+
+        // Правка форка: свои экраны аккаунта, куда ведут баннеры списка чатов.
+        @Parcelize
+        data object AccountEmail : InitialTarget
+
+        @Parcelize
+        data object Devices : InitialTarget
     }
 
     // Правка форка: [isTab] — настройки открыты вкладкой внизу, стрелки «назад» у корня нет (TG).

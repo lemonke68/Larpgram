@@ -48,6 +48,8 @@ class SettingsCategoryNode(
         fun navigateToUserProfile(matrixUser: MatrixUser)
         fun navigateToAddAccount()
         fun navigateToLinkNewDevice()
+        fun navigateToAccountEmail()
+        fun navigateToAccountPassword()
         fun navigateToBlockedUsers()
         fun navigateToSecureBackup()
         fun navigateToLockScreenSettings()
@@ -91,6 +93,8 @@ class SettingsCategoryNode(
             onOpenUserProfile = callback::navigateToUserProfile,
             onAddAccountClick = callback::navigateToAddAccount,
             onLinkNewDeviceClick = callback::navigateToLinkNewDevice,
+            onEmailClick = callback::navigateToAccountEmail,
+            onPasswordClick = callback::navigateToAccountPassword,
             onOpenBlockedUsers = callback::navigateToBlockedUsers,
             onSecureBackupClick = callback::navigateToSecureBackup,
             onOpenLockScreenSettings = callback::navigateToLockScreenSettings,

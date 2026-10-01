@@ -14,6 +14,7 @@ import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.logout.api.direct.DirectLogoutEvent
+import io.element.android.libraries.accountapi.test.FakeAccountSessionApi
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.encryption.BackupUploadState
@@ -184,5 +185,6 @@ class DirectLogoutPresenterTest {
     ): DirectLogoutPresenter = DirectLogoutPresenter(
         matrixClient = matrixClient,
         encryptionService = encryptionService,
+        accountSessionApi = FakeAccountSessionApi(),
     )
 }

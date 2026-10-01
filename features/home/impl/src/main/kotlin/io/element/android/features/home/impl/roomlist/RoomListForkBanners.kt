@@ -128,11 +128,11 @@ class RoomListForkBanners(
         }
 
         return State(
-            // Баннер про почту показываем, только если знаем, куда вести человека.
-            showConnectEmailBanner = accountNeedsEmail && !connectEmailBannerDismissed && accountManagementUrl != null,
+            // Оба баннера ведут на свои экраны настроек («Почта», «Устройства»), поэтому адрес
+            // страницы MAS им больше не нужен: он остаётся запасным путём, если экран не открыть.
+            showConnectEmailBanner = accountNeedsEmail && !connectEmailBannerDismissed,
             accountManagementUrl = accountManagementUrl,
-            // То же и с сессиями: без адреса страницы управления вести некуда.
-            showCleanUpSessionsBanner = hasOtherSessions && !cleanUpSessionsBannerDismissed && manageSessionsUrl != null,
+            showCleanUpSessionsBanner = hasOtherSessions && !cleanUpSessionsBannerDismissed,
             manageSessionsUrl = manageSessionsUrl,
             updateBanner = updateBanner,
             eventSink = ::handleEvent,

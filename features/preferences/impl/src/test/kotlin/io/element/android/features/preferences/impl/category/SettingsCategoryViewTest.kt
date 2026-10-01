@@ -53,11 +53,20 @@ class SettingsCategoryViewTest : RobolectricTest() {
         }
     }
 
+    // Правка форка: почта и пароль — свои экраны вместо страницы «Управление аккаунтом» в браузере.
     @Test
-    fun `Account - click on manage account invokes callback`() = runAndroidComposeUiTest {
-        ensureCalledOnceWithParam("aUrl") { callback ->
-            setView(SettingsCategory.Account, aPreferencesRootState(accountManagementUrl = "aUrl"), onManageAccountClick = callback)
-            clickOn(CommonStrings.action_manage_account_and_devices)
+    fun `Account - click on email invokes callback`() = runAndroidComposeUiTest {
+        ensureCalledOnce { callback ->
+            setView(SettingsCategory.Account, aPreferencesRootState(accountManagementUrl = "aUrl"), onEmailClick = callback)
+            clickOn(R.string.larpgram_settings_email)
+        }
+    }
+
+    @Test
+    fun `Account - click on change password invokes callback`() = runAndroidComposeUiTest {
+        ensureCalledOnce { callback ->
+            setView(SettingsCategory.Account, aPreferencesRootState(), onPasswordClick = callback)
+            clickOn(R.string.larpgram_settings_password)
         }
     }
 
@@ -129,6 +138,8 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
     onOpenUserProfile: (MatrixUser) -> Unit = EnsureNeverCalledWithParam(),
     onAddAccountClick: () -> Unit = EnsureNeverCalled(),
     onLinkNewDeviceClick: () -> Unit = EnsureNeverCalled(),
+    onEmailClick: () -> Unit = EnsureNeverCalled(),
+    onPasswordClick: () -> Unit = EnsureNeverCalled(),
     onOpenBlockedUsers: () -> Unit = EnsureNeverCalled(),
     onSecureBackupClick: () -> Unit = EnsureNeverCalled(),
     onOpenLockScreenSettings: () -> Unit = EnsureNeverCalled(),
@@ -147,6 +158,8 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
             onOpenUserProfile = onOpenUserProfile,
             onAddAccountClick = onAddAccountClick,
             onLinkNewDeviceClick = onLinkNewDeviceClick,
+            onEmailClick = onEmailClick,
+            onPasswordClick = onPasswordClick,
             onOpenBlockedUsers = onOpenBlockedUsers,
             onSecureBackupClick = onSecureBackupClick,
             onOpenLockScreenSettings = onOpenLockScreenSettings,

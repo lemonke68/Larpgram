@@ -57,6 +57,9 @@ dependencies {
     implementation(projects.libraries.featureflag.api)
     implementation(projects.libraries.featureflag.ui)
     implementation(projects.libraries.network)
+    // Правка форка: устройства, почта и пароль без страницы MAS (сервис account).
+    implementation(projects.libraries.accountapi.api)
+    implementation(projects.libraries.qrcode)
     implementation(projects.libraries.pushstore.api)
     implementation(projects.libraries.indicator.api)
     implementation(projects.libraries.preferences.api)
@@ -100,6 +103,7 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.libraries.accountapi.test)
     testImplementation(projects.libraries.emoji.test)
     testImplementation(projects.libraries.featureflag.test)
     testImplementation(projects.libraries.mediapickers.test)

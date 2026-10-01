@@ -138,4 +138,20 @@
     <string name="search_no_results_subtitle">"По запросу «%1$s» ничего нет."</string>
     <!-- Меню долгого нажатия: пункты TG в одну строку («Копировать ссылку», как в Telegram). -->
     <string name="action_copy_link_to_message">"Копировать ссылку"</string>
+    <!--
+      Выход из аккаунта. Element называет его «Удалить это устройство» и пугает потерей ключа
+      восстановления. У нас ключ лежит на сервере и возвращается сам при следующем входе, поэтому
+      слова как в Telegram: «Выйти».
+    -->
+    <string name="action_signout">Выйти</string>
+    <string name="action_signout_anyway">Всё равно выйти</string>
+    <string name="screen_signout_preference_item">Выйти</string>
+    <string name="screen_signout_confirmation_dialog_title">Выйти из аккаунта</string>
+    <string name="screen_signout_confirmation_dialog_content">Вы уверены, что хотите выйти?</string>
+    <string name="screen_signout_confirmation_dialog_submit">Выйти</string>
+    <string name="screen_signout_in_progress_dialog_content">Выходим…</string>
+    <string name="screen_signout_save_recovery_key_title">Выйти из аккаунта?</string>
+    <string name="screen_signout_save_recovery_key_subtitle">Это единственное устройство в аккаунте. Переписка останется на сервере: войдите снова, и она вернётся.</string>
+    <string name="screen_signout_key_backup_disabled_subtitle">Это единственное устройство в аккаунте. Переписка останется на сервере: войдите снова, и она вернётся.</string>
+    <string name="screen_signout_recovery_disabled_subtitle">Это единственное устройство в аккаунте. Переписка останется на сервере: войдите снова, и она вернётся.</string>
 </resources>

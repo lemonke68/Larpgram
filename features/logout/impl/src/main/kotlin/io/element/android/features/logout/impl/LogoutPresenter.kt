@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
+import io.element.android.libraries.accountapi.api.AccountSessionApi
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
@@ -37,6 +38,8 @@ class LogoutPresenter(
     private val matrixClient: MatrixClient,
     private val encryptionService: EncryptionService,
     private val workManagerScheduler: WorkManagerScheduler,
+    // Правка форка: выход для сессии, полученной по QR-коду (LarpgramLogout.kt).
+    private val accountSessionApi: AccountSessionApi,
 ) : Presenter<LogoutState> {
     @Composable
     override fun present(): LogoutState {
@@ -115,7 +118,7 @@ class LogoutPresenter(
             // Cancel any pending work (e.g. notification sync)
             workManagerScheduler.cancel(matrixClient.sessionId)
 
-            matrixClient.logout(userInitiated = true, ignoreSdkError)
+            matrixClient.logoutOrEndSession(accountSessionApi, ignoreSdkError)
         }.runCatchingUpdatingState(logoutAction)
     }
 }

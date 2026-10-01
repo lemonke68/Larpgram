@@ -34,9 +34,13 @@ internal fun CleanUpSessionsBanner(
 ) {
     val activity = LocalActivity.current
     val isDark = !ElementTheme.isLightTheme
+    val navigator = LocalTgAccountNavigator.current
     CleanUpSessionsBannerView(
         onContinueClick = {
-            if (activity != null && manageSessionsUrl != null) {
+            // Свой экран настроек; браузер со страницей MAS — только если открыть его некому.
+            if (navigator != null) {
+                navigator.openDevices()
+            } else if (activity != null && manageSessionsUrl != null) {
                 activity.openUrlInChromeCustomTab(null, darkTheme = isDark, url = manageSessionsUrl)
             }
         },

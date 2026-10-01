@@ -13,6 +13,8 @@ import app.cash.molecule.moleculeFlow
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.accountapi.api.AccountSessionApi
+import io.element.android.libraries.accountapi.test.FakeAccountSessionApi
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.SessionId
@@ -240,8 +242,10 @@ internal fun createLogoutPresenter(
     matrixClient: MatrixClient = FakeMatrixClient(),
     encryptionService: EncryptionService = FakeEncryptionService(),
     workManagerScheduler: FakeWorkManagerScheduler = FakeWorkManagerScheduler(cancelLambda = { _, _ -> }),
+    accountSessionApi: AccountSessionApi = FakeAccountSessionApi(),
 ): LogoutPresenter = LogoutPresenter(
     matrixClient = matrixClient,
     encryptionService = encryptionService,
     workManagerScheduler = workManagerScheduler,
+    accountSessionApi = accountSessionApi,
 )

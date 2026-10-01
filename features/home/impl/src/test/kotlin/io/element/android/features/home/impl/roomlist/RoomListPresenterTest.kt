@@ -160,6 +160,8 @@ class RoomListPresenterTest {
         )
         val encryptionService = FakeEncryptionService().apply {
             emitRecoveryState(RecoveryState.INCOMPLETE)
+            // Правка форка: иначе после закрытия подсказки показался бы баннер про другие сессии.
+            emitIsLastDevice(true)
         }
         val syncService = FakeSyncService(initialSyncState = SyncState.Running)
         val presenter = createRoomListPresenter(
@@ -180,6 +182,8 @@ class RoomListPresenterTest {
     fun `present - handle DismissRecoveryKeyPrompt`() = runTest {
         val encryptionService = FakeEncryptionService().apply {
             recoveryStateStateFlow.emit(RecoveryState.DISABLED)
+            // Правка форка: иначе после закрытия подсказки показался бы баннер про другие сессии.
+            emitIsLastDevice(true)
         }
         val roomList = FakeDynamicRoomList(
             loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))
@@ -299,9 +303,11 @@ class RoomListPresenterTest {
             accountEmailStatus = FakeAccountEmailStatus(hasEmailResult = { false }),
         )
         presenter.test {
+            // Баннер появляется сразу; адрес страницы аккаунта (запасной путь) доезжает следом.
             val state = consumeItemsUntilPredicate {
                 it.contentState is RoomListContentState.Rooms &&
-                    it.contentAsRooms().securityBannerState == SecurityBannerState.ConnectEmail
+                    it.contentAsRooms().securityBannerState == SecurityBannerState.ConnectEmail &&
+                    it.contentAsRooms().accountManagementUrl != null
             }.last()
             assertThat(state.contentAsRooms().accountManagementUrl).isEqualTo("https://matrix.mango-kokos.ru/auth/account/")
         }
@@ -372,14 +378,17 @@ class RoomListPresenterTest {
     }
 
     @Test
-    fun `present - without an account management url there is nowhere to send the person`() = runTest {
+    fun `present - the email banner shows without an account management url, it leads to the in-app screen`() = runTest {
         val presenter = createRoomListPresenter(
             client = clientWithRoomsAndRecoveryEnabled(accountManagementUrl = Result.success(null)),
             accountEmailStatus = FakeAccountEmailStatus(hasEmailResult = { false }),
         )
         presenter.test {
-            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
-            assertThat(state.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+            val state = consumeItemsUntilPredicate {
+                it.contentState is RoomListContentState.Rooms &&
+                    it.contentAsRooms().securityBannerState == SecurityBannerState.ConnectEmail
+            }.last()
+            assertThat(state.contentAsRooms().accountManagementUrl).isNull()
         }
     }
 

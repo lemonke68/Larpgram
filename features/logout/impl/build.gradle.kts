@@ -31,6 +31,8 @@ dependencies {
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.featureflag.api)
     implementation(projects.libraries.matrix.api)
+    // Правка форка: завершение сеанса через сервис account (LarpgramLogout.kt).
+    implementation(projects.libraries.accountapi.api)
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.testtags)
     implementation(projects.libraries.uiStrings)
@@ -41,6 +43,7 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.libraries.accountapi.test)
     testImplementation(projects.libraries.featureflag.test)
     testImplementation(projects.libraries.sessionStorage.test)
     testImplementation(projects.libraries.workmanager.test)

@@ -18,7 +18,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import dev.zacsweers.metro.Inject
 import io.element.android.features.logout.api.direct.DirectLogoutEvent
 import io.element.android.features.logout.api.direct.DirectLogoutState
+import io.element.android.features.logout.impl.logoutOrEndSession
 import io.element.android.features.logout.impl.tools.isBackingUp
+import io.element.android.libraries.accountapi.api.AccountSessionApi
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runCatchingUpdatingState
@@ -32,6 +34,8 @@ import kotlinx.coroutines.launch
 class DirectLogoutPresenter(
     private val matrixClient: MatrixClient,
     private val encryptionService: EncryptionService,
+    // Правка форка: выход для сессии, полученной по QR-коду (LarpgramLogout.kt).
+    private val accountSessionApi: AccountSessionApi,
 ) : Presenter<DirectLogoutState> {
     @Composable
     override fun present(): DirectLogoutState {
@@ -76,7 +80,7 @@ class DirectLogoutPresenter(
         ignoreSdkError: Boolean,
     ) = launch {
         suspend {
-            matrixClient.logout(userInitiated = true, ignoreSdkError)
+            matrixClient.logoutOrEndSession(accountSessionApi, ignoreSdkError)
         }.runCatchingUpdatingState(logoutAction)
     }
 }

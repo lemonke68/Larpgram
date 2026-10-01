@@ -67,6 +67,19 @@ class HomeTabNodes(
         callback = preferencesCallback(callback, onAtRootChange = null),
     )
 
+    /** Один экран настроек поверх вкладок: «Почта» или «Устройства» из баннеров списка чатов. */
+    fun settingsScreen(
+        parentNode: Node,
+        buildContext: BuildContext,
+        callback: HomeEntryPoint.Callback,
+        target: PreferencesEntryPoint.InitialTarget,
+    ): Node = preferencesEntryPoint.createNode(
+        parentNode = parentNode,
+        buildContext = buildContext,
+        params = PreferencesEntryPoint.Params(target),
+        callback = preferencesCallback(callback, onAtRootChange = null),
+    )
+
     private fun preferencesCallback(
         callback: HomeEntryPoint.Callback,
         onAtRootChange: ((Boolean) -> Unit)?,

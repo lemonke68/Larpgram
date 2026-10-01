@@ -39,9 +39,13 @@ internal fun ConnectEmailBanner(
 ) {
     val activity = LocalActivity.current
     val isDark = !ElementTheme.isLightTheme
+    val navigator = LocalTgAccountNavigator.current
     ConnectEmailBannerView(
         onContinueClick = {
-            if (activity != null && accountManagementUrl != null) {
+            // Свой экран настроек; браузер со страницей MAS — только если открыть его некому.
+            if (navigator != null) {
+                navigator.openEmail()
+            } else if (activity != null && accountManagementUrl != null) {
                 activity.openUrlInChromeCustomTab(null, darkTheme = isDark, url = accountManagementUrl)
             }
         },

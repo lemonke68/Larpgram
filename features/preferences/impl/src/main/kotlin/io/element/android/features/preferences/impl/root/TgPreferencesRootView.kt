@@ -60,6 +60,7 @@ import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.components.MatrixUserRow
+import io.element.android.libraries.matrix.ui.model.tgHandle
 import io.element.android.libraries.matrix.ui.saved.SavedMessagesAvatar
 import io.element.android.libraries.ui.strings.CommonStrings
 import timber.log.Timber
@@ -277,6 +278,8 @@ private fun ColumnScope.MultiAccountSection(
                     }
                     .padding(top = 2.dp, bottom = 2.dp, end = 8.dp),
                 matrixUser = matrixUser,
+                // Свои аккаунты — коротким @ником: сервер один, домен человеку ни о чём не говорит.
+                subtext = matrixUser.userId.tgHandle(state.myUser.userId.domainName.orEmpty()),
                 avatarSize = AvatarSize.AccountItem,
                 verticalSpaceWidth = 16.dp,
             )

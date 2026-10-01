@@ -12,6 +12,7 @@ import android.app.Activity
 import android.os.Parcelable
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,7 +36,9 @@ import dev.zacsweers.metro.AssistedInject
 import im.vector.app.features.analytics.plan.MobileScreen
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.home.api.HomeEntryPoint
+import io.element.android.features.home.impl.components.LocalTgAccountNavigator
 import io.element.android.features.home.impl.components.RoomListMenuAction
+import io.element.android.features.home.impl.components.TgAccountNavigator
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.invite.api.InviteData
@@ -43,6 +46,7 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteV
 import io.element.android.features.invite.api.declineandblock.DeclineInviteAndBlockEntryPoint
 import io.element.android.features.leaveroom.api.LeaveRoomRenderer
 import io.element.android.features.logout.api.direct.DirectLogoutView
+import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.reportroom.api.ReportRoomEntryPoint
 import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRolesEntryPoint
 import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRolesListType
@@ -151,6 +155,13 @@ class HomeFlowNode(
         // Full-screen edit-profile opened from the profile tab (TG-style), pushed over the tabs.
         @Parcelize
         data object EditProfile : NavTarget
+
+        // Правка форка: «Почта» и «Устройства» из баннеров списка чатов.
+        @Parcelize
+        data object AccountEmail : NavTarget
+
+        @Parcelize
+        data object AccountDevices : NavTarget
 
         @Parcelize
         data class ReportRoom(val roomId: RoomId) : NavTarget
@@ -290,7 +301,16 @@ class HomeFlowNode(
 
     @Composable
     override fun View(modifier: Modifier) {
-        BackstackView()
+        // Правка форка: баннеры про почту и сессии открывают свои экраны настроек.
+        val accountNavigator = remember {
+            TgAccountNavigator(
+                openEmail = { backstack.push(NavTarget.AccountEmail) },
+                openDevices = { backstack.push(NavTarget.AccountDevices) },
+            )
+        }
+        CompositionLocalProvider(LocalTgAccountNavigator provides accountNavigator) {
+            BackstackView()
+        }
     }
 
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node {
@@ -329,6 +349,8 @@ class HomeFlowNode(
                 backstack.push(NavTarget.EditProfile)
             }
             NavTarget.EditProfile -> homeTabNodes.editProfile(this, buildContext, callback)
+            NavTarget.AccountEmail -> homeTabNodes.settingsScreen(this, buildContext, callback, PreferencesEntryPoint.InitialTarget.AccountEmail)
+            NavTarget.AccountDevices -> homeTabNodes.settingsScreen(this, buildContext, callback, PreferencesEntryPoint.InitialTarget.Devices)
             NavTarget.Root -> rootNode(buildContext)
         }
     }

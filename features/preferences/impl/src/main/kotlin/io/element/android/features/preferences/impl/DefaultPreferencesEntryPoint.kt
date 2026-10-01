@@ -49,4 +49,6 @@ internal fun PreferencesEntryPoint.InitialTarget.toNavTarget() = when (this) {
     PreferencesEntryPoint.InitialTarget.DeveloperSettings -> PreferencesFlowNode.NavTarget.DeveloperSettings
     // Правка форка: редактирование профиля из вкладки «Профиль».
     PreferencesEntryPoint.InitialTarget.EditProfile -> PreferencesFlowNode.NavTarget.EditCurrentUserProfile
+    PreferencesEntryPoint.InitialTarget.AccountEmail -> PreferencesFlowNode.NavTarget.TgAccountEmail
+    PreferencesEntryPoint.InitialTarget.Devices -> PreferencesFlowNode.NavTarget.TgDevices
 }
