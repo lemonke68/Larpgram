@@ -80,6 +80,12 @@ fun rememberBlurredBackdrop(enabled: Boolean): ImageBitmap? {
     return backdrop
 }
 
+/**
+ * Разовый размытый снимок окна. Для оверлеев, которые живут в том же окне: им нужно знать, что
+ * снимок уже сделан (или не получился), прежде чем рисовать себя, иначе они попадут в кадр.
+ */
+suspend fun captureBlurredBackdrop(context: Context): ImageBitmap? = captureBlurred(context)
+
 private suspend fun captureBlurred(context: Context): ImageBitmap? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
     val window = context.findActivity()?.window ?: return null

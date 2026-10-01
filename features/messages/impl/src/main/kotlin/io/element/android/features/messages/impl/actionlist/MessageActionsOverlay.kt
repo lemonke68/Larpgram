@@ -11,6 +11,9 @@
 
 package io.element.android.features.messages.impl.actionlist
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -52,24 +56,26 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionOnScreen
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.emojibasebindings.Emoji
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
@@ -79,10 +85,11 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
+import io.element.android.libraries.designsystem.utils.captureBlurredBackdrop
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 // Замеры по chat_menu_*.png: меню и плашка — одна скруглённая карточка, ширина меню около 250,
@@ -106,12 +113,16 @@ private val SCREEN_EDGE_PADDING = 8.dp
 private const val STABLE_FRAMES = 3
 private const val SETTLE_TIMEOUT_MS = 600L
 
+// Появление и уход меню: у Telegram меню проявляется за 150 мс и гаснет за 220.
+private const val FADE_IN_MS = 150
+private const val FADE_OUT_MS = 180
+
 /**
  * Меню долгого нажатия вокруг сообщения, как в Telegram (`ChatActivity.createMenu`).
  *
  * Сообщение рисуется целиком поверх размытого фона, обрезанное только полосой ленты между
- * шапкой и полем ввода. Копия пузыря — из его собственного слоя ([MessageActionsAnchor.snapshotFor]),
- * а не снимок экрана: форма и хвост те же, чужие оверлеи в неё не попадают. Плашка реакций — над
+ * шапкой и полем ввода. Это не снимок, а собственный слой пузыря ([MessageActionsAnchor.layerFor]),
+ * нарисованный второй раз в том же окне: форма и хвост те же, кружки, гифки и стикеры играют. Плашка реакций — над
  * видимой частью пузыря, меню — под ней. Если меню под пузырём не влезает, всё вместе поднимается
  * на свободное место сверху, а остаток меню наезжает на пузырь (пузырь не сжимается, меню
  * листается). Под полупрозрачным меню и плашкой виден размытый фон, а не чёткий пузырь.
@@ -134,15 +145,18 @@ fun MessageActionsOverlay(
     val event = target.event
     val eventKey = event.id.value
     var bubbleRect by remember { mutableStateOf(anchor.unclippedBoundsFor(eventKey)) }
-    var bubble by remember { mutableStateOf<ImageBitmap?>(null) }
     var isSettled by remember { mutableStateOf(false) }
-    // Блюр рисуется здесь же, внутри окна оверлея, а не отдельным попапом: отдельное окно
-    // приезжало асинхронно и ложилось поверх меню (гонка порядка окон). Снимаем фон, когда
-    // лента встала на место: иначе в размытие попадала уезжающая клавиатура.
-    val backdrop = rememberBlurredBackdrop(enabled = isSettled)
+    // Оверлей живёт в окне чата, а не в попапе: только так слой пузыря можно нарисовать живым.
+    // Поэтому до снимка фона он не рисует ничего, иначе сам попал бы в размытие. Снимаем фон,
+    // когда лента встала на место: иначе в размытие попадала уезжающая клавиатура.
+    var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
+    val context = LocalContext.current
+    val alpha = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var isClosing by remember { mutableStateOf(false) }
     LaunchedEffect(eventKey) {
         // Клавиатура могла ещё уезжать, и лента вместе с ней: берём место пузыря, когда оно
-        // перестало меняться, и только тогда снимаем копию.
+        // перестало меняться.
         val start = System.currentTimeMillis()
         var stableFrames = 0
         var last = anchor.unclippedBoundsFor(eventKey)
@@ -153,29 +167,43 @@ fun MessageActionsOverlay(
             last = current
         }
         bubbleRect = last
-        bubble = anchor.snapshotFor(eventKey)
+        backdrop = captureBlurredBackdrop(context)
         isSettled = true
+        alpha.animateTo(1f, tween(FADE_IN_MS))
     }
 
-    Popup(
-        onDismissRequest = onDismiss,
-        properties = PopupProperties(focusable = true),
-    ) {
-        // Всё считаем в координатах экрана: окно попапа и окно приложения начинаются не в одной точке.
+    fun dismiss() {
+        if (isClosing) return
+        isClosing = true
+        scope.launch {
+            alpha.animateTo(0f, tween(FADE_OUT_MS))
+            onDismiss()
+        }
+    }
+    BackHandler(onBack = ::dismiss)
+
+    run {
+        // Всё считаем в координатах экрана: корень оверлея может начинаться не в его углу.
         var popupOrigin by remember { mutableStateOf<Offset?>(null) }
         BoxWithConstraints(
             modifier = modifier
                 .fillMaxSize()
                 .onGloballyPositioned { popupOrigin = it.positionOnScreen() }
-                .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+                // Перехватывает и жесты: лента под меню не листается (в Telegram она заморожена).
+                .pointerInput(Unit) { detectTapGestures { dismiss() } }
+                .graphicsLayer { this.alpha = alpha.value },
         ) {
-            if (backdrop != null) {
+            val backdropBitmap = backdrop
+            if (backdropBitmap != null) {
                 Image(
-                    bitmap = backdrop,
+                    bitmap = backdropBitmap,
                     contentDescription = null,
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier.fillMaxSize(),
                 )
+            } else if (isSettled) {
+                // Снимок не получился (до Android 8 его нет): обычное затемнение.
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
             }
             if (!isSettled) return@BoxWithConstraints
             val origin = popupOrigin ?: return@BoxWithConstraints
@@ -203,16 +231,16 @@ fun MessageActionsOverlay(
 
             Layout(
                 content = {
-                    val bubbleBitmap = bubble
                     Box(
                         modifier = Modifier.drawBehind {
-                            if (bubbleBitmap == null) return@drawBehind
+                            // Слой берём на каждой отрисовке: строка ленты могла пересоздать его.
+                            val bubbleLayer = anchor.layerFor(eventKey) ?: return@drawBehind
                             val holes = Path().apply {
                                 coveredRects.forEach { addRoundRect(RoundRect(it, CornerRadius(cornerPx))) }
                             }
                             clipRect(top = visibleTop - rect.top, bottom = visibleBottom - rect.top) {
                                 clipPath(holes, clipOp = ClipOp.Difference) {
-                                    drawImage(bubbleBitmap)
+                                    drawLayer(bubbleLayer)
                                 }
                             }
                         },
@@ -225,7 +253,7 @@ fun MessageActionsOverlay(
                             emojiPickerRenderer = emojiPickerRenderer,
                             onSelectEmoji = { emoji ->
                                 onSelectEmoji(pickerTarget.event.eventOrTransactionId, emoji)
-                                onDismiss()
+                                dismiss()
                             },
                         )
                     } else {
@@ -234,7 +262,7 @@ fun MessageActionsOverlay(
                                 recentEmojis = target.recentEmojis,
                                 onEmojiClick = { emoji ->
                                     onEmojiReactionClick(emoji, event)
-                                    onDismiss()
+                                    dismiss()
                                 },
                                 // «+» не закрывает оверлей: он грузит состояние пикера, после чего
                                 // тот разворачивается прямо здесь (ветка pickerTarget выше).

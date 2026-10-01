@@ -13,13 +13,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.unit.toSize
-import io.element.android.libraries.core.extensions.runCatchingExceptions
 
 /**
  * Куда привязать всплывающее меню: экранные координаты нажатого пузыря.
@@ -68,11 +66,13 @@ class MessageActionsAnchor {
     fun unclippedBoundsFor(id: String): Rect? =
         coordinates[id]?.takeIf { it.isAttached }?.let { Rect(it.positionOnScreen(), it.size.toSize()) }
 
-    /** Копия пузыря: его форма, хвост и содержимое, без шапки и поля ввода поверх. */
-    suspend fun snapshotFor(id: String): ImageBitmap? {
-        val layer = layers[id]?.takeIf { !it.isReleased && it.size.width > 0 && it.size.height > 0 } ?: return null
-        return runCatchingExceptions { layer.toImageBitmap() }.getOrNull()
-    }
+    /**
+     * Живой слой пузыря: форма, хвост и содержимое, без шапки и поля ввода поверх. Меню рисует его
+     * ещё раз над размытым фоном в том же окне, поэтому видео и анимации в нём продолжают играть —
+     * как в Telegram, где `ChatActivity` повторно рисует саму ячейку, а не её снимок.
+     */
+    fun layerFor(id: String): GraphicsLayer? =
+        layers[id]?.takeIf { !it.isReleased && it.size.width > 0 && it.size.height > 0 }
 }
 
 /**

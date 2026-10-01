@@ -287,6 +287,19 @@ fun TgMessagesView(
         state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
     }
 
+    var endPollConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
+    var redactConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
+
+    val onSelectActionCommon: (TimelineItemAction, TimelineItem.Event) -> Unit = { action, event ->
+        if (action == TimelineItemAction.EndPoll) {
+            endPollConfirmingEvent = event
+        } else if (action == TimelineItemAction.Redact) {
+            redactConfirmingEvent = event
+        } else {
+            onActionSelected(action, event)
+        }
+    }
+
     CompositionLocalProvider(
         LocalMessageActionsAnchor provides messageActionsAnchor,
         LocalChatGlassState provides chatGlassState,
@@ -517,10 +530,34 @@ fun TgMessagesView(
             }
         },
     )
+    // Правка форка (фаза 2): координаты пузыря есть — привязанное меню. Оно в том же окне, что
+    // лента, верхним слоем: живой слой пузыря можно нарисовать ещё раз только в своём окне.
+    val overlayTarget = state.actionListState.target as? ActionListState.Target.Success
+    if (overlayTarget != null && messageActionsAnchor.bubbleBounds != null) {
+        MessageActionsOverlay(
+            target = overlayTarget,
+            anchor = messageActionsAnchor,
+            onSelectAction = onSelectActionCommon,
+            onCustomReactionClick = { event ->
+                state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
+            },
+            onEmojiReactionClick = ::onEmojiReactionClick,
+            // Правка форка (фаза 3): пикер эмодзи разворачивается внутри оверлея.
+            customReactionState = state.customReactionState,
+            emojiPickerRenderer = emojiPickerRenderer,
+            onSelectEmoji = { uniqueId, emoji ->
+                state.eventSink(MessagesEvent.ToggleReaction(emoji.unicode, uniqueId))
+            },
+            onDismiss = {
+                messageActionsAnchor.bubbleBounds = null
+                state.actionListState.eventSink(ActionListEvent.Clear)
+                state.customReactionState.eventSink(CustomReactionEvent.DismissCustomReactionSheet)
+            },
+        )
+    }
     } // конец Box меню вложений
     } // конец CompositionLocalProvider(LocalMessageActionsAnchor)
 
-    var endPollConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
 
     if (endPollConfirmingEvent != null) {
         ConfirmationDialog(
@@ -536,7 +573,6 @@ fun TgMessagesView(
     }
 
     // Правка форка: удаление сообщения — с подтверждением, как в Telegram.
-    var redactConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
     if (redactConfirmingEvent != null) {
         ConfirmationDialog(
             title = stringResource(id = R.string.larpgram_delete_message_title),
@@ -560,40 +596,7 @@ fun TgMessagesView(
     val actionTarget = state.actionListState.target as? ActionListState.Target.Success
     val bubbleBounds = messageActionsAnchor.bubbleBounds
 
-    val onSelectActionCommon: (TimelineItemAction, TimelineItem.Event) -> Unit = { action, event ->
-        if (action == TimelineItemAction.EndPoll) {
-            endPollConfirmingEvent = event
-        } else if (action == TimelineItemAction.Redact) {
-            redactConfirmingEvent = event
-        } else {
-            onActionSelected(action, event)
-        }
-    }
-    if (actionTarget != null && bubbleBounds != null) {
-        // Правка форка (фаза 2): координаты пузыря есть — привязанное меню. Блюр рисуется
-        // внутри оверлея нижним слоем: отдельным окном он приезжал асинхронно и ложился
-        // поверх меню.
-        MessageActionsOverlay(
-            target = actionTarget,
-            anchor = messageActionsAnchor,
-            onSelectAction = onSelectActionCommon,
-            onCustomReactionClick = { event ->
-                state.customReactionState.eventSink(CustomReactionEvent.ShowCustomReactionSheet(event))
-            },
-            onEmojiReactionClick = ::onEmojiReactionClick,
-            // Правка форка (фаза 3): пикер эмодзи разворачивается внутри оверлея.
-            customReactionState = state.customReactionState,
-            emojiPickerRenderer = emojiPickerRenderer,
-            onSelectEmoji = { uniqueId, emoji ->
-                state.eventSink(MessagesEvent.ToggleReaction(emoji.unicode, uniqueId))
-            },
-            onDismiss = {
-                messageActionsAnchor.bubbleBounds = null
-                state.actionListState.eventSink(ActionListEvent.Clear)
-                state.customReactionState.eventSink(CustomReactionEvent.DismissCustomReactionSheet)
-            },
-        )
-    } else {
+    if (actionTarget == null || bubbleBounds == null) {
         // Откат на шторку снизу (нажали не по пузырю, координат нет). Ей блюр приходит
         // отдельным окном — тут гонки нет, шторка появляется анимацией снизу.
         val actionListBackdrop = rememberBlurredBackdrop(enabled = actionTarget != null)
