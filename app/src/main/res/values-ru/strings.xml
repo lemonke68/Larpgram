@@ -2,5 +2,5 @@
 <!-- См. комментарий в values/strings.xml. -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
     <string name="screen_onboarding_welcome_title">Larpgram</string>
-    <string name="screen_onboarding_welcome_message">Не Телеграм. Но очень старается.</string>
+    <string name="screen_onboarding_welcome_message">привет</string>
 </resources>

@@ -76,6 +76,8 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.actionlist.LocalMessageActionsAnchor
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.TimelineRoomInfo
+import io.element.android.features.messages.impl.timeline.components.event.CircleDurationLabel
+import io.element.android.features.messages.impl.timeline.components.event.LocalCircleDurationLabel
 import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
 import io.element.android.features.messages.impl.timeline.components.event.TimelineItemEventContentView
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayout
@@ -94,6 +96,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
+import io.element.android.features.messages.impl.timeline.model.event.isLarpgramCircle
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
 import io.element.android.features.messages.impl.timeline.model.event.ensureActiveLiveLocation
 import io.element.android.features.messages.impl.timeline.model.event.isBubbleless
@@ -156,6 +159,14 @@ private val BUBBLE_INCOMING_OFFSET = AVATAR_START_MARGIN + 44.dp + 9.dp
 
 // Правка форка: ободок пузыря вокруг медиа без подписи. Замер по макету редизайна 2023.
 private val MEDIA_BUBBLE_INSET = 4.dp
+
+/** Отступ плашек поверх медиа (время, длительность кружка) от угла. */
+private val MEDIA_PILL_INSET = 8.dp
+
+/** Полупрозрачная тёмная плашка поверх медиа и обоев: время отправки, длительность кружка. */
+private fun Modifier.mediaPill(): Modifier = this
+    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+    .padding(horizontal = 5.dp, vertical = 2.dp)
 
 @Composable
 fun TgTimelineItemEventRow(
@@ -822,7 +833,23 @@ private fun MessageEventBubbleContent(
         when (timestampPosition) {
             TimestampPosition.Overlay ->
                 Box(modifier, contentAlignment = Alignment.Center) {
-                    content {}
+                    // Кружок: длительность — такая же плашка, как время, в противоположном углу.
+                    val isCircle = (event.content as? TimelineItemVideoContent)?.isLarpgramCircle == true
+                    val circleDuration = remember(isCircle) { if (isCircle) CircleDurationLabel() else null }
+                    CompositionLocalProvider(LocalCircleDurationLabel provides circleDuration) {
+                        content {}
+                    }
+                    circleDuration?.text?.let { duration ->
+                        Text(
+                            modifier = Modifier
+                                .padding(MEDIA_PILL_INSET)
+                                .align(Alignment.BottomStart)
+                                .mediaPill(),
+                            text = duration,
+                            style = ElementTheme.typography.fontBodyXsRegular,
+                            color = Color.White,
+                        )
+                    }
                     TimelineEventTimestampView(
                         event = event,
                         eventSink = eventSink,
@@ -831,11 +858,9 @@ private fun MessageEventBubbleContent(
                         contentColor = Color.White,
                         modifier = Modifier
                             // Отступ от угла: плашка сидит ВНУТРИ медиа, а не на рамке поста.
-                            .padding(horizontal = 8.dp, vertical = 8.dp)
-                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .padding(MEDIA_PILL_INSET)
                             .align(Alignment.BottomEnd)
-                            // Внутренний отступ плашки (компактнее).
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                            .mediaPill()
                     )
                 }
             TimestampPosition.Aligned -> @Composable {
@@ -892,9 +917,7 @@ private fun MessageEventBubbleContent(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                             .then(
                                 if (onWallpaper) {
-                                    Modifier
-                                        .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                    Modifier.mediaPill()
                                 } else {
                                     Modifier
                                 }

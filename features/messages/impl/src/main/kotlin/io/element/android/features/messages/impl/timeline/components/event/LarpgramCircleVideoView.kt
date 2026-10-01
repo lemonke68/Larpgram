@@ -22,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -29,6 +31,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -152,6 +155,12 @@ fun LarpgramCircleVideoView(
         }
     }
 
+    val durationLabel = LocalCircleDurationLabel.current
+    if (durationLabel != null) {
+        val text = if (totalMs > 0) formatCircleDuration(remainingMs) else null
+        SideEffect { durationLabel.text = text }
+    }
+
     // Пока файл не скачался, показываем обложку: чёрный круг вместо кружочка выглядит
     // как поломка (на этом уже обжигались, когда не было thumbnail).
     val showVideo = isPlaying && player != null
@@ -272,10 +281,11 @@ fun LarpgramCircleVideoView(
                 )
             }
         }
-        if (totalMs > 0) {
+        // Длительность — отдельная плашка слева снизу, вне круга, в пару к плашке времени: её рисует
+        // строка сообщения (см. LocalCircleDurationLabel). Внутри круга — только там, где такой строки нет.
+        if (totalMs > 0 && durationLabel == null) {
             Text(
                 modifier = Modifier
-                    // Слева снизу, как в Telegram: справа снизу — плашка времени отправки.
                     .align(Alignment.BottomStart)
                     .padding(start = 28.dp, bottom = 14.dp)
                     .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
@@ -287,6 +297,17 @@ fun LarpgramCircleVideoView(
         }
     }
 }
+
+/**
+ * Куда кружок отдаёт подпись длительности, если её рисует строка сообщения: плашка стоит вне
+ * круга, в углу напротив времени отправки, как в Telegram (`ChatMessageCell`, `durationLayout`).
+ */
+@Stable
+class CircleDurationLabel {
+    var text by mutableStateOf<String?>(null)
+}
+
+val LocalCircleDurationLabel = staticCompositionLocalOf<CircleDurationLabel?> { null }
 
 private fun formatCircleDuration(ms: Long): String {
     val totalSeconds = (ms + 999) / 1000
