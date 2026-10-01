@@ -37,6 +37,7 @@ import io.element.android.features.login.impl.screens.classic.ClassicFlowNode
 import io.element.android.features.login.impl.screens.confirmaccountprovider.ConfirmAccountProviderNode
 import io.element.android.features.login.impl.screens.loginpassword.LoginPasswordNode
 import io.element.android.features.login.impl.screens.onboarding.OnBoardingNode
+import io.element.android.features.login.impl.screens.tg.TgAuthNode
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
 import io.element.android.libraries.architecture.BackstackView
@@ -67,7 +68,10 @@ class LoginFlowNode(
     private val preferencesEntryPoint: PreferencesEntryPoint,
 ) : BaseFlowNode<LoginFlowNode.NavTarget>(
     backstack = BackStack(
-        initialElement = NavTarget.CheckClassicFlow,
+        // Правка форка: вход начинается со своего экрана (приветствие → вход → регистрация), без
+        // браузера и без 5-секундной проверки Element Classic. Старые цели ниже остались для синка
+        // с апстримом, но из нашего экрана на них не попасть.
+        initialElement = NavTarget.TgAuth,
         savedStateMap = buildContext.savedStateMap,
     ),
     buildContext = buildContext,
@@ -104,6 +108,10 @@ class LoginFlowNode(
     }
 
     sealed interface NavTarget : Parcelable {
+        // Правка форка: экран входа Larpgram.
+        @Parcelize
+        data object TgAuth : NavTarget
+
         @Parcelize
         data object CheckClassicFlow : NavTarget
 
@@ -134,6 +142,23 @@ class LoginFlowNode(
 
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node {
         return when (navTarget) {
+            // Правка форка: экран входа Larpgram.
+            NavTarget.TgAuth -> {
+                val callback = object : TgAuthNode.Callback {
+                    override fun navigateToBugReport() {
+                        callback.navigateToBugReport()
+                    }
+
+                    override fun navigateToDeveloperSettings() {
+                        backstack.push(NavTarget.AppDeveloperSettings)
+                    }
+
+                    override fun onDone() {
+                        callback.onDone()
+                    }
+                }
+                createNode<TgAuthNode>(buildContext, listOf(callback))
+            }
             NavTarget.CheckClassicFlow -> {
                 val callback = object : ClassicFlowNode.Callback {
                     override fun navigateToOnBoarding(allowBackNavigation: Boolean) {

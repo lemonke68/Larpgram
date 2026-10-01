@@ -46,6 +46,13 @@ interface MatrixAuthenticationService {
      */
     suspend fun login(username: String, password: String): Result<SessionId>
 
+    /**
+     * Правка форка: вход готовым токеном доступа. Его выдаёт сервис account, когда новое устройство
+     * сканирует QR-код уже вошедшего (привязка устройства без браузера). Перед вызовом нужен
+     * [setHomeserver], как и для [login].
+     */
+    suspend fun loginWithAccessToken(userId: String, deviceId: String, accessToken: String): Result<SessionId>
+
     /*
      * OAuth part.
      */

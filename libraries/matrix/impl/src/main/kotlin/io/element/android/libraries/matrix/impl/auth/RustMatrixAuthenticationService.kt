@@ -57,6 +57,8 @@ import org.matrix.rustcomponents.sdk.QrCodeDecodeException
 import org.matrix.rustcomponents.sdk.QrLoginProgress
 import org.matrix.rustcomponents.sdk.QrLoginProgressListener
 import org.matrix.rustcomponents.sdk.SecretsBundleWithUserId
+import org.matrix.rustcomponents.sdk.Session
+import org.matrix.rustcomponents.sdk.SlidingSyncVersion
 import timber.log.Timber
 import uniffi.matrix_sdk.OAuthAuthorizationData
 import kotlin.time.Duration.Companion.seconds
@@ -152,7 +154,8 @@ class RustMatrixAuthenticationService(
                 client.login(
                     username = username,
                     password = password,
-                    initialDeviceName = "Element X Android",
+                    // Правка форка: имя устройства в списке сеансов.
+                    initialDeviceName = "Larpgram Android",
                     deviceId = null,
                 )
                 // Ensure that the user is not already logged in with the same account
@@ -179,6 +182,44 @@ class RustMatrixAuthenticationService(
                 SessionId(sessionData.userId)
             }.mapFailure { failure ->
                 Timber.e(failure, "Failed to login")
+                failure.mapAuthenticationException()
+            }
+        }
+
+    // Правка форка: вход готовым токеном (привязка устройства по QR через сервис account).
+    override suspend fun loginWithAccessToken(userId: String, deviceId: String, accessToken: String): Result<SessionId> =
+        withContext(coroutineDispatchers.io) {
+            runCatchingExceptions {
+                val client = currentClient ?: error("You need to call `setHomeserver()` first")
+                val currentSessionPaths = sessionPaths ?: error("You need to call `setHomeserver()` first")
+                client.restoreSession(
+                    Session(
+                        accessToken = accessToken,
+                        // Токен привязки бессрочный, обновлять его нечем.
+                        refreshToken = null,
+                        userId = userId,
+                        deviceId = deviceId,
+                        homeserverUrl = client.homeserver(),
+                        slidingSyncVersion = SlidingSyncVersion.NATIVE,
+                        oauthData = null,
+                    )
+                )
+                ensureNotAlreadyLoggedIn(client)
+                val sessionData = client.session()
+                    .toSessionData(
+                        isTokenValid = true,
+                        loginType = LoginType.PASSWORD,
+                        passphrase = pendingKey.formattedAsString(),
+                        sessionPaths = currentSessionPaths,
+                    )
+                val matrixClient = rustMatrixClientFactory.create(client, sessionData, isMessageSearchAvailable())
+                clientEnterpriseHook(matrixClient)
+                newMatrixClientObservers.forEach { it.invoke(matrixClient) }
+                sessionStore.addSession(sessionData)
+                clear(destroyClient = false)
+                SessionId(sessionData.userId)
+            }.mapFailure { failure ->
+                Timber.e(failure, "Failed to login with an access token")
                 failure.mapAuthenticationException()
             }
         }

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Модуль форка: строки Larpgram. -->
+<resources>
+    <!-- Вход, регистрация и сброс пароля без браузера (screens/tg). -->
+    <string name="larpgram_auth_welcome_start">Start messaging</string>
+    <string name="larpgram_auth_login_title">Sign in</string>
+    <string name="larpgram_auth_login_subtitle">Enter your username or email and your password.</string>
+    <string name="larpgram_auth_login_field">Username or email</string>
+    <string name="larpgram_auth_password_field">Password</string>
+    <string name="larpgram_auth_forgot">Forgot password?</string>
+    <string name="larpgram_auth_sign_in">Sign in</string>
+    <string name="larpgram_auth_no_account">No account yet?</string>
+    <string name="larpgram_auth_register">Create account</string>
+    <string name="larpgram_auth_qr">Sign in with QR code</string>
+    <string name="larpgram_auth_register_title">Create account</string>
+    <string name="larpgram_auth_register_subtitle">Pick a username and enter your email. We will send a code to it.</string>
+    <string name="larpgram_auth_username_field">Username</string>
+    <string name="larpgram_auth_username_hint">Latin letters, digits and _, at least 3 characters</string>
+    <string name="larpgram_auth_email_field">Email</string>
+    <string name="larpgram_auth_email_hint">You will need it to restore your password</string>
+    <string name="larpgram_auth_password_hint">At least 8 characters</string>
+    <string name="larpgram_auth_password_repeat_field">Repeat password</string>
+    <string name="larpgram_auth_code_title">Check your email</string>
+    <string name="larpgram_auth_code_register_subtitle">We sent a code to %1$s</string>
+    <string name="larpgram_auth_code_forgot_subtitle">If the account has an email, we sent a code to it. No email? Check Spam or contact the administrator.</string>
+    <string name="larpgram_auth_code_resend">Send the code again</string>
+    <string name="larpgram_auth_code_resend_in">Send again in %1$d s</string>
+    <string name="larpgram_auth_forgot_title">Reset password</string>
+    <string name="larpgram_auth_forgot_subtitle">Enter your username or email. We will send a code to the account email.</string>
+    <string name="larpgram_auth_forgot_submit">Get the code</string>
+    <string name="larpgram_auth_new_password_title">New password</string>
+    <string name="larpgram_auth_new_password_subtitle">Choose a new password.</string>
+    <string name="larpgram_auth_new_password_field">New password</string>
+    <string name="larpgram_auth_new_password_submit">Save and sign in</string>
+    <string name="larpgram_auth_error_invalid_credentials">Wrong username or password</string>
+    <string name="larpgram_auth_error_deactivated">This account has been deleted</string>
+    <string name="larpgram_auth_error_already_logged_in">You are already signed in to this account on this device</string>
+    <string name="larpgram_auth_error_username_too_short">The username is too short: at least 3 characters</string>
+    <string name="larpgram_auth_error_username_too_long">The username is too long: 32 characters at most</string>
+    <string name="larpgram_auth_error_username_invalid">Only Latin letters, digits and _; it must start with a letter</string>
+    <string name="larpgram_auth_error_username_taken">This username is taken</string>
+    <string name="larpgram_auth_error_email_invalid">This does not look like an email address</string>
+    <string name="larpgram_auth_error_email_taken">This email already belongs to an account. Sign in or reset the password.</string>
+    <string name="larpgram_auth_error_password_too_short">The password is too short: at least 8 characters</string>
+    <string name="larpgram_auth_error_password_too_long">The password is too long</string>
+    <string name="larpgram_auth_error_password_weak">The password is too simple. Add words, digits or symbols.</string>
+    <string name="larpgram_auth_error_passwords_differ">The passwords do not match</string>
+    <string name="larpgram_auth_error_wrong_code">Wrong code</string>
+    <plurals name="larpgram_auth_error_wrong_code_attempts">
+        <item quantity="one">Wrong code. %1$d attempt left</item>
+        <item quantity="other">Wrong code. %1$d attempts left</item>
+    </plurals>
+    <string name="larpgram_auth_error_code_expired">The code has expired. Request a new one.</string>
+    <string name="larpgram_auth_error_too_many_attempts">Too many wrong codes. Request a new one.</string>
+    <string name="larpgram_auth_error_too_many_requests">Too many attempts. Try again later.</string>
+    <string name="larpgram_auth_error_mail_failed">Could not send the email. Check the address or try again later.</string>
+    <string name="larpgram_auth_error_network">Something went wrong. Check your connection and try again.</string>
+    <string name="larpgram_auth_qr_title">Sign in with QR code</string>
+    <string name="larpgram_auth_qr_subtitle">On a device where you are already signed in, open Settings → Devices → “Link new device” and point this camera at the QR code.</string>
+    <string name="larpgram_auth_qr_allow_camera">Allow camera access</string>
+    <string name="larpgram_auth_qr_retry">Scan again</string>
+    <string name="larpgram_auth_error_qr_invalid">This is not a Larpgram sign-in QR code</string>
+    <string name="larpgram_auth_error_qr_expired">The QR code has expired. Show a new one on the other device.</string>
+</resources>

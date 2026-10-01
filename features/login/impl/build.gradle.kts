@@ -72,6 +72,8 @@ dependencies {
     implementation(projects.libraries.preferences.api)
     implementation(projects.libraries.uiUtils)
     implementation(projects.libraries.wellknown.api)
+    // Правка форка: регистрация и сброс пароля (экран screens/tg).
+    implementation(projects.libraries.accountapi.api)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.webkit)
     implementation(libs.serialization.json)
@@ -87,6 +89,7 @@ dependencies {
     testImplementation(projects.libraries.permissions.test)
     testImplementation(projects.libraries.sessionStorage.test)
     testImplementation(projects.libraries.wellknown.test)
+    testImplementation(projects.libraries.accountapi.test)
     testImplementation(libs.androidx.camera.camera2)
     testImplementation(libs.androidx.camera.lifecycle)
 }

@@ -64,6 +64,15 @@ class FakeMatrixAuthenticationService(
         }
     }
 
+    // Правка форка: вход готовым токеном (привязка устройства по QR).
+    var loginWithAccessTokenCalls = mutableListOf<Triple<String, String, String>>()
+        private set
+
+    override suspend fun loginWithAccessToken(userId: String, deviceId: String, accessToken: String): Result<SessionId> = simulateLongTask {
+        loginWithAccessTokenCalls += Triple(userId, deviceId, accessToken)
+        loginError?.let { Result.failure(it) } ?: Result.success(A_USER_ID)
+    }
+
     /** The login hint passed to the most recent [getOAuthUrl] call. */
     var getOAuthUrlLoginHint: String? = null
         private set
