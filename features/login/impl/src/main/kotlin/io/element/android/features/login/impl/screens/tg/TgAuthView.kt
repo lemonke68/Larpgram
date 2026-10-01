@@ -152,6 +152,10 @@ fun TgAuthView(
                 TgAuthStep.Loading -> Box(Modifier.fillMaxSize())
                 TgAuthStep.Welcome -> WelcomeStep(state, onReportProblemClick)
                 TgAuthStep.Login -> LoginStep(state)
+                TgAuthStep.LoginCode -> CodeStep(
+                    state = state,
+                    subtitle = stringResource(R.string.larpgram_auth_code_register_subtitle, state.loginEmailHint),
+                )
                 TgAuthStep.Register -> RegisterStep(state)
                 TgAuthStep.RegisterCode -> CodeStep(
                     state = state,

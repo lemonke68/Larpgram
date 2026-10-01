@@ -62,6 +62,7 @@ internal fun AccountError.toAccountErrorKind(): TgAccountError.Kind = when (this
     AccountError.UsernameTooLong,
     AccountError.UsernameInvalid,
     AccountError.UsernameTaken,
+    AccountError.InvalidCredentials,
     AccountError.Network -> TgAccountError.Kind.Network
 }
 

@@ -8,7 +8,7 @@ import {
 import { createLimiter } from './limiter.js';
 import {
   normalizeUsername, usernameProblem, normalizeEmail, isValidEmail, passwordProblem, parseLogin,
-  judgeCode, localpartOf, cleanDeviceName,
+  judgeCode, localpartOf, cleanDeviceName, maskEmail,
 } from './rules.js';
 
 const MINUTE = 60_000;
@@ -25,6 +25,8 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
   const mailsPerAddressHour = config.mailsPerAddressHour ?? 5;
   const pairTtlMs = (config.pairTtlSeconds ?? 120) * 1000;
   const offersPerUserHour = config.offersPerUserHour ?? 30;
+  const loginsPerIpHour = config.loginsPerIpHour ?? 30;
+  const loginsPerUserHour = config.loginsPerUserHour ?? 10;
 
   const limiter = createLimiter({ now });
   const app = express();
@@ -182,6 +184,56 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
     const user = userId ? await mas.getUser(userId) : null;
     if (!user) return fail(res, 404, 'not_found');
     res.json({ username: user.username });
+  }));
+
+  // Вход с подтверждением по почте, шаг 1: пароль верный и у аккаунта есть почта — шлём код.
+  // Сессию выдаёт не сервис: после кода приложение входит обычным `/login`. Поэтому это защита на
+  // стороне приложения — сторонний Matrix-клиент по-прежнему входит одним паролем.
+  app.post('/login/start', route(async (req, res) => {
+    if (!limiter.allow(`login:${req.ip}`, loginsPerIpHour, HOUR)) return fail(res, 429, 'too_many_requests');
+    const login = parseLogin(req.body?.login);
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!(login.email || login.username) || !password) return fail(res, 400, 'login_required');
+
+    let user = null;
+    if (login.email) {
+      const userId = isValidEmail(login.email) ? await mas.findUserIdByEmail(login.email) : null;
+      user = userId ? await mas.getUser(userId) : null;
+    } else {
+      user = await mas.findUser(login.username);
+    }
+    // Нет аккаунта и неверный пароль — один ответ: по ручке нельзя перебирать ники и адреса.
+    if (!user) return fail(res, 403, 'invalid_credentials');
+    if (!limiter.allow(`login-user:${user.username}`, loginsPerUserHour, HOUR)) return fail(res, 429, 'too_many_requests');
+    if (!(await matrix.checkPassword(user.username, password))) return fail(res, 403, 'invalid_credentials');
+
+    const email = await mas.findEmailOfUser(user.id);
+    // Старые аккаунты без почты входят как раньше: код слать некуда.
+    if (!email) return res.json({ code_required: false, username: user.username });
+    if (!limiter.allow(`mail:${email}`, mailsPerAddressHour, HOUR)) return fail(res, 429, 'too_many_requests');
+
+    const { id, code } = newTicket('login', { username: user.username, email, userId: user.id });
+    try {
+      await mailer.sendCode('login', email, code);
+    } catch (e) {
+      console.error('отправка письма упала:', e.message);
+      db.delete.run(id);
+      return fail(res, 502, 'mail_failed');
+    }
+    audit('login-start', { username: user.username });
+    res.json({
+      code_required: true, ticket: id, resend_after: resendMs / 1000,
+      username: user.username, email_hint: maskEmail(email),
+    });
+  }));
+
+  // Шаг 2: код верный — приложению можно входить.
+  app.post('/login/confirm', route(async (req, res) => {
+    const row = redeem(req, res, 'login');
+    if (!row) return;
+    db.delete.run(row.id);
+    audit('login-done', { username: row.username });
+    res.json({ username: row.username });
   }));
 
   // Сброс пароля, шаг 1. Ответ одинаковый, есть аккаунт с почтой или нет: иначе по этой ручке

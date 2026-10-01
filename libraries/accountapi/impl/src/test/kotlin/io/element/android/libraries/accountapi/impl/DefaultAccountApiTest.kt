@@ -17,6 +17,7 @@ import io.element.android.libraries.accountapi.api.ConfirmResult
 import io.element.android.libraries.accountapi.api.EmailChangeResult
 import io.element.android.libraries.accountapi.api.LoginOfferResult
 import io.element.android.libraries.accountapi.api.LoginOfferState
+import io.element.android.libraries.accountapi.api.LoginStartResult
 import io.element.android.libraries.accountapi.api.RedeemLoginResult
 import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
@@ -135,6 +136,36 @@ class DefaultAccountApiTest {
         assertThat(server.requests.single().bodyText()).isEqualTo("""{"email":"v@example.com"}""")
         assertThat(api(respond(404, """{"error":"not_found"}""")).usernameByEmail("v@example.com")).isNull()
         assertThat(api(failing()).usernameByEmail("v@example.com")).isNull()
+    }
+
+    @Test
+    fun `startLogin tells a sent code from an account without email and from a refusal`() = runTest {
+        val server = respond(200, """{"code_required":true,"ticket":"T1","resend_after":60,"username":"vasya","email_hint":"v***@example.com"}""")
+        assertThat(api(server).startLogin("Vasya@Example.com", "password"))
+            .isEqualTo(LoginStartResult.CodeSent("T1", 60, "vasya", "v***@example.com"))
+        assertThat(server.requests.single().url.encodedPath).endsWith("/account/login/start")
+        assertThat(server.requests.single().bodyText()).isEqualTo("""{"login":"Vasya@Example.com","password":"password"}""")
+
+        assertThat(api(respond(200, """{"code_required":false,"username":"oldie"}""")).startLogin("oldie", "password"))
+            .isEqualTo(LoginStartResult.NoCodeNeeded("oldie"))
+        assertThat(api(respond(403, """{"error":"invalid_credentials"}""")).startLogin("v", "p"))
+            .isEqualTo(LoginStartResult.Failure(AccountError.InvalidCredentials))
+        assertThat(api(respond(502, """{"error":"mail_failed"}""")).startLogin("v", "p"))
+            .isEqualTo(LoginStartResult.Failure(AccountError.MailFailed))
+        // Код нужен, а заявки нет, или сервис недоступен — «нет связи»: приложение войдёт напрямую.
+        assertThat(api(respond(200, """{"code_required":true,"username":"vasya"}""")).startLogin("v", "p"))
+            .isEqualTo(LoginStartResult.Failure(AccountError.Network))
+        assertThat(api(failing()).startLogin("v", "p")).isEqualTo(LoginStartResult.Failure(AccountError.Network))
+    }
+
+    @Test
+    fun `confirmLogin sends the ticket and the code`() = runTest {
+        val server = respond(200, """{"username":"vasya"}""")
+        assertThat(api(server).confirmLogin("T1", "123456")).isEqualTo(ConfirmResult.Done("vasya"))
+        assertThat(server.requests.single().url.encodedPath).endsWith("/account/login/confirm")
+        assertThat(server.requests.single().bodyText()).isEqualTo("""{"ticket":"T1","code":"123456"}""")
+        assertThat(api(respond(400, """{"error":"wrong_code","attempts_left":3}""")).confirmLogin("T1", "000000"))
+            .isEqualTo(ConfirmResult.WrongCode(3))
     }
 
     @Test

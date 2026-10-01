@@ -26,6 +26,8 @@ data class TgAuthState(
     val registerPasswordRepeat: String,
     val forgotLogin: String,
     val code: String,
+    /** Почта со скрытой серединой, куда ушёл код входа. */
+    val loginEmailHint: String,
     /** Через сколько секунд можно просить код ещё раз, считая от [codeSentCount]-й отправки. */
     val resendAfterSeconds: Int,
     /** Растёт с каждой отправкой кода: экран по нему перезапускает обратный отсчёт. */
@@ -49,6 +51,9 @@ enum class TgAuthStep {
     Loading,
     Welcome,
     Login,
+
+    /** Пароль принят, ждём код с почты аккаунта. */
+    LoginCode,
     Register,
     RegisterCode,
     Forgot,

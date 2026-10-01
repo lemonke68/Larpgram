@@ -6,7 +6,7 @@ export function openDb(path = process.env.DB_PATH || '/data/account.db') {
   const db = new Database(path);
   db.pragma('journal_mode = WAL');
 
-  // kind: 'register' | 'reset'. user_id — id пользователя в MAS: у сброса известен сразу, у
+  // kind: 'register' | 'reset' | 'email' | 'login'. user_id — id пользователя в MAS: у сброса известен сразу, у
   // регистрации появляется после создания аккаунта. Пустой email у сброса — заявка-пустышка
   // (аккаунта или почты нет): клиенту отвечаем так же, письмо не шлём, код не подойдёт никогда.
   db.exec(`

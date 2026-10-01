@@ -22,6 +22,14 @@ const TEXTS = {
       `Код действует 10 минут. Введите его в приложении и задайте новый пароль.\n\n` +
       `Если вы не просили сбросить пароль, просто проигнорируйте это письмо — пароль останется прежним.`,
   }),
+  login: (code) => ({
+    subject: `Код для входа в Larpgram: ${code}`,
+    text:
+      `Ваш код для входа в Larpgram: ${code}\n\n` +
+      `Код действует 10 минут. Введите его в приложении.\n\n` +
+      `Если вы не входили в Larpgram, кто-то знает ваш пароль: смените его в приложении ` +
+      `(Настройки → Аккаунт → Сменить пароль).`,
+  }),
   email: (code) => ({
     subject: `Код подтверждения почты Larpgram: ${code}`,
     text:
@@ -41,7 +49,7 @@ export function createMailer() {
   });
 
   return {
-    /** kind: 'register' | 'reset' | 'email'. */
+    /** kind: 'register' | 'reset' | 'email' | 'login'. */
     async sendCode(kind, to, code) {
       await transport.sendMail({ from: FROM, to, ...TEXTS[kind](code) });
     },

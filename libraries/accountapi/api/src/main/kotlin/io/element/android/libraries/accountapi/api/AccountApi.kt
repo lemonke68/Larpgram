@@ -44,10 +44,34 @@ interface AccountApi {
     suspend fun usernameByEmail(email: String): String?
 
     /**
+     * Вход с подтверждением по почте, шаг 1. [login] — ник или почта. Сервис проверяет пароль и,
+     * если у аккаунта есть почта, шлёт на неё код. Сессию сервис не выдаёт: после кода (или сразу,
+     * если почты нет) приложение входит обычным Matrix-логином по [LoginStartResult] `username`.
+     */
+    suspend fun startLogin(login: String, password: String): LoginStartResult
+
+    /** Шаг 2: проверяет код входа. После [ConfirmResult.Done] можно входить по нику и паролю. */
+    suspend fun confirmLogin(ticket: String, code: String): ConfirmResult
+
+    /**
      * Меняет код из QR-кода вошедшего устройства на сессию того же аккаунта.
      * [deviceName] попадёт в список сеансов.
      */
     suspend fun redeemLoginCode(code: String, deviceName: String): RedeemLoginResult
+}
+
+sealed interface LoginStartResult {
+    /** Пароль верный, код ушёл на почту аккаунта. [emailHint] — адрес со скрытой серединой. */
+    data class CodeSent(
+        val ticket: String,
+        val resendAfterSeconds: Int,
+        val username: String,
+        val emailHint: String,
+    ) : LoginStartResult
+
+    /** Пароль верный, у аккаунта нет почты: входить можно сразу. */
+    data class NoCodeNeeded(val username: String) : LoginStartResult
+    data class Failure(val error: AccountError) : LoginStartResult
 }
 
 sealed interface RedeemLoginResult {
@@ -80,6 +104,8 @@ sealed interface ResendResult {
 }
 
 enum class AccountError {
+    /** Неверный ник, почта или пароль. */
+    InvalidCredentials,
     UsernameTooShort,
     UsernameTooLong,
     UsernameInvalid,

@@ -65,6 +65,11 @@ async function start(config = {}) {
     homeserverUrl: 'https://matrix.example.org',
     named: [],
     async setDeviceName(token, deviceId, name) { this.named.push({ token, deviceId, name }); return true; },
+    passwordChecks: 0,
+    async checkPassword(username, password) {
+      this.passwordChecks++;
+      return mas.users.get(username)?.password === password;
+    },
     async whoami(token) {
       const m = /^token-of-(\w+)$/.exec(token);
       return m ? { userId: `@${m[1]}:example.org`, deviceId: 'OLD' } : null;
@@ -312,4 +317,64 @@ test('login by email: resolves the nick, unknown address is 404', async () => {
   assert.deepEqual(await post('/login/resolve', { email: ' Petya@Example.com ' }), { status: 200, body: { username: 'petya' } });
   assert.equal((await post('/login/resolve', { email: 'ghost@example.com' })).status, 404);
   assert.equal((await post('/login/resolve', { email: 'nope' })).status, 404);
+});
+
+test('login: right password sends a code to the account email, the code lets the app in', async () => {
+  const user = await existingUser();
+  await mas.setPassword(user.id, 'correct horse');
+
+  const start = await post('/login/start', { login: '@Petya', password: 'correct horse' });
+  assert.equal(start.status, 200);
+  assert.deepEqual({ ...start.body, ticket: undefined }, {
+    code_required: true, ticket: undefined, resend_after: 60, username: 'petya', email_hint: 'p***@example.com',
+  });
+  assert.deepEqual(sent.map((m) => [m.kind, m.to]), [['login', 'petya@example.com']]);
+
+  const wrong = await post('/login/confirm', { ticket: start.body.ticket, code: wrongCode() });
+  assert.deepEqual(wrong, { status: 400, body: { error: 'wrong_code', attempts_left: 4 } });
+
+  const done = await post('/login/confirm', { ticket: start.body.ticket, code: lastCode() });
+  assert.deepEqual(done, { status: 200, body: { username: 'petya' } });
+  // Заявка одноразовая.
+  assert.equal((await post('/login/confirm', { ticket: start.body.ticket, code: lastCode() })).status, 410);
+});
+
+test('login: by email, and resend works for a login ticket', async () => {
+  const user = await existingUser();
+  await mas.setPassword(user.id, 'correct horse');
+  const start = await post('/login/start', { login: 'Petya@Example.com', password: 'correct horse' });
+  assert.equal(start.body.username, 'petya');
+  clock.t += 61_000;
+  assert.equal((await post('/code/resend', { ticket: start.body.ticket })).status, 200);
+  assert.deepEqual(sent.map((m) => m.kind), ['login', 'login']);
+  assert.equal((await post('/login/confirm', { ticket: start.body.ticket, code: lastCode() })).status, 200);
+});
+
+test('login: wrong password and unknown account answer the same, no mail', async () => {
+  const user = await existingUser();
+  await mas.setPassword(user.id, 'correct horse');
+  const wrong = await post('/login/start', { login: 'petya', password: 'nope nope' });
+  const ghost = await post('/login/start', { login: 'ghost', password: 'nope nope' });
+  assert.deepEqual(wrong, { status: 403, body: { error: 'invalid_credentials' } });
+  assert.deepEqual(ghost, wrong);
+  assert.equal((await post('/login/start', { login: 'petya' })).status, 400);
+  assert.equal(sent.length, 0);
+});
+
+test('login: an account without email needs no code', async () => {
+  const user = await mas.createUser('oldie');
+  await mas.setPassword(user.id, 'correct horse');
+  const start = await post('/login/start', { login: 'oldie', password: 'correct horse' });
+  assert.deepEqual(start, { status: 200, body: { code_required: false, username: 'oldie' } });
+  assert.equal(sent.length, 0);
+});
+
+test('login: password guessing on one account is limited', async () => {
+  const user = await existingUser();
+  await mas.setPassword(user.id, 'correct horse');
+  for (let i = 0; i < 10; i++) {
+    assert.equal((await post('/login/start', { login: 'petya', password: `guess ${i}` })).status, 403);
+  }
+  assert.equal((await post('/login/start', { login: 'petya', password: 'correct horse' })).status, 429);
+  assert.equal(matrix.passwordChecks, 10);
 });

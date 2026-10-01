@@ -14,6 +14,7 @@ import io.element.android.libraries.accountapi.api.AccountApi
 import io.element.android.libraries.accountapi.api.AccountError
 import io.element.android.libraries.accountapi.api.CheckResult
 import io.element.android.libraries.accountapi.api.ConfirmResult
+import io.element.android.libraries.accountapi.api.LoginStartResult
 import io.element.android.libraries.accountapi.api.RedeemLoginResult
 import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
@@ -68,6 +69,26 @@ class DefaultAccountApi(
         return answer.body.username?.takeIf { answer.code == 200 && it.isNotBlank() }
     }
 
+    override suspend fun startLogin(login: String, password: String): LoginStartResult {
+        val answer = http.post("login/start", LoginStartRequest(login, password)) ?: return LoginStartResult.Failure(AccountError.Network)
+        val body = answer.body
+        val username = body.username
+        return when {
+            answer.code != 200 || username.isNullOrBlank() -> LoginStartResult.Failure(answer.error())
+            body.codeRequired == false -> LoginStartResult.NoCodeNeeded(username)
+            !body.ticket.isNullOrBlank() -> LoginStartResult.CodeSent(
+                ticket = body.ticket,
+                resendAfterSeconds = body.resendAfter ?: DEFAULT_RESEND_SECONDS,
+                username = username,
+                emailHint = body.emailHint.orEmpty(),
+            )
+            else -> LoginStartResult.Failure(AccountError.Network)
+        }
+    }
+
+    override suspend fun confirmLogin(ticket: String, code: String): ConfirmResult =
+        http.post("login/confirm", CodeRequest(ticket, code)).toConfirmResult()
+
     override suspend fun redeemLoginCode(code: String, deviceName: String): RedeemLoginResult {
         val answer = http.post("pair/redeem", RedeemLoginRequest(code, deviceName))
             ?: return RedeemLoginResult.Failure(AccountError.Network)
@@ -95,6 +116,9 @@ private data class RegisterStartRequest(val username: String, val email: String)
 
 @Serializable
 private data class ConfirmRequest(val ticket: String, val code: String, val password: String)
+
+@Serializable
+private data class LoginStartRequest(val login: String, val password: String)
 
 @Serializable
 private data class ForgotRequest(val login: String)

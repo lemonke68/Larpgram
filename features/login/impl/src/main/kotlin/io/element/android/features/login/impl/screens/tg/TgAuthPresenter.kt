@@ -27,6 +27,7 @@ import io.element.android.libraries.accountapi.api.AccountError
 import io.element.android.libraries.accountapi.api.CheckResult
 import io.element.android.libraries.accountapi.api.ConfirmResult
 import io.element.android.libraries.accountapi.api.LoginQrCode
+import io.element.android.libraries.accountapi.api.LoginStartResult
 import io.element.android.libraries.accountapi.api.RedeemLoginResult
 import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
@@ -86,6 +87,9 @@ class TgAuthPresenter(
         // Заявка сервиса: номер и для кого она (ник и почта регистрации).
         var ticket by rememberSaveable { mutableStateOf("") }
         var ticketOwner by rememberSaveable { mutableStateOf("") }
+        // Вход с кодом: ник, под которым входить после кода, и куда ушло письмо.
+        var loginUsername by rememberSaveable { mutableStateOf("") }
+        var loginEmailHint by rememberSaveable { mutableStateOf("") }
         // Код по заявке уже принят сервером: при отказе по паролю второй раз его не спрашиваем.
         var codeAccepted by rememberSaveable { mutableStateOf(false) }
         var resendAfterSeconds by rememberSaveable { mutableIntStateOf(0) }
@@ -160,10 +164,46 @@ class TgAuthPresenter(
             isBusy = true
             error = null
             val identifier = TgAuthRules.loginIdentifier(login)
-            // Вход по почте: сервер принимает только ник, его по адресу подсказывает сервис account.
-            // Не подсказал — идём с тем, что ввели: вход сам ответит «неверные данные» или «нет связи».
-            val user = if (TgAuthRules.looksLikeEmail(identifier)) accountApi.usernameByEmail(identifier) ?: identifier else identifier
-            signIn(user, password)
+            // Сервис проверяет пароль и шлёт код на почту аккаунта; сам вход — обычный Matrix-логин
+            // после кода. У аккаунта без почты кода нет.
+            when (val result = accountApi.startLogin(identifier, password)) {
+                is LoginStartResult.NoCodeNeeded -> signIn(result.username, password)
+                is LoginStartResult.CodeSent -> {
+                    ticket = result.ticket
+                    loginUsername = result.username
+                    loginEmailHint = result.emailHint
+                    codeSent(result.resendAfterSeconds)
+                    step = TgAuthStep.LoginCode
+                    isBusy = false
+                }
+                is LoginStartResult.Failure -> if (result.error == AccountError.Network) {
+                    // Сервис недоступен: вход не должен ломаться вместе с ним. Подтверждение кодом и так
+                    // живёт только в приложении (сам `/login` сервера открыт), поэтому входим напрямую.
+                    val user = if (TgAuthRules.looksLikeEmail(identifier)) accountApi.usernameByEmail(identifier) ?: identifier else identifier
+                    signIn(user, password)
+                } else {
+                    fail(result.error.toKind())
+                }
+            }
+        }
+
+        fun confirmLogin(enteredCode: String) = scope.launch {
+            isBusy = true
+            error = null
+            when (val result = accountApi.confirmLogin(ticket, enteredCode)) {
+                is ConfirmResult.Done -> if (!signIn(loginUsername, password)) step = TgAuthStep.Login
+                is ConfirmResult.WrongCode -> {
+                    code = ""
+                    fail(Kind.WrongCode, result.attemptsLeft)
+                }
+                is ConfirmResult.Failure -> {
+                    code = ""
+                    if (result.error == AccountError.CodeExpired || result.error == AccountError.TooManyAttempts) {
+                        step = TgAuthStep.Login
+                    }
+                    fail(result.error.toKind())
+                }
+            }
         }
 
         fun submitRegister() {
@@ -271,7 +311,11 @@ class TgAuthPresenter(
                 }
                 is ResendResult.Failure -> {
                     if (result.error == AccountError.CodeExpired) {
-                        step = if (step == TgAuthStep.RegisterCode) TgAuthStep.Register else TgAuthStep.Forgot
+                        step = when (step) {
+                            TgAuthStep.RegisterCode -> TgAuthStep.Register
+                            TgAuthStep.LoginCode -> TgAuthStep.Login
+                            else -> TgAuthStep.Forgot
+                        }
                     }
                     fail(result.error.toKind())
                 }
@@ -306,6 +350,7 @@ class TgAuthPresenter(
                 when (step) {
                     TgAuthStep.RegisterCode -> confirmRegistration(code)
                     TgAuthStep.ForgotCode -> checkResetCode(code)
+                    TgAuthStep.LoginCode -> confirmLogin(code)
                     else -> Unit
                 }
             }
@@ -316,7 +361,7 @@ class TgAuthPresenter(
             error = null
             step = when (step) {
                 TgAuthStep.Login -> if (isAddingAccount) TgAuthStep.Login else TgAuthStep.Welcome
-                TgAuthStep.Register, TgAuthStep.Forgot, TgAuthStep.ScanQr -> TgAuthStep.Login
+                TgAuthStep.Register, TgAuthStep.Forgot, TgAuthStep.ScanQr, TgAuthStep.LoginCode -> TgAuthStep.Login
                 TgAuthStep.RegisterCode -> TgAuthStep.Register
                 TgAuthStep.ForgotCode, TgAuthStep.NewPassword -> TgAuthStep.Forgot
                 TgAuthStep.Loading, TgAuthStep.Welcome -> step
@@ -384,6 +429,7 @@ class TgAuthPresenter(
             registerPasswordRepeat = registerPasswordRepeat,
             forgotLogin = forgotLogin,
             code = code,
+            loginEmailHint = loginEmailHint,
             resendAfterSeconds = resendAfterSeconds,
             codeSentCount = codeSentCount,
             newPassword = newPassword,
@@ -420,4 +466,5 @@ private fun AccountError.toKind(): Kind = when (this) {
     AccountError.TooManyRequests -> Kind.TooManyRequests
     AccountError.MailFailed -> Kind.MailFailed
     AccountError.Network -> Kind.Network
+    AccountError.InvalidCredentials -> Kind.InvalidCredentials
 }

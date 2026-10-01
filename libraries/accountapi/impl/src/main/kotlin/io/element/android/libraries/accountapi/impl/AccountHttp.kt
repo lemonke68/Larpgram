@@ -99,6 +99,7 @@ internal class Answer(val code: Int, val body: AnswerBody) {
         "too_many_attempts" -> AccountError.TooManyAttempts
         "too_many_requests", ERROR_TOO_SOON -> AccountError.TooManyRequests
         "mail_failed" -> AccountError.MailFailed
+        "invalid_credentials" -> AccountError.InvalidCredentials
         else -> AccountError.Network
     }
 }
@@ -133,6 +134,8 @@ internal data class AnswerBody(
     @SerialName("user_id") val userId: String? = null,
     @SerialName("device_id") val deviceId: String? = null,
     @SerialName("access_token") val accessToken: String? = null,
+    @SerialName("code_required") val codeRequired: Boolean? = null,
+    @SerialName("email_hint") val emailHint: String? = null,
 )
 
 @Serializable

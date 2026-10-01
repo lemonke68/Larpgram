@@ -24,6 +24,38 @@ export function createMatrix({
     },
 
     /**
+     * Верен ли пароль: пробный вход через `/login` и сразу выход. Отдельной проверки пароля у MAS
+     * нет. true/false; лимит запросов, 5xx и недоступность сервера — исключение.
+     */
+    async checkPassword(username, password) {
+      const res = await fetchImpl(`${base}/_matrix/client/v3/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          type: 'm.login.password',
+          identifier: { type: 'm.id.user', user: username },
+          password,
+          initial_device_display_name: 'Larpgram: проверка пароля',
+        }),
+      });
+      if (res.status === 400 || res.status === 401 || res.status === 403) return false;
+      if (!res.ok) throw new Error(`login HTTP ${res.status}`);
+      const token = (await res.json())?.access_token;
+      if (token) {
+        // Пробная сессия не должна остаться в списке устройств.
+        try {
+          await fetchImpl(`${base}/_matrix/client/v3/logout`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (e) {
+          console.error('выход из пробной сессии упал:', e.message);
+        }
+      }
+      return Boolean(token);
+    },
+
+    /**
      * Называет устройство в списке сеансов. Токен привязки заводит устройство без имени, поэтому
      * подписываем его сами — токеном самого устройства. Не вышло — не беда, вход важнее.
      */

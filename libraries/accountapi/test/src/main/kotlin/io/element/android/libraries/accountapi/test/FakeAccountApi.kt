@@ -12,6 +12,7 @@ import io.element.android.libraries.accountapi.api.AccountApi
 import io.element.android.libraries.accountapi.api.AccountError
 import io.element.android.libraries.accountapi.api.CheckResult
 import io.element.android.libraries.accountapi.api.ConfirmResult
+import io.element.android.libraries.accountapi.api.LoginStartResult
 import io.element.android.libraries.accountapi.api.RedeemLoginResult
 import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
@@ -25,6 +26,8 @@ class FakeAccountApi(
     private val resendCodeLambda: (String) -> ResendResult = { ResendResult.Failure(AccountError.Network) },
     private val usernameByEmailLambda: (String) -> String? = { null },
     private val redeemLoginCodeLambda: (String, String) -> RedeemLoginResult = { _, _ -> RedeemLoginResult.Failure(AccountError.Network) },
+    private val startLoginLambda: (String, String) -> LoginStartResult = { _, _ -> LoginStartResult.Failure(AccountError.Network) },
+    private val confirmLoginLambda: (String, String) -> ConfirmResult = { _, _ -> ConfirmResult.Failure(AccountError.Network) },
 ) : AccountApi {
     override suspend fun startRegistration(username: String, email: String) = startRegistrationLambda(username, email)
 
@@ -42,4 +45,8 @@ class FakeAccountApi(
     override suspend fun usernameByEmail(email: String) = usernameByEmailLambda(email)
 
     override suspend fun redeemLoginCode(code: String, deviceName: String) = redeemLoginCodeLambda(code, deviceName)
+
+    override suspend fun startLogin(login: String, password: String) = startLoginLambda(login, password)
+
+    override suspend fun confirmLogin(ticket: String, code: String) = confirmLoginLambda(ticket, code)
 }

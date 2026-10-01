@@ -21,6 +21,8 @@
 | `POST /code/check` | `ticket`, `code` | `204`; `400 wrong_code`; `410`; `429` |
 | `POST /password/reset` | `ticket`, `code`, `password` | `200 {username}`; ошибки как у `/register/confirm` |
 | `POST /login/resolve` | `email` | `200 {username}`; `404 not_found` — вход по почте: MAS принимает только ник |
+| `POST /login/start` | `login` (ник или почта), `password` | `200 {code_required: true, ticket, resend_after, username, email_hint}` — код ушёл на почту аккаунта; `200 {code_required: false, username}` — у аккаунта нет почты; `403 invalid_credentials`; `429 too_many_requests`; `502 mail_failed` |
+| `POST /login/confirm` | `ticket`, `code` | `200 {username}` — приложению можно входить обычным `/login`; ошибки кода как у `/register/confirm` |
 | `POST /code/resend` | `ticket` | `200 {resend_after}`; `429 too_soon {retry_after}`; `410 code_expired` |
 
 Ручки вошедшего устройства — с заголовком `Authorization: Bearer <токен Matrix>` (сервис проверяет

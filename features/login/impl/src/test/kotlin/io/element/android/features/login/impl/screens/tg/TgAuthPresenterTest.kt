@@ -13,6 +13,7 @@ import io.element.android.features.login.impl.screens.tg.TgAuthError.Kind
 import io.element.android.libraries.accountapi.api.AccountError
 import io.element.android.libraries.accountapi.api.CheckResult
 import io.element.android.libraries.accountapi.api.ConfirmResult
+import io.element.android.libraries.accountapi.api.LoginStartResult
 import io.element.android.libraries.accountapi.api.RedeemLoginResult
 import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
@@ -91,7 +92,10 @@ class TgAuthPresenterTest {
     @Test
     fun `login - an email is resolved to the nick first, a nick is not`() = runTest {
         val resolved = mutableListOf<String>()
-        val api = FakeAccountApi(usernameByEmailLambda = { resolved += it; "vasya" })
+        val api = FakeAccountApi(usernameByEmailLambda = {
+            resolved += it
+            "vasya"
+        })
         createPresenter(accountApi = api).test {
             val sink = openLogin()
             sink(TgAuthEvent.SetLogin(" Vasya@Example.com "))
@@ -123,6 +127,94 @@ class TgAuthPresenterTest {
             sink(TgAuthEvent.SetPassword("password"))
             sink(TgAuthEvent.SubmitLogin)
             assertThat(awaitState { it.error != null && !it.isBusy }.error).isEqualTo(TgAuthError(Kind.Network))
+        }
+    }
+
+    @Test
+    fun `login - right password asks for the emailed code, the code signs in under the resolved nick`() = runTest {
+        val started = mutableListOf<Pair<String, String>>()
+        val confirmed = mutableListOf<Pair<String, String>>()
+        val api = FakeAccountApi(
+            startLoginLambda = { login, password ->
+                started += login to password
+                LoginStartResult.CodeSent(ticket = "T1", resendAfterSeconds = 60, username = "vasya", emailHint = "v***@example.com")
+            },
+            confirmLoginLambda = { ticket, code ->
+                confirmed += ticket to code
+                if (code == "123456") ConfirmResult.Done("vasya") else ConfirmResult.WrongCode(attemptsLeft = 4)
+            },
+        )
+        createPresenter(accountApi = api).test {
+            val sink = openLogin()
+            sink(TgAuthEvent.SetLogin(" Vasya@Example.com "))
+            sink(TgAuthEvent.SetPassword("password"))
+            sink(TgAuthEvent.SubmitLogin)
+            val codeStep = awaitState { it.step == TgAuthStep.LoginCode && !it.isBusy }
+            assertThat(codeStep.loginEmailHint).isEqualTo("v***@example.com")
+            assertThat(codeStep.resendAfterSeconds).isEqualTo(60)
+
+            sink(TgAuthEvent.SetCode("000000"))
+            val wrong = awaitState { it.error != null && !it.isBusy }
+            assertThat(wrong.error).isEqualTo(TgAuthError(Kind.WrongCode, attemptsLeft = 4))
+            assertThat(wrong.code).isEmpty()
+
+            sink(TgAuthEvent.SetCode("123456"))
+            // Код принят: дальше обычный вход, экран занят, пока сессия не заберёт управление.
+            awaitState { it.isBusy && it.error == null }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(started).containsExactly("Vasya@Example.com" to "password")
+        assertThat(confirmed).containsExactly("T1" to "000000", "T1" to "123456").inOrder()
+    }
+
+    @Test
+    fun `login - wrong password from the service is an error without a code step`() = runTest {
+        val api = FakeAccountApi(startLoginLambda = { _, _ -> LoginStartResult.Failure(AccountError.InvalidCredentials) })
+        createPresenter(accountApi = api).test {
+            val sink = openLogin()
+            sink(TgAuthEvent.SetLogin("vasya"))
+            sink(TgAuthEvent.SetPassword("password"))
+            sink(TgAuthEvent.SubmitLogin)
+            val failed = awaitState { it.error != null && !it.isBusy }
+            assertThat(failed.error).isEqualTo(TgAuthError(Kind.InvalidCredentials))
+            assertThat(failed.step).isEqualTo(TgAuthStep.Login)
+        }
+    }
+
+    @Test
+    fun `login - an account without email signs in at once`() = runTest {
+        val api = FakeAccountApi(startLoginLambda = { _, _ -> LoginStartResult.NoCodeNeeded("oldie") })
+        createPresenter(accountApi = api).test {
+            val sink = openLogin()
+            sink(TgAuthEvent.SetLogin("oldie"))
+            sink(TgAuthEvent.SetPassword("password"))
+            sink(TgAuthEvent.SubmitLogin)
+            awaitState { it.isBusy }
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `login - an expired code returns to the login step, back from the code step too`() = runTest {
+        val api = FakeAccountApi(
+            startLoginLambda = { _, _ -> LoginStartResult.CodeSent("T1", 60, "vasya", "v***@example.com") },
+            confirmLoginLambda = { _, _ -> ConfirmResult.Failure(AccountError.CodeExpired) },
+        )
+        createPresenter(accountApi = api).test {
+            val sink = openLogin()
+            sink(TgAuthEvent.SetLogin("vasya"))
+            sink(TgAuthEvent.SetPassword("password"))
+            sink(TgAuthEvent.SubmitLogin)
+            awaitState { it.step == TgAuthStep.LoginCode && !it.isBusy }
+            sink(TgAuthEvent.Back)
+            awaitState { it.step == TgAuthStep.Login }
+
+            sink(TgAuthEvent.SubmitLogin)
+            awaitState { it.step == TgAuthStep.LoginCode && !it.isBusy }
+            sink(TgAuthEvent.SetCode("123456"))
+            val expired = awaitState { it.error != null && !it.isBusy }
+            assertThat(expired.step).isEqualTo(TgAuthStep.Login)
+            assertThat(expired.error).isEqualTo(TgAuthError(Kind.CodeExpired))
         }
     }
 
