@@ -8,11 +8,14 @@
 
 package io.element.android.features.home.impl
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.home.api.HomeEntryPoint
 import io.element.android.features.invite.test.declineandblock.FakeDeclineInviteAndBlockEntryPoint
+import io.element.android.features.messages.api.preview.ChatPreviewRenderer
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
@@ -68,6 +71,10 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 declineInviteAndBlockUserEntryPoint = FakeDeclineInviteAndBlockEntryPoint(),
                 changeRoomMemberRolesEntryPoint = { _, _, _, _ -> lambdaError() },
                 leaveRoomRenderer = { _, _, _ -> lambdaError() },
+                chatPreviewRenderer = object : ChatPreviewRenderer {
+                    @Composable
+                    override fun Preview(roomId: RoomId, onClick: () -> Unit, modifier: Modifier) = lambdaError()
+                },
                 sessionCoroutineScope = backgroundScope,
             )
         }

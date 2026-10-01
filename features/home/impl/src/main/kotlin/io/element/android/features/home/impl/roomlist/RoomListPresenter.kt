@@ -354,6 +354,9 @@ class RoomListPresenter(
             dmUserId = event.roomSummary.dmUserId,
             isFavorite = event.roomSummary.isFavorite,
             hasNewContent = event.roomSummary.hasNewContent,
+            isMuted = event.roomSummary.isMuted,
+            avatarData = event.roomSummary.avatarData,
+            heroes = event.roomSummary.heroes,
         )
         contextMenuState.value = initialState
 

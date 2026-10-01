@@ -46,6 +46,7 @@ import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteV
 import io.element.android.features.invite.api.declineandblock.DeclineInviteAndBlockEntryPoint
 import io.element.android.features.leaveroom.api.LeaveRoomRenderer
 import io.element.android.features.logout.api.direct.DirectLogoutView
+import io.element.android.features.messages.api.preview.ChatPreviewRenderer
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.reportroom.api.ReportRoomEntryPoint
 import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRolesEntryPoint
@@ -97,6 +98,7 @@ class HomeFlowNode(
     // Правка форка: вкладки Telegram.
     private val homeTabNodes: HomeTabNodes,
     private val leaveRoomRenderer: LeaveRoomRenderer,
+    private val chatPreviewRenderer: ChatPreviewRenderer,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : BaseFlowNode<HomeFlowNode.NavTarget>(
     backstack = BackStack(
@@ -270,6 +272,9 @@ class HomeFlowNode(
                 onReportRoomClick = ::navigateToReportRoom,
                 onDeclineInviteAndBlockUser = ::navigateToDeclineInviteAndBlockUser,
                 modifier = modifier,
+                chatPreview = { roomId, onClick, previewModifier ->
+                    chatPreviewRenderer.Preview(roomId = roomId, onClick = onClick, modifier = previewModifier)
+                },
                 acceptDeclineInviteView = {
                     acceptDeclineInviteView.Render(
                         state = state.roomListState.acceptDeclineInviteState,

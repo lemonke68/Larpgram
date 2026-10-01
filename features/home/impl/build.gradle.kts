@@ -63,6 +63,7 @@ dependencies {
     implementation(projects.features.invite.api)
     implementation(projects.features.networkmonitor.api)
     implementation(projects.features.logout.api)
+    implementation(projects.features.messages.api)
     implementation(projects.features.leaveroom.api)
     implementation(projects.features.rageshake.api)
     implementation(projects.services.analytics.api)

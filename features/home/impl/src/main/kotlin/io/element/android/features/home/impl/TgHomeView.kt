@@ -63,6 +63,7 @@ import io.element.android.features.home.impl.roomlist.RoomListContextMenu
 import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.home.impl.roomlist.RoomListState
+import io.element.android.features.home.impl.roomlist.TgChatPreviewOverlay
 import io.element.android.features.home.impl.search.GlobalSearchEvent
 import io.element.android.features.home.impl.search.GlobalSearchView
 import io.element.android.features.home.impl.search.RoomListSearchView
@@ -107,12 +108,15 @@ fun TgHomeView(
     settingsContent: (@Composable () -> Unit)? = null,
     profileContent: (@Composable () -> Unit)? = null,
     initialTab: TgHomeTab = TgHomeTab.Chats,
+    // Лента чата для превью по долгому нажатию. Null — показывается шторка действий.
+    chatPreview: (@Composable (roomId: RoomId, onClick: () -> Unit, modifier: Modifier) -> Unit)? = null,
 ) {
     val state: RoomListState = homeState.roomListState
     val coroutineScope = rememberCoroutineScope()
     val firstThrottler = remember { FirstThrottler(300, coroutineScope) }
     Box(modifier) {
-        if (state.contextMenu is RoomListState.ContextMenu.Shown) {
+        // Без рендерера превью (превью-композиции, тесты) — прежняя шторка действий.
+        if (state.contextMenu is RoomListState.ContextMenu.Shown && chatPreview == null) {
             RoomListContextMenu(
                 contextMenu = state.contextMenu,
                 canReportRoom = state.canReportRoom,
@@ -169,6 +173,20 @@ fun TgHomeView(
         }
 
         acceptDeclineInviteView()
+
+        // Правка форка: превью чата по долгому нажатию, как в Telegram. Верхним слоем на весь экран.
+        val contextMenu = state.contextMenu
+        if (contextMenu is RoomListState.ContextMenu.Shown && chatPreview != null) {
+            TgChatPreviewOverlay(
+                contextMenu = contextMenu,
+                canReportRoom = state.canReportRoom,
+                eventSink = state.eventSink,
+                onRoomSettingsClick = onRoomSettingsClick,
+                onReportRoomClick = onReportRoomClick,
+                onOpenChat = { roomId -> onRoomClick(roomId, null) },
+                chatPreview = chatPreview,
+            )
+        }
     }
 }
 

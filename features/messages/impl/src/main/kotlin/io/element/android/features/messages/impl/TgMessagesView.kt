@@ -558,7 +558,6 @@ fun TgMessagesView(
     } // конец Box меню вложений
     } // конец CompositionLocalProvider(LocalMessageActionsAnchor)
 
-
     if (endPollConfirmingEvent != null) {
         ConfirmationDialog(
             content = stringResource(id = CommonStrings.common_poll_end_confirmation),

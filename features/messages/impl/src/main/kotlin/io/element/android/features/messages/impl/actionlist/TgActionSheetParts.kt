@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.designsystem.components.messages.MessageDeliveryState
 import io.element.android.libraries.designsystem.components.messages.MessageDeliveryTicks
+import io.element.android.libraries.designsystem.components.tg.tgPopupMenuColor
 import io.element.android.libraries.designsystem.theme.components.Text
 
 /**
@@ -32,12 +33,7 @@ import io.element.android.libraries.designsystem.theme.components.Text
  */
 @Composable
 @ReadOnlyComposable
-internal fun larpgramActionSheetColor(): Color = if (ElementTheme.isLightTheme) {
-    // Правка форка: прозрачнее по просьбе юзера — сквозь меню заметен размытый фон.
-    Color(0xFFFFFFFF).copy(alpha = 0.72f)
-} else {
-    Color(0xFF1C1C1E).copy(alpha = 0.70f)
-}
+internal fun larpgramActionSheetColor(): Color = tgPopupMenuColor()
 
 /** Строка «галочка + время отправки» в шапке меню действий. */
 @Composable

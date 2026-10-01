@@ -18,12 +18,14 @@ import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.invite.api.acceptdecline.AcceptDeclineInviteState
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.libraries.appupdate.api.UpdateInstallState
+import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentListOf
 
 data class RoomListState(
     val contextMenu: ContextMenu,
@@ -54,6 +56,10 @@ data class RoomListState(
             val dmUserId: UserId?,
             val isFavorite: Boolean,
             val hasNewContent: Boolean,
+            // Правка форка: превью чата по долгому нажатию — шапка окна и пункт «звук».
+            val isMuted: Boolean = false,
+            val avatarData: AvatarData? = null,
+            val heroes: ImmutableList<AvatarData> = persistentListOf(),
         ) : ContextMenu
     }
 

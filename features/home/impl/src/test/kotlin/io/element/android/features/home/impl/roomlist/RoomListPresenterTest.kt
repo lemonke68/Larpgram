@@ -420,6 +420,8 @@ class RoomListPresenterTest {
                             dmUserId = null,
                             isFavorite = false,
                             hasNewContent = false,
+                            avatarData = summary.avatarData,
+                            heroes = summary.heroes,
                         )
                     )
             }
@@ -441,6 +443,8 @@ class RoomListPresenterTest {
                             dmUserId = null,
                             isFavorite = true,
                             hasNewContent = false,
+                            avatarData = summary.avatarData,
+                            heroes = summary.heroes,
                         )
                     )
             }
@@ -474,6 +478,8 @@ class RoomListPresenterTest {
                         dmUserId = null,
                         isFavorite = false,
                         hasNewContent = false,
+                        avatarData = summary.avatarData,
+                        heroes = summary.heroes,
                     )
                 )
 
