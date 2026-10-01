@@ -16,9 +16,13 @@ object LarpgramHosts {
     const val DOMAIN = "mango-kokos.ru"
     const val HOMESERVER_URL = "https://$DOMAIN"
 
-    /** Sygnal: шлюз пушей. На том же хосте под /escrow — сервис ключей (server/key-escrow). */
+    /**
+     * Sygnal: шлюз пушей. На том же хосте под /escrow — сервис ключей (server/key-escrow), под
+     * /account — регистрация и сброс пароля (server/account).
+     */
     const val PUSH_GATEWAY_URL = "https://push.$DOMAIN/_matrix/push/v1/notify"
     const val KEY_ESCROW_URL = "https://push.$DOMAIN/escrow"
+    const val ACCOUNT_URL = "https://push.$DOMAIN/account"
 
     /** Прокси поиска GIF (server/gif-proxy). */
     const val GIFS_URL = "https://gifs.$DOMAIN"
