@@ -25,29 +25,8 @@ android {
         }
     }
 
-    buildFeatures {
-        buildConfig = true
-    }
-
-    buildTypes {
-        val elementClassicPackageKey = "elementClassicPackage"
-        val elementClassicPackage = "im.vector.app"
-        val elementClassicPackageDebug = "$elementClassicPackage.debug"
-        val elementClassicPackageNightly = "$elementClassicPackage.nightly"
-        getByName("release") {
-            manifestPlaceholders[elementClassicPackageKey] = elementClassicPackage
-            buildConfigFieldStr(elementClassicPackageKey, elementClassicPackage)
-        }
-        getByName("debug") {
-            manifestPlaceholders[elementClassicPackageKey] = elementClassicPackageDebug
-            buildConfigFieldStr(elementClassicPackageKey, elementClassicPackageDebug)
-        }
-        register("nightly") {
-            matchingFallbacks += listOf("release")
-            manifestPlaceholders[elementClassicPackageKey] = elementClassicPackageNightly
-            buildConfigFieldStr(elementClassicPackageKey, elementClassicPackageNightly)
-        }
-    }
+    // Правка форка: пакет Element Classic (manifestPlaceholders и BuildConfig) убран вместе с экранами
+    // входа Element.
 }
 
 setupDependencyInjection()

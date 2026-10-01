@@ -25,6 +25,40 @@ UPSTREAM_URL="https://github.com/element-hq/element-x-android.git"
 STATE_FILE="$(git rev-parse --git-dir)/larpgram-sync-tag"
 # Upstream files we deliberately removed: if upstream changed them, keep them deleted.
 DROPPED_PATHS=(.github AGENTS.md CHANGES.md CLAUDE.md CODEOWNERS CONTRIBUTING.md)
+# Element's own sign-in screens, removed 2026-10-01 (Larpgram signs in through screens/tg). Only
+# directories that are gone entirely are listed. `changeserver` and `screens/onboarding` each keep
+# one file, so new upstream files there show up as conflicts to delete by hand.
+LOGIN_MAIN="features/login/impl/src/main/kotlin/io/element/android/features/login/impl"
+LOGIN_TEST="features/login/impl/src/test/kotlin/io/element/android/features/login/impl"
+DROPPED_PATHS+=(
+    "$LOGIN_MAIN/LoginFlowTransitionHandler.kt"
+    "$LOGIN_MAIN/accountprovider"
+    "$LOGIN_MAIN/classic"
+    "$LOGIN_MAIN/di"
+    "$LOGIN_MAIN/dialogs"
+    "$LOGIN_MAIN/error"
+    "$LOGIN_MAIN/localnetwork"
+    "$LOGIN_MAIN/login"
+    "$LOGIN_MAIN/qrcode"
+    "$LOGIN_MAIN/util"
+    "$LOGIN_MAIN/screens/chooseaccountprovider"
+    "$LOGIN_MAIN/screens/classic"
+    "$LOGIN_MAIN/screens/confirmaccountprovider"
+    "$LOGIN_MAIN/screens/createaccount"
+    "$LOGIN_MAIN/screens/loginpassword"
+    "$LOGIN_MAIN/screens/qrcode"
+    "$LOGIN_TEST/accountprovider"
+    "$LOGIN_TEST/changeserver"
+    "$LOGIN_TEST/classic"
+    "$LOGIN_TEST/di"
+    "$LOGIN_TEST/error"
+    "$LOGIN_TEST/qrcode"
+    "$LOGIN_TEST/screens/chooseaccountprovider"
+    "$LOGIN_TEST/screens/classic"
+    "$LOGIN_TEST/screens/confirmaccountprovider"
+    "$LOGIN_TEST/screens/loginpassword"
+    "$LOGIN_TEST/screens/qrcode"
+)
 
 ensure_upstream() {
     if ! git remote get-url upstream >/dev/null 2>&1; then

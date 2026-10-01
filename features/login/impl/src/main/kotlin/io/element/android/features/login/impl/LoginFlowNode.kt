@@ -8,141 +8,65 @@
 
 package io.element.android.features.login.impl
 
-import android.app.Activity
 import android.os.Parcelable
-import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
-import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.navmodel.backstack.BackStack
 import com.bumble.appyx.navmodel.backstack.operation.pop
 import com.bumble.appyx.navmodel.backstack.operation.push
-import com.bumble.appyx.navmodel.backstack.operation.replace
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
-import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.login.api.LoginEntryPoint
-import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
-import io.element.android.features.login.impl.classic.ElementClassicConnection
-import io.element.android.features.login.impl.qrcode.QrCodeLoginFlowNode
-import io.element.android.features.login.impl.screens.chooseaccountprovider.ChooseAccountProviderNode
-import io.element.android.features.login.impl.screens.classic.ClassicFlowNode
-import io.element.android.features.login.impl.screens.confirmaccountprovider.ConfirmAccountProviderNode
-import io.element.android.features.login.impl.screens.loginpassword.LoginPasswordNode
-import io.element.android.features.login.impl.screens.onboarding.OnBoardingNode
 import io.element.android.features.login.impl.screens.tg.TgAuthNode
 import io.element.android.features.preferences.api.PreferencesEntryPoint
-import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.NodeInputs
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.createNode
-import io.element.android.libraries.architecture.inputs
-import io.element.android.libraries.di.annotations.AppCoroutineScope
-import io.element.android.libraries.matrix.api.auth.OAuthDetails
-import io.element.android.libraries.oauth.api.OAuthAction
-import io.element.android.libraries.oauth.api.OAuthActionFlow
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
+// Правка форка: вход Larpgram — один свой экран с шагами (приветствие → вход → регистрация), без
+// браузера. Экраны входа Element (проверка Classic, онбординг, выбор сервера, пароль, QR, вкладка
+// MAS) из форка удалены 2026-10-01; при синке их файлы остаются удалёнными (sync-upstream.sh).
 @ContributesNode(AppScope::class)
 @AssistedInject
 class LoginFlowNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
-    private val accountProviderDataSource: AccountProviderDataSource,
-    private val oAuthActionFlow: OAuthActionFlow,
-    @AppCoroutineScope
-    private val appCoroutineScope: CoroutineScope,
-    private val elementClassicConnection: ElementClassicConnection,
     private val preferencesEntryPoint: PreferencesEntryPoint,
 ) : BaseFlowNode<LoginFlowNode.NavTarget>(
     backstack = BackStack(
-        // Правка форка: вход начинается со своего экрана (приветствие → вход → регистрация), без
-        // браузера и без 5-секундной проверки Element Classic. Старые цели ниже остались для синка
-        // с апстримом, но из нашего экрана на них не попасть.
         initialElement = NavTarget.TgAuth,
         savedStateMap = buildContext.savedStateMap,
     ),
     buildContext = buildContext,
     plugins = plugins,
 ) {
+    // Параметры ссылки входа Element (сервер, подсказка логина). Сервер у Larpgram один, поэтому
+    // они не используются; тип остался, потому что его передаёт точка входа.
     data class Params(
         val accountProvider: String?,
         val loginHint: String?,
     ) : NodeInputs
 
     private val callback: LoginEntryPoint.Callback = callback()
-    private var activity: Activity? = null
-    private var darkTheme: Boolean = false
-
-    private var externalAppStarted = false
-
-    override fun onBuilt() {
-        super.onBuilt()
-        lifecycle.subscribe(
-            onResume = {
-                if (externalAppStarted) {
-                    externalAppStarted = false
-                    // Workaround to detect that the Custom Chrome Tab has been closed
-                    // If there is no coming OidcAction (that would end this Node),
-                    // consider that the user has cancelled the login
-                    // by pressing back or by closing the Custom Chrome Tab.
-                    lifecycleScope.launch {
-                        delay(5000)
-                        oAuthActionFlow.post(OAuthAction.GoBack(toUnblock = true))
-                    }
-                }
-            }
-        )
-    }
 
     sealed interface NavTarget : Parcelable {
-        // Правка форка: экран входа Larpgram.
         @Parcelize
         data object TgAuth : NavTarget
 
         @Parcelize
-        data object CheckClassicFlow : NavTarget
-
-        @Parcelize
-        data class OnBoarding(
-            val showBackButton: Boolean,
-        ) : NavTarget
-
-        @Parcelize
-        data object QrCode : NavTarget
-
-        @Parcelize
         data object AppDeveloperSettings : NavTarget
-
-        @Parcelize
-        data class ConfirmAccountProvider(
-            val isAccountCreation: Boolean,
-        ) : NavTarget
-
-        @Parcelize
-        data object ChooseAccountProvider : NavTarget
-
-        @Parcelize
-        data class LoginPassword(
-            val initialLogin: String = "",
-        ) : NavTarget
     }
 
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node {
         return when (navTarget) {
-            // Правка форка: экран входа Larpgram.
             NavTarget.TgAuth -> {
                 val callback = object : TgAuthNode.Callback {
                     override fun navigateToBugReport() {
@@ -159,80 +83,6 @@ class LoginFlowNode(
                 }
                 createNode<TgAuthNode>(buildContext, listOf(callback))
             }
-            NavTarget.CheckClassicFlow -> {
-                val callback = object : ClassicFlowNode.Callback {
-                    override fun navigateToOnBoarding(allowBackNavigation: Boolean) {
-                        if (allowBackNavigation) {
-                            backstack.push(NavTarget.OnBoarding(showBackButton = true))
-                        } else {
-                            backstack.replace(NavTarget.OnBoarding(showBackButton = false))
-                        }
-                    }
-
-                    override fun navigateToLoginPassword() {
-                        backstack.push(NavTarget.LoginPassword())
-                    }
-
-                    override fun navigateToOAuth(oAuthDetails: OAuthDetails) {
-                        navigateToMas(oAuthDetails)
-                    }
-                }
-                createNode<ClassicFlowNode>(buildContext, listOf(callback))
-            }
-            is NavTarget.OnBoarding -> {
-                val callback = object : OnBoardingNode.Callback {
-                    override fun navigateToSignUpFlow() {
-                        backstack.push(
-                            NavTarget.ConfirmAccountProvider(isAccountCreation = true)
-                        )
-                    }
-
-                    override fun navigateToSignInFlow(mustChooseAccountProvider: Boolean) {
-                        backstack.push(
-                            if (mustChooseAccountProvider) {
-                                NavTarget.ChooseAccountProvider
-                            } else {
-                                NavTarget.ConfirmAccountProvider(isAccountCreation = false)
-                            }
-                        )
-                    }
-
-                    override fun navigateToQrCode() {
-                        backstack.push(NavTarget.QrCode)
-                    }
-
-                    override fun navigateToBugReport() {
-                        callback.navigateToBugReport()
-                    }
-
-                    override fun navigateToOAuth(oAuthDetails: OAuthDetails) {
-                        navigateToMas(oAuthDetails)
-                    }
-
-                    override fun navigateToDeveloperSettings() {
-                        backstack.push(NavTarget.AppDeveloperSettings)
-                    }
-
-                    override fun navigateToLoginPassword() {
-                        backstack.push(NavTarget.LoginPassword())
-                    }
-
-                    override fun onDone() {
-                        if (navTarget.showBackButton) {
-                            backstack.pop()
-                        } else {
-                            callback.onDone()
-                        }
-                    }
-                }
-                val params = inputs<Params>()
-                val inputs = OnBoardingNode.Params(
-                    accountProvider = params.accountProvider,
-                    loginHint = params.loginHint,
-                    showBackButton = navTarget.showBackButton,
-                )
-                createNode<OnBoardingNode>(buildContext, listOf(callback, inputs))
-            }
             NavTarget.AppDeveloperSettings -> {
                 val callback = object : PreferencesEntryPoint.DeveloperSettingsCallback {
                     override fun onDone() {
@@ -245,77 +95,11 @@ class LoginFlowNode(
                     callback = callback,
                 )
             }
-            NavTarget.ChooseAccountProvider -> {
-                val callback = object : ChooseAccountProviderNode.Callback {
-                    override fun navigateToOAuth(oAuthDetails: OAuthDetails) {
-                        navigateToMas(oAuthDetails)
-                    }
-
-                    override fun navigateToLoginPassword() {
-                        backstack.push(NavTarget.LoginPassword())
-                    }
-                }
-                createNode<ChooseAccountProviderNode>(buildContext, listOf(callback))
-            }
-            NavTarget.QrCode -> {
-                val callback = object : QrCodeLoginFlowNode.Callback {
-                    override fun navigateBack() {
-                        backstack.pop()
-                    }
-                }
-                createNode<QrCodeLoginFlowNode>(buildContext, listOf(callback))
-            }
-            is NavTarget.ConfirmAccountProvider -> {
-                val inputs = ConfirmAccountProviderNode.Inputs(
-                    isAccountCreation = navTarget.isAccountCreation,
-                )
-                val callback = object : ConfirmAccountProviderNode.Callback {
-                    override fun navigateToOAuth(oAuthDetails: OAuthDetails) {
-                        navigateToMas(oAuthDetails)
-                    }
-
-                    override fun navigateToLoginPassword() {
-                        backstack.push(NavTarget.LoginPassword())
-                    }
-                }
-                createNode<ConfirmAccountProviderNode>(buildContext, plugins = listOf(inputs, callback))
-            }
-            is NavTarget.LoginPassword -> {
-                val inputs = LoginPasswordNode.Inputs(
-                    initialLogin = navTarget.initialLogin,
-                )
-                createNode<LoginPasswordNode>(buildContext, plugins = listOf(inputs))
-            }
-        }
-    }
-
-    private fun navigateToMas(oAuthDetails: OAuthDetails) {
-        activity?.let {
-            externalAppStarted = true
-            it.openUrlInChromeCustomTab(null, darkTheme, oAuthDetails.url)
         }
     }
 
     @Composable
     override fun View(modifier: Modifier) {
-        activity = requireNotNull(LocalActivity.current)
-        darkTheme = !ElementTheme.isLightTheme
-
-        DisposableEffect(Unit) {
-            elementClassicConnection.start()
-            onDispose {
-                elementClassicConnection.stop()
-            }
-        }
-
-        DisposableEffect(Unit) {
-            onDispose {
-                activity = null
-                appCoroutineScope.launch {
-                    accountProviderDataSource.reset()
-                }
-            }
-        }
-        BackstackView(transitionHandler = rememberLoginFlowTransitionHandler())
+        BackstackView()
     }
 }
