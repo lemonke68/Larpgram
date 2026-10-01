@@ -23,6 +23,9 @@ DEPLOY="${2:-}"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 SITE="$(cd "$REPO/../larpgram-site" && pwd)"
 SERVER="lemonke67@100.115.48.43"
+# Если Tailscale до сервера не пускает по SSH, можно идти по другому адресу с тем же ключом хоста:
+#   LARPGRAM_SSH_OPTS="-o HostName=94.103.236.41 -o HostKeyAlias=100.115.48.43" release-site.sh ...
+read -r -a SSH_OPTS <<<"${LARPGRAM_SSH_OPTS:-}"
 SERVER_HTML="/mnt/data/larpgram-site/html"
 CERT_PREFIX="de1af8ea"
 
@@ -72,12 +75,12 @@ echo "Не забудь блок «Что нового» в $SITE/html/index.htm
 
 [[ "$DEPLOY" == "--deploy" ]] || { echo "Выкатка: $0 $APK --deploy"; exit 0; }
 
-ssh "$SERVER" "cd $SERVER_HTML && cp -p larpgram.apk larpgram-prev.apk"
-scp "$APK" "$SERVER:$SERVER_HTML/larpgram.apk.tmp"
-ssh "$SERVER" "cd $SERVER_HTML && mv larpgram.apk.tmp larpgram.apk"
+ssh ${SSH_OPTS[@]+"${SSH_OPTS[@]}"} "$SERVER" "cd $SERVER_HTML && cp -p larpgram.apk larpgram-prev.apk"
+scp ${SSH_OPTS[@]+"${SSH_OPTS[@]}"} "$APK" "$SERVER:$SERVER_HTML/larpgram.apk.tmp"
+ssh ${SSH_OPTS[@]+"${SSH_OPTS[@]}"} "$SERVER" "cd $SERVER_HTML && mv larpgram.apk.tmp larpgram.apk"
 git -C "$SITE" add html/latest.json html/index.html
 git -C "$SITE" commit -m "release $version_name"
-git -C "$SITE" push deploy main
+GIT_SSH_COMMAND="ssh ${LARPGRAM_SSH_OPTS:-}" git -C "$SITE" push deploy main
 
 remote_sha="$(curl -s https://larpgram.mango-kokos.ru/larpgram.apk | shasum -a 256 | cut -d' ' -f1)"
 manifest_sha="$(curl -s https://larpgram.mango-kokos.ru/latest.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["sha256"])')"
