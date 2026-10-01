@@ -6,10 +6,9 @@
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
     <!--
-      Пустые строки прячут заголовок и подзаголовок онбординга: апстримовские
-      "Be in your element" и "fastest Element ever" это каламбуры про Element,
-      а свой слоган ещё не придуман. Впиши текст сюда, и он появится обратно.
+      Название и подпись на приветствии. Апстримовские "Be in your element" и "fastest Element
+      ever" это каламбуры про Element. Пустая строка прячет подпись.
     -->
     <string name="screen_onboarding_welcome_title">Larpgram</string>
-    <string name="screen_onboarding_welcome_message">Not Telegram. But it tries very hard.</string>
+    <string name="screen_onboarding_welcome_message">hi</string>
 </resources>
