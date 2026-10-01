@@ -245,7 +245,11 @@ private fun TgAttachSheetContent(
         }
     }
     val media by produceState<List<GalleryMedia>?>(initialValue = null, access, reloadKey) {
-        value = if (access == GalleryAccess.None) emptyList() else GalleryMediaStore.load(context)
+        if (access == GalleryAccess.None) {
+            value = emptyList()
+        } else {
+            GalleryMediaStore.withoutMissing(context, GalleryMediaStore.load(context)).collect { value = it }
+        }
     }
 
     // После «Назад» с предпросмотра меню открывается с тем же выбором и подписью, как в TG.

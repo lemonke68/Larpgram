@@ -23,6 +23,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -77,6 +80,9 @@ internal object GalleryPermissions {
         }
 }
 
+private const val FIRST_SCREEN_CHECK = 60
+private const val CHECK_BATCH = 300
+
 /** Фото и видео устройства, новые сверху, как «Недавние» в Telegram. */
 internal object GalleryMediaStore {
     suspend fun load(context: Context): List<GalleryMedia> = withContext(Dispatchers.IO) {
@@ -84,6 +90,26 @@ internal object GalleryMediaStore {
             .onFailure { Timber.w(it, "Failed to load gallery media") }
             .getOrDefault(emptyList())
     }
+
+    /**
+     * Список без записей, чьих файлов уже нет. MediaStore держит строки и миниатюры удалённых
+     * файлов (например, чищенный кэш Telegram): плитка в сетке есть, а предпросмотр пустой.
+     * Проверяем открытием через MediaStore, пачками: первый экран — сразу, остальное — фоном.
+     */
+    fun withoutMissing(context: Context, media: List<GalleryMedia>): Flow<List<GalleryMedia>> = flow {
+        val resolver = context.contentResolver
+        val present = ArrayList<GalleryMedia>(media.size)
+        media.forEachIndexed { index, item ->
+            val exists = runCatchingExceptions { resolver.openFileDescriptor(item.uri, "r")?.use { true } ?: false }
+                .getOrDefault(false)
+            if (exists) present += item
+            val checked = index + 1
+            if (checked == FIRST_SCREEN_CHECK || checked % CHECK_BATCH == 0 || checked == media.size) {
+                // Непроверенный хвост показываем как есть, чтобы сетка не обрывалась.
+                emit(present + media.subList(checked, media.size))
+            }
+        }
+    }.flowOn(Dispatchers.IO)
 
     private fun query(context: Context): List<GalleryMedia> {
         val collection = MediaStore.Files.getContentUri("external")
