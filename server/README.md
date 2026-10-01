@@ -9,6 +9,14 @@
 | `gif-proxy/` | прокси поиска GIF (Giphy), ключ API на сервере | `~/gif-proxy` | `gifs.mango-kokos.ru` |
 | `stickers/` | nginx со стикерпаками (только конфиг; паки лежат рядом на сервере) | `/matrix/stickers` (root) | `stickers.mango-kokos.ru` |
 
+Не в этом репозитории, но приложение от них зависит: `tg-import` (`~/tg-import` на сервере,
+`stickers.mango-kokos.ru/import` — импорт стикерпаков из Telegram) и `smtp-tunnel` (почта на
+Proton). Оба ходят наружу через sing-box на хосте (`172.17.0.1:7891`): если его выход мёртв,
+импорт отвечает `502 upstream_unreachable`. Подробности — `docs/05-infra-roadmap.md`.
+
+Если SSH рвётся до баннера (`kex_exchange_identification: Connection closed`), на Маке не запущен
+Tailscale.
+
 Сайт с APK (`larpgram.mango-kokos.ru`) — отдельный git-репозиторий `~/element-fork/larpgram-site`
 с деплоем через `git push deploy main`; выкатка версии — `docs/RELEASE.md`.
 
