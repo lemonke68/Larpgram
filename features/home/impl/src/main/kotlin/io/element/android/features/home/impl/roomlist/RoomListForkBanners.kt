@@ -27,7 +27,14 @@ import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+// Почта аккаунта: повторы при неудачном запросе и переспрос, пока баннер на экране.
+private const val EMAIL_RETRY_MS = 20_000L
+private const val EMAIL_MAX_RETRIES = 5
+private const val EMAIL_RECHECK_MS = 15_000L
+private const val EMAIL_MAX_RECHECKS = 40
 
 @Inject
 class RoomListForkBanners(
@@ -58,16 +65,33 @@ class RoomListForkBanners(
             recoveryKeyAutoProvisioner.ensureProvisioned()
         }
 
-        // Баннер про почту. Спрашиваем один раз за показ экрана, а не подпиской: адрес сам собой не
-        // появляется и не исчезает, а привязка происходит в браузере, после чего человек всё равно
-        // возвращается в приложение заново.
-        //
-        // hasEmail() == false, а не != true: null означает «не дозвонились до сервера», и на нём
-        // баннер показывать нельзя, иначе он выскочит в самолётном режиме у того, у кого почта давно
-        // привязана.
+        // Баннер про почту. hasEmail() == false, а не != true: null означает «не дозвонились до
+        // сервера», и на нём баннер показывать нельзя, иначе он выскочит в самолётном режиме у того,
+        // у кого почта давно привязана. Поэтому на null спрашиваем ещё несколько раз, а не молчим до
+        // следующего запуска. Пока баннер висит, переспрашиваем изредка: почту привязывают в
+        // настройках приложения, и после возврата на список баннер должен уйти сам.
         var connectEmailBannerDismissed by rememberSaveable { mutableStateOf(false) }
         val accountNeedsEmail by produceState(false) {
-            value = !accountEmailStatus.isBannerHidden() && accountEmailStatus.hasEmail() == false
+            if (accountEmailStatus.isBannerHidden()) return@produceState
+            var failures = 0
+            var rechecks = 0
+            while (true) {
+                when (accountEmailStatus.hasEmail()) {
+                    true -> {
+                        value = false
+                        return@produceState
+                    }
+                    false -> {
+                        value = true
+                        if (++rechecks > EMAIL_MAX_RECHECKS) return@produceState
+                        delay(EMAIL_RECHECK_MS)
+                    }
+                    null -> {
+                        if (++failures > EMAIL_MAX_RETRIES) return@produceState
+                        delay(EMAIL_RETRY_MS)
+                    }
+                }
+            }
         }
         // Адрес спрашиваем только когда баннер и правда нужен: у тех, кто почту уже привязал, это
         // лишний поход в сеть на каждом открытии списка чатов.
