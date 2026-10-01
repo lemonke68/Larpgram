@@ -493,6 +493,11 @@ class RustMatrixAuthenticationService(
     private fun clear(destroyClient: Boolean) {
         if (destroyClient) {
             currentClient?.close()
+        } else {
+            // Правка форка: вход удался, каталог теперь принадлежит сохранённой сессии. Если его не
+            // забыть, следующий setHomeserver() в том же процессе (добавление второго аккаунта) сотрёт
+            // его в rotateSessionPath() вместе с ключами шифрования только что вошедшего аккаунта.
+            sessionPaths = null
         }
         currentClient = null
     }
