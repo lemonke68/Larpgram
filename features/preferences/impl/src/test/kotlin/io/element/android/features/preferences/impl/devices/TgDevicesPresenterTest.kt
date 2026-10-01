@@ -40,6 +40,17 @@ class TgDevicesPresenterTest {
     }
 
     @Test
+    fun `a device the server never saw online sorts last instead of crashing`() = runTest {
+        // Раньше список с таким устройством ронял экран: в сравнение попадали Long и Int.
+        val neverSeen = AccountDevice("NEVER", "Just linked", null, isCurrent = false)
+        val api = FakeAccountSessionApi(listDevicesLambda = { listOf(neverSeen, oldDevice, thisDevice) })
+        TgDevicesPresenter(api).test {
+            val loaded = awaitState { it.devices != null }
+            assertThat(loaded.devices).containsExactly(thisDevice, oldDevice, neverSeen).inOrder()
+        }
+    }
+
+    @Test
     fun `failed load can be retried`() = runTest {
         var answer: List<AccountDevice>? = null
         val api = FakeAccountSessionApi(listDevicesLambda = { answer })

@@ -1,4 +1,3 @@
-import extension.buildConfigFieldStr
 import extension.setupDependencyInjection
 import extension.testCommonDependencies
 
@@ -24,7 +23,6 @@ android {
             isIncludeAndroidResources = true
         }
     }
-
     // Правка форка: пакет Element Classic (manifestPlaceholders и BuildConfig) убран вместе с экранами
     // входа Element.
 }

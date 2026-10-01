@@ -38,7 +38,7 @@ class ChatPreviewPresenterTest {
         val timeline = FakeTimeline(
             timelineItems = flowOf(listOf(MatrixTimelineItem.Event(A_UNIQUE_ID, anEventTimelineItem()))),
         )
-        val presenter = createPresenter(timeline)
+        val presenter = createChatPreviewPresenter(timeline)
         presenter.test {
             val state = consumeItemsUntilPredicate { it.timelineItems.isNotEmpty() }.last()
             assertThat(state.timelineItems).hasSize(1)
@@ -52,7 +52,7 @@ class ChatPreviewPresenterTest {
     fun `present - loadMore paginates backwards`() = runTest {
         val paginateLambda = lambdaRecorder<Timeline.PaginationDirection, Result<Boolean>> { Result.success(false) }
         val timeline = FakeTimeline().apply { this.paginateLambda = paginateLambda }
-        val presenter = createPresenter(timeline)
+        val presenter = createChatPreviewPresenter(timeline)
         presenter.test {
             awaitItem().loadMore()
             testScheduler.advanceUntilIdle()
@@ -61,7 +61,7 @@ class ChatPreviewPresenterTest {
         paginateLambda.assertions().isCalledOnce().with(value(Timeline.PaginationDirection.BACKWARDS))
     }
 
-    private fun TestScope.createPresenter(timeline: FakeTimeline): ChatPreviewPresenter {
+    private fun TestScope.createChatPreviewPresenter(timeline: FakeTimeline): ChatPreviewPresenter {
         val room = FakeJoinedRoom(liveTimeline = timeline)
         return ChatPreviewPresenter(
             room = room,

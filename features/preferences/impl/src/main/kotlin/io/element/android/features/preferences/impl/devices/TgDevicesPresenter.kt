@@ -46,7 +46,7 @@ class TgDevicesPresenter(
             val loaded = accountSessionApi.listDevices()
             loadFailed = loaded == null
             // Это устройство — первым, дальше по давности.
-            if (loaded != null) devices = loaded.sortedWith(compareByDescending<AccountDevice> { it.isCurrent }.thenByDescending { it.lastSeenTimestamp ?: 0 })
+            if (loaded != null) devices = loaded.sortedWith(compareByDescending<AccountDevice> { it.isCurrent }.thenByDescending { it.lastSeenTimestamp ?: 0L })
         }
 
         LaunchedEffect(Unit) { load() }

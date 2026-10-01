@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.zacsweers.metro.ContributesBinding
-import dev.zacsweers.metro.Inject
 import io.element.android.appnav.di.RoomGraphFactory
 import io.element.android.features.messages.api.preview.ChatPreviewRenderer
 import io.element.android.features.messages.impl.timeline.components.TimelineItemRow
@@ -46,7 +45,6 @@ import io.element.android.libraries.matrix.api.timeline.Timeline
 private const val LOAD_MORE_THRESHOLD = 8
 
 @ContributesBinding(SessionScope::class)
-@Inject
 class DefaultChatPreviewRenderer(
     private val matrixClient: MatrixClient,
     private val roomGraphFactory: RoomGraphFactory,
