@@ -7,6 +7,8 @@
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UnusedResources"
     android:width="144dp"
     android:height="144dp"
     android:viewportWidth="512"

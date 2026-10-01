@@ -4,7 +4,7 @@
   приоритет над библиотечными, поэтому файлы переводов апстрима не трогаем и
   ребейз их спокойно перезапишет.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
     <!--
       Пустые строки прячут заголовок и подзаголовок онбординга: апстримовские
       "Be in your element" и "fastest Element ever" это каламбуры про Element,

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- См. комментарий в values/strings.xml. -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
     <string name="screen_onboarding_welcome_title">Larpgram</string>
     <string name="screen_onboarding_welcome_message">Не Телеграм. Но очень старается.</string>
 </resources>

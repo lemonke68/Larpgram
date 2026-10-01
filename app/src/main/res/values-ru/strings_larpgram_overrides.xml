@@ -4,8 +4,9 @@
   A-007/A-011/A-013/A-020/A-024/A-026). Ресурсы приложения перекрывают библиотечные, поэтому
   translations.xml апстрима не трогаем. Базовые (английские) строки живут в библиотеках, lint
   модуля app их не видит, поэтому ExtraTranslation/MissingDefaultResource здесь отключены.
+  По той же причине он не видит и использований в библиотеках: UnusedResources тоже отключён.
 -->
-<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="ExtraTranslation,MissingDefaultResource">
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="ExtraTranslation,MissingDefaultResource,UnusedResources">
     <string name="action_edit">Изменить</string>
     <string name="common_edited_suffix">изменено</string>
     <string name="screen_create_room_room_access_section_public_option_description">Кто угодно может присоединиться.</string>
