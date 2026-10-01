@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -73,6 +76,7 @@ private val WINDOW_BOTTOM_RADIUS = 12.dp
 private val MENU_GAP = 8.dp
 private val MENU_BOTTOM_MARGIN = 18.dp
 private val HEADER_HEIGHT = 56.dp
+private val HEADER_AVATAR_SIZE = 40.dp
 private val DIM_COLOR = Color(0x2E000000)
 private const val OPEN_MS = 190
 private const val CLOSE_MS = 150
@@ -218,11 +222,17 @@ private fun PreviewHeader(contextMenu: RoomListState.ContextMenu.Shown) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         contextMenu.avatarData?.let { avatarData ->
-            Avatar(
-                avatarData = avatarData,
-                avatarType = AvatarType.Room(heroes = contextMenu.heroes),
-                forcedAvatarSize = 40.dp,
-            )
+            // Аватар рисуется в размере строки списка и уменьшается целиком: у ЛС без своей картинки
+            // это «кластер» из собеседника, а он принудительный размер не учитывает.
+            Box(modifier = Modifier.size(HEADER_AVATAR_SIZE), contentAlignment = Alignment.Center) {
+                Avatar(
+                    avatarData = avatarData,
+                    avatarType = AvatarType.Room(heroes = contextMenu.heroes),
+                    modifier = Modifier
+                        .wrapContentSize(unbounded = true)
+                        .scale(HEADER_AVATAR_SIZE.value / avatarData.size.dp.value),
+                )
+            }
             Spacer(modifier = Modifier.width(12.dp))
         }
         Text(

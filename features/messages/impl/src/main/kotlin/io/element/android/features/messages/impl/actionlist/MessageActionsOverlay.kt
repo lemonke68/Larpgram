@@ -95,7 +95,10 @@ import kotlin.math.roundToInt
 // Замеры по chat_menu_*.png: меню и плашка — одна скруглённая карточка, ширина меню около 250,
 // зазор от сообщения 8. Реакции сидят в такой же скруглённой плашке над сообщением.
 private val MENU_CORNER = 14.dp
-private val MENU_WIDTH = 280.dp
+
+// 320: «Пожаловаться на сообщение» должно влезать целиком (в 280 обрезалось).
+private val MENU_WIDTH = 320.dp
+
 private val MENU_MIN_WIDTH = 200.dp
 
 // Пункт меню — `ActionBarMenuSubItem` Telegram: высота 48, отступы 18, иконка 24, текст 16sp с
