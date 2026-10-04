@@ -13,7 +13,7 @@
 #     sha256) и меняет номер версии и размер в index.html (три места).
 #  4. С --deploy: на сервере larpgram.apk → larpgram-prev.apk, заливает новый APK, коммитит сайт,
 #     `git push deploy main`, проверяет, что сайт отдаёт новый манифест и файл с тем же sha256.
-# Блок «Что нового» в index.html пишется руками — скрипт напомнит.
+# Блок «Что нового» в index.html пишется руками — скрипт напомнит и оставит в нём 3 последние версии.
 set -euo pipefail
 
 APK="${1:-}"
@@ -65,6 +65,11 @@ html, n2 = re.subn(r'(<b id="size">)[^<]*(</b>)', rf'\g<1>≈{size} МБ\g<2>', 
 # Под «Что нового» история версий: номер меняем только у верхнего блока.
 html, n3 = re.subn(r'(<p class="wn-ver">Версия )[^<]*(</p>)', rf'\g<1>{name}\g<2>', html, count=1)
 html, n4 = re.subn(r'Larpgram v[0-9][^ <]*', f'Larpgram v{name}', html)
+# На сайте всегда только 3 последние версии: всё, что ниже третьей, выкидываем.
+blocks = re.split(r'(?=      <p class="wn-ver">)', html)
+end = blocks[-1].index('    </div>') if len(blocks) > 4 else None
+if end is not None:
+    html = "".join(blocks[:4]) + blocks[-1][end:]
 if (n1, n2, n3, n4) != (1, 1, 1, 1):
     sys.exit(f"index.html: ожидал по одной замене, вышло {(n1, n2, n3, n4)}")
 open(path, "w").write(html)
