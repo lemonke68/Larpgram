@@ -96,3 +96,21 @@ export async function getRoomDetails(roomId) {
     eventsDefault: Number(powerLevels?.content?.events_default ?? 0),
   };
 }
+
+// Имя устройства пользователя через admin API; null, если не нашлось.
+export async function getDeviceName(userId, deviceId) {
+  const res = await adminFetch(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}`).catch(() => null);
+  if (!res || !res.ok) return null;
+  const body = await res.json().catch(() => null);
+  return body?.display_name || null;
+}
+
+// Сообщение пользователю в комнату Server Notices. true при успехе.
+export async function sendServerNotice(userId, text) {
+  const res = await adminFetch('/_synapse/admin/v1/send_server_notice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, content: { msgtype: 'm.text', body: text } }),
+  });
+  return res.ok;
+}

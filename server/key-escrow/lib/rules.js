@@ -40,3 +40,22 @@ export function deleteForBothRefusal({ callerId, members, room, directOf }) {
   }
   return null;
 }
+
+/**
+ * Можно ли отдать ключ по /key/session этому устройству. Ключ выдаётся устройству только в
+ * течение окна с первой выдачи: на случай, если recover() на клиенте упал по сети и надо
+ * повторить. Потом 403, иначе украденный токен давнего устройства снова тянет ключ.
+ * issuedAt — время первой выдачи этому device_id или null. Возвращает 'first', 'again' или 'expired'.
+ */
+export function sessionKeyIssue({ issuedAt, now, windowMs }) {
+  if (issuedAt == null) return 'first';
+  return now - issuedAt <= windowMs ? 'again' : 'expired';
+}
+
+// Текст уведомления владельцу о выдаче ключа новому устройству.
+export function keyIssuedNotice({ deviceId, deviceName, via }) {
+  const name = deviceName ? `«${deviceName}» (${deviceId})` : deviceId;
+  const how = via === 'code' ? 'по коду с почты' : 'при входе';
+  return `Устройство ${name} получило ключ восстановления ${how} и теперь видит всю историю переписки. ` +
+    'Если это не вы, смените пароль и завершите этот сеанс в настройках.';
+}

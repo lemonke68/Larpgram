@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidRecoveryKey, domainOf, deleteForBothRefusal } from '../lib/rules.js';
+import { isValidRecoveryKey, domainOf, deleteForBothRefusal, sessionKeyIssue, keyIssuedNotice } from '../lib/rules.js';
 
 const KEY = 'EsTc 5rr1 4fJY BvG1 x8Ci ZcYa 3PdS Xa6A PdKx zEsK q7Ap yupT';
 
@@ -43,4 +43,18 @@ test('refusals', () => {
   // Only the caller put the room into m.direct: that is what a spoofing client would do.
   assert.equal(deleteForBothRefusal({ ...base, directOf: { [A]: bothDirect[A], [B]: {} } }), 'not-direct');
   assert.equal(deleteForBothRefusal({ ...base, directOf: { [A]: bothDirect[A] } }), 'not-direct');
+});
+
+test('session key: first issue, retry inside the window, refused after it', () => {
+  const windowMs = 15 * 60 * 1000;
+  assert.equal(sessionKeyIssue({ issuedAt: null, now: 1000, windowMs }), 'first');
+  assert.equal(sessionKeyIssue({ issuedAt: 1000, now: 1000 + windowMs, windowMs }), 'again');
+  assert.equal(sessionKeyIssue({ issuedAt: 1000, now: 1001 + windowMs, windowMs }), 'expired');
+});
+
+test('key issued notice names the device and the way', () => {
+  const text = keyIssuedNotice({ deviceId: 'ABCDEF', deviceName: 'Honor', via: 'session' });
+  assert.match(text, /«Honor» \(ABCDEF\)/);
+  assert.match(text, /при входе/);
+  assert.match(keyIssuedNotice({ deviceId: 'ABCDEF', deviceName: null, via: 'code' }), /ABCDEF.*по коду с почты/);
 });

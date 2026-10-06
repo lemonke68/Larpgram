@@ -8,13 +8,15 @@
 import express from 'express';
 import * as db from './lib/db.js';
 import { encrypt, decrypt, hashCode, genCode, timingSafeEqualHex } from './lib/crypto.js';
-import { whoami, getEmail, getRoomMembers, deleteRoom, hasAdminToken, getDirectRoomsOf, getRoomDetails } from './lib/matrix.js';
-import { isValidRecoveryKey, deleteForBothRefusal } from './lib/rules.js';
+import { whoami, getEmail, getRoomMembers, deleteRoom, hasAdminToken, getDirectRoomsOf, getRoomDetails, getDeviceName, sendServerNotice } from './lib/matrix.js';
+import { isValidRecoveryKey, deleteForBothRefusal, sessionKeyIssue, keyIssuedNotice } from './lib/rules.js';
 import { sendCode } from './lib/mail.js';
 
 const CODE_TTL_MS = Number(process.env.CODE_TTL_SECONDS || 600) * 1000;
 const RESEND_MS = Number(process.env.CODE_RESEND_SECONDS || 60) * 1000;
 const MAX_ATTEMPTS = Number(process.env.MAX_ATTEMPTS || 5);
+// Сколько устройство может повторять /key/session после первой выдачи (сбой recover() на клиенте).
+const SESSION_KEY_WINDOW_MS = Number(process.env.SESSION_KEY_WINDOW_SECONDS || 900) * 1000;
 const PORT = Number(process.env.PORT || 8080);
 
 // Падаем на старте, если секреты не заданы: лучше не подняться, чем работать без шифрования.
@@ -51,6 +53,20 @@ async function auth(req, res, next) {
 // Журнал обращений к ключу: кто, с какого устройства, что сделал. Ключей и токенов тут нет.
 function audit(req, action, extra = {}) {
   console.log(JSON.stringify({ audit: action, user: req.userId, device: req.deviceId, at: new Date().toISOString(), ...extra }));
+}
+
+// Сообщить владельцу в Server Notices, что устройство получило ключ. Ключ отдаём в любом случае:
+// без admin-токена или при сбое Synapse выдача не блокируется, только пишется в журнал.
+async function noticeKeyIssued(req, via) {
+  if (!hasAdminToken()) return audit(req, 'notice-skipped', { via });
+  try {
+    const deviceName = await getDeviceName(req.userId, req.deviceId);
+    const ok = await sendServerNotice(req.userId, keyIssuedNotice({ deviceId: req.deviceId, deviceName, via }));
+    audit(req, ok ? 'notice-sent' : 'notice-failed', { via });
+  } catch (e) {
+    console.error('server notice упал:', e.message);
+    audit(req, 'notice-failed', { via });
+  }
 }
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -140,16 +156,37 @@ app.post('/key/redeem', auth, (req, res) => {
   db.deleteCode.run(req.userId); // код одноразовый
   if (!keyRow) return res.sendStatus(404); // NoStoredKey
 
+  audit(req, 'get-key-code');
+  noticeKeyIssued(req, 'code');
   res.json({ recovery_key: decrypt(keyRow.key_enc) });
 });
 
 // Отдать ключ восстановления без кода с почты — любой сессии, которая смогла войти в аккаунт
 // (решение юзера 2026-09-24, «как в TG»: вошёл — история на месте). Код с почты при этом
 // переезжает на шаг входа (MAS), а не на разблокировку ключа. 404 — ключа нет.
+// Заплатка до escrow варианта B (larpgram-infra, этап 4): каждому устройству ключ отдаётся один
+// раз, с окном на повтор SESSION_KEY_WINDOW_MS, и владелец получает уведомление. Потом 403:
+// клиент на не-200 просто не разблокирует сессию, подтверждать её придётся вручную.
 app.get('/key/session', auth, (req, res) => {
   const keyRow = db.getKey.get(req.userId);
   if (!keyRow) return res.sendStatus(404);
-  audit(req, 'get-key-session');
+  if (!req.deviceId) return res.sendStatus(403);
+
+  const now = Date.now();
+  const issue = sessionKeyIssue({
+    issuedAt: db.getSessionIssue.get(req.userId, req.deviceId)?.first_at ?? null,
+    now,
+    windowMs: SESSION_KEY_WINDOW_MS,
+  });
+  if (issue === 'expired') {
+    audit(req, 'get-key-session-refused');
+    return res.sendStatus(403);
+  }
+  if (issue === 'first') {
+    db.putSessionIssue.run(req.userId, req.deviceId, now);
+    noticeKeyIssued(req, 'session');
+  }
+  audit(req, 'get-key-session', { issue });
   res.set('Cache-Control', 'no-store');
   res.json({ recovery_key: decrypt(keyRow.key_enc) });
 });

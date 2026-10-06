@@ -19,7 +19,11 @@ services:
       - "traefik.http.routers.larpgram-account.entrypoints=websecure"
       - "traefik.http.routers.larpgram-account.tls.certresolver=myresolver"
       - "traefik.http.routers.larpgram-account.priority=100"
-      - "traefik.http.routers.larpgram-account.middlewares=larpgram-account-stripprefix"
+      - "traefik.http.routers.larpgram-account.middlewares=larpgram-account-ratelimit,larpgram-account-stripprefix"
+      # Лимит на IP: приложение делает единицы запросов на вход, перебор и спам кодами режем.
+      - "traefik.http.middlewares.larpgram-account-ratelimit.ratelimit.average=30"
+      - "traefik.http.middlewares.larpgram-account-ratelimit.ratelimit.period=1m"
+      - "traefik.http.middlewares.larpgram-account-ratelimit.ratelimit.burst=15"
       - "traefik.http.middlewares.larpgram-account-stripprefix.stripprefix.prefixes=/account"
       - "traefik.http.services.larpgram-account.loadbalancer.server.port=8080"
 

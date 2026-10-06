@@ -20,7 +20,11 @@ services:
       - "traefik.http.routers.escrow.tls.certresolver=myresolver"
       - "traefik.http.routers.escrow.priority=100"
       # Приложение видит короткие пути (/key, /code, /key/redeem) — префикс срезаем.
-      - "traefik.http.routers.escrow.middlewares=escrow-stripprefix"
+      - "traefik.http.routers.escrow.middlewares=escrow-ratelimit,escrow-stripprefix"
+      # Лимит на IP: приложение делает единицы запросов на вход, перебор и спам кодами режем.
+      - "traefik.http.middlewares.escrow-ratelimit.ratelimit.average=30"
+      - "traefik.http.middlewares.escrow-ratelimit.ratelimit.period=1m"
+      - "traefik.http.middlewares.escrow-ratelimit.ratelimit.burst=15"
       - "traefik.http.middlewares.escrow-stripprefix.stripprefix.prefixes=/escrow"
       - "traefik.http.services.escrow.loadbalancer.server.port=8080"
 

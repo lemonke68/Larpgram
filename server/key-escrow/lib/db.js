@@ -20,6 +20,13 @@ db.exec(`
     attempts     INTEGER NOT NULL DEFAULT 0,
     last_sent_at INTEGER NOT NULL
   );
+  -- Кому /key/session уже отдавал ключ: первая выдача на устройство (окно повтора — в index.js).
+  CREATE TABLE IF NOT EXISTS session_issues (
+    user_id   TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    first_at  INTEGER NOT NULL,
+    PRIMARY KEY (user_id, device_id)
+  );
 `);
 
 export const putKey = db.prepare(
@@ -40,5 +47,8 @@ export const upsertCode = db.prepare(
 export const getCode = db.prepare('SELECT * FROM codes WHERE user_id = ?');
 export const bumpAttempts = db.prepare('UPDATE codes SET attempts = attempts + 1 WHERE user_id = ?');
 export const deleteCode = db.prepare('DELETE FROM codes WHERE user_id = ?');
+
+export const getSessionIssue = db.prepare('SELECT first_at FROM session_issues WHERE user_id = ? AND device_id = ?');
+export const putSessionIssue = db.prepare('INSERT OR IGNORE INTO session_issues(user_id, device_id, first_at) VALUES(?, ?, ?)');
 
 export default db;
