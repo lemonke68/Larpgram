@@ -1,10 +1,12 @@
 services:
   stickers:
     image: nginx:1-alpine
-    restart: unless-stopped
+    # Не docker, а systemd (larpgram@<папка>.service из larpgram-infra) поднимает и перезапускает
+    # сервис: так после этапа 6 он ждёт расшифрованный раздел.
+    restart: "no"
     volumes:
       - /matrix/maunium/stickerpicker/web:/usr/share/nginx/html:ro
-      - /matrix/stickers/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - web
     labels:

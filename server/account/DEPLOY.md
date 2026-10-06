@@ -90,13 +90,13 @@ MAS перезапустится на несколько секунд, сесс�
 
 ## Обновление
 
-С Mac, из корня репозитория:
+С 2026-10-06 выкатывает `larpgram-infra` (этап 5): исходники из коммита этого репозитория,
+`.env` из ansible-vault, сборка и перезапуск `larpgram@larpgram-account.service`. Сначала
+закоммитить, потом с Mac:
 
 ```bash
 (cd server/account && npm test)
-rsync -az --exclude .env --exclude node_modules --exclude '*.db*' \
-  server/account/ lemonke67@100.115.48.43:larpgram-account/
-ssh lemonke67@100.115.48.43 'cd ~/larpgram-account && docker compose build && docker compose up -d'
+(cd ~/element-fork/larpgram-infra && just services larpgram-account)
 curl -s https://push.mango-kokos.ru/account/health      # {"ok":true}
 ```
 

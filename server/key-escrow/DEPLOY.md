@@ -146,15 +146,18 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 
 ## Обновление
 
-С Mac, из корня репозитория:
+С 2026-10-06 выкатывает `larpgram-infra` (этап 5): исходники из коммита этого репозитория,
+`.env` из ansible-vault, сборка и перезапуск `larpgram@key-escrow.service`. Сначала закоммитить,
+потом с Mac:
 
 ```bash
 (cd server/key-escrow && npm test)
-rsync -az --exclude .env --exclude node_modules --exclude '*.db*' \
-  server/key-escrow/ lemonke67@100.115.48.43:key-escrow/
-ssh lemonke67@100.115.48.43 'cd ~/key-escrow && docker compose build && docker compose up -d'
+(cd ~/element-fork/larpgram-infra && just services key-escrow)
 curl -s https://push.mango-kokos.ru/escrow/health      # {"ok":true}
 ```
+
+Секреты из раздела 1 теперь в vault `larpgram-infra` (`vault_escrow_*`), `.env` на сервере
+перезаписывается при каждой выкатке. Логи: `journalctl -u larpgram@key-escrow`.
 
 Данные (`escrow-data` volume) переживают пересборку. Схема БД создаётся сама при старте.
 `.dockerignore` не пускает `.env` и базу в образ; старые образы (до 2026-09-28 в них был `.env`)
@@ -165,8 +168,8 @@ curl -s https://push.mango-kokos.ru/escrow/health      # {"ok":true}
 `backup.sh` в cron пользователя (`10 4 * * *`): SQLite backup API внутри контейнера →
 `~/backups/key-escrow/escrow-ГГГГММДД.db` на NVMe (том Docker — на RAID, то есть другой диск),
 хранится 14 дней, лог — `~/backups/key-escrow.log`. Ключи в копии зашифрованы
-`ESCROW_MASTER_KEY` (копия в Vaultwarden). Восстановление: остановить контейнер, положить файл в
-том как `/data/escrow.db` (`docker cp`), запустить.
+`ESCROW_MASTER_KEY` (копия в Vaultwarden). Восстановление: `sudo systemctl stop larpgram@key-escrow`, положить файл в
+том как `/data/escrow.db` (`docker cp`), `sudo systemctl start larpgram@key-escrow`.
 
 Без бэкапа потеря тома опасна: провижинер решит, что ключей нет ни у кого, и молча выпустит
 всем новые ключи восстановления.

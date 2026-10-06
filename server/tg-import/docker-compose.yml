@@ -1,0 +1,31 @@
+services:
+  tg-import:
+    build: ./app
+    container_name: tg-import
+    # Не docker, а systemd (larpgram@<папка>.service из larpgram-infra) поднимает и перезапускает
+    # сервис: так после этапа 6 он ждёт расшифрованный раздел.
+    restart: "no"
+    env_file: .env
+    volumes:
+      # Кэш сконвертированных стикеров: один и тот же пак считается один раз на всех.
+      # Лежит на SSD, содержимое одноразовое, размер ограничен CACHE_LIMIT_MB.
+      - ./cache:/cache
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      # Живём на пути /import уже существующего домена: там же крутится старый
+      # maunium-пикер, и его роутер трогать не надо. Приоритет выше, чем у него,
+      # иначе правило по одному Host перехватит и наши пути.
+      - "traefik.http.routers.tg-import.rule=Host(`stickers.mango-kokos.ru`) && PathPrefix(`/import`)"
+      - "traefik.http.routers.tg-import.priority=100"
+      - "traefik.http.routers.tg-import.entrypoints=websecure"
+      - "traefik.http.routers.tg-import.tls.certresolver=myresolver"
+      - "traefik.http.routers.tg-import.middlewares=tg-import-strip"
+      # Сервис ничего не знает про /import, поэтому префикс снимаем.
+      - "traefik.http.middlewares.tg-import-strip.stripprefix.prefixes=/import"
+      - "traefik.http.services.tg-import.loadbalancer.server.port=3000"
+
+networks:
+  web:
+    external: true

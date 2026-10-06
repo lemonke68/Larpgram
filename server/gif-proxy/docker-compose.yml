@@ -2,7 +2,9 @@ services:
   gif-proxy:
     build: ./app
     container_name: gif-proxy
-    restart: unless-stopped
+    # Не docker, а systemd (larpgram@<папка>.service из larpgram-infra) поднимает и перезапускает
+    # сервис: так после этапа 6 он ждёт расшифрованный раздел.
+    restart: "no"
     env_file: .env
     networks:
       - web

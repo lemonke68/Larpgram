@@ -2,7 +2,9 @@ services:
   key-escrow:
     build: .
     container_name: key-escrow
-    restart: unless-stopped
+    # Не docker, а systemd (larpgram@<папка>.service из larpgram-infra) поднимает и перезапускает
+    # сервис: так после этапа 6 он ждёт расшифрованный раздел.
+    restart: "no"
     env_file: .env
     volumes:
       - escrow-data:/data
