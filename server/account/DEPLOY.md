@@ -5,7 +5,7 @@
 делает обычным Matrix-запросом `POST /_matrix/client/v3/login` (слой совместимости MAS).
 
 - Адрес: `https://push.mango-kokos.ru/account` (Traefik срезает `/account`).
-- На сервере: `~/larpgram-account`, контейнер `larpgram-account`, том `account-data`.
+- На сервере: `/srv/secure/larpgram/larpgram-account` (зашифрованный раздел), контейнер `larpgram-account`, данные в `./data`.
 - База (`/data/account.db`) хранит только заявки на несколько минут. Бэкап не нужен.
 
 ## API

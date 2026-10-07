@@ -7,7 +7,8 @@ services:
     restart: "no"
     env_file: .env
     volumes:
-      - account-data:/data
+      # Каталог проекта лежит на зашифрованном /srv/secure (этап 6 larpgram-infra).
+      - ./data:/data
     networks:
       # web — для Traefik и для admin API MAS по имени контейнера; matrix-exim-relay — письма
       # через тот же релей, что и MAS.
@@ -28,9 +29,6 @@ services:
       - "traefik.http.middlewares.larpgram-account-ratelimit.ratelimit.burst=15"
       - "traefik.http.middlewares.larpgram-account-stripprefix.stripprefix.prefixes=/account"
       - "traefik.http.services.larpgram-account.loadbalancer.server.port=8080"
-
-volumes:
-  account-data:
 
 networks:
   web:

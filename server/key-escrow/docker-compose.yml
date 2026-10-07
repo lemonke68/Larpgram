@@ -7,7 +7,8 @@ services:
     restart: "no"
     env_file: .env
     volumes:
-      - escrow-data:/data
+      # Каталог проекта лежит на зашифрованном /srv/secure (этап 6 larpgram-infra).
+      - ./data:/data
     networks:
       # web — для Traefik; matrix-exim-relay — чтобы слать код через тот же релей, что и MAS.
       - web
@@ -29,9 +30,6 @@ services:
       - "traefik.http.middlewares.escrow-ratelimit.ratelimit.burst=15"
       - "traefik.http.middlewares.escrow-stripprefix.stripprefix.prefixes=/escrow"
       - "traefik.http.services.escrow.loadbalancer.server.port=8080"
-
-volumes:
-  escrow-data:
 
 networks:
   web:
