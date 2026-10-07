@@ -175,6 +175,12 @@ private fun EmptyView(
                         onDismissClick = { eventSink(RoomListEvent.DismissCleanUpSessionsBanner) },
                     )
                 }
+                // Правка форка: запереть ключ к истории паролем (escrow B).
+                SecurityBannerState.ProtectHistory -> {
+                    ProtectHistoryBanner(
+                        onDismissClick = { eventSink(RoomListEvent.DismissProtectHistoryBanner) },
+                    )
+                }
                 // Правка форка: предложение обновиться.
                 SecurityBannerState.UpdateAvailable -> state.updateBanner?.let { updateBanner ->
                     UpdateBanner(
@@ -278,6 +284,14 @@ private fun RoomsViewList(
                     CleanUpSessionsBanner(
                         manageSessionsUrl = state.manageSessionsUrl,
                         onDismissClick = { eventSink(RoomListEvent.DismissCleanUpSessionsBanner) },
+                    )
+                }
+            }
+            // Правка форка: запереть ключ к истории паролем (escrow B).
+            SecurityBannerState.ProtectHistory -> {
+                item {
+                    ProtectHistoryBanner(
+                        onDismissClick = { eventSink(RoomListEvent.DismissProtectHistoryBanner) },
                     )
                 }
             }

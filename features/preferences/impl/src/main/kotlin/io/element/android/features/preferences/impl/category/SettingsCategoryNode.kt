@@ -52,6 +52,7 @@ class SettingsCategoryNode(
         fun navigateToAccountPassword()
         fun navigateToBlockedUsers()
         fun navigateToSecureBackup()
+        fun navigateToHistoryProtection()
         fun navigateToLockScreenSettings()
         fun navigateToAnalyticsSettings()
         fun navigateToChatThemeSettings()
@@ -97,6 +98,7 @@ class SettingsCategoryNode(
             onPasswordClick = callback::navigateToAccountPassword,
             onOpenBlockedUsers = callback::navigateToBlockedUsers,
             onSecureBackupClick = callback::navigateToSecureBackup,
+            onHistoryProtectionClick = callback::navigateToHistoryProtection,
             onOpenLockScreenSettings = callback::navigateToLockScreenSettings,
             onOpenAnalytics = callback::navigateToAnalyticsSettings,
             onOpenChatThemeSettings = callback::navigateToChatThemeSettings,

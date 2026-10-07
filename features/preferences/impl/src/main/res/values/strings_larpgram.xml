@@ -128,4 +128,21 @@
         <item quantity="one">Wrong code. %1$d attempt left</item>
         <item quantity="other">Wrong code. %1$d attempts left</item>
     </plurals>
+    <!-- Escrow вариант B: экран «Защита истории». -->
+    <string name="larpgram_settings_history_title">History protection</string>
+    <string name="larpgram_settings_history_subtitle">Your password opens chats on new devices</string>
+    <string name="larpgram_history_title">History protection</string>
+    <string name="larpgram_history_protected">Your chat history is locked with your account password. On a new device it opens when you sign in with this password, and the server cannot read it.</string>
+    <string name="larpgram_history_needs_password">Enter your account password. It locks the key to your chat history: on a new device the history opens when you sign in with this password. The server cannot read it.</string>
+    <string name="larpgram_history_unavailable">Could not reach the server.</string>
+    <string name="larpgram_history_password_label">Password</string>
+    <string name="larpgram_history_protect">Protect</string>
+    <string name="larpgram_history_show_key">Show recovery key</string>
+    <string name="larpgram_history_hide_key">Hide recovery key</string>
+    <string name="larpgram_history_key_hint">Write it down and keep it away from this phone: it opens your history if you forget the password. Never send it to anyone.</string>
+    <string name="larpgram_history_server_title">Recovery through the server</string>
+    <string name="larpgram_history_server_subtitle">The server keeps the key and opens your history even after a password reset. Whoever runs the server can then read it too.</string>
+    <string name="larpgram_history_error_wrong_password">Wrong password</string>
+    <string name="larpgram_history_error_network">No connection to the server. Try again.</string>
+    <string name="larpgram_history_error_no_key">This device has no key. Open this screen on a device where you signed in with the password.</string>
 </resources>

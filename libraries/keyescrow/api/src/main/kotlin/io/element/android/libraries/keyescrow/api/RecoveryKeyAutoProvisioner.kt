@@ -46,4 +46,23 @@ interface RecoveryKeyAutoProvisioner {
 
     /** Ключ создали вручную (экраны Element про ключ восстановления): сохранить и запереть. */
     suspend fun onRecoveryKeyCreated(recoveryKey: String)
+
+    /** Для экрана «Защита истории». `null` — сервер escrow недоступен. */
+    suspend fun protectionStatus(): HistoryProtectionStatus?
+
+    /** Ключ восстановления с этого устройства, если копия есть и ещё действует. */
+    suspend fun recoveryKeyOnDevice(): String?
+
+    /**
+     * Тумблер «восстановление через сервер». Включить можно только с устройства, где есть копия
+     * ключа. `false` — не вышло (нет копии или сети).
+     */
+    suspend fun setServerRecovery(enabled: Boolean): Boolean
 }
+
+data class HistoryProtectionStatus(
+    /** На сервере лежит ключ, запертый паролем: новые устройства открывают историю паролем. */
+    val lockedWithPassword: Boolean,
+    /** Включено «восстановление через сервер». */
+    val serverRecovery: Boolean,
+)

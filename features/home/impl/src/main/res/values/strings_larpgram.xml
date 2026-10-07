@@ -37,4 +37,6 @@
     <string name="larpgram_banner_email_message">Without it you cannot get back in if you forget the password. Tap to link it.</string>
     <string name="larpgram_banner_sessions_title">Check your sessions</string>
     <string name="larpgram_banner_sessions_message">There are other sign-ins to the account. Tap to end the ones you do not need.</string>
+    <string name="larpgram_banner_history_title">Protect your history with the password</string>
+    <string name="larpgram_banner_history_message">Then your chats open on a new device when you sign in. Tap to enter the password.</string>
 </resources>

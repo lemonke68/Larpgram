@@ -106,6 +106,15 @@ class DefaultAccountSessionApi(
         return http.post("sessions/end", EndSessionRequest(deviceId), token)?.code == 204
     }
 
+    override suspend fun checkPassword(password: String): Boolean? {
+        val token = accessToken() ?: return null
+        return when (http.post("password/check", PasswordCheckRequest(password), token)?.code) {
+            204 -> true
+            403 -> false
+            else -> null
+        }
+    }
+
     private suspend fun accessToken(): String? = matrixClient.getAccessToken().getOrNull()
 
     private companion object {
@@ -118,6 +127,9 @@ private data class OfferStatusRequest(val code: String)
 
 @Serializable
 private data class EmailStartRequest(val email: String)
+
+@Serializable
+private data class PasswordCheckRequest(val password: String)
 
 @Serializable
 private data class EndSessionRequest(@SerialName("device_id") val deviceId: String)

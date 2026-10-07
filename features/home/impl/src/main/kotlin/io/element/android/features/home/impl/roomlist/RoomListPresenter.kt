@@ -142,6 +142,7 @@ class RoomListPresenter(
                 }
                 RoomListEvent.DismissConnectEmailBanner,
                 RoomListEvent.DismissCleanUpSessionsBanner,
+                RoomListEvent.DismissProtectHistoryBanner,
                 RoomListEvent.DismissUpdateBanner,
                 RoomListEvent.InstallUpdate -> forkBannersState.eventSink(event)
                 RoomListEvent.ToggleSearchResults -> searchState.eventSink(RoomListSearchEvent.ToggleSearchVisibility)
@@ -196,6 +197,7 @@ class RoomListPresenter(
             showCleanUpSessionsBanner = forkBannersState.showCleanUpSessionsBanner,
             manageSessionsUrl = forkBannersState.manageSessionsUrl,
             updateBanner = forkBannersState.updateBanner,
+            showProtectHistoryBanner = forkBannersState.showProtectHistoryBanner,
             showNewNotificationSoundBanner,
             showUnreadCount,
             visibleRangeFlow = visibleRangeFlow,
@@ -223,11 +225,13 @@ class RoomListPresenter(
         showConnectEmailBanner: Boolean,
         showCleanUpSessionsBanner: Boolean,
         showUpdateBanner: Boolean,
+        showProtectHistoryBanner: Boolean,
     ): State<SecurityBannerState> {
         val currentSecurityBannerDismissed by rememberUpdatedState(securityBannerDismissed)
         val currentShowConnectEmailBanner by rememberUpdatedState(showConnectEmailBanner)
         val currentShowCleanUpSessionsBanner by rememberUpdatedState(showCleanUpSessionsBanner)
         val currentShowUpdateBanner by rememberUpdatedState(showUpdateBanner)
+        val currentShowProtectHistoryBanner by rememberUpdatedState(showProtectHistoryBanner)
         val recoveryState by encryptionService.recoveryStateStateFlow.collectAsState()
         return remember {
             derivedStateOf {
@@ -236,6 +240,7 @@ class RoomListPresenter(
                     showConnectEmailBanner = currentShowConnectEmailBanner,
                     showCleanUpSessionsBanner = currentShowCleanUpSessionsBanner,
                     showUpdateBanner = currentShowUpdateBanner,
+                    showProtectHistoryBanner = currentShowProtectHistoryBanner,
                     recoveryState = recoveryState,
                 )
             }
@@ -247,6 +252,7 @@ class RoomListPresenter(
         showConnectEmailBanner: Boolean,
         showCleanUpSessionsBanner: Boolean,
         showUpdateBanner: Boolean,
+        showProtectHistoryBanner: Boolean,
         recoveryState: RecoveryState,
     ): SecurityBannerState {
         if (!securityBannerDismissed) {
@@ -257,6 +263,12 @@ class RoomListPresenter(
                 RecoveryState.WAITING_FOR_SYNC,
                 RecoveryState.ENABLED -> Unit
             }
+        }
+
+        // Правка форка: ключ к истории не заперт паролем — без этого новое устройство историю не
+        // откроет, а потерянную историю не вернуть. Поэтому раньше обновления.
+        if (showProtectHistoryBanner) {
+            return SecurityBannerState.ProtectHistory
         }
 
         // Правка форка: обновление важнее почты и сессий (решение 2026-09-25): иначе у кого висит
@@ -287,6 +299,7 @@ class RoomListPresenter(
         showCleanUpSessionsBanner: Boolean,
         manageSessionsUrl: String?,
         updateBanner: UpdateBannerState?,
+        showProtectHistoryBanner: Boolean,
         showNewNotificationSoundBanner: Boolean,
         showUnreadCount: Boolean,
         visibleRangeFlow: StateFlow<IntRange>,
@@ -315,6 +328,7 @@ class RoomListPresenter(
             showConnectEmailBanner,
             showCleanUpSessionsBanner,
             showUpdateBanner = updateBanner != null,
+            showProtectHistoryBanner = showProtectHistoryBanner,
         )
         return when {
             showEmpty -> RoomListContentState.Empty(

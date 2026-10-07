@@ -27,6 +27,7 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
   const offersPerUserHour = config.offersPerUserHour ?? 30;
   const loginsPerIpHour = config.loginsPerIpHour ?? 30;
   const loginsPerUserHour = config.loginsPerUserHour ?? 10;
+  const passwordChecksPerUserHour = config.passwordChecksPerUserHour ?? 10;
 
   const limiter = createLimiter({ now });
   const app = express();
@@ -425,6 +426,21 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
     db.delete.run(row.id);
     audit('email-done', { username: row.username });
     res.json({ email: row.email });
+  }));
+
+  // Верен ли пароль вошедшего человека. Приложение спрашивает пароль, чтобы запереть им ключ
+  // восстановления (escrow вариант B), и до этого проверяет его здесь: опечатка заперла бы ключ
+  // паролем, которым никто не войдёт. 204 — верный, 403 — нет.
+  app.post('/password/check', auth(async (req, res) => {
+    if (!limiter.allow(`pwcheck:${req.userId}`, passwordChecksPerUserHour, HOUR)) return fail(res, 429, 'too_many_requests');
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    const username = localpartOf(req.userId);
+    if (!password || !username) return fail(res, 400, 'password_required');
+    if (!(await matrix.checkPassword(username, password))) {
+      audit('password-check-failed', { username });
+      return fail(res, 403, 'invalid_credentials');
+    }
+    res.sendStatus(204);
   }));
 
   // Завершить сеанс другого устройства этого аккаунта.

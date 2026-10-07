@@ -378,3 +378,15 @@ test('login: password guessing on one account is limited', async () => {
   assert.equal((await post('/login/start', { login: 'petya', password: 'correct horse' })).status, 429);
   assert.equal(matrix.passwordChecks, 10);
 });
+
+test('password check: right, wrong, unauthorized, rate limited', async () => {
+  mas.users.set('vasya', { id: 'U1', username: 'vasya', password: 'correct horse', email: null });
+  assert.equal((await post('/password/check', { password: 'correct horse' }, 'token-of-vasya')).status, 204);
+  const wrong = await post('/password/check', { password: 'nope' }, 'token-of-vasya');
+  assert.equal(wrong.status, 403);
+  assert.equal(wrong.body.error, 'invalid_credentials');
+  assert.equal((await post('/password/check', {}, 'token-of-vasya')).status, 400);
+  assert.equal((await post('/password/check', { password: 'correct horse' })).status, 401);
+  for (let i = 0; i < 7; i++) await post('/password/check', { password: 'nope' }, 'token-of-vasya');
+  assert.equal((await post('/password/check', { password: 'correct horse' }, 'token-of-vasya')).status, 429);
+});

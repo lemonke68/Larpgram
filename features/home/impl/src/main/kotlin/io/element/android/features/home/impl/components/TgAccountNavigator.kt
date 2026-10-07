@@ -18,6 +18,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 internal class TgAccountNavigator(
     val openEmail: () -> Unit,
     val openDevices: () -> Unit,
+    val openHistoryProtection: () -> Unit,
 )
 
 internal val LocalTgAccountNavigator = staticCompositionLocalOf<TgAccountNavigator?> { null }

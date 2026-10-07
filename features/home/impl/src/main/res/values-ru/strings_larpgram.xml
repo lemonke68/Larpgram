@@ -29,4 +29,6 @@
     <string name="larpgram_banner_email_message">Без неё не восстановить доступ, если забудете пароль. Нажмите, чтобы привязать.</string>
     <string name="larpgram_banner_sessions_title">Проверьте свои сессии</string>
     <string name="larpgram_banner_sessions_message">Есть и другие входы в аккаунт. Нажмите, чтобы завершить лишние.</string>
+    <string name="larpgram_banner_history_title">Защитите историю паролем</string>
+    <string name="larpgram_banner_history_message">Тогда на новом устройстве переписка откроется при входе. Нажмите, чтобы ввести пароль.</string>
 </resources>

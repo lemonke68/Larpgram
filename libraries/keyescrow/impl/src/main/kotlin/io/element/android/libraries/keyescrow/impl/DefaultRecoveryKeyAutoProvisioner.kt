@@ -13,6 +13,7 @@ import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.keyescrow.api.EscrowRemoteState
+import io.element.android.libraries.keyescrow.api.HistoryProtectionStatus
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.LockedKeyFetch
 import io.element.android.libraries.keyescrow.api.LoginPasswordHandoff
@@ -96,6 +97,28 @@ class DefaultRecoveryKeyAutoProvisioner(
                 forgetOldKeyAndAskPassword(recoveryKey, remote)
             }
             Unit
+        }
+    }
+
+    override suspend fun protectionStatus(): HistoryProtectionStatus? = withContext(dispatchers.io) {
+        keyEscrowService.remoteState()?.let {
+            HistoryProtectionStatus(lockedWithPassword = it.hasLockedKey, serverRecovery = it.serverKeyOptIn)
+        }
+    }
+
+    override suspend fun recoveryKeyOnDevice(): String? = withContext(dispatchers.io) {
+        mutex.withLock { currentKey() }
+    }
+
+    override suspend fun setServerRecovery(enabled: Boolean): Boolean = withContext(dispatchers.io) {
+        mutex.withLock {
+            if (enabled) {
+                // Без копии ключа включить нечем: перевыпуск сломал бы блоб, а пароля тут нет.
+                val key = currentKey() ?: return@withLock false
+                keyEscrowService.enableServerKey(key)
+            } else {
+                keyEscrowService.disableServerKey()
+            }
         }
     }
 

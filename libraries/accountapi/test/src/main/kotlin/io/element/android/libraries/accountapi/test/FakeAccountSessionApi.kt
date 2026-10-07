@@ -25,6 +25,7 @@ class FakeAccountSessionApi(
     private val endSessionLambda: (String) -> Boolean = { false },
     private val listDevicesLambda: () -> List<AccountDevice>? = { null },
     private val currentEmailLambda: () -> AccountEmail = { AccountEmail.Unknown },
+    private val checkPasswordLambda: (String) -> Boolean? = { null },
 ) : AccountSessionApi {
     override suspend fun createLoginOffer() = createLoginOfferLambda()
 
@@ -35,6 +36,8 @@ class FakeAccountSessionApi(
     override suspend fun confirmEmailChange(ticket: String, code: String) = confirmEmailChangeLambda(ticket, code)
 
     override suspend fun endSession(deviceId: String) = endSessionLambda(deviceId)
+
+    override suspend fun checkPassword(password: String) = checkPasswordLambda(password)
 
     override suspend fun listDevices() = listDevicesLambda()
 

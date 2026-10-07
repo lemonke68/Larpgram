@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.keyescrow.test
 
+import io.element.android.libraries.keyescrow.api.HistoryProtectionStatus
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -16,6 +17,9 @@ class FakeRecoveryKeyAutoProvisioner(
     private val lockWithPasswordLambda: suspend (String) -> Result<Unit> = { Result.success(Unit) },
     private val onPasswordChangedLambda: suspend (String) -> Unit = {},
     private val onRecoveryKeyCreatedLambda: suspend (String) -> Unit = {},
+    private val protectionStatusLambda: suspend () -> HistoryProtectionStatus? = { null },
+    private val recoveryKeyOnDeviceLambda: suspend () -> String? = { null },
+    private val setServerRecoveryLambda: suspend (Boolean) -> Boolean = { true },
 ) : RecoveryKeyAutoProvisioner {
     override val needsPassword = MutableStateFlow(false)
 
@@ -28,4 +32,10 @@ class FakeRecoveryKeyAutoProvisioner(
     override suspend fun onPasswordChanged(newPassword: String) = onPasswordChangedLambda(newPassword)
 
     override suspend fun onRecoveryKeyCreated(recoveryKey: String) = onRecoveryKeyCreatedLambda(recoveryKey)
+
+    override suspend fun protectionStatus(): HistoryProtectionStatus? = protectionStatusLambda()
+
+    override suspend fun recoveryKeyOnDevice(): String? = recoveryKeyOnDeviceLambda()
+
+    override suspend fun setServerRecovery(enabled: Boolean): Boolean = setServerRecoveryLambda(enabled)
 }

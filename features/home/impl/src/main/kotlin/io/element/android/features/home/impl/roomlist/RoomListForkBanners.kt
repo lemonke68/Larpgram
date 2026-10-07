@@ -52,6 +52,8 @@ class RoomListForkBanners(
         val showCleanUpSessionsBanner: Boolean,
         val manageSessionsUrl: String?,
         val updateBanner: UpdateBannerState?,
+        /** Escrow B: попросить пароль, чтобы запереть им ключ к истории. */
+        val showProtectHistoryBanner: Boolean,
         /** Закрыть баннер почты, сессий или обновления, поставить обновление. */
         val eventSink: (RoomListEvent) -> Unit,
     )
@@ -75,6 +77,8 @@ class RoomListForkBanners(
         // следующего запуска. Пока баннер висит, переспрашиваем изредка: почту привязывают в
         // настройках приложения, и после возврата на список баннер должен уйти сам.
         var connectEmailBannerDismissed by rememberSaveable { mutableStateOf(false) }
+        val needsPassword by recoveryKeyAutoProvisioner.needsPassword.collectAsState()
+        var protectHistoryBannerDismissed by rememberSaveable { mutableStateOf(false) }
         val accountNeedsEmail by produceState(false) {
             if (accountEmailStatus.isBannerHidden()) return@produceState
             var failures = 0
@@ -142,6 +146,7 @@ class RoomListForkBanners(
                     coroutineScope.launch { accountEmailStatus.hideBanner() }
                 }
                 RoomListEvent.DismissCleanUpSessionsBanner -> cleanUpSessionsBannerDismissed = true
+                RoomListEvent.DismissProtectHistoryBanner -> protectHistoryBannerDismissed = true
                 RoomListEvent.DismissUpdateBanner -> {
                     updateBannerDismissed = true
                     // Запоминаем именно эту версию, чтобы следующая, ещё более свежая, снова
@@ -163,6 +168,7 @@ class RoomListForkBanners(
             showCleanUpSessionsBanner = hasOtherSessions && !cleanUpSessionsBannerDismissed,
             manageSessionsUrl = manageSessionsUrl,
             updateBanner = updateBanner,
+            showProtectHistoryBanner = needsPassword && !protectHistoryBannerDismissed,
             eventSink = ::handleEvent,
         )
     }

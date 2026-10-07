@@ -51,4 +51,5 @@ internal fun PreferencesEntryPoint.InitialTarget.toNavTarget() = when (this) {
     PreferencesEntryPoint.InitialTarget.EditProfile -> PreferencesFlowNode.NavTarget.EditCurrentUserProfile
     PreferencesEntryPoint.InitialTarget.AccountEmail -> PreferencesFlowNode.NavTarget.TgAccountEmail
     PreferencesEntryPoint.InitialTarget.Devices -> PreferencesFlowNode.NavTarget.TgDevices
+    PreferencesEntryPoint.InitialTarget.HistoryProtection -> PreferencesFlowNode.NavTarget.TgHistoryProtection
 }

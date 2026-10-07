@@ -42,6 +42,9 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
 
         @Parcelize
         data object Devices : InitialTarget
+
+        @Parcelize
+        data object HistoryProtection : InitialTarget
     }
 
     // Правка форка: [isTab] — настройки открыты вкладкой внизу, стрелки «назад» у корня нет (TG).

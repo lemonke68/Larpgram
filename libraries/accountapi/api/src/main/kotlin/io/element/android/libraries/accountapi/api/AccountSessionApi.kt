@@ -34,6 +34,12 @@ interface AccountSessionApi {
 
     /** Завершает сеанс другого устройства. `true` при успехе. */
     suspend fun endSession(deviceId: String): Boolean
+
+    /**
+     * Верен ли пароль аккаунта: перед тем как запереть им ключ восстановления (escrow вариант B).
+     * `null` — узнать не удалось (сеть, лимит запросов).
+     */
+    suspend fun checkPassword(password: String): Boolean?
 }
 
 /** Сеанс аккаунта на одном устройстве. */

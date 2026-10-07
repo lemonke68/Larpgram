@@ -166,6 +166,9 @@ class HomeFlowNode(
         data object AccountDevices : NavTarget
 
         @Parcelize
+        data object HistoryProtection : NavTarget
+
+        @Parcelize
         data class ReportRoom(val roomId: RoomId) : NavTarget
 
         @Parcelize
@@ -311,6 +314,7 @@ class HomeFlowNode(
             TgAccountNavigator(
                 openEmail = { backstack.push(NavTarget.AccountEmail) },
                 openDevices = { backstack.push(NavTarget.AccountDevices) },
+                openHistoryProtection = { backstack.push(NavTarget.HistoryProtection) },
             )
         }
         CompositionLocalProvider(LocalTgAccountNavigator provides accountNavigator) {
@@ -356,6 +360,12 @@ class HomeFlowNode(
             NavTarget.EditProfile -> homeTabNodes.editProfile(this, buildContext, callback)
             NavTarget.AccountEmail -> homeTabNodes.settingsScreen(this, buildContext, callback, PreferencesEntryPoint.InitialTarget.AccountEmail)
             NavTarget.AccountDevices -> homeTabNodes.settingsScreen(this, buildContext, callback, PreferencesEntryPoint.InitialTarget.Devices)
+            NavTarget.HistoryProtection -> homeTabNodes.settingsScreen(
+                this,
+                buildContext,
+                callback,
+                PreferencesEntryPoint.InitialTarget.HistoryProtection,
+            )
             NavTarget.Root -> rootNode(buildContext)
         }
     }

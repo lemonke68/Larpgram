@@ -55,6 +55,7 @@ fun SettingsCategoryView(
     onPasswordClick: () -> Unit,
     onOpenBlockedUsers: () -> Unit,
     onSecureBackupClick: () -> Unit,
+    onHistoryProtectionClick: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
     onOpenAnalytics: () -> Unit,
     onOpenChatThemeSettings: () -> Unit,
@@ -84,6 +85,7 @@ fun SettingsCategoryView(
                 advancedSettingsState = advancedSettingsState,
                 onOpenBlockedUsers = onOpenBlockedUsers,
                 onSecureBackupClick = onSecureBackupClick,
+                onHistoryProtectionClick = onHistoryProtectionClick,
                 onOpenLockScreenSettings = onOpenLockScreenSettings,
                 onOpenAnalytics = onOpenAnalytics,
             )
@@ -174,6 +176,7 @@ private fun ColumnScope.PrivacyCategory(
     advancedSettingsState: AdvancedSettingsState,
     onOpenBlockedUsers: () -> Unit,
     onSecureBackupClick: () -> Unit,
+    onHistoryProtectionClick: () -> Unit,
     onOpenLockScreenSettings: () -> Unit,
     onOpenAnalytics: () -> Unit,
 ) {
@@ -195,6 +198,14 @@ private fun ColumnScope.PrivacyCategory(
                 onClick = onSecureBackupClick,
             )
         }
+        // Escrow вариант B: ключ к истории, запертый паролем аккаунта.
+        TgSettingsItem(
+            title = stringResource(R.string.larpgram_settings_history_title),
+            subtitle = stringResource(R.string.larpgram_settings_history_subtitle),
+            color = TgSettingsColors.Teal,
+            iconVector = CompoundIcons.History(),
+            onClick = onHistoryProtectionClick,
+        )
         if (state.showBlockedUsersItem) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_blocked_users),

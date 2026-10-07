@@ -109,4 +109,21 @@
         <item quantity="many">Неверный код. Осталось %1$d попыток</item>
         <item quantity="other">Неверный код. Осталось %1$d попытки</item>
     </plurals>
+    <!-- Escrow вариант B: экран «Защита истории». -->
+    <string name="larpgram_settings_history_title">Защита истории</string>
+    <string name="larpgram_settings_history_subtitle">Пароль открывает переписку на новых устройствах</string>
+    <string name="larpgram_history_title">Защита истории</string>
+    <string name="larpgram_history_protected">История переписки заперта паролем аккаунта. На новом устройстве она откроется при входе этим паролем, а сервер прочитать её не может.</string>
+    <string name="larpgram_history_needs_password">Введите пароль аккаунта. Им запрётся ключ к истории переписки: на новом устройстве история откроется при входе этим паролем. Сервер прочитать её не сможет.</string>
+    <string name="larpgram_history_unavailable">Не удалось связаться с сервером.</string>
+    <string name="larpgram_history_password_label">Пароль</string>
+    <string name="larpgram_history_protect">Защитить</string>
+    <string name="larpgram_history_show_key">Показать ключ восстановления</string>
+    <string name="larpgram_history_hide_key">Скрыть ключ восстановления</string>
+    <string name="larpgram_history_key_hint">Запишите его и храните не в этом телефоне: им можно открыть историю, если забудете пароль. Никому его не отправляйте.</string>
+    <string name="larpgram_history_server_title">Восстановление через сервер</string>
+    <string name="larpgram_history_server_subtitle">Сервер хранит ключ и откроет историю даже после сброса пароля. Но тогда её сможет прочитать и тот, кто управляет сервером.</string>
+    <string name="larpgram_history_error_wrong_password">Неверный пароль</string>
+    <string name="larpgram_history_error_network">Нет связи с сервером. Попробуйте ещё раз.</string>
+    <string name="larpgram_history_error_no_key">На этом устройстве нет ключа. Откройте этот экран на устройстве, где вы вошли паролем.</string>
 </resources>

@@ -32,6 +32,7 @@ import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.preferences.impl.about.AboutNode
 import io.element.android.features.preferences.impl.account.TgAccountEmailNode
 import io.element.android.features.preferences.impl.account.TgAccountPasswordNode
+import io.element.android.features.preferences.impl.account.TgHistoryProtectionNode
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsNode
 import io.element.android.features.preferences.impl.advanced.ChatThemeSettingsNode
 import io.element.android.features.preferences.impl.analytics.AnalyticsSettingsNode
@@ -155,6 +156,9 @@ class PreferencesFlowNode(
 
         @Parcelize
         data object TgAccountPassword : NavTarget
+
+        @Parcelize
+        data object TgHistoryProtection : NavTarget
     }
 
     private val callback: PreferencesEntryPoint.Callback = callback()
@@ -232,6 +236,10 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.TgAccountPassword)
                     }
 
+                    override fun navigateToHistoryProtection() {
+                        backstack.push(NavTarget.TgHistoryProtection)
+                    }
+
                     override fun navigateToBlockedUsers() {
                         backstack.push(NavTarget.BlockedUsers)
                     }
@@ -304,6 +312,9 @@ class PreferencesFlowNode(
             }
             NavTarget.TgAccountEmail -> {
                 createNode<TgAccountEmailNode>(buildContext)
+            }
+            NavTarget.TgHistoryProtection -> {
+                createNode<TgHistoryProtectionNode>(buildContext)
             }
             NavTarget.TgAccountPassword -> {
                 val callback = object : TgAccountPasswordNode.Callback {
