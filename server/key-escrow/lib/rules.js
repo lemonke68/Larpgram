@@ -59,3 +59,46 @@ export function keyIssuedNotice({ deviceId, deviceName, via }) {
   return `Устройство ${name} получило ключ восстановления ${how} и теперь видит всю историю переписки. ` +
     'Если это не вы, смените пароль и завершите этот сеанс в настройках.';
 }
+
+// --- Вариант B: ключ, запертый паролем ---
+
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+function base64Length(value) {
+  if (typeof value !== 'string' || value.length % 4 !== 0 || !BASE64.test(value)) return -1;
+  return Buffer.from(value, 'base64').length;
+}
+
+const BLOB_FIELDS = ['v', 'kdf', 'm', 't', 'p', 'salt', 'nonce', 'ct'];
+const intIn = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
+
+/**
+ * Что не так с блобом от клиента, или null. Расшифровать его сервер не может, но формат и нижнюю
+ * границу Argon2id проверяет: кривой клиент не должен запереть ключ слабыми параметрами.
+ * m — память в КиБ, t — проходы, p — потоки. ct — AES-256-GCM с тегом (ключ ~48 символов + 16).
+ */
+export function blobProblem(blob) {
+  if (!blob || typeof blob !== 'object' || Array.isArray(blob)) return 'not-an-object';
+  if (Object.keys(blob).some((k) => !BLOB_FIELDS.includes(k))) return 'unknown-field';
+  if (blob.v !== 1) return 'version';
+  if (blob.kdf !== 'argon2id') return 'kdf';
+  if (!intIn(blob.m, 16 * 1024, 1024 * 1024)) return 'memory';
+  if (!intIn(blob.t, 2, 16)) return 'iterations';
+  if (!intIn(blob.p, 1, 8)) return 'parallelism';
+  const salt = base64Length(blob.salt);
+  if (salt < 16 || salt > 64) return 'salt';
+  if (base64Length(blob.nonce) !== 12) return 'nonce';
+  const ct = base64Length(blob.ct);
+  if (ct < 17 || ct > 512) return 'ciphertext';
+  return null;
+}
+
+/**
+ * Отдаёт ли сервер свой ключ (v1: /key/session и /key/redeem). С тумблером «восстановление через
+ * сервер» — всегда. Ключ без тумблера (остался с v1) — только до legacyUntil: это срок, за который
+ * клиенты с вариантом B перезапирают ключ паролем. legacyUntil = null — срок не назначен.
+ */
+export function serverKeyServed({ optIn, now, legacyUntil }) {
+  if (optIn) return true;
+  return legacyUntil == null || now <= legacyUntil;
+}

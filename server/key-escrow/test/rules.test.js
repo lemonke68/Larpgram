@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidRecoveryKey, domainOf, deleteForBothRefusal, sessionKeyIssue, keyIssuedNotice } from '../lib/rules.js';
+import { isValidRecoveryKey, domainOf, deleteForBothRefusal, sessionKeyIssue, keyIssuedNotice, serverKeyServed, blobProblem } from '../lib/rules.js';
 
 const KEY = 'EsTc 5rr1 4fJY BvG1 x8Ci ZcYa 3PdS Xa6A PdKx zEsK q7Ap yupT';
 
@@ -57,4 +57,22 @@ test('key issued notice names the device and the way', () => {
   assert.match(text, /«Honor» \(ABCDEF\)/);
   assert.match(text, /при входе/);
   assert.match(keyIssuedNotice({ deviceId: 'ABCDEF', deviceName: null, via: 'code' }), /ABCDEF.*по коду с почты/);
+});
+
+test('server key is served with the toggle, or without it only until the deadline', () => {
+  assert.equal(serverKeyServed({ optIn: true, now: 5, legacyUntil: 1 }), true);
+  assert.equal(serverKeyServed({ optIn: false, now: 5, legacyUntil: null }), true);
+  assert.equal(serverKeyServed({ optIn: false, now: 5, legacyUntil: 5 }), true);
+  assert.equal(serverKeyServed({ optIn: false, now: 6, legacyUntil: 5 }), false);
+});
+
+test('blob: ciphertext bounds', () => {
+  const b64 = (n) => Buffer.alloc(n, 7).toString('base64');
+  const blob = { v: 1, kdf: 'argon2id', m: 65536, t: 3, p: 1, salt: b64(16), nonce: b64(12), ct: b64(64) };
+  assert.equal(blobProblem(blob), null);
+  assert.equal(blobProblem({ ...blob, ct: b64(16) }), 'ciphertext');
+  assert.equal(blobProblem({ ...blob, ct: b64(513) }), 'ciphertext');
+  assert.equal(blobProblem({ ...blob, v: 2 }), 'version');
+  assert.equal(blobProblem({ ...blob, m: 65536.5 }), 'memory');
+  assert.equal(blobProblem(null), 'not-an-object');
 });

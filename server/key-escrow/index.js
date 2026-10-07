@@ -1,246 +1,46 @@
-// Larpgram key-escrow: депонирование ключа восстановления, чтобы новую сессию можно было
-// верифицировать кодом с почты вместо второго устройства.
+// Larpgram key-escrow: ключ восстановления, чтобы новая сессия открывала историю без второго
+// устройства.
 //
 // Клиент (libraries/keyescrow) ходит на push.mango-kokos.ru/escrow, Traefik срезает префикс
-// /escrow, поэтому маршруты тут короткие: /key, /code, /key/redeem. Авторизация — Bearer с
-// access-токеном Matrix, который сервис проверяет через Synapse whoami.
+// /escrow, поэтому маршруты тут короткие. Авторизация — Bearer с access-токеном Matrix, который
+// сервис проверяет через Synapse whoami.
+//
+// v2 (вариант B, larpgram-infra этап 7): клиент запирает ключ паролем аккаунта (Argon2id) и
+// кладёт сюда блоб, открыть который сервер не может. Ключ на master-ключе сервиса (v1) остаётся
+// только у тех, кто сам включил «восстановление через сервер», и у старых аккаунтов до
+// LEGACY_KEYS_UNTIL. Маршруты — lib/app.js.
 
-import express from 'express';
-import * as db from './lib/db.js';
-import { encrypt, decrypt, hashCode, genCode, timingSafeEqualHex } from './lib/crypto.js';
-import { whoami, getEmail, getRoomMembers, deleteRoom, hasAdminToken, getDirectRoomsOf, getRoomDetails, getDeviceName, sendServerNotice } from './lib/matrix.js';
-import { isValidRecoveryKey, deleteForBothRefusal, sessionKeyIssue, keyIssuedNotice } from './lib/rules.js';
-import { sendCode } from './lib/mail.js';
+import { createApp } from './lib/app.js';
+import { openDb } from './lib/db.js';
+import { encrypt, hashCode } from './lib/crypto.js';
+import * as matrix from './lib/matrix.js';
+import * as mailer from './lib/mail.js';
 
-const CODE_TTL_MS = Number(process.env.CODE_TTL_SECONDS || 600) * 1000;
-const RESEND_MS = Number(process.env.CODE_RESEND_SECONDS || 60) * 1000;
-const MAX_ATTEMPTS = Number(process.env.MAX_ATTEMPTS || 5);
-// Сколько устройство может повторять /key/session после первой выдачи (сбой recover() на клиенте).
-const SESSION_KEY_WINDOW_MS = Number(process.env.SESSION_KEY_WINDOW_SECONDS || 900) * 1000;
 const PORT = Number(process.env.PORT || 8080);
 
 // Падаем на старте, если секреты не заданы: лучше не подняться, чем работать без шифрования.
 encrypt('warmup');
 hashCode('warmup');
 
-const app = express();
-app.disable('x-powered-by');
-app.use(express.json({ limit: '16kb' }));
+// LEGACY_KEYS_UNTIL — дата ISO (2026-11-15): после неё ключи v1 без тумблера не отдаются и удаляются.
+const legacyRaw = (process.env.LEGACY_KEYS_UNTIL || '').trim();
+const legacyKeysUntil = legacyRaw ? Date.parse(legacyRaw) : null;
+if (legacyRaw && Number.isNaN(legacyKeysUntil)) throw new Error(`LEGACY_KEYS_UNTIL не дата: ${legacyRaw}`);
 
-function bearer(req) {
-  const header = req.get('authorization') || '';
-  return header.startsWith('Bearer ') ? header.slice(7).trim() : null;
-}
-
-// Мидлварь авторизации: токен -> whoami -> user_id. Токен и ключи в лог не пишем.
-async function auth(req, res, next) {
-  const token = bearer(req);
-  if (!token) return res.sendStatus(401);
-  let who;
-  try {
-    who = await whoami(token);
-  } catch (e) {
-    console.error('whoami упал:', e.message);
-    return res.sendStatus(502);
-  }
-  if (!who) return res.sendStatus(401);
-  req.userId = who.userId;
-  req.deviceId = who.deviceId;
-  req.token = token;
-  next();
-}
-
-// Журнал обращений к ключу: кто, с какого устройства, что сделал. Ключей и токенов тут нет.
-function audit(req, action, extra = {}) {
-  console.log(JSON.stringify({ audit: action, user: req.userId, device: req.deviceId, at: new Date().toISOString(), ...extra }));
-}
-
-// Сообщить владельцу в Server Notices, что устройство получило ключ. Ключ отдаём в любом случае:
-// без admin-токена или при сбое Synapse выдача не блокируется, только пишется в журнал.
-async function noticeKeyIssued(req, via) {
-  if (!hasAdminToken()) return audit(req, 'notice-skipped', { via });
-  try {
-    const deviceName = await getDeviceName(req.userId, req.deviceId);
-    const ok = await sendServerNotice(req.userId, keyIssuedNotice({ deviceId: req.deviceId, deviceName, via }));
-    audit(req, ok ? 'notice-sent' : 'notice-failed', { via });
-  } catch (e) {
-    console.error('server notice упал:', e.message);
-    audit(req, 'notice-failed', { via });
-  }
-}
-
-app.get('/health', (_req, res) => res.json({ ok: true }));
-
-// Лежит ли ключ этого аккаунта. 200 — да, 404 — нет.
-app.get('/key', auth, (req, res) => {
-  const row = db.getKey.get(req.userId);
-  if (row) res.json({ stored: true });
-  else res.sendStatus(404);
+const { app, sweep } = createApp({
+  db: openDb(),
+  matrix,
+  mailer,
+  config: {
+    codeTtlSeconds: Number(process.env.CODE_TTL_SECONDS || 600),
+    codeResendSeconds: Number(process.env.CODE_RESEND_SECONDS || 60),
+    maxAttempts: Number(process.env.MAX_ATTEMPTS || 5),
+    sessionKeyWindowSeconds: Number(process.env.SESSION_KEY_WINDOW_SECONDS || 900),
+    legacyKeysUntil,
+  },
 });
 
-// Залить/перезаписать ключ восстановления.
-app.put('/key', auth, (req, res) => {
-  const key = req.body?.recovery_key;
-  if (!isValidRecoveryKey(key)) {
-    audit(req, 'put-key-rejected');
-    return res.status(400).json({ error: 'recovery_key must be a Matrix recovery key' });
-  }
-  db.putKey.run(req.userId, encrypt(key.trim()), Date.now());
-  audit(req, 'put-key');
-  res.sendStatus(204);
-});
-
-// Удалить ключ: клиент зовёт, когда ключ из хранилища не подошёл (его сменили в другом клиенте).
-// Тогда, как только сессию подтвердят вручную, клиент выпустит и сохранит свежий ключ.
-app.delete('/key', auth, (req, res) => {
-  db.deleteKey.run(req.userId);
-  audit(req, 'delete-key');
-  res.sendStatus(204);
-});
-
-// Прислать код на почту аккаунта.
-app.post('/code', auth, async (req, res) => {
-  let email;
-  try {
-    email = await getEmail(req.token);
-  } catch (e) {
-    console.error('3pid упал:', e.message);
-    return res.sendStatus(502);
-  }
-  if (!email) return res.sendStatus(404); // NoEmail
-
-  const existing = db.getCode.get(req.userId);
-  if (existing && Date.now() - existing.last_sent_at < RESEND_MS) {
-    return res.sendStatus(429); // слишком часто
-  }
-
-  const code = genCode();
-  db.upsertCode.run(req.userId, hashCode(code), Date.now() + CODE_TTL_MS, Date.now());
-
-  try {
-    await sendCode(email, code);
-  } catch (e) {
-    console.error('отправка письма упала:', e.message);
-    return res.sendStatus(502);
-  }
-  res.json({ masked_email: maskEmail(email) });
-});
-
-// Проверить код и, если верный, отдать ключ.
-app.post('/key/redeem', auth, (req, res) => {
-  const code = String(req.body?.code || '').trim();
-  const row = db.getCode.get(req.userId);
-  if (!row) return res.sendStatus(410); // кода нет — считаем истёкшим
-
-  if (row.attempts >= MAX_ATTEMPTS) {
-    db.deleteCode.run(req.userId);
-    return res.sendStatus(429); // TooManyAttempts
-  }
-  if (Date.now() > row.expires_at) {
-    db.deleteCode.run(req.userId);
-    return res.sendStatus(410); // Expired
-  }
-
-  const correct = /^\d{6}$/.test(code) && timingSafeEqualHex(row.code_hash, hashCode(code));
-  if (!correct) {
-    db.bumpAttempts.run(req.userId);
-    const left = MAX_ATTEMPTS - (row.attempts + 1);
-    if (left <= 0) {
-      db.deleteCode.run(req.userId);
-      return res.sendStatus(429);
-    }
-    return res.status(400).json({ attempts_left: left });
-  }
-
-  const keyRow = db.getKey.get(req.userId);
-  db.deleteCode.run(req.userId); // код одноразовый
-  if (!keyRow) return res.sendStatus(404); // NoStoredKey
-
-  audit(req, 'get-key-code');
-  noticeKeyIssued(req, 'code');
-  res.json({ recovery_key: decrypt(keyRow.key_enc) });
-});
-
-// Отдать ключ восстановления без кода с почты — любой сессии, которая смогла войти в аккаунт
-// (решение юзера 2026-09-24, «как в TG»: вошёл — история на месте). Код с почты при этом
-// переезжает на шаг входа (MAS), а не на разблокировку ключа. 404 — ключа нет.
-// Заплатка до escrow варианта B (larpgram-infra, этап 4): каждому устройству ключ отдаётся один
-// раз, с окном на повтор SESSION_KEY_WINDOW_MS, и владелец получает уведомление. Потом 403:
-// клиент на не-200 просто не разблокирует сессию, подтверждать её придётся вручную.
-app.get('/key/session', auth, (req, res) => {
-  const keyRow = db.getKey.get(req.userId);
-  if (!keyRow) return res.sendStatus(404);
-  if (!req.deviceId) return res.sendStatus(403);
-
-  const now = Date.now();
-  const issue = sessionKeyIssue({
-    issuedAt: db.getSessionIssue.get(req.userId, req.deviceId)?.first_at ?? null,
-    now,
-    windowMs: SESSION_KEY_WINDOW_MS,
-  });
-  if (issue === 'expired') {
-    audit(req, 'get-key-session-refused');
-    return res.sendStatus(403);
-  }
-  if (issue === 'first') {
-    db.putSessionIssue.run(req.userId, req.deviceId, now);
-    noticeKeyIssued(req, 'session');
-  }
-  audit(req, 'get-key-session', { issue });
-  res.set('Cache-Control', 'no-store');
-  res.json({ recovery_key: decrypt(keyRow.key_enc) });
-});
-
-// «Удалить у обоих» для ЛС: серверный Synapse purge комнаты. Matrix не даёт удалить чужую
-// сторону, поэтому это делает сервис своим admin-токеном — но только для локальной лички и только
-// если вызывающий сам в ней состоит. Клиент лишь просит; власти у него нет.
-app.post('/room/delete', auth, async (req, res) => {
-  if (!hasAdminToken()) return res.sendStatus(503); // admin-токен не настроен
-  const roomId = String(req.body?.room_id || '').trim();
-  if (!roomId.startsWith('!')) return res.status(400).json({ error: 'room_id required' });
-
-  let members;
-  try {
-    members = await getRoomMembers(roomId);
-  } catch (e) {
-    console.error('room members упал:', e.message);
-    return res.sendStatus(502);
-  }
-  if (!members) return res.sendStatus(502);
-  if (!members.includes(req.userId)) return res.sendStatus(403); // не участник — нельзя
-
-  // Всё проверяем данными сервера, а не клиента (см. deleteForBothRefusal): раньше хватало m.direct
-  // вызывающего, а его клиент пишет сам — так можно было снести группу или канал из двоих.
-  const room = await getRoomDetails(roomId);
-  if (!room) return res.sendStatus(502);
-  const directOf = {};
-  for (const member of members) {
-    const direct = await getDirectRoomsOf(member);
-    if (direct === null) return res.sendStatus(502);
-    directOf[member] = direct;
-  }
-  const refusal = deleteForBothRefusal({ callerId: req.userId, members, room, directOf });
-  if (refusal) {
-    audit(req, 'delete-room-refused', { room: roomId, reason: refusal });
-    return res.status(409).json({ error: refusal });
-  }
-
-  const ok = await deleteRoom(roomId).catch((e) => {
-    console.error('delete room упал:', e.message);
-    return false;
-  });
-  if (!ok) return res.sendStatus(502);
-  audit(req, 'delete-room', { room: roomId });
-  res.sendStatus(202);
-});
-
-function maskEmail(email) {
-  const at = email.lastIndexOf('@');
-  if (at <= 0) return '***';
-  const local = email.slice(0, at);
-  const domain = email.slice(at + 1);
-  const head = local.length <= 1 ? local : local[0];
-  return `${head}***@${domain}`;
-}
+sweep();
+setInterval(sweep, 60 * 60_000).unref();
 
 app.listen(PORT, () => console.log(`key-escrow слушает :${PORT}`));
