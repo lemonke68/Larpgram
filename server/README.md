@@ -5,12 +5,21 @@
 
 | Папка | Что | Где на сервере | Адрес |
 | --- | --- | --- | --- |
-| `key-escrow/` | ключ восстановления для новых сессий, «удалить у обоих» | `~/key-escrow` | `push.mango-kokos.ru/escrow` |
-| `account/` | регистрация и сброс пароля из приложения (код на почту, аккаунты — в MAS) | `~/larpgram-account` | `push.mango-kokos.ru/account` |
-| `gif-proxy/` | прокси поиска GIF (Giphy), ключ API на сервере | `~/gif-proxy` | `gifs.mango-kokos.ru` |
-| `stickers/` | nginx со стикерпаками (только конфиг; паки лежат рядом на сервере) | `~/stickers` | `stickers.mango-kokos.ru` |
-| `tg-import/` | импорт стикерпаков из Telegram (ходит наружу через sing-box) | `~/tg-import` | `stickers.mango-kokos.ru/import` |
-| `traefik/` | маршруты Traefik, которые плейбук не ставит: вход по паролю → MAS, запрет admin API снаружи | `/matrix/traefik/config/dynamic` (root) | `matrix.mango-kokos.ru` |
+| `key-escrow/` | ключ восстановления для новых сессий, «удалить у обоих» | `/srv/secure/larpgram/key-escrow` | `push.mango-kokos.ru/escrow` |
+| `account/` | регистрация и сброс пароля из приложения (код на почту, аккаунты — в MAS) | `/srv/secure/larpgram/larpgram-account` | `push.mango-kokos.ru/account` |
+| `gif-proxy/` | прокси поиска GIF (Giphy), ключ API на сервере | `/srv/secure/larpgram/gif-proxy` | `gifs.mango-kokos.ru` |
+| `stickers/` | nginx со стикерпаками (только конфиг; паки лежат рядом на сервере) | `/srv/secure/larpgram/stickers` | `stickers.mango-kokos.ru` |
+| `tg-import/` | импорт стикерпаков из Telegram (ходит наружу через sing-box) | `/srv/secure/larpgram/tg-import` | `stickers.mango-kokos.ru/import` |
+
+Каталоги сервисов лежат на зашифрованном разделе `/srv/secure` (LUKS, ключ — от Tang на RPi5;
+этап 6 `larpgram-infra`, 2026-10-07). Данные key-escrow и account — в `./data` каталога проекта,
+не в docker-томах. Matrix — там же (`/matrix` → `/srv/secure/matrix`). Если после перезагрузки
+Pi недоступна, раздел открывается вручную: `sudo /usr/local/sbin/secure-unlock.sh manual`.
+
+Маршруты Traefik, которые плейбук не ставит (запрет admin API MAS и Synapse снаружи), живут в
+`larpgram-infra/traefik/dynamic`, на сервере — `/etc/traefik-main/dynamic` (открытый диск: Traefik
+стартует раньше, чем открывается `/srv/secure`). Вход по паролю → MAS с этапа 3 маршрутизирует сам
+плейбук, старый `matrix-mas-compat.yml` больше не нужен.
 
 Не в этом репозитории, но приложение от них зависит: sygnal (push-шлюз, под MDAD) и
 `smtp-tunnel` (почта на Proton) — оба в `larpgram-infra`. tg-import и smtp-tunnel ходят наружу

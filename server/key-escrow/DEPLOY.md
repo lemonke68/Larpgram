@@ -6,8 +6,9 @@
 Второе назначение — «удалить у обоих» для личек (`POST /room/delete`).
 
 Исходники — в репозитории Larpgram, `server/key-escrow` (с 2026-09-28; до этого было две копии
-без git). На сервере — `~/key-escrow`, туда выкатываем rsync'ом (см. «Обновление»). Живёт на `push.mango-kokos.ru/escrow` (рядом с sygnal,
-не на публичной витрине `larpgram.mango-kokos.ru`).
+без git). На сервере — `/srv/secure/larpgram/key-escrow` (зашифрованный раздел), выкатывает
+`larpgram-infra` (см. «Обновление»). Живёт на `push.mango-kokos.ru/escrow` (рядом с sygnal, не на
+публичной витрине `larpgram.mango-kokos.ru`).
 
 > **Модель безопасности.** Сервис хранит ключ восстановления (зашифрованным на своём
 > master-ключе) и отдаёт его любой сессии, вошедшей в аккаунт (`/key/session`, с 2026-09-24),
@@ -24,19 +25,15 @@
 
 ## 1. Секреты
 
-```bash
-cd ~/key-escrow            # или куда положишь бандл
-cp .env.sample .env
-# master-ключ шифрования (ровно 32 байта base64):
-echo "ESCROW_MASTER_KEY=$(openssl rand -base64 32)" >> .env   # впиши в .env вместо пустого
-# пеппер для хэша кодов:
-echo "CODE_PEPPER=$(openssl rand -hex 32)" >> .env
-```
+`.env` собирается из ansible-vault `larpgram-infra` (шаблон `services/env/key-escrow.env.j2`) и
+перезаписывается при каждой выкатке, руками на сервере его не правим. Переменные vault:
+`vault_escrow_master_key` (ровно 32 байта base64, `openssl rand -base64 32`),
+`vault_escrow_code_pepper` (`openssl rand -hex 32`), `vault_escrow_synapse_admin_token` (см.
+«Удалить у обоих»). Правка — `just vault-edit` в `larpgram-infra`.
 
-Открой `.env`, убедись, что `ESCROW_MASTER_KEY` и `CODE_PEPPER` заполнены (строки-заготовки
-сверху удали, чтобы не было дублей). **Master-ключ сразу сохрани в Vaultwarden:** его потеря
-= депонированные ключи не расшифровать (вход по почте перестанет работать; вторым устройством
-и вводом ключа восстановления люди при этом верифицируются по-прежнему).
+**Master-ключ хранится ещё и в Vaultwarden:** его потеря = депонированные ключи не расшифровать
+(вход по почте перестанет работать; вторым устройством и вводом ключа восстановления люди при
+этом верифицируются по-прежнему).
 
 ## 2. Почта: ничего настраивать не надо
 
@@ -49,12 +46,10 @@ echo "CODE_PEPPER=$(openssl rand -hex 32)" >> .env
 
 ## 3. Сборка и запуск
 
-```bash
-cd ~/key-escrow
-docker compose build
-docker compose up -d
-docker compose logs -f key-escrow      # должно быть «key-escrow слушает :8080»
-```
+`just services key-escrow` в `larpgram-infra` (см. «Обновление»): сборка, `.env`, перезапуск
+`larpgram@key-escrow.service`. Логи — `journalctl -u larpgram@key-escrow` (строка «key-escrow
+слушает :8080»). Вручную `docker compose up -d` не запускать: в compose `restart: "no"`, такой
+контейнер не переживёт перезагрузку и не дождётся `/srv/secure`.
 
 Traefik подхватит контейнер по лейблам (сеть `web`). Если маршрут не поднялся (свежий контейнер,
 старые IP в Traefik) — знакомая грабля: `docker restart traefik-main`, подожди 1-2 минуты.
@@ -122,18 +117,18 @@ curl -s -X POST https://push.mango-kokos.ru/escrow/key/redeem \
 С 2026-09-29 (аудит C-017) токен принадлежит отдельному боту **`@escrow-admin`** (device
 `ESCROWADMIN`, без пароля — войти в него можно только по токену), а не личному аккаунту владельца:
 утечка `.env` не даёт писать от имени владельца, а чистка своих сессий не ломает escrow. Выпуск
-заново (токен сразу пишется в `.env`, на экран не выводится):
+заново:
 
 ```bash
 # один раз: аккаунт бота
 docker exec matrix-authentication-service mas-cli manage register-user --yes --no-admin -d "Escrow admin" escrow-admin
-# токен с admin-scope -> в .env
-cp ~/key-escrow/.env ~/key-escrow/.env.bak-$(date +%F)
-T=$(docker exec matrix-authentication-service mas-cli manage issue-compatibility-token \
-      --yes-i-want-to-grant-synapse-admin-privileges escrow-admin ESCROWADMIN 2>&1 | grep -o 'mct_[A-Za-z0-9_]*' | head -1)
-[ -n "$T" ] && sed -i "s|^SYNAPSE_ADMIN_TOKEN=.*|SYNAPSE_ADMIN_TOKEN=$T|" ~/key-escrow/.env
-cd ~/key-escrow && docker compose up -d --force-recreate   # env читается только при старте
+# токен с admin-scope
+docker exec matrix-authentication-service mas-cli manage issue-compatibility-token \
+  --yes-i-want-to-grant-synapse-admin-privileges escrow-admin ESCROWADMIN 2>&1 | grep -o 'mct_[A-Za-z0-9_]*' | head -1
 ```
+
+Токен — в `vault_escrow_synapse_admin_token` (`just vault-edit`), затем
+`just services key-escrow` (env читается только при старте).
 
 Отозвать — удалить сессию `ESCROWADMIN` бота (`mas-cli manage kill-sessions escrow-admin`). Пусто в
 env → эндпоинт отвечает 503. Проверка scope:
@@ -165,11 +160,13 @@ curl -s https://push.mango-kokos.ru/escrow/health      # {"ok":true}
 
 ## Бэкап
 
-`backup.sh` в cron пользователя (`10 4 * * *`): SQLite backup API внутри контейнера →
-`~/backups/key-escrow/escrow-ГГГГММДД.db` на NVMe (том Docker — на RAID, то есть другой диск),
-хранится 14 дней, лог — `~/backups/key-escrow.log`. Ключи в копии зашифрованы
-`ESCROW_MASTER_KEY` (копия в Vaultwarden). Восстановление: `sudo systemctl stop larpgram@key-escrow`, положить файл в
-том как `/data/escrow.db` (`docker cp`), `sudo systemctl start larpgram@key-escrow`.
+Общий ночной бэкап `larpgram-infra` (`backup/backup.sh`, 04:30): SQLite backup API внутри
+контейнера, копия шифруется age и уходит в приватный GitHub-репозиторий вместе с базами Matrix.
+Свой `backup.sh` с открытыми копиями в `~/backups/key-escrow` убран на этапе 6 (2026-10-07).
+Ключи в копии к тому же зашифрованы `ESCROW_MASTER_KEY` (копия в Vaultwarden). Восстановление —
+`larpgram-infra/backup/restore.md`: `sudo systemctl stop larpgram@key-escrow`, положить файл как
+`/srv/secure/larpgram/key-escrow/data/escrow.db` (владелец uid 1000), `sudo systemctl start
+larpgram@key-escrow`.
 
 Без бэкапа потеря тома опасна: провижинер решит, что ключей нет ни у кого, и молча выпустит
 всем новые ключи восстановления.

@@ -59,34 +59,31 @@ MAS не принимает — приложение выходит через `
 
 ## Что нужно на сервере (один раз)
 
-**1. Маршруты Traefik** (root). Файл `server/traefik/matrix-mas-compat.yml` из репозитория:
-
-```bash
-sudo cp ~/matrix-mas-compat.yml /matrix/traefik/config/dynamic/matrix-mas-compat.yml
-```
-
-Он отдаёт `/_matrix/client/*/{login,logout,refresh}` в MAS (с префиксом `/auth`) и закрывает
-`/auth/api/admin` снаружи. Traefik подхватывает файл сам. Проверка:
+**1. Маршруты Traefik.** `/_matrix/client/*/{login,logout,refresh}` в MAS с этапа 3
+`larpgram-infra` маршрутизирует сам плейбук. Запрет `/auth/api/admin` снаружи — файл
+`larpgram-infra/traefik/dynamic/matrix-mas-admin-api.yml`, на сервере в
+`/etc/traefik-main/dynamic` (root), Traefik подхватывает его сам. Проверка:
 
 ```bash
 curl -s https://matrix.mango-kokos.ru/_matrix/client/v3/login          # flows с m.login.password
 curl -s -o /dev/null -w "%{http_code}\n" https://matrix.mango-kokos.ru/auth/api/admin/v1/users   # 403
 ```
 
-**2. MAS** — в `vars.yml` плейбука на Маке (`~/matrix-docker-ansible-deploy`, блок «Larpgram
-(2026-10-01)» в конце): `matrix_authentication_service_admin_api_enabled`,
+**2. MAS** — в инвентаре `larpgram-infra` (`inventory/host_vars/matrix.mango-kokos.ru/vars.yml`,
+секреты в `vault.yml`): `matrix_authentication_service_admin_api_enabled`,
 `..._config_account_login_with_email_allowed`, клиент в `..._config_clients_custom` и его id в
-`policy.data.admin_clients`. Применить:
+`policy.data.admin_clients`. Применить (запускает пользователь, нужен sudo):
 
 ```bash
-cd ~/matrix-docker-ansible-deploy
-just run-tags setup-matrix-authentication-service,start -K
+cd ~/element-fork/larpgram-infra
+just matrix setup-matrix-authentication-service,start
 ```
 
 MAS перезапустится на несколько секунд, сессии не слетают.
 
-**3. Секреты сервиса** — `~/larpgram-account/.env` по `.env.sample`: `CODE_PEPPER` (случайная
-строка), `MAS_CLIENT_ID` и `MAS_CLIENT_SECRET` — те же, что в `vars.yml`.
+**3. Секреты сервиса** — `.env` собирается из vault `larpgram-infra` (шаблон
+`services/env/larpgram-account.env.j2`): `vault_account_code_pepper` (случайная строка) и
+`vault_mas_account_client_secret` (тот же, что у клиента MAS); `MAS_CLIENT_ID` прописан в шаблоне.
 
 ## Обновление
 
@@ -106,7 +103,7 @@ curl -s https://push.mango-kokos.ru/account/health      # {"ok":true}
 # Занятый ник — 409 username_taken, значит admin API MAS отвечает.
 curl -s -X POST https://push.mango-kokos.ru/account/register/start \
   -H 'content-type: application/json' -d '{"username":"lemonke67","email":"x@example.com"}'
-docker logs --tail 20 larpgram-account     # журнал: register-start / register-done / reset-*
+journalctl -u larpgram@larpgram-account -n 20   # журнал: register-start / register-done / reset-*
 ```
 
 `502 upstream_failed` и `MAS ответил 401/403` в логе — не тот секрет клиента или id клиента нет в
