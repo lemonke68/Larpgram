@@ -371,6 +371,8 @@ licensee {
     allowUrl("https://www.zetetic.net/sqlcipher/license/")
     allowUrl("https://jsoup.org/license")
     allowUrl("https://asm.ow2.io/license.html")
+    // Правка форка: BouncyCastle (Argon2id для escrow B), лицензия MIT-подобная.
+    allowUrl("https://www.bouncycastle.org/licence.html")
     allowUrl("https://www.gnu.org/licenses/agpl-3.0.txt")
     allowUrl("https://github.com/mhssn95/compose-color-picker/blob/main/LICENSE")
     ignoreDependencies("com.github.matrix-org", "matrix-analytics-events")

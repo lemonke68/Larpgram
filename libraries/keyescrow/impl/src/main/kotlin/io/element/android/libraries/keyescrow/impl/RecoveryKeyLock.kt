@@ -36,8 +36,12 @@ class RecoveryKeyLock(
 ) {
     data class Params(val memoryKib: Int, val iterations: Int, val parallelism: Int) {
         companion object {
-            /** Цель — до 1,5 с на старом Honor. Сервер не примет меньше 16 МиБ и 2 проходов. */
-            val DEFAULT = Params(memoryKib = 64 * 1024, iterations = 3, parallelism = 1)
+            /**
+             * Замер на Honor MAR-LX1M (2026-10-07): 64 МиБ × 3 — 1,5 с, 64 МиБ × 2 — 1,0 с, 32 МиБ × 3 —
+             * 0,7 с. Память важнее проходов против перебора на GPU, поэтому 64 МиБ × 2. Сервер не
+             * примет меньше 16 МиБ и 2 проходов.
+             */
+            val DEFAULT = Params(memoryKib = 64 * 1024, iterations = 2, parallelism = 1)
         }
     }
 
