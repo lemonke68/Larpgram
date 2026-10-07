@@ -51,6 +51,8 @@ dependencies {
     implementation(projects.libraries.wellknown.api)
     // Правка форка: регистрация и сброс пароля (экран screens/tg).
     implementation(projects.libraries.accountapi.api)
+    // Правка форка: пароль для ключа восстановления, запертого паролем (escrow B).
+    implementation(projects.libraries.keyescrow.api)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.webkit)
     implementation(libs.serialization.json)
@@ -67,6 +69,7 @@ dependencies {
     testImplementation(projects.libraries.sessionStorage.test)
     testImplementation(projects.libraries.wellknown.test)
     testImplementation(projects.libraries.accountapi.test)
+    testImplementation(projects.libraries.keyescrow.test)
     testImplementation(libs.androidx.camera.camera2)
     testImplementation(libs.androidx.camera.lifecycle)
 }

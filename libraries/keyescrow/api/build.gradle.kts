@@ -14,4 +14,6 @@ android {
 dependencies {
     // Правка форка: RoomId для «удалить у обоих».
     api(projects.libraries.matrix.api)
+    // Правка форка: StateFlow в RecoveryKeyAutoProvisioner (escrow вариант B).
+    api(libs.coroutines.core)
 }

@@ -18,6 +18,7 @@ import io.element.android.libraries.accountapi.api.RedeemLoginResult
 import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
 import io.element.android.libraries.accountapi.test.FakeAccountApi
+import io.element.android.libraries.keyescrow.test.FakeLoginPasswordHandoff
 import io.element.android.libraries.matrix.api.auth.AuthenticationException
 import io.element.android.libraries.matrix.test.auth.FakeMatrixAuthenticationService
 import io.element.android.libraries.matrix.test.auth.aMatrixHomeServerDetails
@@ -550,5 +551,6 @@ class TgAuthPresenterTest {
         buildMeta = aBuildMeta(),
         rageshakeFeatureAvailability = { flowOf(true) },
         onBoardingLogoResIdProvider = { null },
+        loginPasswordHandoff = FakeLoginPasswordHandoff(),
     )
 }

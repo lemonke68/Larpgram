@@ -56,6 +56,26 @@ interface KeyEscrowService {
     suspend fun fetchSessionKey(): String?
 
     /**
+     * Вариант B: что лежит у аккаунта на сервере. `null` — сервер недоступен или ответил невнятно.
+     */
+    suspend fun remoteState(): EscrowRemoteState?
+
+    /** Вариант B: ключ, запертый паролем. */
+    suspend fun fetchLockedKey(): LockedKeyFetch
+
+    /** Вариант B: положить ключ, запертый паролем, перезаписав прежний. */
+    suspend fun storeLockedKey(locked: LockedRecoveryKey): Boolean
+
+    /** Вариант B: убрать запертый ключ (он открывает уже не тот ключ восстановления). */
+    suspend fun deleteLockedKey(): Boolean
+
+    /** Тумблер «восстановление через сервер»: положить ключ на master-ключе сервиса. */
+    suspend fun enableServerKey(recoveryKey: String): Boolean
+
+    /** Выключить тумблер или убрать ключ со времён v1: у сервера ключа больше нет. */
+    suspend fun disableServerKey(): Boolean
+
+    /**
      * Правка форка: «удалить у обоих» для ЛС. Просит наш сервер снести комнату целиком через
      * Synapse admin API — Matrix не даёт удалить чужую сторону. Сервер сам проверяет по своим
      * данным, что это локальная личка (не больше двух участников с нашего сервера, без имени и
@@ -98,4 +118,23 @@ sealed interface RedeemResult {
 
     /** Сеть или сервер недоступны. */
     data object NetworkError : RedeemResult
+}
+
+/** Состояние escrow аккаунта на сервере (вариант B). */
+data class EscrowRemoteState(
+    /** Лежит ключ, запертый паролем. */
+    val hasLockedKey: Boolean,
+    /** У сервера есть ключ на его master-ключе: тумблер или остаток v1. */
+    val hasServerKey: Boolean,
+    /** Ключ на сервере, потому что человек сам включил «восстановление через сервер». */
+    val serverKeyOptIn: Boolean,
+)
+
+/** Результат запроса запертого ключа. */
+sealed interface LockedKeyFetch {
+    data class Found(val locked: LockedRecoveryKey) : LockedKeyFetch
+
+    data object NotFound : LockedKeyFetch
+
+    data object NetworkError : LockedKeyFetch
 }

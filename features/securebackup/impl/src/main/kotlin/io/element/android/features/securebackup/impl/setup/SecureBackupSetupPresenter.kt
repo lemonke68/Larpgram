@@ -26,7 +26,7 @@ import io.element.android.features.securebackup.impl.loggerTagSetup
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyUserStory
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyViewState
 import io.element.android.libraries.architecture.Presenter
-import io.element.android.libraries.keyescrow.api.KeyEscrowService
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.encryption.EnableRecoveryProgress
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +41,7 @@ class SecureBackupSetupPresenter(
     private val encryptionService: EncryptionService,
     // Правка форка: как только SDK создал ключ восстановления, кладём его в escrow, чтобы
     // потом верифицировать новую сессию кодом с почты, а не вторым устройством.
-    private val keyEscrowService: KeyEscrowService,
+    private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
 ) : Presenter<SecureBackupSetupState> {
     @AssistedFactory
     interface Factory {
@@ -150,13 +150,11 @@ class SecureBackupSetupPresenter(
     }
 
     /**
-     * Правка форка: депонируем ключ восстановления в escrow. Fire-and-forget: если сеть
-     * или сервер недоступны, настройку бэкапа это не ломает, ключ просто не попадёт в
-     * хранилище (бэкфилл при следующем запуске верифицированной сессии дозальёт).
+     * Правка форка: новый ключ восстановления — провижинеру escrow B (копия на устройстве и ключ,
+     * запертый паролем, на сервере). Fire-and-forget: если сеть или сервер недоступны, настройку
+     * бэкапа это не ломает, приложение попросит пароль позже.
      */
     private fun CoroutineScope.uploadKeyToEscrow(recoveryKey: String) = launch {
-        keyEscrowService.store(recoveryKey).onFailure {
-            Timber.tag(loggerTagSetup.value).w(it, "не удалось депонировать ключ восстановления в escrow")
-        }
+        recoveryKeyAutoProvisioner.onRecoveryKeyCreated(recoveryKey)
     }
 }

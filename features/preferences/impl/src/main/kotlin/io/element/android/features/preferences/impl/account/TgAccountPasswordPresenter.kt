@@ -28,6 +28,7 @@ import io.element.android.libraries.accountapi.api.ConfirmResult
 import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import kotlinx.coroutines.launch
 
@@ -41,6 +42,7 @@ class TgAccountPasswordPresenter(
     private val matrixClient: MatrixClient,
     private val accountSessionApi: AccountSessionApi,
     private val accountApi: AccountApi,
+    private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
 ) : Presenter<TgAccountPasswordState> {
     @Composable
     override fun present(): TgAccountPasswordState {
@@ -122,6 +124,9 @@ class TgAccountPasswordPresenter(
                 error = null
                 when (val result = accountApi.resetPassword(ticket, code, password)) {
                     is ConfirmResult.Done -> {
+                        // Ключ восстановления на сервере заперт старым паролем: перезапираем новым,
+                        // иначе новые устройства не откроют историю (escrow B).
+                        recoveryKeyAutoProvisioner.onPasswordChanged(password)
                         password = ""
                         passwordRepeat = ""
                         step = Step.Done

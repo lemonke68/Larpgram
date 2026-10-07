@@ -12,7 +12,10 @@ import dev.zacsweers.metro.ContributesBinding
 import io.element.android.appconfig.LarpgramHosts
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.SessionScope
+import io.element.android.libraries.keyescrow.api.EscrowRemoteState
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
+import io.element.android.libraries.keyescrow.api.LockedKeyFetch
+import io.element.android.libraries.keyescrow.api.LockedRecoveryKey
 import io.element.android.libraries.keyescrow.api.RedeemResult
 import io.element.android.libraries.keyescrow.api.RequestCodeResult
 import io.element.android.libraries.matrix.api.MatrixClient
@@ -158,6 +161,51 @@ class DefaultKeyEscrowService(
         }
     }
 
+    override suspend fun remoteState(): EscrowRemoteState? {
+        val token = accessToken() ?: return null
+        return execute(authorized(token, "/v2/state").get().build()) { response ->
+            if (response.code != 200) return@execute null
+            runCatching { json.decodeFromString<StateResponse>(response.body.string()) }
+                .getOrNull()
+                ?.let { EscrowRemoteState(hasLockedKey = it.blob, hasServerKey = it.serverKey, serverKeyOptIn = it.serverOptIn) }
+        }
+    }
+
+    override suspend fun fetchLockedKey(): LockedKeyFetch {
+        val token = accessToken() ?: return LockedKeyFetch.NetworkError
+        return execute(authorized(token, "/v2/blob").get().build()) { response ->
+            when (response.code) {
+                200 -> runCatching { json.decodeFromString<BlobResponse>(response.body.string()).blob.toLocked() }
+                    .map { LockedKeyFetch.Found(it) }
+                    .getOrElse { LockedKeyFetch.NetworkError }
+                404 -> LockedKeyFetch.NotFound
+                else -> LockedKeyFetch.NetworkError
+            }
+        } ?: LockedKeyFetch.NetworkError
+    }
+
+    override suspend fun storeLockedKey(locked: LockedRecoveryKey): Boolean {
+        val token = accessToken() ?: return false
+        val body = json.encodeToString(BlobRequest(locked.toJson())).toRequestBody(JSON_MEDIA_TYPE)
+        return execute(authorized(token, "/v2/blob").put(body).build()) { it.isSuccessful } ?: false
+    }
+
+    override suspend fun deleteLockedKey(): Boolean {
+        val token = accessToken() ?: return false
+        return execute(authorized(token, "/v2/blob").delete().build()) { it.isSuccessful } ?: false
+    }
+
+    override suspend fun enableServerKey(recoveryKey: String): Boolean {
+        val token = accessToken() ?: return false
+        val body = json.encodeToString(StoreRequest(recoveryKey)).toRequestBody(JSON_MEDIA_TYPE)
+        return execute(authorized(token, "/v2/server-key").put(body).build()) { it.isSuccessful } ?: false
+    }
+
+    override suspend fun disableServerKey(): Boolean {
+        val token = accessToken() ?: return false
+        return execute(authorized(token, "/v2/server-key").delete().build()) { it.isSuccessful } ?: false
+    }
+
     override suspend fun deleteDmForBoth(roomId: RoomId): Boolean {
         val token = accessToken() ?: return false
         val body = json.encodeToString(DeleteRoomRequest(roomId.value)).toRequestBody(JSON_MEDIA_TYPE)
@@ -171,6 +219,9 @@ class DefaultKeyEscrowService(
     }
 
     private suspend fun accessToken(): String? = matrixClient.getAccessToken().getOrNull()
+
+    private fun authorized(token: String, path: String): Request.Builder =
+        Request.Builder().url("$BASE_URL$path").header(HEADER_AUTH, "Bearer $token")
 
     /**
      * Выполняет запрос на IO-диспетчере и мапит ответ. Возвращает `null`, если запрос упал
@@ -222,4 +273,56 @@ private data class RecoveryKeyResponse(
 @Serializable
 private data class InvalidCodeResponse(
     @SerialName("attempts_left") val attemptsLeft: Int? = null,
+)
+
+@Serializable
+private data class StateResponse(
+    @SerialName("blob") val blob: Boolean = false,
+    @SerialName("server_key") val serverKey: Boolean = false,
+    @SerialName("server_opt_in") val serverOptIn: Boolean = false,
+)
+
+@Serializable
+private data class BlobRequest(
+    @SerialName("blob") val blob: BlobJson,
+)
+
+@Serializable
+private data class BlobResponse(
+    @SerialName("blob") val blob: BlobJson,
+)
+
+/** Формат блоба на сервере (`blobProblem` в server/key-escrow/lib/rules.js). */
+@Serializable
+private data class BlobJson(
+    @SerialName("v") val v: Int,
+    @SerialName("kdf") val kdf: String,
+    @SerialName("m") val m: Int,
+    @SerialName("t") val t: Int,
+    @SerialName("p") val p: Int,
+    @SerialName("salt") val salt: String,
+    @SerialName("nonce") val nonce: String,
+    @SerialName("ct") val ct: String,
+) {
+    fun toLocked() = LockedRecoveryKey(
+        version = v,
+        kdf = kdf,
+        memoryKib = m,
+        iterations = t,
+        parallelism = p,
+        salt = salt,
+        nonce = nonce,
+        ciphertext = ct,
+    )
+}
+
+private fun LockedRecoveryKey.toJson() = BlobJson(
+    v = version,
+    kdf = kdf,
+    m = memoryKib,
+    t = iterations,
+    p = parallelism,
+    salt = salt,
+    nonce = nonce,
+    ct = ciphertext,
 )

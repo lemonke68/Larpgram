@@ -26,8 +26,10 @@ import io.element.android.libraries.appupdate.api.UpdateInstaller
 import io.element.android.libraries.appupdate.api.UpdateStatus
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 // Почта аккаунта: повторы при неудачном запросе и переспрос, пока баннер на экране.
@@ -58,11 +60,13 @@ class RoomListForkBanners(
     fun present(): State {
         val coroutineScope = rememberCoroutineScope()
 
-        // Молча заводим ключ восстановления + escrow, если у аккаунта его ещё нет (идемпотентно,
-        // гейт внутри по RecoveryState.DISABLED): новые и сброшенные сессии восстанавливаются
-        // кодом с почты и не ловят UTD.
+        // Молча заводим ключ восстановления + escrow (идемпотентно): новые и сброшенные сессии
+        // открывают историю паролем со входа и не ловят UTD. Заново — на каждой смене состояния
+        // восстановления: после ручного подтверждения сессии ключ надо запереть паролем (escrow B).
         LaunchedEffect(Unit) {
-            recoveryKeyAutoProvisioner.ensureProvisioned()
+            client.encryptionService.recoveryStateStateFlow
+                .filter { it == RecoveryState.ENABLED || it == RecoveryState.DISABLED || it == RecoveryState.INCOMPLETE }
+                .collect { recoveryKeyAutoProvisioner.ensureProvisioned() }
         }
 
         // Баннер про почту. hasEmail() == false, а не != true: null означает «не дозвонились до

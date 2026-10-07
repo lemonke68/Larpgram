@@ -18,6 +18,7 @@ import io.element.android.libraries.accountapi.api.EmailChangeResult
 import io.element.android.libraries.accountapi.api.StartResult
 import io.element.android.libraries.accountapi.test.FakeAccountApi
 import io.element.android.libraries.accountapi.test.FakeAccountSessionApi
+import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.tests.testutils.WarmUpRule
@@ -110,7 +111,7 @@ class TgAccountPresentersTest {
         )
         val sessionApi = FakeAccountSessionApi(currentEmailLambda = { AccountEmail.Address("v@example.com") })
         val client = FakeMatrixClient(sessionId = SessionId("@vasya:example.org"))
-        TgAccountPasswordPresenter(client, sessionApi, accountApi).test {
+        TgAccountPasswordPresenter(client, sessionApi, accountApi, FakeRecoveryKeyAutoProvisioner()).test {
             val sink = awaitState { it.email != null }.eventSink
             sink(TgAccountPasswordEvent.SendCode)
             awaitState { it.step == TgAccountPasswordState.Step.Code }
@@ -147,7 +148,7 @@ class TgAccountPresentersTest {
             checkCodeLambda = { _, _ -> CheckResult.Ok },
             resetPasswordLambda = { _, _, _ -> answer },
         )
-        TgAccountPasswordPresenter(FakeMatrixClient(), FakeAccountSessionApi(), accountApi).test {
+        TgAccountPasswordPresenter(FakeMatrixClient(), FakeAccountSessionApi(), accountApi, FakeRecoveryKeyAutoProvisioner()).test {
             val sink = awaitItem().eventSink
             sink(TgAccountPasswordEvent.SendCode)
             awaitState { it.step == TgAccountPasswordState.Step.Code }

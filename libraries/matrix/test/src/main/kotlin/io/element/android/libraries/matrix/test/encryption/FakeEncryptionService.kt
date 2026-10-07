@@ -15,6 +15,7 @@ import io.element.android.libraries.matrix.api.encryption.BackupUploadState
 import io.element.android.libraries.matrix.api.encryption.EnableRecoveryProgress
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.IdentityResetHandle
+import io.element.android.libraries.matrix.api.encryption.RecoveryException
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.tests.testutils.lambda.lambdaError
@@ -81,9 +82,13 @@ class FakeEncryptionService(
     var lastRecoveryKey: String? = null
         private set
 
+    // Правка форка: ключ, который открывает хранилище секретов; `null` — подходит любой.
+    var acceptedRecoveryKey: String? = null
+
     override suspend fun recover(recoveryKey: String): Result<Unit> = simulateLongTask {
         lastRecoveryKey = recoveryKey
         recoverFailure?.let { return Result.failure(it) }
+        acceptedRecoveryKey?.let { if (it != recoveryKey) return Result.failure(RecoveryException.SecretStorage("wrong key")) }
         return Result.success(Unit)
     }
 

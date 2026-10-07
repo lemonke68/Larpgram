@@ -9,6 +9,9 @@
 package io.element.android.libraries.keyescrow.impl
 
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.keyescrow.api.EscrowRemoteState
+import io.element.android.libraries.keyescrow.api.LockedKeyFetch
+import io.element.android.libraries.keyescrow.api.LockedRecoveryKey
 import io.element.android.libraries.keyescrow.api.RedeemResult
 import io.element.android.libraries.keyescrow.api.RequestCodeResult
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -68,6 +71,31 @@ class DefaultKeyEscrowServiceTest {
         assertThat(request.bodyText()).isEqualTo("""{"recovery_key":"KEY"}""")
         assertThat(service(respond(400)).store("KEY").isFailure).isTrue()
         assertThat(service(failing()).store("KEY").isFailure).isTrue()
+    }
+
+    @Test
+    fun `locked key goes to v2 blob in the server's field names and comes back`() = runTest {
+        val locked = LockedRecoveryKey(1, "argon2id", 65536, 3, 1, "c2FsdA==", "bm9uY2U=", "Y3Q=")
+        val json = """{"blob":{"v":1,"kdf":"argon2id","m":65536,"t":3,"p":1,"salt":"c2FsdA==","nonce":"bm9uY2U=","ct":"Y3Q="}}"""
+        val put = respond(204)
+        assertThat(service(put).storeLockedKey(locked)).isTrue()
+        assertThat(put.requests.single().method).isEqualTo("PUT")
+        assertThat(put.requests.single().url.encodedPath).endsWith("/escrow/v2/blob")
+        assertThat(put.requests.single().bodyText()).isEqualTo(json)
+
+        val withDate = json.dropLast(1) + ""","updated_at":5}"""
+        assertThat(service(respond(200, withDate)).fetchLockedKey()).isEqualTo(LockedKeyFetch.Found(locked))
+        assertThat(service(respond(404)).fetchLockedKey()).isEqualTo(LockedKeyFetch.NotFound)
+        assertThat(service(respond(500)).fetchLockedKey()).isEqualTo(LockedKeyFetch.NetworkError)
+        assertThat(service(respond(200, "{}")).fetchLockedKey()).isEqualTo(LockedKeyFetch.NetworkError)
+    }
+
+    @Test
+    fun `remote state maps the server answer, failures are unknown`() = runTest {
+        val body = """{"blob":true,"server_key":true,"server_opt_in":false}"""
+        assertThat(service(respond(200, body)).remoteState()).isEqualTo(EscrowRemoteState(hasLockedKey = true, hasServerKey = true, serverKeyOptIn = false))
+        assertThat(service(respond(401)).remoteState()).isNull()
+        assertThat(service(failing()).remoteState()).isNull()
     }
 
     @Test

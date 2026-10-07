@@ -34,6 +34,7 @@ import io.element.android.libraries.accountapi.api.StartResult
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.core.meta.BuildType
+import io.element.android.libraries.keyescrow.api.LoginPasswordHandoff
 import io.element.android.libraries.matrix.api.auth.AuthErrorCode
 import io.element.android.libraries.matrix.api.auth.AuthenticationException
 import io.element.android.libraries.matrix.api.auth.MatrixAuthenticationService
@@ -57,6 +58,7 @@ class TgAuthPresenter(
     private val buildMeta: BuildMeta,
     private val rageshakeFeatureAvailability: RageshakeFeatureAvailability,
     private val onBoardingLogoResIdProvider: OnBoardingLogoResIdProvider,
+    private val loginPasswordHandoff: LoginPasswordHandoff,
 ) : Presenter<TgAuthState> {
     private val multipleTapToUnlock = MultipleTapToUnlock()
 
@@ -113,11 +115,16 @@ class TgAuthPresenter(
             codeSentCount++
         }
 
-        /** Matrix-логин. При успехе сессия появляется в хранилище, и корень сам уводит с экрана. */
+        /**
+         * Matrix-логин. При успехе сессия появляется в хранилище, и корень сам уводит с экрана.
+         * Пароль уходит провижинеру ключа восстановления: им он отопрёт ключ на сервере (escrow B).
+         */
         suspend fun signIn(user: String, pass: String): Boolean {
             val result = authenticationService.setHomeserver(LarpgramHosts.HOMESERVER_URL)
                 .mapCatching { authenticationService.login(user, pass).getOrThrow() }
-            result.onFailure { fail(it.toKind()) }
+            result
+                .onSuccess { sessionId -> loginPasswordHandoff.put(sessionId, pass) }
+                .onFailure { fail(it.toKind()) }
             return result.isSuccess
         }
 
