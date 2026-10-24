@@ -10,12 +10,12 @@
     "test": "node --test test/*.test.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
     "express": "^4.21.2",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^10.2.1"
   },
   "allowScripts": {
     "better-sqlite3@11.10.0": true
