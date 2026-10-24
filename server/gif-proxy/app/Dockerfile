@@ -1,6 +1,11 @@
 # Node 24 есть на сервере, берём тот же мажор, чтобы поведение fetch совпадало.
 FROM node:24-alpine
 
+# npm и corepack в образе не нужны совсем, а их собственные зависимости trivy находит
+# уязвимыми.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
 WORKDIR /app
 COPY server.js ./
 
