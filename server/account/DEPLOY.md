@@ -30,20 +30,26 @@
 
 | Запрос | Тело | Ответ |
 | --- | --- | --- |
-| `POST /pair/offer` | | `200 {code, expires_in}` — код для QR-кода привязки устройства |
+| `POST /pair/offer` | `key_ct?` | `200 {code, expires_in}` — код для QR-кода привязки устройства; `400 key_ct_invalid` |
 | `POST /pair/status` | `code` | `200 {state: waiting / redeemed / expired}`; `404` — чужой или неизвестный код |
 | `POST /email/start` | `email` | `200 {ticket, resend_after}`; `400 email_invalid`; `409 email_taken`; `502 mail_failed` |
 | `POST /email/confirm` | `ticket`, `code` | `200 {email}`; `400 wrong_code`; `410`; `429` |
 | `POST /sessions/end` | `device_id` | `204`; `404 not_found` — завершить сеанс устройства (в том числе своего) |
 
 Без авторизации: `POST /pair/redeem` `{code, device_name}` → `200 {user_id, device_id, access_token,
-homeserver_url}` или `410 code_expired`.
+homeserver_url, key_ct?}` или `410 code_expired`.
 
 Привязка по QR: вошедшее устройство берёт код (`/pair/offer`, живёт 2 минуты, одноразовый) и
 показывает его QR-кодом `larpgram-login:<код>`; новое сканирует и меняет код на сессию
 (`/pair/redeem`). Сессию выпускает MAS как personal session (`POST /api/admin/v1/personal-sessions`)
 с новым устройством в scope; имя устройству сервис ставит сам. Штатный `/logout` для такой сессии
 MAS не принимает — приложение выходит через `/sessions/end`.
+
+Ключ восстановления вместе с QR: если на вошедшем устройстве есть ключ, оно шифрует его случайным
+ключом K (AES-256-GCM, AAD — user id), шлёт шифротекст в `/pair/offer` полем `key_ct` (base64url,
+до 4 КБ), а K кладёт только в QR: `larpgram-login:<код>#<K в base64url>`. Сервис держит `key_ct`
+в памяти рядом с кодом и отдаёт один раз в ответе `/pair/redeem`; с просрочкой или погашением
+кода шифротекст удаляется, рестарт сервиса его теряет (новое устройство тогда попросит пароль).
 
 Общие: `429 too_many_requests` (лимит по IP или по адресу), `502 upstream_failed` (MAS недоступен).
 

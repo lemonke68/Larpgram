@@ -52,7 +52,7 @@ function fakeMas() {
   };
 }
 
-let server, base, mas, sent, clock, db, matrix;
+let server, base, mas, sent, clock, db, matrix, sweep;
 
 async function start(config = {}) {
   mas = fakeMas();
@@ -75,7 +75,9 @@ async function start(config = {}) {
       return m ? { userId: `@${m[1]}:example.org`, deviceId: 'OLD' } : null;
     },
   };
-  const { app } = createApp({ mas, mailer, db, matrix, now: () => clock.t, config });
+  const created = createApp({ mas, mailer, db, matrix, now: () => clock.t, config });
+  const { app } = created;
+  sweep = created.sweep;
   await new Promise((resolve) => { server = app.listen(0, '127.0.0.1', resolve); });
   base = `http://127.0.0.1:${server.address().port}`;
 }
@@ -278,6 +280,47 @@ test('pair: expired and unknown codes give nothing', async () => {
   assert.equal((await post('/pair/redeem', { code: 'nope' })).status, 410);
   assert.equal((await post('/pair/redeem', {})).status, 410);
   assert.equal(mas.sessions.length, 0);
+});
+
+test('pair: offer without key_ct redeems without key_ct', async () => {
+  await mas.createUser('petya');
+  const offer = await post('/pair/offer', {}, 'token-of-petya');
+  const session = await post('/pair/redeem', { code: offer.body.code, device_name: 'Honor' });
+  assert.equal(session.status, 200);
+  assert.equal('key_ct' in session.body, false);
+});
+
+test('pair: key_ct from the offer is handed out once on redeem', async () => {
+  await mas.createUser('petya');
+  const keyCt = 'AbC-_123'.repeat(10);
+  const offer = await post('/pair/offer', { key_ct: keyCt }, 'token-of-petya');
+  assert.equal(offer.status, 200);
+  assert.equal('key_ct' in offer.body, false);
+  const session = await post('/pair/redeem', { code: offer.body.code, device_name: 'Honor' });
+  assert.equal(session.status, 200);
+  assert.equal(session.body.key_ct, keyCt);
+  assert.equal((await post('/pair/redeem', { code: offer.body.code })).status, 410);
+  // Новое предложение без ключа не подхватывает старый шифротекст.
+  const second = await post('/pair/offer', {}, 'token-of-petya');
+  assert.equal('key_ct' in (await post('/pair/redeem', { code: second.body.code })).body, false);
+});
+
+test('pair: invalid key_ct is rejected', async () => {
+  await mas.createUser('petya');
+  for (const bad of ['', 'has space', 'plus+slash/', 'pad==', 42, { a: 1 }, ['x'], 'A'.repeat(4097)]) {
+    assert.deepEqual(await post('/pair/offer', { key_ct: bad }, 'token-of-petya'),
+      { status: 400, body: { error: 'key_ct_invalid' } }, JSON.stringify(bad).slice(0, 20));
+  }
+  assert.equal((await post('/pair/offer', { key_ct: 'A'.repeat(4096) }, 'token-of-petya')).status, 200);
+  assert.equal((await post('/pair/offer', { key_ct: null }, 'token-of-petya')).status, 200);
+});
+
+test('pair: expiry drops key_ct', async () => {
+  await mas.createUser('petya');
+  const offer = await post('/pair/offer', { key_ct: 'secret' }, 'token-of-petya');
+  clock.t += 121_000;
+  sweep();
+  assert.deepEqual(await post('/pair/redeem', { code: offer.body.code }), { status: 410, body: { error: 'code_expired' } });
 });
 
 test('email: signed-in user binds a new address with a code, no password asked', async () => {

@@ -335,11 +335,23 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
     await handler(req, res);
   });
 
-  // Создать предложение. Отвечает кодом для QR и сроком жизни.
+  // Шифротекст ключа восстановления при предложении: только в памяти, отдаётся один раз при
+  // погашении кода. Ключ расшифровки (K) лежит лишь в QR, сервер его не видит.
+  const offerKeys = new Map(); // code_hash -> { keyCt, expiresAt }
+  const KEY_CT_MAX = 4096;
+  const keyCtProblem = (v) => (typeof v !== 'string' || v.length === 0 || v.length > KEY_CT_MAX
+    || !/^[A-Za-z0-9_-]+$/.test(v));
+
+  // Создать предложение. Отвечает кодом для QR и сроком жизни. Необязательный key_ct —
+  // зашифрованный ключ восстановления (base64url) для нового устройства.
   app.post('/pair/offer', auth(async (req, res) => {
+    const keyCt = req.body?.key_ct;
+    if (keyCt !== undefined && keyCt !== null && keyCtProblem(keyCt)) return fail(res, 400, 'key_ct_invalid');
     if (!limiter.allow(`offer:${req.userId}`, offersPerUserHour, HOUR)) return fail(res, 429, 'too_many_requests');
     const code = genPairCode();
-    db.insertOffer.run(hashPairCode(code), req.userId, now() + pairTtlMs);
+    const codeHash = hashPairCode(code);
+    db.insertOffer.run(codeHash, req.userId, now() + pairTtlMs);
+    if (typeof keyCt === 'string') offerKeys.set(codeHash, { keyCt, expiresAt: now() + pairTtlMs });
     audit('pair-offer', { user: req.userId });
     res.set('Cache-Control', 'no-store');
     res.json({ code, expires_in: pairTtlMs / 1000 });
@@ -358,7 +370,10 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
     if (!limiter.allow(`check:${req.ip}`, checksPerIpHour, HOUR)) return fail(res, 429, 'too_many_requests');
     const codeHash = hashPairCode(String(req.body?.code || ''));
     const offer = db.getOffer.get(codeHash);
-    if (!offer || offer.redeemed_at > 0 || now() > offer.expires_at) return fail(res, 410, 'code_expired');
+    if (!offer || offer.redeemed_at > 0 || now() > offer.expires_at) {
+      offerKeys.delete(codeHash);
+      return fail(res, 410, 'code_expired');
+    }
 
     const username = localpartOf(offer.user_id);
     const user = username ? await mas.findUser(username) : null;
@@ -366,6 +381,8 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
 
     // Сначала гасим код, потом выпускаем токен: при гонке двух телефонов сессию получит один.
     if (db.redeemOffer.run(now(), codeHash, now()).changes !== 1) return fail(res, 410, 'code_expired');
+    const keyCt = offerKeys.get(codeHash)?.keyCt;
+    offerKeys.delete(codeHash);
 
     const deviceId = genDeviceId();
     const deviceName = cleanDeviceName(req.body?.device_name);
@@ -378,6 +395,7 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
       device_id: deviceId,
       access_token: accessToken,
       homeserver_url: matrix.homeserverUrl,
+      ...(keyCt ? { key_ct: keyCt } : {}),
     });
   }));
 
@@ -459,6 +477,7 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
     db.deleteExpired.run(now());
     // Погашенные предложения держим до конца срока, чтобы вошедшее устройство узнало об успехе.
     db.deleteExpiredOffers.run(now() - HOUR);
+    for (const [hash, { expiresAt }] of offerKeys) if (expiresAt < now()) offerKeys.delete(hash);
     limiter.sweep(HOUR);
   };
 
