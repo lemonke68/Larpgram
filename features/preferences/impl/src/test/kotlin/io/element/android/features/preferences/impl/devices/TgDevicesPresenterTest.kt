@@ -14,6 +14,9 @@ import io.element.android.libraries.accountapi.api.AccountError
 import io.element.android.libraries.accountapi.api.LoginOfferResult
 import io.element.android.libraries.accountapi.api.LoginOfferState
 import io.element.android.libraries.accountapi.test.FakeAccountSessionApi
+import io.element.android.libraries.keyescrow.test.FakePairingKeyTransfer
+import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
+import io.element.android.libraries.matrix.test.A_SESSION_ID
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
@@ -32,7 +35,7 @@ class TgDevicesPresenterTest {
     @Test
     fun `devices load with this device first, then the most recent`() = runTest {
         val api = FakeAccountSessionApi(listDevicesLambda = { listOf(oldDevice, newDevice, thisDevice) })
-        TgDevicesPresenter(api).test {
+        createPresenter(api).test {
             val loaded = awaitState { it.devices != null }
             assertThat(loaded.devices).containsExactly(thisDevice, newDevice, oldDevice).inOrder()
             assertThat(loaded.loadFailed).isFalse()
@@ -44,7 +47,7 @@ class TgDevicesPresenterTest {
         // Раньше список с таким устройством ронял экран: в сравнение попадали Long и Int.
         val neverSeen = AccountDevice("NEVER", "Just linked", null, isCurrent = false)
         val api = FakeAccountSessionApi(listDevicesLambda = { listOf(neverSeen, oldDevice, thisDevice) })
-        TgDevicesPresenter(api).test {
+        createPresenter(api).test {
             val loaded = awaitState { it.devices != null }
             assertThat(loaded.devices).containsExactly(thisDevice, oldDevice, neverSeen).inOrder()
         }
@@ -54,7 +57,7 @@ class TgDevicesPresenterTest {
     fun `failed load can be retried`() = runTest {
         var answer: List<AccountDevice>? = null
         val api = FakeAccountSessionApi(listDevicesLambda = { answer })
-        TgDevicesPresenter(api).test {
+        createPresenter(api).test {
             val failed = awaitState { it.loadFailed }
             assertThat(failed.devices).isNull()
             answer = listOf(thisDevice)
@@ -73,7 +76,7 @@ class TgDevicesPresenterTest {
                 true
             },
         )
-        TgDevicesPresenter(api).test {
+        createPresenter(api).test {
             val sink = awaitState { it.devices != null }.eventSink
             sink(TgDevicesEvent.AskEnd(oldDevice))
             assertThat(awaitState { it.deviceToEnd != null }.deviceToEnd).isEqualTo(oldDevice)
@@ -88,7 +91,7 @@ class TgDevicesPresenterTest {
     @Test
     fun `failed ending keeps the device and reports it`() = runTest {
         val api = FakeAccountSessionApi(listDevicesLambda = { listOf(thisDevice, oldDevice) }, endSessionLambda = { false })
-        TgDevicesPresenter(api).test {
+        createPresenter(api).test {
             val sink = awaitState { it.devices != null }.eventSink
             sink(TgDevicesEvent.AskEnd(oldDevice))
             sink(TgDevicesEvent.ConfirmEnd)
@@ -106,7 +109,7 @@ class TgDevicesPresenterTest {
             createLoginOfferLambda = { LoginOfferResult.Offer("CODE", 120) },
             loginOfferStateLambda = { offerState },
         )
-        TgDevicesPresenter(api).test {
+        createPresenter(api).test {
             val sink = awaitState { it.devices != null }.eventSink
             sink(TgDevicesEvent.OpenLink)
             assertThat(awaitState { it.link is TgDeviceLink.Showing }.link).isEqualTo(TgDeviceLink.Showing("larpgram-login:CODE"))
@@ -128,7 +131,7 @@ class TgDevicesPresenterTest {
             },
             loginOfferStateLambda = { LoginOfferState.Expired },
         )
-        TgDevicesPresenter(api).test {
+        createPresenter(api).test {
             val sink = awaitState { it.devices != null }.eventSink
             sink(TgDevicesEvent.OpenLink)
             awaitState { it.link == TgDeviceLink.Showing("larpgram-login:FIRST") }
@@ -136,6 +139,64 @@ class TgDevicesPresenterTest {
             awaitState { it.link == TgDeviceLink.Failed }
         }
     }
+
+    @Test
+    fun `with a recovery key on the device the QR carries K and the server gets only the ciphertext`() = runTest {
+        val sentCiphertexts = mutableListOf<String?>()
+        var keyLookups = 0
+        val codes = mutableListOf("FIRST", "SECOND")
+        val api = FakeAccountSessionApi(
+            listDevicesLambda = { listOf(thisDevice) },
+            createLoginOfferLambda = {
+                sentCiphertexts += it
+                if (codes.isEmpty()) LoginOfferResult.Failure(AccountError.Network) else LoginOfferResult.Offer(codes.removeAt(0), 120)
+            },
+            loginOfferStateLambda = { LoginOfferState.Expired },
+        )
+        val provisioner = FakeRecoveryKeyAutoProvisioner(
+            recoveryKeyOnDeviceLambda = {
+                keyLookups++
+                "RK"
+            },
+        )
+        createPresenter(api, provisioner).test {
+            val sink = awaitState { it.devices != null }.eventSink
+            sink(TgDevicesEvent.OpenLink)
+            awaitState { it.link == TgDeviceLink.Showing("larpgram-login:FIRST#K") }
+            awaitState { it.link == TgDeviceLink.Showing("larpgram-login:SECOND#K") }
+            awaitState { it.link == TgDeviceLink.Failed }
+        }
+        assertThat(sentCiphertexts).containsExactly("RK|${A_SESSION_ID.value}", "RK|${A_SESSION_ID.value}", "RK|${A_SESSION_ID.value}")
+        assertThat(keyLookups).isEqualTo(1)
+    }
+
+    @Test
+    fun `without a recovery key the offer carries no ciphertext`() = runTest {
+        val sentCiphertexts = mutableListOf<String?>()
+        val api = FakeAccountSessionApi(
+            listDevicesLambda = { listOf(thisDevice) },
+            createLoginOfferLambda = {
+                sentCiphertexts += it
+                LoginOfferResult.Offer("CODE", 120)
+            },
+            loginOfferStateLambda = { LoginOfferState.Waiting },
+        )
+        createPresenter(api).test {
+            awaitState { it.devices != null }.eventSink(TgDevicesEvent.OpenLink)
+            awaitState { it.link == TgDeviceLink.Showing("larpgram-login:CODE") }
+        }
+        assertThat(sentCiphertexts).containsExactly(null)
+    }
+
+    private fun createPresenter(
+        api: FakeAccountSessionApi,
+        provisioner: FakeRecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
+    ) = TgDevicesPresenter(
+        accountSessionApi = api,
+        recoveryKeyAutoProvisioner = provisioner,
+        pairingKeyTransfer = FakePairingKeyTransfer(),
+        sessionId = A_SESSION_ID,
+    )
 
     private suspend fun ReceiveTurbine<TgDevicesState>.awaitState(predicate: (TgDevicesState) -> Boolean): TgDevicesState =
         consumeItemsUntilPredicate(predicate = predicate).last().also { assertThat(predicate(it)).isTrue() }
