@@ -75,7 +75,13 @@ sealed interface LoginStartResult {
 }
 
 sealed interface RedeemLoginResult {
-    data class Session(val userId: String, val deviceId: String, val accessToken: String) : RedeemLoginResult
+    /** [keyCiphertext] — зашифрованный ключ восстановления со старого устройства, если оно его прислало. */
+    data class Session(
+        val userId: String,
+        val deviceId: String,
+        val accessToken: String,
+        val keyCiphertext: String? = null,
+    ) : RedeemLoginResult
     data class Failure(val error: AccountError) : RedeemLoginResult
 }
 

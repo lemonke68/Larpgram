@@ -94,7 +94,7 @@ class DefaultAccountApi(
             ?: return RedeemLoginResult.Failure(AccountError.Network)
         val body = answer.body
         return if (answer.code == 200 && !body.userId.isNullOrBlank() && !body.deviceId.isNullOrBlank() && !body.accessToken.isNullOrBlank()) {
-            RedeemLoginResult.Session(body.userId, body.deviceId, body.accessToken)
+            RedeemLoginResult.Session(body.userId, body.deviceId, body.accessToken, body.keyCt?.takeIf { it.isNotBlank() })
         } else {
             RedeemLoginResult.Failure(answer.error())
         }

@@ -18,7 +18,7 @@ import io.element.android.libraries.accountapi.api.LoginOfferState
 import io.element.android.libraries.accountapi.api.StartResult
 
 class FakeAccountSessionApi(
-    private val createLoginOfferLambda: () -> LoginOfferResult = { LoginOfferResult.Failure(AccountError.Network) },
+    private val createLoginOfferLambda: (String?) -> LoginOfferResult = { LoginOfferResult.Failure(AccountError.Network) },
     private val loginOfferStateLambda: (String) -> LoginOfferState? = { null },
     private val startEmailChangeLambda: (String) -> StartResult = { StartResult.Failure(AccountError.Network) },
     private val confirmEmailChangeLambda: (String, String) -> EmailChangeResult = { _, _ -> EmailChangeResult.Failure(AccountError.Network) },
@@ -27,7 +27,7 @@ class FakeAccountSessionApi(
     private val currentEmailLambda: () -> AccountEmail = { AccountEmail.Unknown },
     private val checkPasswordLambda: (String) -> Boolean? = { null },
 ) : AccountSessionApi {
-    override suspend fun createLoginOffer() = createLoginOfferLambda()
+    override suspend fun createLoginOffer(keyCiphertext: String?) = createLoginOfferLambda(keyCiphertext)
 
     override suspend fun loginOfferState(code: String) = loginOfferStateLambda(code)
 
