@@ -48,20 +48,38 @@ enum class MusicRepeatMode { Off, All, One }
 
 @Immutable
 data class MusicPlayerState(
-    val queueId: String? = null,
-    val queue: ImmutableList<MusicTrack> = persistentListOf(),
-    val currentIndex: Int = -1,
-    val isPlaying: Boolean = false,
+    val queueId: String?,
+    val queue: ImmutableList<MusicTrack>,
+    val currentIndex: Int,
+    val isPlaying: Boolean,
     /** Игрок хочет играть, но ждёт файл / буфер. */
-    val isBuffering: Boolean = false,
-    val positionMs: Long = 0,
-    val durationMs: Long = 0,
-    val shuffle: Boolean = false,
-    val repeatMode: MusicRepeatMode = MusicRepeatMode.Off,
-    val hasNext: Boolean = false,
-    val hasPrevious: Boolean = false,
-    val hasError: Boolean = false,
+    val isBuffering: Boolean,
+    val positionMs: Long,
+    val durationMs: Long,
+    val shuffle: Boolean,
+    val repeatMode: MusicRepeatMode,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean,
+    val hasError: Boolean,
 ) {
     val currentTrack: MusicTrack? get() = queue.getOrNull(currentIndex)
     val isActive: Boolean get() = currentTrack != null
+
+    companion object {
+        /** Ничего не играет, очереди нет. */
+        val Idle = MusicPlayerState(
+            queueId = null,
+            queue = persistentListOf(),
+            currentIndex = -1,
+            isPlaying = false,
+            isBuffering = false,
+            positionMs = 0,
+            durationMs = 0,
+            shuffle = false,
+            repeatMode = MusicRepeatMode.Off,
+            hasNext = false,
+            hasPrevious = false,
+            hasError = false,
+        )
+    }
 }

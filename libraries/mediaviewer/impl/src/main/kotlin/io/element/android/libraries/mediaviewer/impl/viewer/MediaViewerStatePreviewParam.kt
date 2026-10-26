@@ -351,4 +351,6 @@ fun aMediaViewerState(
     canShowInfo = canShowInfo,
     mediaBottomSheetState = mediaBottomSheetState,
     eventSink = eventSink,
+    // Правка форка (Larpgram): в превью страницы с аудио — со своим плеером.
+    musicPlayer = null,
 )

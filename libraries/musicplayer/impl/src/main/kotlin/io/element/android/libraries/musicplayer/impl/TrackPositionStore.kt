@@ -47,7 +47,7 @@ internal object PositionPolicy {
 
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
-class SharedPrefsTrackPositionStore(
+class SharedPreferencesTrackPositionStore(
     @ApplicationContext context: Context,
 ) : TrackPositionStore {
     private val prefs = context.getSharedPreferences("larpgram_music_positions", Context.MODE_PRIVATE)

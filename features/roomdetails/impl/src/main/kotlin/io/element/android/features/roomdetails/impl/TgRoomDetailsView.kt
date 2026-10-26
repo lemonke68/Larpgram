@@ -88,8 +88,7 @@ import io.element.android.libraries.ui.strings.CommonPlurals
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.toImmutableList
 
-/** Вкладки профиля: «Участники» только у группы, дальше — общие медиа. */
-// Правка форка (Larpgram): вкладка «Музыка», как в общих медиа Telegram.
+/** Вкладки профиля: «Участники» только у группы, дальше — общие медиа (с «Музыкой», как в TG). */
 private enum class TgRoomTab { Members, Media, Files, Music, Links, Voice }
 
 @OptIn(ExperimentalFoundationApi::class)

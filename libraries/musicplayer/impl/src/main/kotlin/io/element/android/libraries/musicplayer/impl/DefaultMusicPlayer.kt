@@ -65,7 +65,7 @@ class DefaultMusicPlayer(
     private val dispatchers: CoroutineDispatchers,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
 ) : MusicPlayer {
-    private val _state = MutableStateFlow(MusicPlayerState())
+    private val _state = MutableStateFlow(MusicPlayerState.Idle)
     override val state: StateFlow<MusicPlayerState> = _state.asStateFlow()
 
     private val _tags = MutableStateFlow<ImmutableMap<String, MusicTrackTags>>(persistentMapOf())
@@ -368,7 +368,7 @@ class DefaultMusicPlayer(
     private fun publish() {
         val player = player
         if (player == null || queue.isEmpty()) {
-            _state.value = MusicPlayerState()
+            _state.value = MusicPlayerState.Idle
             return
         }
         val index = player.currentMediaItemIndex.takeIf { it in queue.indices } ?: -1

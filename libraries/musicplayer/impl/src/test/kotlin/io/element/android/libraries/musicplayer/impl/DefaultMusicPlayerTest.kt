@@ -93,6 +93,8 @@ class DefaultMusicPlayerTest : RobolectricTest() {
         player.play("!room", tracks, startTrackId = "a")
         player.toggleShuffle()
         assertThat(player.state.value.shuffle).isTrue()
+        // Порядок случайный: идём к началу перемешанного порядка, потом проходим его целиком.
+        while (player.state.value.hasPrevious) player.skipToPrevious()
         val visited = mutableListOf(player.state.value.currentTrack!!.id)
         while (player.state.value.hasNext) {
             player.skipToNext()

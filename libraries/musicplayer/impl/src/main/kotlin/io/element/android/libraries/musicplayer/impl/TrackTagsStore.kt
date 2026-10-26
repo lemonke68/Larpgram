@@ -25,7 +25,7 @@ interface TrackTagsStore {
 
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
-class SharedPrefsTrackTagsStore(
+class SharedPreferencesTrackTagsStore(
     @ApplicationContext context: Context,
 ) : TrackTagsStore {
     private val prefs = context.getSharedPreferences("larpgram_music_tags", Context.MODE_PRIVATE)

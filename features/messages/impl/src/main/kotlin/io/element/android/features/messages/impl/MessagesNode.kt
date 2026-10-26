@@ -71,7 +71,6 @@ import io.element.android.libraries.matrix.api.core.toRoomIdOrAlias
 import io.element.android.libraries.matrix.api.permalink.PermalinkData
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
-import io.element.android.libraries.musicplayer.api.MusicMiniPlayer
 import io.element.android.libraries.matrix.api.room.alias.matches
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.TimelineProvider
@@ -82,6 +81,7 @@ import io.element.android.libraries.matrix.ui.model.getBestName
 import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
 import io.element.android.libraries.matrix.ui.presence.rememberPresence
 import io.element.android.libraries.mediaplayer.api.MediaPlayer
+import io.element.android.libraries.musicplayer.api.MusicMiniPlayer
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.hasExternalKeyboard
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive

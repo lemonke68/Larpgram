@@ -32,7 +32,7 @@ fun interface MusicPlayerFactory {
 }
 
 @ContributesBinding(AppScope::class)
-class MusicExoPlayerFactory(
+class DefaultMusicPlayerFactory(
     @ApplicationContext private val context: Context,
     private val dataSourceResolver: MusicDataSourceResolver,
 ) : MusicPlayerFactory {

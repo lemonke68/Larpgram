@@ -31,7 +31,7 @@ data class MediaViewerState(
     val mediaBottomSheetState: MediaBottomSheetState,
     val eventSink: (MediaViewerEvent) -> Unit,
     // Правка форка (Larpgram): общий плеер для страниц с музыкой; null — свой плеер на странице.
-    val musicPlayer: MusicPlayer? = null,
+    val musicPlayer: MusicPlayer?,
 )
 
 @Immutable

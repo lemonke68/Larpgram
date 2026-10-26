@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Запоминает вызовы; play сразу делает очередь текущей. */
 class FakeMusicPlayer(
-    initialState: MusicPlayerState = MusicPlayerState(),
+    initialState: MusicPlayerState = MusicPlayerState.Idle,
 ) : MusicPlayer {
     override val state = MutableStateFlow(initialState)
     override val tags = MutableStateFlow<ImmutableMap<String, MusicTrackTags>>(persistentMapOf())
@@ -33,7 +33,7 @@ class FakeMusicPlayer(
 
     override fun play(queueId: String, tracks: List<MusicTrack>, startTrackId: String) {
         playCalls += PlayCall(queueId, tracks, startTrackId)
-        state.value = MusicPlayerState(
+        state.value = MusicPlayerState.Idle.copy(
             queueId = queueId,
             queue = tracks.toImmutableList(),
             currentIndex = tracks.indexOfFirst { it.id == startTrackId },
@@ -69,6 +69,6 @@ class FakeMusicPlayer(
 
     override fun stop() {
         stopCount++
-        state.value = MusicPlayerState()
+        state.value = MusicPlayerState.Idle
     }
 }

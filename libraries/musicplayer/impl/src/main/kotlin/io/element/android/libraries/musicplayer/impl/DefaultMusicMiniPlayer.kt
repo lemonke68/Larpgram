@@ -279,12 +279,12 @@ internal fun MusicMiniPlayerViewPreview() = ElementPreview {
     )
     Column {
         MusicMiniPlayerView(
-            state = MusicPlayerState(queue = persistentListOf(track), currentIndex = 0, isPlaying = true, positionMs = 60_000, durationMs = 345_000),
+            state = MusicPlayerState.Idle.copy(queue = persistentListOf(track), currentIndex = 0, isPlaying = true, positionMs = 60_000, durationMs = 345_000),
             tags = null,
             onAction = {},
         )
         MusicMiniPlayerView(
-            state = MusicPlayerState(queue = persistentListOf(track), currentIndex = 0, positionMs = 60_000, durationMs = 345_000, shuffle = true),
+            state = MusicPlayerState.Idle.copy(queue = persistentListOf(track), currentIndex = 0, positionMs = 60_000, durationMs = 345_000, shuffle = true),
             tags = MusicTrackTags(title = "Veridis Quo", artist = "Daft Punk"),
             onAction = {},
             initiallyExpanded = true,

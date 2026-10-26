@@ -27,7 +27,7 @@ interface MusicServiceConnector {
 }
 
 @ContributesBinding(AppScope::class)
-class MediaControllerMusicServiceConnector(
+class DefaultMusicServiceConnector(
     @ApplicationContext private val context: Context,
 ) : MusicServiceConnector {
     private var controllerFuture: ListenableFuture<MediaController>? = null
