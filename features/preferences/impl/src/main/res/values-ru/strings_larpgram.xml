@@ -126,4 +126,18 @@
     <string name="larpgram_history_error_wrong_password">Неверный пароль</string>
     <string name="larpgram_history_error_network">Нет связи с сервером. Попробуйте ещё раз.</string>
     <string name="larpgram_history_error_no_key">На этом устройстве нет ключа. Откройте этот экран на устройстве, где вы вошли паролем.</string>
+    <!-- Как защищена переписка (О приложении). Источник — docs/08-encryption.md. -->
+    <string name="larpgram_encryption_info_title">Как защищена переписка</string>
+    <string name="larpgram_encryption_info_intro">Сообщения в личных чатах и закрытых группах шифруются прямо на ваших устройствах. Сервер Ларпграма пересылает и хранит их, но прочитать не может.</string>
+    <string name="larpgram_encryption_info_history">Чтобы старая переписка открылась на новом телефоне, ключ истории лежит на сервере, запертый вашим паролем. Сам сервер его не откроет: для этого нужен пароль, а он хранится только у вас.</string>
+    <string name="larpgram_encryption_info_protects_title">От чего это защищает</string>
+    <string name="larpgram_encryption_info_protects_server">Если сервер, его диск или резервную копию заберут, переписку оттуда не прочитать.</string>
+    <string name="larpgram_encryption_info_protects_admin_db">Тот, кто просто заглянет в базу сервера, ключей там не найдёт.</string>
+    <string name="larpgram_encryption_info_protects_email">Если взломают вашу почту и сбросят пароль, войти в аккаунт получится, а прочитать старую переписку — нет.</string>
+    <string name="larpgram_encryption_info_limits_title">От чего не защищает</string>
+    <string name="larpgram_encryption_info_limits_live_admin">Тот, кто управляет работающим сервером, технически может подсмотреть пароль, когда вы входите, и открыть им ключ. Доверять Ларпграму — значит доверять владельцу сервера.</string>
+    <string name="larpgram_encryption_info_limits_weak_password">Простой пароль можно подобрать. Возьмите длинный и нигде больше его не используйте.</string>
+    <string name="larpgram_encryption_info_limits_server_recovery">Если в «Защите истории» включено «Восстановление через сервер», сервер может открыть вашу историю сам.</string>
+    <string name="larpgram_encryption_info_limits_forgot_password">Если вы забыли пароль и других устройств с Ларпграмом нет, старая переписка пропадёт, если вы не записали ключ восстановления. Новые сообщения будут видны.</string>
+    <string name="larpgram_encryption_info_limits_metadata">Сервер видит, кто с кем переписывается и когда, но не что вы пишете.</string>
 </resources>

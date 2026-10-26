@@ -32,6 +32,9 @@ class AboutNode(
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : Plugin {
         fun navigateToOssLicenses()
+
+        // Правка форка (Larpgram): «Как защищена переписка».
+        fun navigateToEncryptionInfo() {}
     }
 
     private val callback: Callback = callback()
@@ -56,6 +59,7 @@ class AboutNode(
                 onElementLegalClick(activity, isDark, elementLegal)
             },
             onOpenSourceLicensesClick = callback::navigateToOssLicenses,
+            onEncryptionInfoClick = callback::navigateToEncryptionInfo,
             modifier = modifier
         )
     }
