@@ -22,6 +22,9 @@
     <string name="larpgram_profile_empty_files">"Здесь будут файлы из этого чата."</string>
     <string name="larpgram_profile_empty_links">"Здесь будут ссылки из этого чата."</string>
     <string name="larpgram_profile_empty_voice">"Здесь будут голосовые сообщения из этого чата."</string>
+    <string name="larpgram_profile_empty_music">"Здесь будет музыка из этого чата."</string>
+    <string name="larpgram_profile_music_search">"Поиск музыки"</string>
+    <string name="larpgram_profile_music_not_found">"Ничего не найдено."</string>
     <string name="larpgram_profile_action_chat">"Чат"</string>
     <string name="larpgram_profile_action_mute">"Звук"</string>
     <string name="larpgram_profile_action_unmute">"Вкл. звук"</string>
@@ -32,6 +35,7 @@
     <string name="larpgram_profile_tab_files">"Файлы"</string>
     <string name="larpgram_profile_tab_links">"Ссылки"</string>
     <string name="larpgram_profile_tab_voice">"Голосовые"</string>
+    <string name="larpgram_profile_tab_music">"Музыка"</string>
     <string name="larpgram_profile_description_label">"Описание"</string>
     <string name="larpgram_profile_link_label">"Ссылка"</string>
     <string name="larpgram_profile_add_members">"Добавить участников"</string>

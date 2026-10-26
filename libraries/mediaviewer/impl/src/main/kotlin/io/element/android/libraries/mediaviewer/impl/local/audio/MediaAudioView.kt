@@ -75,6 +75,7 @@ import io.element.android.libraries.mediaviewer.impl.local.player.rememberExoPla
 import io.element.android.libraries.mediaviewer.impl.local.player.seekToEnsurePlaying
 import io.element.android.libraries.mediaviewer.impl.local.player.togglePlay
 import io.element.android.libraries.mediaviewer.impl.local.rememberLocalMediaViewState
+import io.element.android.libraries.mediaviewer.impl.music.MusicPagePlayback
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 
@@ -88,7 +89,20 @@ fun MediaAudioView(
     audioFocus: AudioFocus?,
     modifier: Modifier = Modifier,
     isDisplayed: Boolean = true,
+    // Правка форка (Larpgram): трек комнаты играет общий фоновый плеер музыки; свой ExoPlayer
+    // остаётся только для предпросмотра вложения перед отправкой и голосовых.
+    musicPlayback: MusicPagePlayback? = null,
 ) {
+    if (musicPlayback != null) {
+        MusicPlayerAudioView(
+            playback = musicPlayback,
+            localMediaViewState = localMediaViewState,
+            bottomPaddingInPixels = bottomPaddingInPixels,
+            info = info,
+            modifier = modifier,
+        )
+        return
+    }
     val exoPlayer = rememberExoPlayer(forAudioOnly = true)
     ExoPlayerMediaAudioView(
         isDisplayed = isDisplayed,

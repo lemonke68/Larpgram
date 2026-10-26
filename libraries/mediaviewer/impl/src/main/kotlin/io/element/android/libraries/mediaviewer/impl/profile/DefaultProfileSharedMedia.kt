@@ -9,6 +9,8 @@
 package io.element.android.libraries.mediaviewer.impl.profile
 
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,6 +42,11 @@ import io.element.android.libraries.mediaviewer.impl.model.eventId
 import io.element.android.libraries.mediaviewer.impl.model.mediaInfo
 import io.element.android.libraries.mediaviewer.impl.model.mediaSource
 import io.element.android.libraries.mediaviewer.impl.model.thumbnailSource
+import io.element.android.libraries.mediaviewer.impl.music.musicQueueId
+import io.element.android.libraries.mediaviewer.impl.music.toMusicTracks
+import io.element.android.libraries.musicplayer.api.MusicPlayer
+import io.element.android.libraries.musicplayer.api.MusicTrack
+import io.element.android.libraries.musicplayer.api.MusicTrackTags
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
@@ -54,6 +61,7 @@ class DefaultProfileSharedMedia(
     private val contentScannerService: ContentScannerService,
     private val dateFormatter: DateFormatter,
     private val dispatchers: CoroutineDispatchers,
+    private val musicPlayer: MusicPlayer,
 ) : ProfileSharedMedia {
     @Composable
     override fun rememberSection(onOpenMedia: (MediaViewerEntryPoint.Params) -> Unit): ProfileSharedMediaSection {
@@ -84,11 +92,28 @@ class DefaultProfileSharedMedia(
         }.collectAsState(AsyncData.Uninitialized)
         val links by linksDataSource.state.collectAsState()
         val latestOnOpenMedia by rememberUpdatedState(onOpenMedia)
+        val musicTracks = remember(media) {
+            media.dataOrNull()?.fileItems?.toMusicTracks(room.sessionId, room.roomId).orEmpty()
+        }
+        val musicTags by musicPlayer.tags.collectAsState()
+        val musicQuery = rememberTextFieldState()
+        val queueId = musicQueueId(room.roomId)
+        // Догрузились ещё треки — добавляем их в уже играющую очередь комнаты.
+        LaunchedEffect(musicTracks) {
+            if (musicTracks.isNotEmpty() && musicPlayer.state.value.queueId == queueId) musicPlayer.syncQueue(queueId, musicTracks)
+        }
 
-        return remember(media, links) {
+        return remember(media, links, musicTracks, musicTags) {
             DefaultSection(
                 media = media,
                 links = links,
+                music = MusicTabData(
+                    tracks = musicTracks,
+                    tags = musicTags,
+                    query = musicQuery,
+                    player = musicPlayer,
+                    onPlay = { track -> musicPlayer.play(queueId, musicTracks, track.id) },
+                ),
                 presenterFactories = mediaItemPresenterFactories,
                 onOpen = { item -> latestOnOpenMedia(item.toViewerParams()) },
                 onLoadMoreMedia = {
@@ -112,9 +137,18 @@ class DefaultProfileSharedMedia(
     }
 }
 
+private class MusicTabData(
+    val tracks: List<MusicTrack>,
+    val tags: Map<String, MusicTrackTags>,
+    val query: TextFieldState,
+    val player: MusicPlayer,
+    val onPlay: (MusicTrack) -> Unit,
+)
+
 private class DefaultSection(
     private val media: AsyncData<GroupedMediaItems>,
     private val links: ProfileLinksState,
+    private val music: MusicTabData,
     private val presenterFactories: MediaItemPresenterFactories,
     private val onOpen: (MediaItem.Event) -> Unit,
     private val onLoadMoreMedia: () -> Unit,
@@ -136,6 +170,15 @@ private class DefaultSection(
                 media = media,
                 presenterFactories = presenterFactories,
                 onOpen = onOpen,
+                onLoadMore = onLoadMoreMedia,
+            )
+            ProfileSharedMediaTab.Music -> scope.musicList(
+                media = media,
+                tracks = music.tracks,
+                tags = music.tags,
+                query = music.query,
+                musicPlayer = music.player,
+                onPlay = music.onPlay,
                 onLoadMore = onLoadMoreMedia,
             )
             ProfileSharedMediaTab.Links -> scope.linkList(

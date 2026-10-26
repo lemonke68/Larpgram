@@ -47,6 +47,12 @@ import io.element.android.libraries.mediaviewer.impl.details.MediaBottomSheetSta
 import io.element.android.libraries.mediaviewer.impl.local.LocalMediaActions
 import io.element.android.libraries.mediaviewer.impl.model.MediaPermissions
 import io.element.android.libraries.mediaviewer.impl.model.mediaPermissions
+import io.element.android.libraries.mediaviewer.impl.music.isMusic
+import io.element.android.libraries.mediaviewer.impl.music.musicQueueId
+import io.element.android.libraries.mediaviewer.impl.music.musicTrackId
+import io.element.android.libraries.mediaviewer.impl.music.musicTrackOf
+import io.element.android.libraries.musicplayer.api.MusicPlayer
+import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -66,6 +72,8 @@ class MediaViewerPresenter(
     private val htmlConverterProvider: HtmlConverterProvider,
     private val permalinkParser: PermalinkParser,
     private val textPillificator: TextPillificator,
+    // Правка форка (Larpgram): музыка комнаты играет общий фоновый плеер.
+    private val musicPlayer: MusicPlayer,
 ) : Presenter<MediaViewerState> {
     @AssistedFactory
     fun interface Factory {
@@ -133,6 +141,12 @@ class MediaViewerPresenter(
             }
         }
         localMediaActions.Configure()
+
+        // Правка форка (Larpgram): догрузились ещё аудио — они встают в уже играющую очередь комнаты.
+        LaunchedEffect(data.value) {
+            val queueId = musicQueueId(room.roomId)
+            if (musicPlayer.state.value.queueId == queueId) musicPlayer.syncQueue(queueId, data.value.toMusicTracks())
+        }
 
         fun handleEvent(event: MediaViewerEvent) {
             when (event) {
@@ -210,6 +224,16 @@ class MediaViewerPresenter(
                     dataSource.loadMore(event.direction)
                 }
                 is MediaViewerEvent.ValidateMedia -> dataSource.validateMedia(event.mediaSource, event.thumbnailMediaSource)
+                is MediaViewerEvent.PlayMusic -> {
+                    val startTrackId = musicTrackId(event.data.eventId, event.data.mediaSource)
+                    val tracks = data.value.toMusicTracks().takeIf { list -> list.any { it.id == startTrackId } }
+                        ?: listOf(musicTrackOf(room.sessionId, room.roomId, event.data.eventId, event.data.mediaSource, event.data.mediaInfo))
+                    musicPlayer.play(
+                        queueId = musicQueueId(room.roomId),
+                        tracks = tracks,
+                        startTrackId = startTrackId,
+                    )
+                }
             }
         }
 
@@ -221,8 +245,16 @@ class MediaViewerPresenter(
             canShowInfo = inputs !is MediaViewerEntryPoint.Params.Avatar,
             mediaBottomSheetState = mediaBottomSheetState,
             eventSink = ::handleEvent,
+            musicPlayer = musicPlayer.takeIf { inputs is MediaViewerEntryPoint.Params.RoomMedia },
         )
     }
+
+    /** Музыка страниц просмотрщика в порядке ленты: страницы идут от новых к старым. */
+    private fun List<MediaViewerPageData>.toMusicTracks(): List<MusicTrack> =
+        filterIsInstance<MediaViewerPageData.MediaViewerData>()
+            .filter { it.mediaInfo.isMusic() }
+            .asReversed()
+            .map { musicTrackOf(room.sessionId, room.roomId, it.eventId, it.mediaSource, it.mediaInfo) }
 
     private fun MediaViewerPageData.withFormattedCaption(): MediaViewerPageData {
         if (this !is MediaViewerPageData.MediaViewerData) return this

@@ -19,6 +19,7 @@ import io.element.android.features.messages.test.timeline.FakeHtmlConverterProvi
 import io.element.android.features.messages.test.timeline.FakeTextPillificator
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
@@ -26,6 +27,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransa
 import io.element.android.libraries.matrix.api.timeline.item.event.toEventOrTransactionId
 import io.element.android.libraries.matrix.test.AN_EVENT_ID
 import io.element.android.libraries.matrix.test.AN_EVENT_ID_2
+import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_SESSION_ID_2
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.media.FakeMatrixMediaLoader
@@ -45,10 +47,14 @@ import io.element.android.libraries.mediaviewer.impl.datasource.FakeMediaGallery
 import io.element.android.libraries.mediaviewer.impl.datasource.MediaGalleryDataSource
 import io.element.android.libraries.mediaviewer.impl.details.MediaBottomSheetState
 import io.element.android.libraries.mediaviewer.impl.model.GroupedMediaItems
+import io.element.android.libraries.mediaviewer.impl.model.aMediaItemAudio
 import io.element.android.libraries.mediaviewer.impl.model.aMediaItemImage
 import io.element.android.libraries.mediaviewer.impl.model.aMediaItemLoadingIndicator
+import io.element.android.libraries.mediaviewer.impl.model.aMediaItemVoice
 import io.element.android.libraries.mediaviewer.test.FakeLocalMediaActions
 import io.element.android.libraries.mediaviewer.test.FakeLocalMediaFactory
+import io.element.android.libraries.musicplayer.api.MusicPlayer
+import io.element.android.libraries.musicplayer.test.FakeMusicPlayer
 import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.lambda.lambdaRecorder
@@ -967,6 +973,59 @@ class MediaViewerPresenterTest {
         }
     }
 
+    // Правка форка (Larpgram): музыка комнаты играет общий плеер очередью в порядке ленты.
+    @Test
+    fun `present - play music starts the room queue from the page`() = runTest {
+        val mediaGalleryDataSource = FakeMediaGalleryDataSource(startLambda = { })
+        val musicPlayer = FakeMusicPlayer()
+        val presenter = createMediaViewerPresenter(
+            localMediaFactory = localMediaFactory,
+            mode = MediaViewerEntryPoint.MediaViewerMode.TimelineFilesAndAudios(Timeline.Mode.Media),
+            mediaGalleryDataSource = mediaGalleryDataSource,
+            musicPlayer = musicPlayer,
+        )
+        // Галерея отдаёт от новых к старым.
+        val newer = aMediaItemAudio(id = UniqueId("newer"), eventId = AN_EVENT_ID_2)
+        val older = aMediaItemAudio(id = UniqueId("older"), eventId = AN_EVENT_ID)
+        presenter.test {
+            val initialState = awaitFirstItem()
+            assertThat(initialState.musicPlayer).isSameInstanceAs(musicPlayer)
+            mediaGalleryDataSource.emitGroupedMediaItems(
+                AsyncData.Success(
+                    GroupedMediaItems(
+                        imageAndVideoItems = persistentListOf(),
+                        fileItems = persistentListOf(newer, aMediaItemVoice(), older),
+                    )
+                )
+            )
+            val state = awaitFirstItem()
+            val page = state.listData.filterIsInstance<MediaViewerPageData.MediaViewerData>().first { it.eventId == AN_EVENT_ID }
+            state.eventSink(MediaViewerEvent.PlayMusic(page))
+            val call = musicPlayer.playCalls.single()
+            assertThat(call.queueId).isEqualTo(A_ROOM_ID.value)
+            assertThat(call.tracks.map { it.id }).containsExactly(AN_EVENT_ID.value, AN_EVENT_ID_2.value).inOrder()
+            assertThat(call.startTrackId).isEqualTo(AN_EVENT_ID.value)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - avatar viewer does not use the music player`() = runTest {
+        val presenter = createMediaViewerPresenter(
+            localMediaFactory = localMediaFactory,
+            inputs = MediaViewerEntryPoint.Params.Avatar(
+                avatarInfo = AvatarInfo(filename = "avatar.png"),
+                mediaSource = aMediaSource(),
+                thumbnailSource = null,
+                blurHash = null,
+            ),
+        )
+        presenter.test {
+            assertThat(awaitFirstItem().musicPlayer).isNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private suspend fun <T> ReceiveTurbine<T>.awaitFirstItem(): T {
         return awaitItem()
     }
@@ -988,6 +1047,7 @@ internal fun TestScope.createMediaViewerPresenter(
     ),
     htmlConverterProvider: HtmlConverterProvider = FakeHtmlConverterProvider(),
     textPillificator: TextPillificator = FakeTextPillificator(),
+    musicPlayer: MusicPlayer = FakeMusicPlayer(),
 ): MediaViewerPresenter {
     val actualInputs = inputs ?: createMediaViewerEntryPointParams(eventId = eventId, mode = mode)
     val actualMode = when (actualInputs) {
@@ -1015,6 +1075,7 @@ internal fun TestScope.createMediaViewerPresenter(
         htmlConverterProvider = htmlConverterProvider,
         permalinkParser = FakePermalinkParser(),
         textPillificator = textPillificator,
+        musicPlayer = musicPlayer,
     )
 }
 

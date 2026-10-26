@@ -19,6 +19,7 @@ import io.element.android.libraries.matrix.ui.media.contentvalidation.ContentVal
 import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.mediaviewer.api.local.LocalMedia
 import io.element.android.libraries.mediaviewer.impl.details.MediaBottomSheetState
+import io.element.android.libraries.musicplayer.api.MusicPlayer
 import kotlinx.collections.immutable.ImmutableList
 
 data class MediaViewerState(
@@ -29,6 +30,8 @@ data class MediaViewerState(
     val canShowInfo: Boolean,
     val mediaBottomSheetState: MediaBottomSheetState,
     val eventSink: (MediaViewerEvent) -> Unit,
+    // Правка форка (Larpgram): общий плеер для страниц с музыкой; null — свой плеер на странице.
+    val musicPlayer: MusicPlayer? = null,
 )
 
 @Immutable

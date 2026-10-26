@@ -32,6 +32,9 @@
     <string name="larpgram_profile_empty_files">"Files from this chat will be shown here."</string>
     <string name="larpgram_profile_empty_links">"Links from this chat will be shown here."</string>
     <string name="larpgram_profile_empty_voice">"Voice messages from this chat will be shown here."</string>
+    <string name="larpgram_profile_empty_music">"Music from this chat will be shown here."</string>
+    <string name="larpgram_profile_music_search">"Search music"</string>
+    <string name="larpgram_profile_music_not_found">"No tracks found."</string>
     <!-- Профиль в стиле TG: плитки действий (короткие, влезают в плитку), вкладки, карточки. -->
     <string name="larpgram_profile_action_chat">"Message"</string>
     <string name="larpgram_profile_action_mute">"Mute"</string>
@@ -43,6 +46,7 @@
     <string name="larpgram_profile_tab_files">"Files"</string>
     <string name="larpgram_profile_tab_links">"Links"</string>
     <string name="larpgram_profile_tab_voice">"Voice"</string>
+    <string name="larpgram_profile_tab_music">"Music"</string>
     <string name="larpgram_profile_description_label">"Description"</string>
     <string name="larpgram_profile_link_label">"Link"</string>
     <string name="larpgram_profile_add_members">"Add members"</string>

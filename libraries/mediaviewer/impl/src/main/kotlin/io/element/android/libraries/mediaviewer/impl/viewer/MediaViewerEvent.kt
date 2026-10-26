@@ -31,5 +31,7 @@ sealed interface MediaViewerEvent {
     data class OnNavigateTo(val index: Int) : MediaViewerEvent
     data class LoadMore(val direction: Timeline.PaginationDirection) : MediaViewerEvent
     data class CancelLoadingMedia(val data: MediaViewerPageData.MediaViewerData) : MediaViewerEvent
+    // Правка форка (Larpgram): играть очередь музыки комнаты с этой страницы.
+    data class PlayMusic(val data: MediaViewerPageData.MediaViewerData) : MediaViewerEvent
     data class ValidateMedia(val mediaSource: MediaSource, val thumbnailMediaSource: MediaSource?) : MediaViewerEvent
 }

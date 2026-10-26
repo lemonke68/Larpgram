@@ -24,6 +24,7 @@ import io.element.android.libraries.mediaviewer.impl.local.image.MediaImageView
 import io.element.android.libraries.mediaviewer.impl.local.pdf.MediaPdfView
 import io.element.android.libraries.mediaviewer.impl.local.txt.TextFileView
 import io.element.android.libraries.mediaviewer.impl.local.video.MediaVideoView
+import io.element.android.libraries.mediaviewer.impl.music.MusicPagePlayback
 
 @Composable
 fun LocalMediaView(
@@ -39,6 +40,8 @@ fun LocalMediaView(
     isUserSelected: Boolean = false,
     localMediaViewState: LocalMediaViewState = rememberLocalMediaViewState(),
     mediaInfo: MediaInfo? = localMedia?.info,
+    // Правка форка (Larpgram): трек комнаты — через общий плеер музыки.
+    musicPlayback: MusicPagePlayback? = null,
 ) {
     val mimeType = mediaInfo?.mimeType
     when {
@@ -77,6 +80,7 @@ fun LocalMediaView(
             localMedia = localMedia,
             info = mediaInfo,
             audioFocus = audioFocus,
+            musicPlayback = musicPlayback,
             modifier = modifier,
         )
         else -> MediaFileView(

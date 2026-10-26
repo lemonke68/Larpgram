@@ -53,6 +53,8 @@ dependencies {
     implementation(projects.libraries.uiStrings)
     implementation(projects.libraries.uiUtils)
     implementation(projects.libraries.voiceplayer.api)
+    // Правка форка (Larpgram): общий плеер музыки (фаза 6).
+    implementation(projects.libraries.musicplayer.api)
     implementation(projects.services.toolbox.api)
 
     api(projects.libraries.mediaviewer.api)
@@ -68,6 +70,7 @@ dependencies {
     testImplementation(projects.libraries.dateformatter.test)
     testImplementation(projects.libraries.matrix.test)
     testImplementation(projects.libraries.mediaviewer.test)
+    testImplementation(projects.libraries.musicplayer.test)
     testImplementation(projects.services.toolbox.test)
     testImplementation(libs.coroutines.core)
 }

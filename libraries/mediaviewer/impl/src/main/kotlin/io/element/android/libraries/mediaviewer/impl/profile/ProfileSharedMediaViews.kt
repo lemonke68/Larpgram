@@ -179,7 +179,7 @@ private const val GRID_COLUMNS = 3
 private val GRID_GAP = 2.dp
 
 /** Пока лента не открылась — индикатор, если не открылась — пустая вкладка. */
-private fun AsyncData<GroupedMediaItems>.itemsOrPlaceholder(
+internal fun AsyncData<GroupedMediaItems>.itemsOrPlaceholder(
     scope: LazyListScope,
     emptyText: Int,
     select: (GroupedMediaItems) -> List<MediaItem>,
@@ -197,10 +197,10 @@ private fun AsyncData<GroupedMediaItems>.itemsOrPlaceholder(
     }
 }
 
-private fun List<MediaItem>.backwardLoader(): MediaItem.LoadingIndicator? =
+internal fun List<MediaItem>.backwardLoader(): MediaItem.LoadingIndicator? =
     filterIsInstance<MediaItem.LoadingIndicator>().firstOrNull { it.direction == Timeline.PaginationDirection.BACKWARDS }
 
-private fun LazyListScope.loaderItem(key: String, timestamp: Long, onLoadMore: () -> Unit) {
+internal fun LazyListScope.loaderItem(key: String, timestamp: Long, onLoadMore: () -> Unit) {
     item(key = key) {
         val latestOnLoadMore by rememberUpdatedState(onLoadMore)
         Loader()
@@ -228,7 +228,7 @@ private fun Loader() {
 }
 
 @Composable
-private fun EmptyTab(text: String) {
+internal fun EmptyTab(text: String) {
     Text(
         modifier = Modifier
             .fillMaxWidth()
@@ -306,7 +306,7 @@ private fun RowScope.MediaCell(item: MediaItem.Event, onClick: () -> Unit) {
 
 /** Строка внутри общей карточки: скругляются только верх первой и низ последней. */
 @Composable
-private fun CardRow(
+internal fun CardRow(
     isFirst: Boolean,
     isLast: Boolean,
     content: @Composable () -> Unit,
@@ -384,7 +384,7 @@ private fun FileRow(item: MediaItem.Event, onClick: () -> Unit) {
 }
 
 /** Цвет плитки файла по расширению, как у значков документов TG. */
-private fun fileColor(extension: String, isAudio: Boolean): Color {
+internal fun fileColor(extension: String, isAudio: Boolean): Color {
     if (isAudio) return Color(0xFF8E64E8)
     return when (extension.lowercase()) {
         "pdf", "ppt", "pptx", "key" -> Color(0xFFE5574F)

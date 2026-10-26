@@ -104,6 +104,9 @@ import io.element.android.libraries.mediaviewer.impl.details.MediaDetailsBottomS
 import io.element.android.libraries.mediaviewer.impl.local.LocalMediaView
 import io.element.android.libraries.mediaviewer.impl.local.PlayableState
 import io.element.android.libraries.mediaviewer.impl.local.rememberLocalMediaViewState
+import io.element.android.libraries.mediaviewer.impl.music.MusicPagePlayback
+import io.element.android.libraries.mediaviewer.impl.music.isMusic
+import io.element.android.libraries.mediaviewer.impl.music.musicTrackId
 import io.element.android.libraries.mediaviewer.impl.util.bgCanvasWithTransparency
 import io.element.android.libraries.textcomposer.ElementRichTextEditorStyle
 import io.element.android.libraries.ui.strings.CommonStrings
@@ -290,6 +293,15 @@ fun TgMediaViewerView(
                             },
                             audioFocus = audioFocus,
                             isUserSelected = (state.listData[page] as? MediaViewerPageData.MediaViewerData)?.eventId == state.initiallySelectedEventId,
+                            // Правка форка (Larpgram): трек играет общий фоновый плеер.
+                            musicPlayback = state.musicPlayer?.takeIf { dataForPage.mediaInfo.isMusic() }?.let { musicPlayer ->
+                                MusicPagePlayback(
+                                    trackId = musicTrackId(dataForPage.eventId, dataForPage.mediaSource),
+                                    player = musicPlayer,
+                                    onPlay = { state.eventSink(MediaViewerEvent.PlayMusic(dataForPage)) },
+                                    autoPlay = dataForPage.eventId != null && dataForPage.eventId == state.initiallySelectedEventId,
+                                )
+                            },
                         )
                         // Bottom bar
                         AnimatedVisibility(
@@ -403,6 +415,7 @@ private fun MediaViewerPage(
     onShowOverlayChange: (Boolean) -> Unit,
     audioFocus: AudioFocus?,
     modifier: Modifier = Modifier,
+    musicPlayback: MusicPagePlayback? = null,
 ) {
     val currentShowOverlay by rememberUpdatedState(showOverlay)
     val currentOnShowOverlayChange by rememberUpdatedState(onShowOverlayChange)
@@ -491,6 +504,7 @@ private fun MediaViewerPage(
                         isUserSelected = isUserSelected,
                         audioFocus = audioFocus,
                         forPreview = false,
+                        musicPlayback = musicPlayback,
                     )
                     if (showThumbnail) {
                         ThumbnailView(

@@ -89,7 +89,8 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.toImmutableList
 
 /** Вкладки профиля: «Участники» только у группы, дальше — общие медиа. */
-private enum class TgRoomTab { Members, Media, Files, Links, Voice }
+// Правка форка (Larpgram): вкладка «Музыка», как в общих медиа Telegram.
+private enum class TgRoomTab { Members, Media, Files, Music, Links, Voice }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -219,6 +220,7 @@ fun TgRoomDetailsView(
                 )
                 TgRoomTab.Media -> sharedMedia.content(this, ProfileSharedMediaTab.Media)
                 TgRoomTab.Files -> sharedMedia.content(this, ProfileSharedMediaTab.Files)
+                TgRoomTab.Music -> sharedMedia.content(this, ProfileSharedMediaTab.Music)
                 TgRoomTab.Links -> sharedMedia.content(this, ProfileSharedMediaTab.Links)
                 TgRoomTab.Voice -> sharedMedia.content(this, ProfileSharedMediaTab.Voice)
             }
@@ -235,6 +237,7 @@ private val TgRoomTab.titleRes: Int
         TgRoomTab.Members -> CommonStrings.larpgram_profile_tab_members
         TgRoomTab.Media -> CommonStrings.larpgram_profile_tab_media
         TgRoomTab.Files -> CommonStrings.larpgram_profile_tab_files
+        TgRoomTab.Music -> CommonStrings.larpgram_profile_tab_music
         TgRoomTab.Links -> CommonStrings.larpgram_profile_tab_links
         TgRoomTab.Voice -> CommonStrings.larpgram_profile_tab_voice
     }
