@@ -9,6 +9,7 @@
 package io.element.android.libraries.voiceplayer.impl
 
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.media.MediaSource
@@ -71,6 +72,23 @@ class VoiceMessagePresenterTest {
                 assertThat(it.time).isEqualTo("0:01")
             }
         }
+    }
+
+    // Правка форка (Larpgram): доигравшее голосовое отдаёт «моно-звук», музыка продолжает.
+    @Test
+    fun `a voice message that played to the end releases the audible focus`() = runTest {
+        val presenter = createVoiceMessagePresenter(
+            mediaPlayer = FakeMediaPlayer(fakeTotalDurationMs = 1_000, fakePlayedDurationMs = 1_000),
+            duration = 1_000.milliseconds,
+        )
+        // Контроллер глобальный: остальные тесты класса не должны заметить этот.
+        val previous = AudiblePlaybackController.current.value
+        presenter.test {
+            awaitItem().eventSink(VoiceMessageEvent.PlayPause)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(AudiblePlaybackController.current.value).isNull()
+        previous?.let { AudiblePlaybackController.requestFocus(it) }
     }
 
     @Test

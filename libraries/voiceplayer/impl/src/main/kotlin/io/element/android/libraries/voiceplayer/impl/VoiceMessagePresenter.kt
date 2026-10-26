@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runUpdatingState
@@ -67,11 +68,20 @@ class VoiceMessagePresenter(
         // кружочек) — встаём на паузу. Ключ ТОЛЬКО currentAudible: если завязать ещё и на isPlaying,
         // при старте гс isPlaying успевает стать true раньше, чем collectAsState обновит currentAudible
         // до нашего eventId, и гс паузился бы мгновенно сам об себя.
-        val currentAudible by AudiblePlaybackController.current.collectAsState()
-        LaunchedEffect(currentAudible) {
-            if (playerState.isPlaying && eventId != null && currentAudible != eventId) {
-                player.pause()
+        // Правка форка (Larpgram): токен слушаем без рекомпозиции — смена владельца звука (музыка,
+        // кружок, другое голосовое) не должна выпускать лишнее состояние экрана.
+        val isPlayingNow by rememberUpdatedState(playerState.isPlaying)
+        LaunchedEffect(eventId) {
+            AudiblePlaybackController.current.collect { currentAudible ->
+                if (isPlayingNow && eventId != null && currentAudible != eventId) {
+                    player.pause()
+                }
             }
+        }
+        // Правка форка (Larpgram): доиграло — отдаём фокус, чтобы музыка, вставшая на паузу ради
+        // голосового, продолжила.
+        LaunchedEffect(playerState.isEnded) {
+            if (playerState.isEnded && eventId != null) AudiblePlaybackController.release(eventId)
         }
 
         val buttonType by remember {

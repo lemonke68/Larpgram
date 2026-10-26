@@ -60,11 +60,7 @@ class DefaultAudioFocus(
             val audioAttributes = AudioAttributes.Builder()
                 .setUsage(requester.toAudioUsage())
                 .build()
-            val focusGain = if (requester == AudioFocusRequester.RecordVoiceMessage) {
-                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE
-            } else {
-                AudioManager.AUDIOFOCUS_GAIN
-            }
+            val focusGain = requester.toFocusGain()
             val request = AudioFocusRequest.Builder(focusGain)
                 .setAudioAttributes(audioAttributes)
                 .setOnAudioFocusChangeListener(listener)
@@ -89,6 +85,17 @@ class DefaultAudioFocus(
         } else {
             audioFocusChangeListener?.let { audioManager.abandonAudioFocus(it) }
         }
+    }
+}
+
+// Правка форка (Larpgram): голосовое берёт фокус транзиентно — музыка (своя и чужих
+// приложений) встаёт на паузу и сама продолжает после него, а не останавливается насовсем.
+internal fun AudioFocusRequester.toFocusGain(): Int {
+    return when (this) {
+        AudioFocusRequester.RecordVoiceMessage -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE
+        AudioFocusRequester.VoiceMessage -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+        AudioFocusRequester.ElementCall,
+        AudioFocusRequester.MediaViewer -> AudioManager.AUDIOFOCUS_GAIN
     }
 }
 

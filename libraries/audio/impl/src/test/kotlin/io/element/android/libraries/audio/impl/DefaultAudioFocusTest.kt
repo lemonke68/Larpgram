@@ -60,6 +60,31 @@ class DefaultAudioFocusTest : RobolectricTest() {
         assertThat(losesFocusOn(AudioFocusRequester.MediaViewer, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)).isTrue()
     }
 
+    // Правка форка (Larpgram): музыка должна продолжиться после голосового.
+    @Test
+    fun `voice message playback requests transient focus`() {
+        assertThat(focusGainOf(AudioFocusRequester.VoiceMessage)).isEqualTo(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+    }
+
+    @Test
+    fun `voice message recording keeps exclusive transient focus`() {
+        assertThat(focusGainOf(AudioFocusRequester.RecordVoiceMessage)).isEqualTo(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+    }
+
+    @Test
+    fun `media viewer and calls keep permanent focus`() {
+        assertThat(focusGainOf(AudioFocusRequester.MediaViewer)).isEqualTo(AudioManager.AUDIOFOCUS_GAIN)
+        assertThat(focusGainOf(AudioFocusRequester.ElementCall)).isEqualTo(AudioManager.AUDIOFOCUS_GAIN)
+    }
+
+    private fun focusGainOf(requester: AudioFocusRequester): Int {
+        val context = RuntimeEnvironment.getApplication()
+        val audioManager = requireNotNull(context.getSystemService<AudioManager>())
+        DefaultAudioFocus(context).requestAudioFocus(requester) {}
+        val request = requireNotNull(shadowOf(audioManager).lastAudioFocusRequest)
+        return requireNotNull(request.audioFocusRequest).focusGain
+    }
+
     private fun losesFocusOn(requester: AudioFocusRequester, focusChange: Int): Boolean {
         val context = RuntimeEnvironment.getApplication()
         val audioManager = requireNotNull(context.getSystemService<AudioManager>())
