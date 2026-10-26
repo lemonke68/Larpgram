@@ -46,6 +46,8 @@ export function openDb(path = process.env.DB_PATH || '/data/escrow.db') {
 
   return {
     close: () => db.close(),
+    // Сам handle better-sqlite3 — для ротации master-ключа (lib/rotate.js) и тестов.
+    raw: db,
     // v1 PUT /key не трогает opt_in у существующей строки: старый клиент не выключит тумблер.
     putKey: db.prepare(
       `INSERT INTO keys(user_id, key_enc, created_at) VALUES(?, ?, ?)
