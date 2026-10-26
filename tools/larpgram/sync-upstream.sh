@@ -101,7 +101,33 @@ start() {
             rm -rf -- "$path"
         fi
     done
+    keep_lfs_paths_ours
     git status --short | grep -E '^(UU|AA|DU|UD|AU|UA|DD) ' || true
+}
+
+# Element's LFS objects (screenshots, snapshots, test assets) are not downloadable from their
+# storage and GitHub rejects pointers to objects it does not have (GH008). So LFS paths stay at our
+# version: changed ones are reset to HEAD, new ones are dropped, upstream deletions are accepted.
+# Patterns are read from .gitattributes directly: .git/info/attributes switches them off locally,
+# so `git check-attr` would report them as unset.
+keep_lfs_paths_ours() {
+    local specs=() pattern _rest file restored=0 dropped=0
+    while read -r pattern _rest; do
+        specs+=(":(glob)$pattern")
+    done < <(grep -E '^[^#].*[[:space:]]filter=lfs' .gitattributes)
+    [ "${#specs[@]}" -gt 0 ] || return 0
+    while IFS= read -r -d '' file; do
+        if git cat-file -e "HEAD:$file" 2>/dev/null; then
+            git checkout HEAD -- "$file"
+            restored=$((restored + 1))
+        else
+            git rm -q --cached --force --ignore-unmatch -- "$file"
+            rm -f -- "$file"
+            dropped=$((dropped + 1))
+        fi
+    done < <(git diff --cached --no-renames --name-only -z --diff-filter=d HEAD -- "${specs[@]}"
+             git diff --name-only -z --diff-filter=U -- "${specs[@]}")
+    echo "LFS paths kept at our version: $restored reset to HEAD, $dropped new upstream files dropped."
 }
 
 finish() {
