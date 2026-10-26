@@ -67,6 +67,8 @@ dependencies {
     implementation(projects.libraries.slashcommands.api)
     implementation(projects.libraries.audio.api)
     implementation(projects.libraries.voiceplayer.api)
+    // Правка форка (Larpgram): мини-плеер музыки.
+    implementation(projects.libraries.musicplayer.api)
     implementation(projects.libraries.voicerecorder.api)
     implementation(projects.libraries.mediaplayer.api)
     implementation(projects.libraries.push.api)

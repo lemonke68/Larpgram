@@ -71,6 +71,7 @@ import io.element.android.libraries.matrix.api.core.toRoomIdOrAlias
 import io.element.android.libraries.matrix.api.permalink.PermalinkData
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.musicplayer.api.MusicMiniPlayer
 import io.element.android.libraries.matrix.api.room.alias.matches
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.TimelineProvider
@@ -120,6 +121,8 @@ class MessagesNode(
     // Правка форка: «в сети / был(а)» собеседника ЛС для шапки Telegram.
     private val userPresenceFetcher: UserPresenceFetcher,
     private val dispatchers: CoroutineDispatchers,
+    // Правка форка (Larpgram): полоса «сейчас играет» под шапкой чата.
+    private val musicMiniPlayer: MusicMiniPlayer,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator, TimelineSelectionOwner {
     data class Inputs(
         val focusedEventId: EventId?,
@@ -380,6 +383,7 @@ class MessagesNode(
                 // Правка форка (фаза 3): тот же рендерер для инлайн-пикера в привязанном оверлее.
                 emojiPickerRenderer = emojiPickerRenderer,
                 dmPresence = userPresenceFetcher.rememberPresence(state.tg.dmUserId),
+                musicMiniPlayer = { musicModifier -> musicMiniPlayer.Render(musicModifier) },
                 emojiKeyboard = { keyboardModifier, onEmoji ->
                     val emojiKeyboardState = emojiKeyboardPresenter.present()
                     emojiKeyboardRenderer.Render(

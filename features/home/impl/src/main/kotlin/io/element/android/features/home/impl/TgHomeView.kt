@@ -113,6 +113,8 @@ fun TgHomeView(
     initialTab: TgHomeTab = TgHomeTab.Chats,
     // Лента чата для превью по долгому нажатию. Null — показывается шторка действий.
     chatPreview: (@Composable (roomId: RoomId, onClick: () -> Unit, modifier: Modifier) -> Unit)? = null,
+    // Правка форка (Larpgram): мини-плеер музыки под шапкой списка чатов, как в Telegram.
+    musicMiniPlayer: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val state: RoomListState = homeState.roomListState
     val coroutineScope = rememberCoroutineScope()
@@ -153,6 +155,7 @@ fun TgHomeView(
             settingsContent = settingsContent,
             profileContent = profileContent,
             initialTab = initialTab,
+            musicMiniPlayer = musicMiniPlayer,
         )
 
         if (state.globalSearchState.isEnabled) {
@@ -211,6 +214,7 @@ private fun HomeScaffold(
     settingsContent: (@Composable () -> Unit)? = null,
     profileContent: (@Composable () -> Unit)? = null,
     initialTab: TgHomeTab = TgHomeTab.Chats,
+    musicMiniPlayer: (@Composable (Modifier) -> Unit)? = null,
 ) {
     fun onRoomClick(room: RoomListRoomSummary) {
         onRoomClick(room.roomId)
@@ -251,39 +255,43 @@ private fun HomeScaffold(
         topBar = {
             // Chats owns this top bar; Settings/Profile tabs host their own screens with headers.
             if (isChatsTab) {
-                TgHomeTopBar(
-                    selectedNavigationItem = currentItem,
-                    currentUserAndNeighbors = state.currentUserAndNeighbors,
-                showAvatarIndicator = state.showAvatarIndicator,
-                areSearchResultsDisplayed = if (roomListState.globalSearchState.isEnabled) {
-                    roomListState.globalSearchState.isSearchActive
-                } else {
-                    roomListState.searchState.isSearchActive
-                },
-                onToggleSearch = {
-                    if (roomListState.globalSearchState.isEnabled) {
-                        roomListState.globalSearchState.eventSink(GlobalSearchEvent.ToggleSearchVisibility)
-                    } else {
-                        roomListState.eventSink(RoomListEvent.ToggleSearchResults)
-                    }
-                },
-                onMenuActionClick = onMenuActionClick,
-                onOpenSettings = onOpenSettings,
-                onAccountSwitch = { sessionId ->
-                    // The user has switched account by swiping their avatar, so they know the gesture.
-                    state.eventSink(HomeEvent.DismissSwipeAvatarAnnouncement)
-                    onSwitchToAccount(sessionId)
-                },
-                scrollBehavior = scrollBehavior,
-                displayFilters = isChatsTab && roomListState.displayFilters,
-                filtersState = roomListState.filtersState,
-                spaceFiltersState = roomListState.spaceFiltersState,
-                canReportBug = state.canReportBug,
-                    modifier = Modifier.hazeEffect(
-                        state = hazeState,
-                        style = HazeMaterials.thick(),
+                // Правка форка (Larpgram): мини-плеер — часть шапки, список не уходит под него.
+                Column {
+                    TgHomeTopBar(
+                        selectedNavigationItem = currentItem,
+                        currentUserAndNeighbors = state.currentUserAndNeighbors,
+                        showAvatarIndicator = state.showAvatarIndicator,
+                        areSearchResultsDisplayed = if (roomListState.globalSearchState.isEnabled) {
+                            roomListState.globalSearchState.isSearchActive
+                        } else {
+                            roomListState.searchState.isSearchActive
+                        },
+                        onToggleSearch = {
+                            if (roomListState.globalSearchState.isEnabled) {
+                                roomListState.globalSearchState.eventSink(GlobalSearchEvent.ToggleSearchVisibility)
+                            } else {
+                                roomListState.eventSink(RoomListEvent.ToggleSearchResults)
+                            }
+                        },
+                        onMenuActionClick = onMenuActionClick,
+                        onOpenSettings = onOpenSettings,
+                        onAccountSwitch = { sessionId ->
+                            // The user has switched account by swiping their avatar, so they know the gesture.
+                            state.eventSink(HomeEvent.DismissSwipeAvatarAnnouncement)
+                            onSwitchToAccount(sessionId)
+                        },
+                        scrollBehavior = scrollBehavior,
+                        displayFilters = isChatsTab && roomListState.displayFilters,
+                        filtersState = roomListState.filtersState,
+                        spaceFiltersState = roomListState.spaceFiltersState,
+                        canReportBug = state.canReportBug,
+                        modifier = Modifier.hazeEffect(
+                            state = hazeState,
+                            style = HazeMaterials.thick(),
+                        )
                     )
-                )
+                    musicMiniPlayer?.invoke(Modifier.fillMaxWidth())
+                }
             }
         },
         floatingActionButton = {

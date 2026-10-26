@@ -64,6 +64,7 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.musicplayer.api.MusicMiniPlayer
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -97,6 +98,8 @@ class HomeFlowNode(
     private val homeTabNodes: HomeTabNodes,
     private val leaveRoomRenderer: LeaveRoomRenderer,
     private val chatPreviewRenderer: ChatPreviewRenderer,
+    // Правка форка (Larpgram): полоса «сейчас играет» над списком чатов.
+    private val musicMiniPlayer: MusicMiniPlayer,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : BaseFlowNode<HomeFlowNode.NavTarget>(
     backstack = BackStack(
@@ -277,6 +280,7 @@ class HomeFlowNode(
                 chatPreview = { roomId, onClick, previewModifier ->
                     chatPreviewRenderer.Preview(roomId = roomId, onClick = onClick, modifier = previewModifier)
                 },
+                musicMiniPlayer = { musicModifier -> musicMiniPlayer.Render(musicModifier) },
                 acceptDeclineInviteView = {
                     acceptDeclineInviteView.Render(
                         state = state.roomListState.acceptDeclineInviteState,

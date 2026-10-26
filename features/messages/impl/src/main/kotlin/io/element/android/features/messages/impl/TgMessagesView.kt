@@ -205,6 +205,8 @@ fun TgMessagesView(
     dmPresence: UserPresence? = null,
     // Правка форка: ⋮ → «Поиск» (ChatSearchNode).
     onChatSearchClick: () -> Unit = {},
+    // Правка форка (Larpgram): мини-плеер музыки под шапкой, как в Telegram.
+    musicMiniPlayer: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val eventContentValidationState = LocalEventContentValidationState.current
 
@@ -388,19 +390,25 @@ fun TgMessagesView(
                         )
 
                         if (!isThreadTimeline) {
-                            TgChatHeader(
-                                state = state,
-                                dmPresence = dmPresence,
-                                onBackClick = { hidingKeyboard { onBackClick() } },
-                                onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
-                                onJoinCallClick = onJoinCallClick,
-                                onThreadsListClick = onThreadsListClick,
-                                onSearchClick = { hidingKeyboard { onChatSearchClick() } },
+                            // Правка форка (Larpgram): мини-плеер живёт под шапкой и входит в её высоту,
+                            // чтобы лента не уходила под него.
+                            Column(
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
                                     .onSizeChanged { headerOverlayHeight = with(density) { it.height.toDp() } }
                                     .onGloballyPositioned { messageActionsAnchor.visibleTopPx = it.positionOnScreen().y + it.size.height },
-                            )
+                            ) {
+                                TgChatHeader(
+                                    state = state,
+                                    dmPresence = dmPresence,
+                                    onBackClick = { hidingKeyboard { onBackClick() } },
+                                    onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
+                                    onJoinCallClick = onJoinCallClick,
+                                    onThreadsListClick = onThreadsListClick,
+                                    onSearchClick = { hidingKeyboard { onChatSearchClick() } },
+                                )
+                                musicMiniPlayer?.invoke(Modifier.fillMaxWidth())
+                            }
                         }
 
                         SuggestionsPickerView(

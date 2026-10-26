@@ -44,6 +44,8 @@ dependencies {
     // ВРЕМЕННО: для проверки чтения стикер-паков в RoomListPresenter.
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.matrixui)
+    // Правка форка (Larpgram): мини-плеер музыки.
+    implementation(projects.libraries.musicplayer.api)
     // Правка форка: мини-превью медиа в строке списка чатов.
     implementation(projects.libraries.matrixmedia.api)
     implementation(libs.coil.compose)
