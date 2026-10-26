@@ -69,6 +69,10 @@ class AndroidMediaPreProcessor(
         private const val IMAGE_SCALE_REF_SIZE = 1280
 
         private val notCompressibleImageTypes = listOf(MimeTypes.Gif, MimeTypes.WebP)
+
+        // Правка форка (Larpgram): formats whose metadata is removed by re-encoding to JPEG.
+        private val reencodedImageTypes = setOf("image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence")
+        private const val REENCODE_QUALITY = 95
     }
 
     private val contentResolver = context.contentResolver
@@ -216,6 +220,12 @@ class AndroidMediaPreProcessor(
 
         suspend fun processImageWithoutCompression(): MediaUploadInfo {
             val file = copyToTmpFile(uri)
+            // Правка форка (Larpgram): HEIC/HEIF metadata can't be rewritten in place, so such photos are
+            // re-encoded to a full-size JPEG (orientation applied to the pixels) instead of going out with
+            // their EXIF and GPS.
+            if (mimeType.lowercase() in reencodedImageTypes) {
+                reencodeWithoutMetadata(file)?.let { return it }
+            }
             val thumbnailResult = thumbnailFactory.createImageThumbnail(
                 file = file,
                 mimeType = mimeType,
@@ -230,7 +240,8 @@ class AndroidMediaPreProcessor(
                 thumbnailSource = null,
                 blurhash = thumbnailResult?.blurhash,
             )
-            removeSensitiveImageMetadata(file)
+            // Правка форка (Larpgram): strip all metadata, not only GPS (see LarpgramMetadataStripper).
+            stripImageMetadata(file, mimeType)
             return MediaUploadInfo.Image(
                 file = file,
                 imageInfo = imageInfo,
@@ -315,6 +326,55 @@ class AndroidMediaPreProcessor(
 
             MediaUploadInfo.Audio(file, info)
         }
+    }
+
+    // Правка форка (Larpgram): remove all metadata from an image sent without compression. EXIF
+    // orientation is written back on its own, so the photo is not displayed sideways. Formats the
+    // stripper can't parse fall back to Element's GPS-only cleanup.
+    private fun stripImageMetadata(file: File, mimeType: String) {
+        val orientation = tryOrNull {
+            ExifInterface(file).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)
+        } ?: ExifInterface.ORIENTATION_UNDEFINED
+        val stripped = tryOrNull { LarpgramMetadataStripper.strip(file.readBytes(), mimeType) }
+        if (stripped == null) {
+            removeSensitiveImageMetadata(file)
+            return
+        }
+        file.writeBytes(stripped)
+        if (orientation != ExifInterface.ORIENTATION_UNDEFINED && orientation != ExifInterface.ORIENTATION_NORMAL) {
+            tryOrNull {
+                ExifInterface(file).apply {
+                    setAttribute(ExifInterface.TAG_ORIENTATION, orientation.toString())
+                    saveAttributes()
+                }
+            }
+        }
+    }
+
+    // Правка форка (Larpgram): HEIC/HEIF → JPEG at full size, quality 95, with no metadata.
+    private suspend fun reencodeWithoutMetadata(file: File): MediaUploadInfo? {
+        val orientation = tryOrNull {
+            ExifInterface(file).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)
+        } ?: ExifInterface.ORIENTATION_UNDEFINED
+        val result = imageCompressor.compressToTmpFile(
+            inputStreamProvider = { file.inputStream() },
+            resizeMode = ResizeMode.None,
+            mimeType = MimeTypes.Jpeg,
+            orientation = orientation,
+            desiredQuality = REENCODE_QUALITY,
+        ).onFailure {
+            Timber.w(it, "Could not re-encode image, sending it with GPS-only cleanup")
+        }.getOrNull() ?: return null
+        file.delete()
+        val thumbnailResult = thumbnailFactory.createImageThumbnail(
+            file = result.file,
+            mimeType = MimeTypes.Jpeg,
+        )
+        return MediaUploadInfo.Image(
+            file = result.file,
+            imageInfo = result.toImageInfo(mimeType = MimeTypes.Jpeg, thumbnailResult = thumbnailResult),
+            thumbnailFile = thumbnailResult?.file,
+        )
     }
 
     private fun removeSensitiveImageMetadata(file: File) {
