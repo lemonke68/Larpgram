@@ -155,4 +155,8 @@
     <string name="screen_signout_save_recovery_key_subtitle">Это единственное устройство в аккаунте. Переписка останется на сервере: войдите снова, и она вернётся.</string>
     <string name="screen_signout_key_backup_disabled_subtitle">Это единственное устройство в аккаунте. Переписка останется на сервере: войдите снова, и она вернётся.</string>
     <string name="screen_signout_recovery_disabled_subtitle">Это единственное устройство в аккаунте. Переписка останется на сервере: войдите снова, и она вернётся.</string>
+    <!-- v26.10: новые строки выбора чата (пересылка/«Поделиться») без русского перевода у Element. -->
+    <string name="common_switch_account">Другой аккаунт</string>
+    <string name="common_header_rooms">Чаты</string>
+    <string name="screen_room_select_error_cannot_load_rooms">Не удалось загрузить чаты этого аккаунта.</string>
 </resources>

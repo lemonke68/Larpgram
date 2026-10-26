@@ -53,6 +53,7 @@ class MusicPlaybackService : MediaSessionService() {
             )
         }
         session = builder.build()
+        musicPlayer.stopService = { stopSelf() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -62,6 +63,7 @@ class MusicPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        musicPlayer.stopService = null
         session?.release()
         session = null
         musicPlayer.onServiceDestroyed()

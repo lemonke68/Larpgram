@@ -139,6 +139,10 @@ class DefaultMusicPlayer(
     /** Плеер для MediaSession сервиса. */
     fun sessionPlayer(): Player = ensurePlayer()
 
+    /** Set by [MusicPlaybackService]: closing the player stops the service, so its notification goes away. */
+    @Volatile
+    var stopService: (() -> Unit)? = null
+
     /** Сервис ушёл. Если очередь пуста — плеер больше не нужен. */
     fun onServiceDestroyed() {
         if (queue.isEmpty()) {
@@ -258,6 +262,9 @@ class DefaultMusicPlayer(
         resolver.releaseAll()
         registry.clear()
         publish()
+        // An idle player with no items still leaves media3's notification behind while the service
+        // is started, so stop the service explicitly.
+        stopService?.invoke()
     }
 
     override fun setSavedOnDevice(tracks: List<MusicTrack>, save: Boolean) {
