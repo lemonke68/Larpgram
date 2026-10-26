@@ -35,6 +35,8 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.core.meta.BuildType
 import io.element.android.libraries.keyescrow.api.LoginPasswordHandoff
+import io.element.android.libraries.keyescrow.api.PairedRecoveryKeyHandoff
+import io.element.android.libraries.keyescrow.api.PairingKeyTransfer
 import io.element.android.libraries.matrix.api.auth.AuthErrorCode
 import io.element.android.libraries.matrix.api.auth.AuthenticationException
 import io.element.android.libraries.matrix.api.auth.MatrixAuthenticationService
@@ -42,6 +44,7 @@ import io.element.android.libraries.matrix.api.auth.errorCode
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import io.element.android.libraries.ui.utils.MultipleTapToUnlock
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * Вход, регистрация и сброс пароля одним экраном с шагами, как в Telegram. Браузера нет: вход —
@@ -59,6 +62,8 @@ class TgAuthPresenter(
     private val rageshakeFeatureAvailability: RageshakeFeatureAvailability,
     private val onBoardingLogoResIdProvider: OnBoardingLogoResIdProvider,
     private val loginPasswordHandoff: LoginPasswordHandoff,
+    private val pairingKeyTransfer: PairingKeyTransfer,
+    private val pairedRecoveryKeyHandoff: PairedRecoveryKeyHandoff,
 ) : Presenter<TgAuthState> {
     private val multipleTapToUnlock = MultipleTapToUnlock()
 
@@ -330,16 +335,19 @@ class TgAuthPresenter(
         }
 
         fun redeemQr(text: String, deviceName: String) {
-            val loginCode = LoginQrCode.decode(text) ?: return fail(Kind.QrInvalid)
+            val qr = LoginQrCode.decode(text) ?: return fail(Kind.QrInvalid)
             scope.launch {
                 isBusy = true
                 error = null
-                when (val result = accountApi.redeemLoginCode(loginCode, deviceName)) {
+                when (val result = accountApi.redeemLoginCode(qr.code, deviceName)) {
                     is RedeemLoginResult.Session -> {
+                        // Ключ восстановления со старого устройства: не открылся — не беда, попросим пароль.
+                        val recoveryKey = openPairedKey(qr.key, result.keyCiphertext, result.userId)
                         authenticationService.setHomeserver(LarpgramHosts.HOMESERVER_URL)
                             .mapCatching {
                                 authenticationService.loginWithAccessToken(result.userId, result.deviceId, result.accessToken).getOrThrow()
                             }
+                            .onSuccess { sessionId -> if (recoveryKey != null) pairedRecoveryKeyHandoff.put(sessionId, recoveryKey) }
                             .onFailure { fail(it.toKind()) }
                     }
                     is RedeemLoginResult.Failure -> fail(
@@ -445,6 +453,14 @@ class TgAuthPresenter(
             error = error,
             eventSink = ::handleEvent,
         )
+    }
+
+    /** Ключ восстановления из QR и ответа сервера или `null`: чего-то нет или не расшифровалось. */
+    private fun openPairedKey(key: String?, ciphertext: String?, userId: String): String? {
+        if (key == null || ciphertext == null) return null
+        return runCatching { pairingKeyTransfer.open(ciphertext, key, userId) }
+            .getOrNull()
+            .also { if (it == null) Timber.w("Recovery key from the QR code did not open") }
     }
 }
 
