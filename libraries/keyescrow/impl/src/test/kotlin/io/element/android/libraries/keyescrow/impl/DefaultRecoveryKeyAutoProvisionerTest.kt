@@ -11,6 +11,7 @@ package io.element.android.libraries.keyescrow.impl
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.keyescrow.test.FakeKeyEscrowService
 import io.element.android.libraries.keyescrow.test.FakeLoginPasswordHandoff
+import io.element.android.libraries.keyescrow.test.FakePairedRecoveryKeyHandoff
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.test.A_SESSION_ID
@@ -26,6 +27,7 @@ class DefaultRecoveryKeyAutoProvisionerTest {
     private val escrow = FakeKeyEscrowService()
     private val localStore = InMemoryLocalRecoveryKeyStore()
     private val handoff = FakeLoginPasswordHandoff()
+    private val pairedHandoff = FakePairedRecoveryKeyHandoff()
 
     private fun FakeKeyEscrowService.opened(password: String): String? = lockedKey?.let { lock.open(it, password, A_SESSION_ID.value) }
 
@@ -150,6 +152,54 @@ class DefaultRecoveryKeyAutoProvisionerTest {
     }
 
     @Test
+    fun `QR login with the key from the old device unlocks the session without asking for the password`() = runTest {
+        val encryption = FakeEncryptionService().apply { acceptedRecoveryKey = OLD_KEY }
+        encryption.recoveryStateStateFlow.value = RecoveryState.INCOMPLETE
+        val blob = lock.lock(OLD_KEY, PASSWORD, A_SESSION_ID.value)
+        escrow.lockedKey = blob
+        pairedHandoff.put(A_SESSION_ID, OLD_KEY)
+
+        val provisioner = createProvisioner(encryption)
+        provisioner.ensureProvisioned()
+
+        assertThat(encryption.lastRecoveryKey).isEqualTo(OLD_KEY)
+        assertThat(localStore.keys[A_SESSION_ID]).isEqualTo(OLD_KEY)
+        assertThat(provisioner.needsPassword.value).isFalse()
+        assertThat(escrow.lockedKey).isEqualTo(blob)
+        assertThat(pairedHandoff.keys).isEmpty()
+    }
+
+    @Test
+    fun `QR login with the key but without a blob still asks for the password to lock it`() = runTest {
+        val encryption = FakeEncryptionService().apply { acceptedRecoveryKey = OLD_KEY }
+        encryption.recoveryStateStateFlow.value = RecoveryState.INCOMPLETE
+        pairedHandoff.put(A_SESSION_ID, OLD_KEY)
+
+        val provisioner = createProvisioner(encryption)
+        provisioner.ensureProvisioned()
+
+        assertThat(localStore.keys[A_SESSION_ID]).isEqualTo(OLD_KEY)
+        assertThat(provisioner.needsPassword.value).isTrue()
+    }
+
+    @Test
+    fun `a stale key from the old device is dropped and leaves the blob alone`() = runTest {
+        val encryption = FakeEncryptionService().apply { acceptedRecoveryKey = NEW_KEY }
+        encryption.recoveryStateStateFlow.value = RecoveryState.INCOMPLETE
+        val blob = lock.lock(NEW_KEY, PASSWORD, A_SESSION_ID.value)
+        escrow.lockedKey = blob
+        pairedHandoff.put(A_SESSION_ID, OLD_KEY)
+
+        val provisioner = createProvisioner(encryption)
+        provisioner.ensureProvisioned()
+
+        assertThat(localStore.keys).isEmpty()
+        assertThat(escrow.lockedKey).isEqualTo(blob)
+        assertThat(pairedHandoff.keys).isEmpty()
+        assertThat(provisioner.needsPassword.value).isFalse()
+    }
+
+    @Test
     fun `a stale blob that opens but does not unlock is removed`() = runTest {
         val encryption = FakeEncryptionService().apply { acceptedRecoveryKey = NEW_KEY }
         encryption.recoveryStateStateFlow.value = RecoveryState.INCOMPLETE
@@ -247,6 +297,7 @@ class DefaultRecoveryKeyAutoProvisionerTest {
         passwordHandoff = handoff,
         recoveryKeyLock = lock,
         dispatchers = testCoroutineDispatchers(),
+        pairedKeyHandoff = pairedHandoff,
     )
 
     private companion object {
