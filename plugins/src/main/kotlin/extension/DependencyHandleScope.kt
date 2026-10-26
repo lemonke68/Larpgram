@@ -122,6 +122,7 @@ fun DependencyHandlerScope.allLibrariesImpl() {
     implementation(project(":libraries:textcomposer:impl"))
     implementation(project(":libraries:accountselect:impl"))
     implementation(project(":libraries:roomselect:impl"))
+    implementation(project(":libraries:musicplayer:impl"))
     implementation(project(":libraries:cryptography:impl"))
     implementation(project(":libraries:voiceplayer:impl"))
     implementation(project(":libraries:voicerecorder:impl"))
