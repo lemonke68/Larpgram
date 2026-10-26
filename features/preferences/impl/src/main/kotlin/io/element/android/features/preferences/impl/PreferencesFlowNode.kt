@@ -30,6 +30,7 @@ import io.element.android.features.lockscreen.api.LockScreenEntryPoint
 import io.element.android.features.logout.api.LogoutEntryPoint
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.preferences.impl.about.AboutNode
+import io.element.android.features.preferences.impl.about.TgEncryptionInfoNode
 import io.element.android.features.preferences.impl.account.TgAccountEmailNode
 import io.element.android.features.preferences.impl.account.TgAccountPasswordNode
 import io.element.android.features.preferences.impl.account.TgHistoryProtectionNode
@@ -107,6 +108,10 @@ class PreferencesFlowNode(
 
         @Parcelize
         data object About : NavTarget
+
+        // Правка форка (Larpgram): «Как защищена переписка» из «О приложении».
+        @Parcelize
+        data object EncryptionInfo : NavTarget
 
         @Parcelize
         data object NotificationSettings : NavTarget
@@ -304,9 +309,14 @@ class PreferencesFlowNode(
                     override fun navigateToOssLicenses() {
                         backstack.push(NavTarget.OssLicenses)
                     }
+
+                    override fun navigateToEncryptionInfo() {
+                        backstack.push(NavTarget.EncryptionInfo)
+                    }
                 }
                 createNode<AboutNode>(buildContext, listOf(callback))
             }
+            NavTarget.EncryptionInfo -> createNode<TgEncryptionInfoNode>(buildContext)
             NavTarget.TgDevices -> {
                 createNode<TgDevicesNode>(buildContext)
             }

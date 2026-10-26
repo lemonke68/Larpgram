@@ -145,4 +145,18 @@
     <string name="larpgram_history_error_wrong_password">Wrong password</string>
     <string name="larpgram_history_error_network">No connection to the server. Try again.</string>
     <string name="larpgram_history_error_no_key">This device has no key. Open this screen on a device where you signed in with the password.</string>
+    <!-- How chats are protected (About). Source: docs/08-encryption.md. -->
+    <string name="larpgram_encryption_info_title">How your chats are protected</string>
+    <string name="larpgram_encryption_info_intro">Messages in direct chats and private groups are encrypted on your devices. The Larpgram server relays and stores them but cannot read them.</string>
+    <string name="larpgram_encryption_info_history">So that your old chats open on a new phone, the history key is stored on the server, locked with your password. The server cannot open it on its own: that takes your password, and only you have it.</string>
+    <string name="larpgram_encryption_info_protects_title">What this protects against</string>
+    <string name="larpgram_encryption_info_protects_server">If the server, its disk or a backup is taken, the chats cannot be read from them.</string>
+    <string name="larpgram_encryption_info_protects_admin_db">Someone who just looks into the server database will find no keys there.</string>
+    <string name="larpgram_encryption_info_protects_email">If your email is hacked and the password reset, the account can be accessed but the old chats cannot be read.</string>
+    <string name="larpgram_encryption_info_limits_title">What it does not protect against</string>
+    <string name="larpgram_encryption_info_limits_live_admin">Whoever runs the live server could technically capture your password when you sign in and open the key with it. Trusting Larpgram means trusting the server owner.</string>
+    <string name="larpgram_encryption_info_limits_weak_password">A simple password can be guessed. Use a long one that you use nowhere else.</string>
+    <string name="larpgram_encryption_info_limits_server_recovery">If \"Recovery through the server\" is on in History protection, the server can open your history itself.</string>
+    <string name="larpgram_encryption_info_limits_forgot_password">If you forget your password and have no other device with Larpgram, your old chats are lost unless you wrote down the recovery key. New messages will still be visible.</string>
+    <string name="larpgram_encryption_info_limits_metadata">The server sees who talks to whom and when, but not what you write.</string>
 </resources>

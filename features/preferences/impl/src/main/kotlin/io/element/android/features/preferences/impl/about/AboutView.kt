@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.designsystem.components.preferences.PreferencePage
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -26,12 +27,21 @@ fun AboutView(
     onOpenSourceLicensesClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Правка форка (Larpgram): «Как защищена переписка».
+    onEncryptionInfoClick: () -> Unit = {},
 ) {
     PreferencePage(
         modifier = modifier,
         onBackClick = onBackClick,
         title = stringResource(id = CommonStrings.common_about)
     ) {
+        // Правка форка (Larpgram): объяснение шифрования для друзей — первым пунктом.
+        ListItem(
+            content = {
+                Text(stringResource(id = R.string.larpgram_encryption_info_title))
+            },
+            onClick = onEncryptionInfoClick,
+        )
         state.elementLegals.forEach { elementLegal ->
             ListItem(
                 content = {
