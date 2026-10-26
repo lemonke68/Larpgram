@@ -17,6 +17,7 @@ import io.element.android.libraries.keyescrow.api.HistoryProtectionStatus
 import io.element.android.libraries.keyescrow.api.KeyEscrowService
 import io.element.android.libraries.keyescrow.api.LockedKeyFetch
 import io.element.android.libraries.keyescrow.api.LoginPasswordHandoff
+import io.element.android.libraries.keyescrow.api.PairedRecoveryKeyHandoff
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.encryption.RecoveryException
@@ -47,6 +48,7 @@ class DefaultRecoveryKeyAutoProvisioner(
     private val passwordHandoff: LoginPasswordHandoff,
     private val recoveryKeyLock: RecoveryKeyLock,
     private val dispatchers: CoroutineDispatchers,
+    private val pairedKeyHandoff: PairedRecoveryKeyHandoff,
 ) : RecoveryKeyAutoProvisioner {
     // FTUE и список чатов зовут одновременно — второй ждёт первого, а не создаёт второй ключ.
     private val mutex = Mutex()
@@ -130,6 +132,8 @@ class DefaultRecoveryKeyAutoProvisioner(
         // Сервер не ответил — не трогаем ничего, попробуем в следующий раз.
         val remote = keyEscrowService.remoteState() ?: return
         val password = passwordHandoff.peek(sessionId)
+        // Ключ со старого устройства нужен только новой, ещё не подписанной сессии.
+        if (state != RecoveryState.INCOMPLETE) pairedKeyHandoff.clear(sessionId)
         when (state) {
             RecoveryState.DISABLED -> provisionDisabled(remote, password)
             RecoveryState.INCOMPLETE -> provisionIncomplete(remote, password)
@@ -157,11 +161,27 @@ class DefaultRecoveryKeyAutoProvisioner(
 
     /**
      * Новая сессия аккаунта, у которого восстановление уже есть: вход в аккаунт и есть подтверждение
-     * (решение юзера 2026-09-24). Отпираем блоб паролем со входа, без пароля или блоба — ключ
-     * сервера, если он его отдаёт. Нет ни того, ни другого — подтверждать вручную со второго
-     * устройства, после этого сработает ветка ENABLED.
+     * (решение юзера 2026-09-24). Источники по порядку: ключ со старого устройства (вход по QR),
+     * блоб, отпертый паролем со входа, ключ сервера, если он его отдаёт. Нет ни одного — подтверждать
+     * вручную со второго устройства, после этого сработает ветка ENABLED.
      */
     private suspend fun provisionIncomplete(remote: EscrowRemoteState, password: String?) {
+        val fromPairing = pairedKeyHandoff.peek(sessionId)
+        if (fromPairing != null) {
+            Timber.d("Unlocking a new session with the recovery key from the paired device")
+            val result = encryptionService.recover(fromPairing)
+            pairedKeyHandoff.clear(sessionId)
+            if (result.isSuccess) {
+                localKeyStore.put(sessionId, fromPairing)
+                when {
+                    password != null -> lockAndUpload(fromPairing, password, remote)
+                    !remote.hasLockedKey -> needsPasswordFlow.value = true
+                }
+                return
+            }
+            // Ключ со старого устройства не подошёл — дальше как без него. Серверные источники не трогаем.
+            Timber.w(result.exceptionOrNull(), "Recovery key from the paired device did not work")
+        }
         val fromBlob = if (password != null && remote.hasLockedKey) openRemoteBlob(password) else null
         val key = fromBlob ?: keyEscrowService.fetchSessionKey() ?: return
         Timber.d("Auto-unlocking a new session with the escrowed recovery key")

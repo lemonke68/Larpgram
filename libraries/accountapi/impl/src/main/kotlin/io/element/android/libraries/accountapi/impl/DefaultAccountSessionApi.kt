@@ -36,9 +36,9 @@ class DefaultAccountSessionApi(
 ) : AccountSessionApi {
     private val http = AccountHttp(okHttpClient, coroutineDispatchers)
 
-    override suspend fun createLoginOffer(): LoginOfferResult {
+    override suspend fun createLoginOffer(keyCiphertext: String?): LoginOfferResult {
         val token = accessToken() ?: return LoginOfferResult.Failure(AccountError.Network)
-        val answer = http.post("pair/offer", "{}", token) ?: return LoginOfferResult.Failure(AccountError.Network)
+        val answer = http.post("pair/offer", OfferRequest(keyCiphertext), token) ?: return LoginOfferResult.Failure(AccountError.Network)
         val code = answer.body.code
         return if (answer.code == 200 && !code.isNullOrBlank()) {
             LoginOfferResult.Offer(code, answer.body.expiresIn ?: DEFAULT_OFFER_SECONDS)
@@ -121,6 +121,10 @@ class DefaultAccountSessionApi(
         const val DEFAULT_OFFER_SECONDS = 120
     }
 }
+
+// null не попадает в JSON (encodeDefaults выключен): без ключа тело — `{}`, как раньше.
+@Serializable
+private data class OfferRequest(@SerialName("key_ct") val keyCt: String? = null)
 
 @Serializable
 private data class OfferStatusRequest(val code: String)

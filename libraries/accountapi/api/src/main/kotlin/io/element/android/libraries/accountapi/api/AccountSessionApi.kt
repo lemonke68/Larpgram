@@ -14,8 +14,11 @@ package io.element.android.libraries.accountapi.api
  * токеном текущей сессии.
  */
 interface AccountSessionApi {
-    /** Одноразовый код для QR: новое устройство сканирует его и входит в этот аккаунт. */
-    suspend fun createLoginOffer(): LoginOfferResult
+    /**
+     * Одноразовый код для QR: новое устройство сканирует его и входит в этот аккаунт.
+     * [keyCiphertext] — зашифрованный ключ восстановления, сервер отдаст его новому устройству.
+     */
+    suspend fun createLoginOffer(keyCiphertext: String? = null): LoginOfferResult
 
     /** Вошло ли новое устройство по коду. `null` — узнать не удалось (сеть). */
     suspend fun loginOfferState(code: String): LoginOfferState?
@@ -74,15 +77,29 @@ sealed interface EmailChangeResult {
     data class Failure(val error: AccountError) : EmailChangeResult
 }
 
-/** Что зашито в QR-код привязки: схема + одноразовый код. */
+/** Содержимое QR-кода привязки: одноразовый код и, если есть, ключ K к ключу восстановления. */
+data class LoginQrPayload(
+    val code: String,
+    val key: String? = null,
+)
+
+/**
+ * Что зашито в QR-код привязки: `larpgram-login:<код>` или `larpgram-login:<код>#<K>`, K — в
+ * base64url. Старый формат без K по-прежнему читается.
+ */
 object LoginQrCode {
     private const val PREFIX = "larpgram-login:"
+    private const val KEY_SEPARATOR = '#'
+    private val KEY_CHARS = Regex("[A-Za-z0-9_-]+")
 
-    fun encode(code: String): String = PREFIX + code
+    fun encode(code: String, key: String? = null): String =
+        if (key.isNullOrEmpty()) PREFIX + code else PREFIX + code + KEY_SEPARATOR + key
 
-    /** Код из отсканированного текста или `null`, если это не наш QR-код. */
-    fun decode(text: String): String? = text.trim()
-        .takeIf { it.startsWith(PREFIX) }
-        ?.removePrefix(PREFIX)
-        ?.takeIf { it.isNotBlank() }
+    /** Код и K из отсканированного текста или `null`, если это не наш QR-код. Кривой K отбрасываем. */
+    fun decode(text: String): LoginQrPayload? {
+        val body = text.trim().takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX) ?: return null
+        val code = body.substringBefore(KEY_SEPARATOR).takeIf { it.isNotBlank() } ?: return null
+        val key = body.substringAfter(KEY_SEPARATOR, missingDelimiterValue = "").takeIf { KEY_CHARS.matches(it) }
+        return LoginQrPayload(code, key)
+    }
 }

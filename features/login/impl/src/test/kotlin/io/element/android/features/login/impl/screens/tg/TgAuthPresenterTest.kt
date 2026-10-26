@@ -19,7 +19,10 @@ import io.element.android.libraries.accountapi.api.ResendResult
 import io.element.android.libraries.accountapi.api.StartResult
 import io.element.android.libraries.accountapi.test.FakeAccountApi
 import io.element.android.libraries.keyescrow.test.FakeLoginPasswordHandoff
+import io.element.android.libraries.keyescrow.test.FakePairedRecoveryKeyHandoff
+import io.element.android.libraries.keyescrow.test.FakePairingKeyTransfer
 import io.element.android.libraries.matrix.api.auth.AuthenticationException
+import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.auth.FakeMatrixAuthenticationService
 import io.element.android.libraries.matrix.test.auth.aMatrixHomeServerDetails
 import io.element.android.libraries.matrix.test.core.aBuildMeta
@@ -472,6 +475,51 @@ class TgAuthPresenterTest {
     }
 
     @Test
+    fun `qr - the recovery key from the old device is handed to the new session`() = runTest {
+        val auth = anAuthService()
+        val handoff = FakePairedRecoveryKeyHandoff()
+        val redeemed = mutableListOf<String>()
+        val api = FakeAccountApi(
+            redeemLoginCodeLambda = { code, _ ->
+                redeemed += code
+                RedeemLoginResult.Session("@vasya:server", "DEVICE", "mpt_token", keyCiphertext = "RK|@vasya:server")
+            },
+        )
+        createPresenter(authenticationService = auth, accountApi = api, pairedRecoveryKeyHandoff = handoff).test {
+            val sink = openLogin()
+            sink(TgAuthEvent.OpenQrScan)
+            awaitState { it.step == TgAuthStep.ScanQr }
+            sink(TgAuthEvent.QrScanned("larpgram-login:CODE#K", "Honor"))
+            while (handoff.keys.isEmpty()) delay(10)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(redeemed).containsExactly("CODE")
+        assertThat(handoff.keys).containsExactly(A_USER_ID, "RK")
+    }
+
+    @Test
+    fun `qr - a key that does not open still signs in, without a handoff`() = runTest {
+        val auth = anAuthService()
+        val handoff = FakePairedRecoveryKeyHandoff()
+        val api = FakeAccountApi(
+            redeemLoginCodeLambda = { _, _ ->
+                // Шифротекст от другого аккаунта: AAD не сходится.
+                RedeemLoginResult.Session("@vasya:server", "DEVICE", "mpt_token", keyCiphertext = "RK|@petya:server")
+            },
+        )
+        createPresenter(authenticationService = auth, accountApi = api, pairedRecoveryKeyHandoff = handoff).test {
+            val sink = openLogin()
+            sink(TgAuthEvent.OpenQrScan)
+            awaitState { it.step == TgAuthStep.ScanQr }
+            sink(TgAuthEvent.QrScanned("larpgram-login:CODE#K", "Honor"))
+            while (auth.loginWithAccessTokenCalls.isEmpty()) delay(10)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(auth.loginWithAccessTokenCalls).containsExactly(Triple("@vasya:server", "DEVICE", "mpt_token"))
+        assertThat(handoff.keys).isEmpty()
+    }
+
+    @Test
     fun `qr - foreign and expired codes show an error, scanning waits for retry`() = runTest {
         var calls = 0
         val api = FakeAccountApi(
@@ -544,6 +592,7 @@ class TgAuthPresenterTest {
         authenticationService: FakeMatrixAuthenticationService = anAuthService(),
         accountApi: FakeAccountApi = FakeAccountApi(),
         sessionStore: SessionStore = InMemorySessionStore(),
+        pairedRecoveryKeyHandoff: FakePairedRecoveryKeyHandoff = FakePairedRecoveryKeyHandoff(),
     ) = TgAuthPresenter(
         authenticationService = authenticationService,
         accountApi = accountApi,
@@ -552,5 +601,7 @@ class TgAuthPresenterTest {
         rageshakeFeatureAvailability = { flowOf(true) },
         onBoardingLogoResIdProvider = { null },
         loginPasswordHandoff = FakeLoginPasswordHandoff(),
+        pairingKeyTransfer = FakePairingKeyTransfer(),
+        pairedRecoveryKeyHandoff = pairedRecoveryKeyHandoff,
     )
 }

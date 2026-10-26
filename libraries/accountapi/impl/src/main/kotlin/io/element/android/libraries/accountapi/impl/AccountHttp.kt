@@ -134,6 +134,7 @@ internal data class AnswerBody(
     @SerialName("user_id") val userId: String? = null,
     @SerialName("device_id") val deviceId: String? = null,
     @SerialName("access_token") val accessToken: String? = null,
+    @SerialName("key_ct") val keyCt: String? = null,
     @SerialName("code_required") val codeRequired: Boolean? = null,
     @SerialName("email_hint") val emailHint: String? = null,
 )

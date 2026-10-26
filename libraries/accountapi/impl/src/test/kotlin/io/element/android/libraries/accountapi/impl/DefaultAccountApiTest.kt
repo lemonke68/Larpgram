@@ -181,6 +181,12 @@ class DefaultAccountApiTest {
     }
 
     @Test
+    fun `redeemLoginCode passes the key ciphertext through`() = runTest {
+        val server = respond(200, """{"user_id":"@v:s","device_id":"DEV","access_token":"mpt_x","key_ct":"AQ_-ct"}""")
+        assertThat(api(server).redeemLoginCode("CODE", "Honor")).isEqualTo(RedeemLoginResult.Session("@v:s", "DEV", "mpt_x", "AQ_-ct"))
+    }
+
+    @Test
     fun `session api sends the token in the header and maps the offer`() = runTest {
         val server = respond(200, """{"code":"CODE","expires_in":120}""")
         assertThat(sessionApi(server).createLoginOffer()).isEqualTo(LoginOfferResult.Offer("CODE", 120))
@@ -188,8 +194,16 @@ class DefaultAccountApiTest {
         assertThat(request.header("Authorization")).isEqualTo("Bearer aToken")
         assertThat(request.url.toString()).doesNotContain("aToken")
         assertThat(request.url.encodedPath).endsWith("/account/pair/offer")
+        assertThat(request.bodyText()).isEqualTo("{}")
         assertThat(sessionApi(respond(429, """{"error":"too_many_requests"}""")).createLoginOffer())
             .isEqualTo(LoginOfferResult.Failure(AccountError.TooManyRequests))
+    }
+
+    @Test
+    fun `session api sends the key ciphertext with the offer`() = runTest {
+        val server = respond(200, """{"code":"CODE","expires_in":120}""")
+        assertThat(sessionApi(server).createLoginOffer("AQ_-ct")).isEqualTo(LoginOfferResult.Offer("CODE", 120))
+        assertThat(server.requests.single().bodyText()).isEqualTo("""{"key_ct":"AQ_-ct"}""")
     }
 
     @Test

@@ -21,17 +21,32 @@ import io.element.android.libraries.accountapi.api.LoginOfferResult
 import io.element.android.libraries.accountapi.api.LoginOfferState
 import io.element.android.libraries.accountapi.api.LoginQrCode
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.keyescrow.api.PairingKeyTransfer
+import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
+import io.element.android.libraries.matrix.api.core.SessionId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * «Устройства» как в Telegram: список сеансов, завершение чужого сеанса и привязка нового
  * устройства QR-кодом. Всё через сервис account и CS API — без страницы MAS в браузере.
+ *
+ * Если на этом устройстве есть ключ восстановления, он уходит новому устройству вместе с QR
+ * ([PairingKeyTransfer]): шифротекст — серверу с кодом, K — только в QR. Тогда новому устройству
+ * не нужен пароль, чтобы открыть историю.
  */
 @Inject
 class TgDevicesPresenter(
     private val accountSessionApi: AccountSessionApi,
+    private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
+    private val pairingKeyTransfer: PairingKeyTransfer,
+    private val sessionId: SessionId,
 ) : Presenter<TgDevicesState> {
+    // Ключ с устройства берём один раз на экран: его проверка — запрос к серверу, а QR обновляется каждые 2 минуты.
+    private var recoveryKey: String? = null
+    private var recoveryKeyLoaded = false
+
     @Composable
     override fun present(): TgDevicesState {
         val scope = rememberCoroutineScope()
@@ -55,7 +70,7 @@ class TgDevicesPresenter(
         // истёк — молча берём следующий, как Telegram обновляет свой QR.
         val showing = link as? TgDeviceLink.Showing
         LaunchedEffect(showing?.qrData) {
-            val code = showing?.qrData?.let(LoginQrCode::decode) ?: return@LaunchedEffect
+            val code = showing?.qrData?.let(LoginQrCode::decode)?.code ?: return@LaunchedEffect
             while (true) {
                 delay(POLL_MILLIS)
                 when (accountSessionApi.loginOfferState(code)) {
@@ -119,9 +134,25 @@ class TgDevicesPresenter(
         )
     }
 
-    private suspend fun newOffer(): TgDeviceLink = when (val offer = accountSessionApi.createLoginOffer()) {
-        is LoginOfferResult.Offer -> TgDeviceLink.Showing(LoginQrCode.encode(offer.code))
-        is LoginOfferResult.Failure -> TgDeviceLink.Failed
+    private suspend fun newOffer(): TgDeviceLink {
+        // Без ключа на устройстве — QR как раньше, новое устройство попросит пароль.
+        val sealed = recoveryKeyOnDevice()?.let { key ->
+            runCatching { pairingKeyTransfer.seal(key, sessionId.value) }
+                .onFailure { Timber.w(it, "Could not seal the recovery key for pairing") }
+                .getOrNull()
+        }
+        return when (val offer = accountSessionApi.createLoginOffer(sealed?.ciphertext)) {
+            is LoginOfferResult.Offer -> TgDeviceLink.Showing(LoginQrCode.encode(offer.code, sealed?.key))
+            is LoginOfferResult.Failure -> TgDeviceLink.Failed
+        }
+    }
+
+    private suspend fun recoveryKeyOnDevice(): String? {
+        if (!recoveryKeyLoaded) {
+            recoveryKey = runCatching { recoveryKeyAutoProvisioner.recoveryKeyOnDevice() }.getOrNull()
+            recoveryKeyLoaded = true
+        }
+        return recoveryKey
     }
 
     private companion object {
