@@ -44,6 +44,7 @@ import io.element.android.libraries.mediaviewer.impl.model.mediaSource
 import io.element.android.libraries.mediaviewer.impl.model.thumbnailSource
 import io.element.android.libraries.mediaviewer.impl.music.musicQueueId
 import io.element.android.libraries.mediaviewer.impl.music.toMusicTracks
+import io.element.android.libraries.musicplayer.api.MusicOfflineStatus
 import io.element.android.libraries.musicplayer.api.MusicPlayer
 import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.musicplayer.api.MusicTrackTags
@@ -96,6 +97,7 @@ class DefaultProfileSharedMedia(
             media.dataOrNull()?.fileItems?.toMusicTracks(room.sessionId, room.roomId).orEmpty()
         }
         val musicTags by musicPlayer.tags.collectAsState()
+        val musicOffline by musicPlayer.offline.collectAsState()
         val musicQuery = rememberTextFieldState()
         val queueId = musicQueueId(room.roomId)
         // Догрузились ещё треки — добавляем их в уже играющую очередь комнаты.
@@ -103,13 +105,14 @@ class DefaultProfileSharedMedia(
             if (musicTracks.isNotEmpty() && musicPlayer.state.value.queueId == queueId) musicPlayer.syncQueue(queueId, musicTracks)
         }
 
-        return remember(media, links, musicTracks, musicTags) {
+        return remember(media, links, musicTracks, musicTags, musicOffline) {
             DefaultSection(
                 media = media,
                 links = links,
                 music = MusicTabData(
                     tracks = musicTracks,
                     tags = musicTags,
+                    offline = musicOffline,
                     query = musicQuery,
                     player = musicPlayer,
                     onPlay = { track -> musicPlayer.play(queueId, musicTracks, track.id) },
@@ -140,6 +143,7 @@ class DefaultProfileSharedMedia(
 private class MusicTabData(
     val tracks: List<MusicTrack>,
     val tags: Map<String, MusicTrackTags>,
+    val offline: Map<String, MusicOfflineStatus>,
     val query: TextFieldState,
     val player: MusicPlayer,
     val onPlay: (MusicTrack) -> Unit,
@@ -176,6 +180,7 @@ private class DefaultSection(
                 media = media,
                 tracks = music.tracks,
                 tags = music.tags,
+                offline = music.offline,
                 query = music.query,
                 musicPlayer = music.player,
                 onPlay = music.onPlay,

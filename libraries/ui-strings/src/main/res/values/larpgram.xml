@@ -35,6 +35,10 @@
     <string name="larpgram_profile_empty_music">"Music from this chat will be shown here."</string>
     <string name="larpgram_profile_music_search">"Search music"</string>
     <string name="larpgram_profile_music_not_found">"No tracks found."</string>
+    <string name="larpgram_profile_music_save_all">"Save all on device"</string>
+    <string name="larpgram_profile_music_saved_all">"All saved on device"</string>
+    <string name="larpgram_profile_music_save_track">"Save on device"</string>
+    <string name="larpgram_profile_music_remove_track">"Remove from device"</string>
     <!-- Профиль в стиле TG: плитки действий (короткие, влезают в плитку), вкладки, карточки. -->
     <string name="larpgram_profile_action_chat">"Message"</string>
     <string name="larpgram_profile_action_mute">"Mute"</string>

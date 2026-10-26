@@ -38,6 +38,7 @@ class MusicTrackResolver(
     private val matrixClientProvider: MatrixClientProvider,
     private val tagsExtractor: MusicTagsExtractor,
     private val tagsStore: TrackTagsStore,
+    private val offlineStore: MusicOfflineStore,
     private val dispatchers: CoroutineDispatchers,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
 ) {
@@ -70,6 +71,11 @@ class MusicTrackResolver(
 
     private suspend fun download(track: MusicTrack): File {
         try {
+            // Сохранённый на устройстве трек играет без сети.
+            offlineStore.fileFor(track.mediaKey)?.let { saved ->
+                readTagsIfNeeded(track, saved)
+                return saved
+            }
             val client = matrixClientProvider.getOrRestore(track.sessionId).getOrElse { throw IOException("No session", it) }
             val mediaFile = client.matrixMediaLoader
                 .downloadMediaFile(source = track.mediaSource, mimeType = track.mimeType, filename = track.filename)

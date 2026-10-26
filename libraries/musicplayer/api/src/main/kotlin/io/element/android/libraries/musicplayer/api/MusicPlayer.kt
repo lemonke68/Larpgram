@@ -42,7 +42,18 @@ interface MusicPlayer {
 
     /** Закрыть плеер: очередь очищается, уведомление уходит. */
     fun stop()
+
+    /** Треки, сохранённые на устройстве (или сохраняемые сейчас), по [MusicTrack.mediaKey]. */
+    val offline: StateFlow<ImmutableMap<String, MusicOfflineStatus>>
+
+    /**
+     * Сохранить треки на устройстве для прослушивания без сети или убрать их. Это отдельное
+     * хранилище, не общий кэш медиа: система его не чистит, удаляет только пользователь.
+     */
+    fun setSavedOnDevice(tracks: List<MusicTrack>, save: Boolean)
 }
+
+enum class MusicOfflineStatus { Saving, Saved }
 
 enum class MusicRepeatMode { Off, All, One }
 

@@ -7,6 +7,7 @@
 
 package io.element.android.libraries.musicplayer.test
 
+import io.element.android.libraries.musicplayer.api.MusicOfflineStatus
 import io.element.android.libraries.musicplayer.api.MusicPlayer
 import io.element.android.libraries.musicplayer.api.MusicPlayerState
 import io.element.android.libraries.musicplayer.api.MusicTrack
@@ -70,5 +71,12 @@ class FakeMusicPlayer(
     override fun stop() {
         stopCount++
         state.value = MusicPlayerState.Idle
+    }
+
+    override val offline = MutableStateFlow<ImmutableMap<String, MusicOfflineStatus>>(persistentMapOf())
+    val savedOnDeviceCalls = mutableListOf<Pair<List<MusicTrack>, Boolean>>()
+
+    override fun setSavedOnDevice(tracks: List<MusicTrack>, save: Boolean) {
+        savedOnDeviceCalls += tracks to save
     }
 }

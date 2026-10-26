@@ -25,6 +25,10 @@
     <string name="larpgram_profile_empty_music">"Здесь будет музыка из этого чата."</string>
     <string name="larpgram_profile_music_search">"Поиск музыки"</string>
     <string name="larpgram_profile_music_not_found">"Ничего не найдено."</string>
+    <string name="larpgram_profile_music_save_all">"Сохранить всё на устройстве"</string>
+    <string name="larpgram_profile_music_saved_all">"Всё сохранено на устройстве"</string>
+    <string name="larpgram_profile_music_save_track">"Сохранить на устройстве"</string>
+    <string name="larpgram_profile_music_remove_track">"Удалить с устройства"</string>
     <string name="larpgram_profile_action_chat">"Чат"</string>
     <string name="larpgram_profile_action_mute">"Звук"</string>
     <string name="larpgram_profile_action_unmute">"Вкл. звук"</string>

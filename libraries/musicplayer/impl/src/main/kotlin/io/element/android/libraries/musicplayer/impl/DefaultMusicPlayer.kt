@@ -19,6 +19,7 @@ import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.di.annotations.AppCoroutineScope
+import io.element.android.libraries.musicplayer.api.MusicOfflineStatus
 import io.element.android.libraries.musicplayer.api.MusicPlayer
 import io.element.android.libraries.musicplayer.api.MusicPlayerState
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
@@ -62,6 +63,7 @@ class DefaultMusicPlayer(
     private val resolver: MusicTrackResolver,
     private val positionStore: TrackPositionStore,
     private val tagsStore: TrackTagsStore,
+    private val offlineStore: MusicOfflineStore,
     private val dispatchers: CoroutineDispatchers,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
 ) : MusicPlayer {
@@ -70,6 +72,8 @@ class DefaultMusicPlayer(
 
     private val _tags = MutableStateFlow<ImmutableMap<String, MusicTrackTags>>(persistentMapOf())
     override val tags: StateFlow<ImmutableMap<String, MusicTrackTags>> = _tags.asStateFlow()
+
+    override val offline: StateFlow<ImmutableMap<String, MusicOfflineStatus>> = offlineStore.status
 
     private var player: Player? = null
     private var queueId: String? = null
@@ -254,6 +258,10 @@ class DefaultMusicPlayer(
         resolver.releaseAll()
         registry.clear()
         publish()
+    }
+
+    override fun setSavedOnDevice(tracks: List<MusicTrack>, save: Boolean) {
+        if (save) offlineStore.save(tracks) else offlineStore.remove(tracks)
     }
 
     private fun startPlayback(player: Player) {

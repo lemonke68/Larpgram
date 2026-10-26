@@ -198,6 +198,7 @@ class DefaultMusicPlayerTest : RobolectricTest() {
     ): DefaultMusicPlayer {
         val context = RuntimeEnvironment.getApplication()
         val dispatchers = testCoroutineDispatchers(useUnconfinedTestDispatcher = true)
+        val offlineStore = MusicOfflineStore(context, FakeMatrixClientProvider(), dispatchers, backgroundScope)
         return DefaultMusicPlayer(
             playerFactory = { ExoPlayer.Builder(context).build().also { exoPlayer = it } },
             serviceConnector = connector,
@@ -206,11 +207,13 @@ class DefaultMusicPlayerTest : RobolectricTest() {
                 matrixClientProvider = FakeMatrixClientProvider(),
                 tagsExtractor = MusicTagsExtractor(context),
                 tagsStore = tagsStore,
+                offlineStore = offlineStore,
                 dispatchers = dispatchers,
                 appCoroutineScope = backgroundScope,
             ),
             positionStore = positionStore,
             tagsStore = tagsStore,
+            offlineStore = offlineStore,
             dispatchers = dispatchers,
             appCoroutineScope = backgroundScope,
         )
