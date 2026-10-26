@@ -83,7 +83,10 @@ internal fun MusicPlayerAudioView(
     localMediaViewState.playableState = PlayableState.Playable(isShowingControls = true)
 
     LaunchedEffect(playback.trackId) {
-        if (playback.autoPlay && !isCurrent) playback.onPlay()
+        if (playback.autoPlay) {
+            if (!isCurrent) playback.onPlay()
+            playback.onAutoPlayHandled()
+        }
     }
     LaunchedEffect(state.positionMs, seekingTo) {
         val target = seekingTo

@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,6 +131,8 @@ fun TgMediaViewerView(
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     var showOverlay by remember { mutableStateOf(true) }
+    // Правка форка (Larpgram): трек, по которому открыли просмотр, включается один раз.
+    var musicAutoPlayHandled by rememberSaveable { mutableStateOf(false) }
 
     val currentData = state.listData.getOrNull(state.currentIndex)
     val defaultBottomPaddingInPixels = if (LocalInspectionMode.current && !hasCompactHeightWindowSize()) 303 else 0
@@ -299,7 +302,8 @@ fun TgMediaViewerView(
                                     trackId = musicTrackId(dataForPage.eventId, dataForPage.mediaSource),
                                     player = musicPlayer,
                                     onPlay = { state.eventSink(MediaViewerEvent.PlayMusic(dataForPage)) },
-                                    autoPlay = dataForPage.eventId != null && dataForPage.eventId == state.initiallySelectedEventId,
+                                    autoPlay = !musicAutoPlayHandled && dataForPage.eventId != null && dataForPage.eventId == state.initiallySelectedEventId,
+                                    onAutoPlayHandled = { musicAutoPlayHandled = true },
                                 )
                             },
                         )

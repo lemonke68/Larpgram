@@ -85,4 +85,6 @@ class MusicPagePlayback(
     val onPlay: () -> Unit,
     /** Страница открыта тапом по этому треку — играть сразу, как в Telegram. */
     val autoPlay: Boolean,
+    /** Автозапуск отработал: при возврате на страницу свайпом повторно не включать. */
+    val onAutoPlayHandled: () -> Unit = {},
 )
