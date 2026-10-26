@@ -33,6 +33,7 @@ import im.vector.app.features.analytics.plan.Composer
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.contentscanner.api.ContentScannerService
 import io.element.android.features.location.api.LocationService
+import io.element.android.features.messages.api.timeline.TextPillificator
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.error.sendAttachmentError
@@ -41,9 +42,9 @@ import io.element.android.features.messages.impl.draft.ComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.RoomAliasSuggestionsDataSource
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
 import io.element.android.features.messages.impl.timeline.TimelineController
-import io.element.android.features.messages.impl.utils.TextPillificationHelper
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
@@ -107,10 +108,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import kotlin.time.Duration.Companion.seconds
 import io.element.android.libraries.core.mimetype.MimeTypes.Any as AnyMimeTypes
@@ -140,7 +141,7 @@ class MessageComposerPresenter(
     // Правка форка: меню вложений, пост канала, «Черновик:» (ComposerForkActions).
     private val forkActions: ComposerForkActions,
     private val mentionSpanProvider: MentionSpanProvider,
-    private val pillificationHelper: TextPillificationHelper,
+    private val pillificationHelper: TextPillificator,
     private val suggestionsProcessor: SuggestionsProcessor,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
     private val notificationConversationService: NotificationConversationService,
@@ -148,6 +149,7 @@ class MessageComposerPresenter(
     private val featureFlagService: FeatureFlagService,
     private val contentScannerService: ContentScannerService,
     private val contentValidationCache: EventContentValidationCache,
+    private val dispatchers: CoroutineDispatchers,
 ) : Presenter<MessageComposerState> {
     @AssistedFactory
     interface Factory {
@@ -187,31 +189,28 @@ class MessageComposerPresenter(
 
         val cameraPermissionState = cameraPermissionPresenter.present()
 
-        val canShareLocation = remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) {
-            canShareLocation.value = locationService.isServiceAvailable()
-        }
+        val canShareLocation by remember { locationService.isServiceAvailable() }.collectAsState()
 
         val isSendGalleryMessagesEnabled by featureFlagService.isFeatureEnabledFlow(FeatureFlags.SendGalleryMessages)
             .collectAsState(initial = false)
 
         val galleryMediaPicker = mediaPickerProvider.registerGalleryPicker { uri, mimeType ->
-            handlePickedMedia(uri, mimeType)
+            localCoroutineScope.handlePickedMedia(uri, mimeType)
         }
         val galleryMultiMediaPicker = mediaPickerProvider.registerGalleryMultiPicker { uris ->
-            handlePickedMediaList(uris)
+            localCoroutineScope.handlePickedMediaList(uris)
         }
         val filesPicker = mediaPickerProvider.registerFileMultiPicker(AnyMimeTypes) { uris ->
-            handlePickedMediaList(uris, sendAsFile = true)
+            localCoroutineScope.handlePickedMediaList(uris, sendAsFile = true)
         }
         val fileSinglePicker = mediaPickerProvider.registerFilePicker(AnyMimeTypes) { uri, mimeType ->
-            handlePickedMedia(uri, mimeType ?: MimeTypes.OctetStream, sendAsFile = true)
+            localCoroutineScope.handlePickedMedia(uri, mimeType ?: MimeTypes.OctetStream, sendAsFile = true)
         }
         val cameraPhotoPicker = mediaPickerProvider.registerCameraPhotoPicker { uri ->
-            handlePickedMedia(uri, MimeTypes.Jpeg)
+            localCoroutineScope.handlePickedMedia(uri, MimeTypes.Jpeg)
         }
         val cameraVideoPicker = mediaPickerProvider.registerCameraVideoPicker { uri ->
-            handlePickedMedia(uri, MimeTypes.Mp4)
+            localCoroutineScope.handlePickedMedia(uri, MimeTypes.Mp4)
         }
         val isFullScreen = rememberSaveable {
             mutableStateOf(false)
@@ -302,17 +301,16 @@ class MessageComposerPresenter(
                 }
                 is MessageComposerEvent.SendUri -> {
                     val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
-                    sessionCoroutineScope.sendAttachment(
-                        attachment = Attachment.Media(
-                            localMedia = localMediaFactory.createFromUri(
-                                uri = event.uri,
-                                mimeType = null,
-                                name = null,
-                                formattedFileSize = null
-                            ),
-                        ),
-                        inReplyToEventId = inReplyToEventId,
-                    )
+                    sessionCoroutineScope.launch {
+                        val localMedia = createLocalMedia(
+                            uri = event.uri,
+                            mimeType = null,
+                        )
+                        sendAttachment(
+                            attachment = Attachment.Media(localMedia),
+                            inReplyToEventId = inReplyToEventId,
+                        )
+                    }
 
                     resetComposerModeAfterAttaching()
                 }
@@ -380,7 +378,7 @@ class MessageComposerPresenter(
                         TgAttachRestore(selection = event.restoreSelection, caption = event.caption, isExpanded = event.isSheetExpanded)
                     )
                     // Ответ не сбрасываем: после «Назад» он ещё нужен, сбросит отправка с предпросмотра.
-                    handlePickedMediaList(event.media.map { it.uri }, resetComposerMode = false)
+                    localCoroutineScope.handlePickedMediaList(event.media.map { it.uri }, resetComposerMode = false)
                 }
                 is MessageComposerEvent.ToggleTextFormatting -> {
                     showAttachmentSourcePicker = false
@@ -465,7 +463,7 @@ class MessageComposerPresenter(
             isInThreadTimeline = isInThread,
             showAttachmentSourcePicker = showAttachmentSourcePicker,
             showTextFormatting = showTextFormatting,
-            canShareLocation = canShareLocation.value,
+            canShareLocation = canShareLocation,
             suggestions = suggestions.toImmutableList(),
             resolveMentionDisplay = resolveMentionDisplay,
             resolveAtRoomMentionDisplay = resolveAtRoomMentionDisplay,
@@ -677,19 +675,30 @@ class MessageComposerPresenter(
         }
     }
 
-    private fun handlePickedMedia(
+    // Creating the LocalMedia queries the ContentResolver and can decode the media, so do it off the main thread
+    private suspend fun createLocalMedia(
+        uri: Uri,
+        mimeType: String?,
+    ) = withContext(dispatchers.io) {
+        localMediaFactory.createFromUri(
+            uri = uri,
+            mimeType = mimeType,
+            name = null,
+            formattedFileSize = null,
+        )
+    }
+
+    private fun CoroutineScope.handlePickedMedia(
         uri: Uri?,
         mimeType: String? = null,
         sendAsFile: Boolean = false,
         // Правка форка: из меню вложений Telegram режим сбрасывается после отправки, не здесь.
         resetComposerMode: Boolean = true,
-    ) {
-        uri ?: return
-        val localMedia = localMediaFactory.createFromUri(
+    ) = launch {
+        uri ?: return@launch
+        val localMedia = createLocalMedia(
             uri = uri,
             mimeType = mimeType,
-            name = null,
-            formattedFileSize = null
         )
         val mediaAttachment = Attachment.Media(localMedia, sendAsFile = sendAsFile)
         val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
@@ -698,7 +707,7 @@ class MessageComposerPresenter(
         if (resetComposerMode) resetComposerModeAfterAttaching()
     }
 
-    private fun handlePickedMediaList(
+    private fun CoroutineScope.handlePickedMediaList(
         uris: List<Uri>,
         sendAsFile: Boolean = false,
         // Правка форка: см. handlePickedMedia.
@@ -709,19 +718,19 @@ class MessageComposerPresenter(
             handlePickedMedia(uris.first(), sendAsFile = sendAsFile, resetComposerMode = resetComposerMode)
             return
         }
-        val attachments = uris.map { uri ->
-            val localMedia = localMediaFactory.createFromUri(
-                uri = uri,
-                mimeType = null,
-                name = null,
-                formattedFileSize = null,
-            )
-            Attachment.Media(localMedia, sendAsFile = sendAsFile)
-        }.toImmutableList()
-        val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
-        navigator.navigateToPreviewAttachments(attachments, inReplyToEventId)
+        launch {
+            val attachments = uris.map { uri ->
+                val localMedia = createLocalMedia(
+                    uri = uri,
+                    mimeType = null,
+                )
+                Attachment.Media(localMedia, sendAsFile = sendAsFile)
+            }.toImmutableList()
+            val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
+            navigator.navigateToPreviewAttachments(attachments, inReplyToEventId)
 
-        if (resetComposerMode) resetComposerModeAfterAttaching()
+            if (resetComposerMode) resetComposerModeAfterAttaching()
+        }
     }
 
     private fun resetComposerModeAfterAttaching() {

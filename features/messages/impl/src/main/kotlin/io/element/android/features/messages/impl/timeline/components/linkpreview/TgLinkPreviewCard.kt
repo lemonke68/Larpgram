@@ -37,7 +37,7 @@ import io.element.android.libraries.designsystem.theme.LocalOutgoingBubbleConten
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.linkpreview.api.LinkPreview
 import io.element.android.libraries.matrix.api.media.MediaSource
-import io.element.android.libraries.matrix.ui.media.MediaRequestData
+import io.element.android.libraries.matrixmedia.api.MediaRequestData
 
 /**
  * Карточка ссылки под текстом, как веб-превью TG (`ChatMessageCell`, webpage): полупрозрачный

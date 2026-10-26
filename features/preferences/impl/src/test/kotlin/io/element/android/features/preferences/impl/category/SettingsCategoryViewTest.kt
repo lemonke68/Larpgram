@@ -19,6 +19,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.features.preferences.impl.R
+import io.element.android.features.preferences.impl.account.aPreferencesAccountState
+import io.element.android.features.preferences.impl.advanced.AdvancedSettingsState
 import io.element.android.features.preferences.impl.advanced.aAdvancedSettingsState
 import io.element.android.features.preferences.impl.advanced.aChatAppearanceState
 import io.element.android.features.preferences.impl.root.PreferencesRootState
@@ -57,7 +59,11 @@ class SettingsCategoryViewTest : RobolectricTest() {
     @Test
     fun `Account - click on email invokes callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
-            setView(SettingsCategory.Account, aPreferencesRootState(accountManagementUrl = "aUrl"), onEmailClick = callback)
+            setView(
+                SettingsCategory.Account,
+                aPreferencesRootState(preferencesAccountState = aPreferencesAccountState(accountManagementUrl = "aUrl")),
+                onEmailClick = callback
+            )
             clickOn(R.string.larpgram_settings_email)
         }
     }
@@ -81,7 +87,11 @@ class SettingsCategoryViewTest : RobolectricTest() {
     @Test
     fun `Account - click on deactivate invokes callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
-            setView(SettingsCategory.Account, aPreferencesRootState(canDeactivateAccount = true), onDeactivateClick = callback)
+            setView(
+                SettingsCategory.Account,
+                aPreferencesRootState(preferencesAccountState = aPreferencesAccountState(canDeactivateAccount = true)),
+                onDeactivateClick = callback
+            )
             clickOn(CommonStrings.action_delete_account)
         }
     }
@@ -97,7 +107,11 @@ class SettingsCategoryViewTest : RobolectricTest() {
     @Test
     fun `Privacy - click on encryption invokes callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
-            setView(SettingsCategory.Privacy, aPreferencesRootState(showSecureBackup = true), onSecureBackupClick = callback)
+            setView(
+                SettingsCategory.Privacy,
+                aPreferencesRootState(preferencesAccountState = aPreferencesAccountState(showSecureBackup = true)),
+                onSecureBackupClick = callback
+            )
             clickOn(CommonStrings.common_encryption)
         }
     }
@@ -105,7 +119,12 @@ class SettingsCategoryViewTest : RobolectricTest() {
     @Test
     fun `Privacy - click on blocked users invokes callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
-            setView(SettingsCategory.Privacy, aPreferencesRootState(nbOfBlockedUsers = 1), onOpenBlockedUsers = callback)
+            setView(
+                SettingsCategory.Privacy,
+                aPreferencesRootState(),
+                advancedSettingsState = aAdvancedSettingsState(numberOfBlockedUsers = 1),
+                onOpenBlockedUsers = callback,
+            )
             clickOn(CommonStrings.common_blocked_users)
         }
     }
@@ -121,7 +140,11 @@ class SettingsCategoryViewTest : RobolectricTest() {
     @Test
     fun `Devices - click on link new device invokes callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
-            setView(SettingsCategory.Devices, aPreferencesRootState(showLinkNewDevice = true), onLinkNewDeviceClick = callback)
+            setView(
+                SettingsCategory.Devices,
+                aPreferencesRootState(preferencesAccountState = aPreferencesAccountState(showLinkNewDevice = true)),
+                onLinkNewDeviceClick = callback
+            )
             clickOn(CommonStrings.common_link_new_device)
         }
     }
@@ -134,6 +157,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.clickOn(resId: Int) {
 private fun AndroidComposeUiTest<ComponentActivity>.setView(
     category: SettingsCategory,
     state: PreferencesRootState,
+    advancedSettingsState: AdvancedSettingsState = aAdvancedSettingsState(),
     onBackClick: () -> Unit = EnsureNeverCalled(),
     onOpenUserProfile: (MatrixUser) -> Unit = EnsureNeverCalledWithParam(),
     onAddAccountClick: () -> Unit = EnsureNeverCalled(),
@@ -153,7 +177,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
         SettingsCategoryView(
             category = category,
             state = state,
-            advancedSettingsState = aAdvancedSettingsState(),
+            advancedSettingsState = advancedSettingsState,
             chatAppearanceState = aChatAppearanceState(),
             onBackClick = onBackClick,
             onOpenUserProfile = onOpenUserProfile,

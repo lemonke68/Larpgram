@@ -22,9 +22,12 @@ import com.freeletics.flowredux.compose.rememberStateAndDispatch
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import io.element.android.features.securebackup.impl.R
 import io.element.android.features.securebackup.impl.loggerTagSetup
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyUserStory
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyViewState
+import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
+import io.element.android.libraries.androidutils.toast.ToastHelper
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.api.encryption.EnableRecoveryProgress
@@ -42,6 +45,8 @@ class SecureBackupSetupPresenter(
     // Правка форка: как только SDK создал ключ восстановления, кладём его в escrow, чтобы
     // потом верифицировать новую сессию кодом с почты, а не вторым устройством.
     private val recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner,
+    private val clipboardHelper: ClipboardHelper,
+    private val toastHelper: ToastHelper,
 ) : Presenter<SecureBackupSetupState> {
     @AssistedFactory
     interface Factory {
@@ -64,6 +69,13 @@ class SecureBackupSetupPresenter(
                 }
                 SecureBackupSetupEvent.RecoveryKeyHasBeenSaved ->
                     stateAndDispatch.dispatchAction(SecureBackupSetupStateMachine.Event.UserSavedKey)
+                SecureBackupSetupEvent.CopyRecoveryKey -> {
+                    val recoveryKey = setupState.recoveryKey() ?: return
+                    clipboardHelper.copyPlainText(recoveryKey, isSensitive = true) {
+                        toastHelper.show(R.string.screen_recovery_key_copied_to_clipboard)
+                    }
+                    stateAndDispatch.dispatchAction(SecureBackupSetupStateMachine.Event.UserSavedKey)
+                }
                 SecureBackupSetupEvent.DismissDialog -> {
                     showSaveConfirmationDialog = false
                     stateAndDispatch.dispatchAction(SecureBackupSetupStateMachine.Event.ClearError)

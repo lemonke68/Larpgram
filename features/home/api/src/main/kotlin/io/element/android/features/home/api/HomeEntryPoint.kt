@@ -14,6 +14,7 @@ import com.bumble.appyx.core.plugin.Plugin
 import io.element.android.libraries.architecture.FeatureEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 
 interface HomeEntryPoint : FeatureEntryPoint {
@@ -39,6 +40,7 @@ interface HomeEntryPoint : FeatureEntryPoint {
         // Escapes from the Settings/Profile tabs, hosted inside Home. Forwarded to the parent
         // flow, which owns these destinations.
         fun navigateToAddAccount()
+        fun navigateToSession(sessionId: SessionId)
         fun navigateToLinkNewDevice()
         fun navigateToSecureBackup()
         fun navigateToRoomNotificationSettings(roomId: RoomId)

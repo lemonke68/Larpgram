@@ -33,11 +33,9 @@ dependencies {
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
-    implementation(projects.libraries.matrixui)
     implementation(projects.libraries.designsystem)
     // Правка форка: депонируем ключ восстановления в escrow сразу при его создании.
     implementation(projects.libraries.keyescrow.api)
-    implementation(projects.libraries.oauth.api)
     implementation(projects.libraries.uiStrings)
     implementation(projects.libraries.testtags)
     api(libs.statemachine)

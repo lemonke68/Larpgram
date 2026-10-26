@@ -21,6 +21,7 @@ import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import kotlinx.coroutines.launch
@@ -37,6 +38,9 @@ class PreferencesRootNode(
     interface Callback : Plugin {
         fun navigateToCategory(category: SettingsCategory)
         fun navigateToAddAccount()
+
+        // Правка форка (Larpgram): Element v26.10 switches account via navigation.
+        fun navigateToSession(sessionId: SessionId)
         fun navigateToBugReport()
         fun navigateToAbout()
         fun navigateToDeveloperSettings()
@@ -62,6 +66,7 @@ class PreferencesRootNode(
             modifier = modifier,
             onBackClick = if (callback.showBackButton) this::navigateUp else null,
             onAddAccountClick = callback::navigateToAddAccount,
+            onSwitchToSession = callback::navigateToSession,
             onOpenCategory = callback::navigateToCategory,
             onOpenUserProfile = callback::navigateToUserProfile,
             onOpenAbout = callback::navigateToAbout,

@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Правка форка (Larpgram): Element removed AdvancedSettingsPresenter in v26.10; we keep a fork-owned copy
+ * (TgAdvancedSettingsView, TG-категории), so its test stays too.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -13,10 +15,15 @@ import app.cash.molecule.moleculeFlow
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.element.android.compound.theme.Theme
+import io.element.android.features.preferences.impl.media.MediaOptimizationState
+import io.element.android.features.preferences.impl.moderation.FakeMediaPreviewConfigStateStore
+import io.element.android.features.preferences.impl.moderation.MediaPreviewConfigStateStore
+import io.element.android.features.preferences.impl.root.ThemeOption
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.media.MediaPreviewValue
+import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
@@ -392,5 +399,6 @@ class AdvancedSettingsPresenterTest {
         mediaPreviewConfigStateStore = mediaPreviewConfigStateStore,
         featureFlagService = featureFlagService,
         sessionCoroutineScope = this,
+        matrixClient = FakeMatrixClient(),
     )
 }

@@ -53,8 +53,8 @@ import io.element.android.libraries.designsystem.theme.components.HorizontalDivi
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.timeline.Timeline
-import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.matrix.ui.media.contentvalidation.collectOverallState
+import io.element.android.libraries.matrixmedia.api.MediaRequestData
 import io.element.android.libraries.mediaviewer.impl.datasource.isCircle
 import io.element.android.libraries.mediaviewer.impl.gallery.di.MediaItemPresenterFactories
 import io.element.android.libraries.mediaviewer.impl.gallery.di.rememberPresenter

@@ -1,6 +1,9 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Правка форка (Larpgram): Element removed this in v26.10 (split settings into media/, moderation/,
+ * location/, root/, developer/appsettings/). Restored as fork-owned copy: our TgAdvancedSettingsView
+ * and TG-категории (SettingsCategoryView) still need one combined state.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -9,6 +12,9 @@
 package io.element.android.features.preferences.impl.advanced
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import io.element.android.features.preferences.impl.media.MediaOptimizationState
+import io.element.android.features.preferences.impl.moderation.MediaPreviewConfigState
+import io.element.android.features.preferences.impl.root.ThemeOption
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
@@ -44,6 +50,7 @@ fun aAdvancedSettingsState(
     liveLocationMinimumDistanceUpdate: Int? = 50,
     setTimelineMediaPreviewAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     setHideInviteAvatarsAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
+    numberOfBlockedUsers: Int = 0,
     eventSink: (AdvancedSettingsEvent) -> Unit = {},
 ) = AdvancedSettingsState(
     isDeveloperModeEnabled = isDeveloperModeEnabled,
@@ -58,5 +65,6 @@ fun aAdvancedSettingsState(
         setHideInviteAvatarsAction = setHideInviteAvatarsAction
     ),
     liveLocationMinimumDistanceUpdate = liveLocationMinimumDistanceUpdate,
+    numberOfBlockedUsers = numberOfBlockedUsers,
     eventSink = eventSink
 )

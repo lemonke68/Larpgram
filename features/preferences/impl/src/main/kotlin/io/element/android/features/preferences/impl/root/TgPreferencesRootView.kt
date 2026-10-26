@@ -58,6 +58,7 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.components.MatrixUserRow
 import io.element.android.libraries.matrix.ui.model.tgHandle
@@ -71,6 +72,8 @@ fun TgPreferencesRootView(
     emojiPickerRenderer: EmojiPickerRenderer,
     onBackClick: (() -> Unit)?,
     onAddAccountClick: () -> Unit,
+    // Правка форка (Larpgram): Element v26.10 switches accounts via navigation (SwitchToSession event removed).
+    onSwitchToSession: (SessionId) -> Unit,
     onOpenCategory: (SettingsCategory) -> Unit,
     onOpenUserProfile: (MatrixUser) -> Unit,
     onOpenAbout: () -> Unit,
@@ -99,6 +102,7 @@ fun TgPreferencesRootView(
                 MultiAccountSection(
                     state = state,
                     onAddAccountClick = onAddAccountClick,
+                    onSwitchToSession = onSwitchToSession,
                 )
             }
             if (state.userStatusState != null) {
@@ -209,7 +213,7 @@ private fun ColumnScope.AppInfoSection(
             iconVector = CompoundIcons.Settings(),
             onClick = onOpenAdvancedSettings,
         )
-        if (state.canReportBug) {
+        if (state.preferencesAccountState.canReportBug) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_report_a_problem),
                 color = TgSettingsColors.Orange,
@@ -268,13 +272,16 @@ private fun ColumnScope.UserStatusSection(
 private fun ColumnScope.MultiAccountSection(
     state: PreferencesRootState,
     onAddAccountClick: () -> Unit,
+    onSwitchToSession: (SessionId) -> Unit,
 ) {
     TgSettingsGroup {
-        state.otherSessions.forEach { matrixUser ->
+        // Element v26.10: otherSessions is a list of OtherAccount (user + unreadCount).
+        state.otherSessions.forEach { otherAccount ->
+            val matrixUser = otherAccount.user
             MatrixUserRow(
                 modifier = Modifier
                     .clickable {
-                        state.eventSink(PreferencesRootEvent.SwitchToSession(matrixUser.userId))
+                        onSwitchToSession(matrixUser.userId)
                     }
                     .padding(top = 2.dp, bottom = 2.dp, end = 8.dp),
                 matrixUser = matrixUser,
@@ -356,6 +363,7 @@ private fun ContentToPreview(state: PreferencesRootState) {
         emojiPickerRenderer = NoOpEmojiPickerRenderer,
         onBackClick = {},
         onAddAccountClick = {},
+        onSwitchToSession = {},
         onOpenCategory = {},
         onOpenUserProfile = {},
         onOpenAbout = {},

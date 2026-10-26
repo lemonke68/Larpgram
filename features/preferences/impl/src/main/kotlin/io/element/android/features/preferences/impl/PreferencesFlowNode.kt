@@ -56,6 +56,7 @@ import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.mediaviewer.api.FileViewerEntryPoint
 import io.element.android.libraries.troubleshoot.api.NotificationTroubleShootEntryPoint
@@ -179,6 +180,10 @@ class PreferencesFlowNode(
 
                     override fun navigateToAddAccount() {
                         callback.navigateToAddAccount()
+                    }
+
+                    override fun navigateToSession(sessionId: SessionId) {
+                        callback.navigateToSession(sessionId)
                     }
 
                     override fun navigateToRoom(roomId: RoomId) {

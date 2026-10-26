@@ -288,14 +288,12 @@ fun TgMessagesView(
     }
 
     var endPollConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
-    var redactConfirmingEvent: TimelineItem.Event? by remember { mutableStateOf(null) }
 
     val onSelectActionCommon: (TimelineItemAction, TimelineItem.Event) -> Unit = { action, event ->
         if (action == TimelineItemAction.EndPoll) {
             endPollConfirmingEvent = event
-        } else if (action == TimelineItemAction.Redact) {
-            redactConfirmingEvent = event
         } else {
+            // Правка форка (Larpgram): подтверждение удаления теперь ведёт презентер (redactEventAction).
             onActionSelected(action, event)
         }
     }
@@ -572,19 +570,15 @@ fun TgMessagesView(
     }
 
     // Правка форка: удаление сообщения — с подтверждением, как в Telegram.
-    if (redactConfirmingEvent != null) {
+    // Состояние подтверждения — у презентера (MessagesState.ConfirmingRedaction, Element 26.10); диалог наш, без причины.
+    if (state.redactEventAction is MessagesState.ConfirmingRedaction) {
         ConfirmationDialog(
             title = stringResource(id = R.string.larpgram_delete_message_title),
             content = stringResource(id = R.string.larpgram_delete_message_content),
             submitText = stringResource(id = CommonStrings.action_delete),
             destructiveSubmit = true,
-            onSubmitClick = {
-                redactConfirmingEvent?.let { event ->
-                    onActionSelected(TimelineItemAction.Redact, event)
-                }
-                redactConfirmingEvent = null
-            },
-            onDismiss = { redactConfirmingEvent = null },
+            onSubmitClick = { state.eventSink(MessagesEvent.ConfirmRedact(reason = null)) },
+            onDismiss = { state.eventSink(MessagesEvent.CancelRedact) },
         )
     }
 
@@ -658,7 +652,8 @@ fun TgMessagesView(
         onRemoveMessage = { event ->
             state.eventSink(
                 MessagesEvent.HandleAction(
-                    action = TimelineItemAction.Redact,
+                    // Правка форка (C-009, Element 26.10): неотправленное снимается из очереди, а не редактируется.
+                    action = TimelineItemAction.AbortSending,
                     event = event,
                 )
             )

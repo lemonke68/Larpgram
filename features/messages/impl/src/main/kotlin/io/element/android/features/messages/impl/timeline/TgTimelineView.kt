@@ -64,7 +64,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
@@ -94,11 +93,11 @@ import io.element.android.features.messages.impl.timeline.di.aFakeTimelineItemPr
 import io.element.android.features.messages.impl.timeline.focus.FocusRequestStateView
 import io.element.android.features.messages.impl.timeline.model.NewEventState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.TimelineItemSelectionData
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContentPreviewParam
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.messages.impl.timeline.protection.aTimelineProtectionState
-import io.element.android.libraries.androidutils.system.copyToClipboard
 import io.element.android.libraries.designsystem.atomic.atoms.UnreadIndicatorAtom
 import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
 import io.element.android.libraries.designsystem.components.glass.LocalChatBottomOverlayHeight
@@ -106,7 +105,6 @@ import io.element.android.libraries.designsystem.components.glass.LocalChatGlass
 import io.element.android.libraries.designsystem.components.glass.LocalChatTopOverlayHeight
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.text.roundToPx
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.animateScrollToItemCenter
@@ -176,8 +174,6 @@ fun TgTimelineView(
         state.eventSink(TimelineEvent.FocusOnEvent(eventId))
     }
 
-    val context = LocalContext.current
-    val toastMessage = stringResource(CommonStrings.common_copied_to_clipboard)
     val view = LocalView.current
     fun inReplyToClick(eventId: EventId) {
         state.eventSink(TimelineEvent.FocusOnEvent(eventId))
@@ -187,10 +183,8 @@ fun TgTimelineView(
         view.performHapticFeedback(
             HapticFeedbackConstants.LONG_PRESS
         )
-        context.copyToClipboard(
-            text = link.url,
-            toastMessage = toastMessage,
-        )
+        // Правка форка (Element 26.10): копирование через презентер (ClipboardHelper), CopyToClipboardUseCase удалён.
+        state.eventSink(TimelineEvent.CopyToClipboard(link.url))
     }
 
     fun prefetchMoreItems() {
@@ -232,6 +226,8 @@ fun TgTimelineView(
                         isLastOutgoingMessage = state.isLastOutgoingMessage(timelineItem.identifier()),
                         focusedEventId = state.focusedEventId,
                         displayThreadSummaries = state.displayThreadSummaries,
+                        // Правка форка (Larpgram): мультивыбор (MessageMultiSelect) у нас выключен.
+                        selectionData = TimelineItemSelectionData(),
                         onUserDataClick = onUserDataClick,
                         onLinkClick = onLinkClick,
                         onLinkLongClick = ::onLinkLongClick,
@@ -595,8 +591,8 @@ private fun JumpToPositionButton(
                     modifier = Modifier
                         .align(dotAlignment)
                         .offset { IntOffset(x = 0, y = dotYOffset.roundToPx()) },
-                    color = ElementTheme.colors.iconSuccessPrimary,
                     border = BorderStroke(2.dp, ElementTheme.colors.bgCanvasDefault),
+                    count = 0,
                 )
             }
         }

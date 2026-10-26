@@ -158,7 +158,7 @@ private fun ColumnScope.AccountCategory(
             style = ListItemStyle.Destructive,
             onClick = onSignOutClick,
         )
-        if (state.canDeactivateAccount) {
+        if (state.preferencesAccountState.canDeactivateAccount) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.action_delete_account),
                 color = TgSettingsColors.Red,
@@ -188,13 +188,13 @@ private fun ColumnScope.PrivacyCategory(
             iconVector = CompoundIcons.Lock(),
             onClick = onOpenLockScreenSettings,
         )
-        if (state.showSecureBackup) {
+        if (state.preferencesAccountState.showSecureBackup) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_encryption),
                 subtitle = stringResource(R.string.larpgram_settings_encryption_subtitle),
                 color = TgSettingsColors.Green,
                 iconVector = CompoundIcons.Key(),
-                trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
+                trailingContent = ListItemContent.Badge.takeIf { state.preferencesAccountState.showSecureBackupBadge },
                 onClick = onSecureBackupClick,
             )
         }
@@ -206,12 +206,12 @@ private fun ColumnScope.PrivacyCategory(
             iconVector = CompoundIcons.History(),
             onClick = onHistoryProtectionClick,
         )
-        if (state.showBlockedUsersItem) {
+        if (advancedSettingsState.showBlockedUsersItem) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_blocked_users),
                 color = TgSettingsColors.Gray,
                 iconVector = CompoundIcons.Block(),
-                trailingContent = ListItemContent.Text(state.nbOfBlockedUsers.toString()),
+                trailingContent = ListItemContent.Text(advancedSettingsState.numberOfBlockedUsers.toString()),
                 onClick = onOpenBlockedUsers,
             )
         }
@@ -255,12 +255,12 @@ private fun ColumnScope.DevicesCategory(
     onLinkNewDeviceClick: () -> Unit,
     onManageAccountClick: (url: String) -> Unit,
 ) {
-    if (!state.showLinkNewDevice && state.accountManagementUrl == null) {
+    if (!state.preferencesAccountState.showLinkNewDevice && state.preferencesAccountState.accountManagementUrl == null) {
         ComingSoonCategory(SettingsCategory.Devices)
         return
     }
     TgSettingsGroup {
-        if (state.showLinkNewDevice) {
+        if (state.preferencesAccountState.showLinkNewDevice) {
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.common_link_new_device),
                 color = TgSettingsColors.Cyan,
@@ -268,7 +268,7 @@ private fun ColumnScope.DevicesCategory(
                 onClick = onLinkNewDeviceClick,
             )
         }
-        state.accountManagementUrl?.let { url ->
+        state.preferencesAccountState.accountManagementUrl?.let { url ->
             TgSettingsItem(
                 title = stringResource(id = CommonStrings.action_manage_account_and_devices),
                 color = TgSettingsColors.Teal,

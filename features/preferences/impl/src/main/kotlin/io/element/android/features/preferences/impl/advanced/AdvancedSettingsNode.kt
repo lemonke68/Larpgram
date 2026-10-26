@@ -1,6 +1,9 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Правка форка (Larpgram): Element removed this in v26.10 (split settings into media/, moderation/,
+ * location/, root/, developer/appsettings/). Restored as fork-owned copy: our TgAdvancedSettingsView
+ * and TG-категории (SettingsCategoryView) still need one combined state.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -31,7 +34,7 @@ class AdvancedSettingsNode(
     override fun View(modifier: Modifier) {
         val state = presenter.present()
         val context = LocalContext.current
-        // Правка форка: экран «Дополнительно» форка, элементовский оставлен как в апстриме (C-009).
+        // Правка форка: экран «Дополнительно» форка (элементовский удалён в v26.10).
         TgAdvancedSettingsView(
             state = state,
             modifier = modifier,

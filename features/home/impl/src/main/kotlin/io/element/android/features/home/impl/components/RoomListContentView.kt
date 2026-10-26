@@ -8,7 +8,12 @@
 
 package io.element.android.features.home.impl.components
 
-import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,16 +21,18 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -41,10 +48,12 @@ import io.element.android.features.home.impl.filters.aRoomListFiltersState
 import io.element.android.features.home.impl.filters.selection.FilterSelectionState
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.RoomSummaryDisplayType
+import io.element.android.features.home.impl.roomlist.RoomListBanner
 import io.element.android.features.home.impl.roomlist.RoomListContentState
 import io.element.android.features.home.impl.roomlist.RoomListContentStatePreviewParam
 import io.element.android.features.home.impl.roomlist.RoomListEvent
-import io.element.android.features.home.impl.roomlist.SecurityBannerState
+import io.element.android.features.home.impl.roomlist.UpdateBannerState
+import io.element.android.features.home.impl.roomlist.toRoomListBanner
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.anUnselectedSpaceFiltersState
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -53,6 +62,8 @@ import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.OnVisibleRangeChangeEffect
+import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsEvent
+import io.element.android.libraries.push.api.battery.BatteryOptimizationEvent
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
 
@@ -125,6 +136,9 @@ private fun SkeletonView(
     }
 }
 
+/**
+ * Ref: https://www.figma.com/design/pDlJZGBsri47FNTXMnEdXB/Compound-Android-Templates?node-id=8-4656
+ */
 @Composable
 private fun EmptyView(
     state: RoomListContentState.Empty,
@@ -135,62 +149,43 @@ private fun EmptyView(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
+        val text = buildString {
+            append(stringResource(R.string.screen_roomlist_empty_title))
+            append("\n")
+            append(stringResource(R.string.screen_roomlist_empty_message))
+        }
         EmptyScaffold(
-            title = R.string.screen_roomlist_empty_title,
-            subtitle = R.string.screen_roomlist_empty_message,
-            action = {
+            title = null,
+            subtitle = text,
+            bottomPart = {
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     text = stringResource(CommonStrings.action_start_chat),
-                    leadingIcon = IconSource.Vector(CompoundIcons.Compose()),
+                    leadingIcon = IconSource.Vector(CompoundIcons.Chat()),
                     onClick = onCreateRoomClick,
                 )
             },
             modifier = Modifier.align(Alignment.Center),
         )
-        Box {
-            when (state.securityBannerState) {
-                SecurityBannerState.SetUpRecovery -> {
-                    SetUpRecoveryKeyBanner(
-                        onContinueClick = onSetUpRecoveryClick,
-                        onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
-                    )
-                }
-                SecurityBannerState.RecoveryKeyConfirmation -> {
-                    ConfirmRecoveryKeyBanner(
-                        onContinueClick = onConfirmRecoveryKeyClick,
-                        onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
-                    )
-                }
-                // Правка форка: напоминание про почту.
-                SecurityBannerState.ConnectEmail -> {
-                    ConnectEmailBanner(
-                        accountManagementUrl = state.accountManagementUrl,
-                        onDismissClick = { eventSink(RoomListEvent.DismissConnectEmailBanner) },
-                    )
-                }
-                // Правка форка: предложение почистить старые сессии.
-                SecurityBannerState.CleanUpSessions -> {
-                    CleanUpSessionsBanner(
-                        manageSessionsUrl = state.manageSessionsUrl,
-                        onDismissClick = { eventSink(RoomListEvent.DismissCleanUpSessionsBanner) },
-                    )
-                }
-                // Правка форка: запереть ключ к истории паролем (escrow B).
-                SecurityBannerState.ProtectHistory -> {
-                    ProtectHistoryBanner(
-                        onDismissClick = { eventSink(RoomListEvent.DismissProtectHistoryBanner) },
-                    )
-                }
-                // Правка форка: предложение обновиться.
-                SecurityBannerState.UpdateAvailable -> state.updateBanner?.let { updateBanner ->
-                    UpdateBanner(
-                        state = updateBanner,
-                        onClick = { eventSink(RoomListEvent.InstallUpdate) },
-                        onDismissClick = { eventSink(RoomListEvent.DismissUpdateBanner) },
-                    )
-                }
-                SecurityBannerState.None -> Unit
-            }
+        RoomListBannerContainer(
+            banner = state.securityBannerState.toRoomListBanner(),
+        ) { banner ->
+            RoomListBannerView(
+                banner = banner,
+                accountManagementUrl = state.accountManagementUrl,
+                manageSessionsUrl = state.manageSessionsUrl,
+                updateBanner = state.updateBanner,
+                onActionClick = {
+                    when (banner) {
+                        RoomListBanner.SetUpRecovery -> onSetUpRecoveryClick()
+                        RoomListBanner.RecoveryKeyConfirmation -> onConfirmRecoveryKeyClick()
+                        // Правка форка: предложение обновиться.
+                        RoomListBanner.UpdateAvailable -> eventSink(RoomListEvent.InstallUpdate)
+                        else -> Unit
+                    }
+                },
+                onDismissClick = { eventSink(banner.forkDismissEvent() ?: RoomListEvent.DismissBanner) },
+            )
         }
     }
 }
@@ -244,96 +239,74 @@ private fun RoomsViewList(
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
+    val banner = state.toRoomListBanner()
+    // The banner slot must never be 0px high, else the LazyColumn considers that it is not visible and it is
+    // removed from the composition. A new banner would then be added above the visible area of the list.
+    val bannerSlotMinHeight = with(LocalDensity.current) { 1.toDp() }
     OnVisibleRangeChangeEffect(lazyListState) { visibleRange ->
-        eventSink(RoomListEvent.UpdateVisibleRange(visibleRange))
+        // The first item of the list is the banner slot, remove it to get the range of the rooms
+        val roomsRange = (visibleRange.first - 1).coerceAtLeast(0)..<visibleRange.last
+        eventSink(RoomListEvent.UpdateVisibleRange(roomsRange))
     }
     LazyColumn(
         state = lazyListState,
         modifier = modifier,
         contentPadding = contentPadding,
     ) {
-        when (state.securityBannerState) {
-            SecurityBannerState.SetUpRecovery -> {
-                item {
-                    SetUpRecoveryKeyBanner(
-                        onContinueClick = onSetUpRecoveryClick,
-                        onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
-                    )
-                }
-            }
-            SecurityBannerState.RecoveryKeyConfirmation -> {
-                item {
-                    ConfirmRecoveryKeyBanner(
-                        onContinueClick = onConfirmRecoveryKeyClick,
-                        onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
-                    )
-                }
-            }
-            // Правка форка: напоминание про почту.
-            SecurityBannerState.ConnectEmail -> {
-                item {
-                    ConnectEmailBanner(
-                        accountManagementUrl = state.accountManagementUrl,
-                        onDismissClick = { eventSink(RoomListEvent.DismissConnectEmailBanner) },
-                    )
-                }
-            }
-            // Правка форка: предложение почистить старые сессии.
-            SecurityBannerState.CleanUpSessions -> {
-                item {
-                    CleanUpSessionsBanner(
-                        manageSessionsUrl = state.manageSessionsUrl,
-                        onDismissClick = { eventSink(RoomListEvent.DismissCleanUpSessionsBanner) },
-                    )
-                }
-            }
-            // Правка форка: запереть ключ к истории паролем (escrow B).
-            SecurityBannerState.ProtectHistory -> {
-                item {
-                    ProtectHistoryBanner(
-                        onDismissClick = { eventSink(RoomListEvent.DismissProtectHistoryBanner) },
-                    )
-                }
-            }
-            // Правка форка: предложение обновиться.
-            SecurityBannerState.UpdateAvailable -> state.updateBanner?.let { updateBanner ->
-                item {
-                    UpdateBanner(
-                        state = updateBanner,
-                        onClick = { eventSink(RoomListEvent.InstallUpdate) },
-                        onDismissClick = { eventSink(RoomListEvent.DismissUpdateBanner) },
-                    )
-                }
-            }
-            // Banner precedence (top-to-bottom): full-screen-intent > battery-optimization >
-            // new-notification-sound > sound-unavailable. At most one renders at a time.
-            SecurityBannerState.None -> when {
-                state.fullScreenIntentPermissionsState.shouldDisplayBanner -> {
-                    item {
-                        FullScreenIntentPermissionBanner(state = state.fullScreenIntentPermissionsState)
-                    }
-                }
-                state.batteryOptimizationState.shouldDisplayBanner -> {
-                    item {
-                        BatteryOptimizationBanner(state = state.batteryOptimizationState)
-                    }
-                }
-                state.showNewNotificationSoundBanner -> {
-                    item {
-                        NewNotificationSoundBanner(
-                            onDismissClick = { eventSink(RoomListEvent.DismissNewNotificationSoundBanner) },
-                        )
-                    }
-                }
+        // The banner slot is always the first item of the list, even when there is no banner to display,
+        // so that the rooms keep the same index when a banner is added or removed. Since the rooms do not
+        // have a key, this is required to keep the scroll position.
+        item {
+            RoomListBannerContainer(
+                banner = banner,
+                modifier = Modifier.heightIn(min = bannerSlotMinHeight),
+            ) { displayedBanner ->
+                RoomListBannerView(
+                    banner = displayedBanner,
+                    accountManagementUrl = state.accountManagementUrl,
+                    manageSessionsUrl = state.manageSessionsUrl,
+                    updateBanner = state.updateBanner,
+                    onActionClick = {
+                        when (displayedBanner) {
+                            RoomListBanner.SetUpRecovery -> onSetUpRecoveryClick()
+                            RoomListBanner.RecoveryKeyConfirmation -> onConfirmRecoveryKeyClick()
+                            RoomListBanner.FullScreenIntentPermission ->
+                                state.fullScreenIntentPermissionsState.eventSink(FullScreenIntentPermissionsEvent.OpenSettings)
+                            RoomListBanner.BatteryOptimization ->
+                                state.batteryOptimizationState.eventSink(BatteryOptimizationEvent.RequestDisableOptimizations)
+                            RoomListBanner.NewNotificationSound,
+                            RoomListBanner.SwipeAvatar -> Unit
+                            // Правка форка: баннеры форка.
+                            RoomListBanner.UpdateAvailable -> eventSink(RoomListEvent.InstallUpdate)
+                            RoomListBanner.ConnectEmail,
+                            RoomListBanner.CleanUpSessions,
+                            RoomListBanner.ProtectHistory -> Unit
+                        }
+                    },
+                    onDismissClick = {
+                        when (displayedBanner) {
+                            RoomListBanner.SetUpRecovery,
+                            RoomListBanner.RecoveryKeyConfirmation -> eventSink(RoomListEvent.DismissBanner)
+                            RoomListBanner.FullScreenIntentPermission ->
+                                state.fullScreenIntentPermissionsState.eventSink(FullScreenIntentPermissionsEvent.Dismiss)
+                            RoomListBanner.BatteryOptimization -> state.batteryOptimizationState.eventSink(BatteryOptimizationEvent.Dismiss)
+                            RoomListBanner.NewNotificationSound -> eventSink(RoomListEvent.DismissNewNotificationSoundBanner)
+                            RoomListBanner.SwipeAvatar -> eventSink(RoomListEvent.DismissSwipeAvatarBanner)
+                            RoomListBanner.ConnectEmail,
+                            RoomListBanner.CleanUpSessions,
+                            RoomListBanner.ProtectHistory,
+                            RoomListBanner.UpdateAvailable -> displayedBanner.forkDismissEvent()?.let(eventSink)
+                        }
+                    },
+                )
             }
         }
-
         // Note: do not use a key for the LazyColumn, or the scroll will not behave as expected if a room
         // is moved to the top of the list.
         itemsIndexed(
             items = state.summaries,
             contentType = { _, room -> room.contentType() },
-        ) { index, room ->
+        ) { _, room ->
             val summaryRow = @Composable {
                 TgRoomSummaryRow(
                     room = room,
@@ -341,6 +314,7 @@ private fun RoomsViewList(
                     isInviteSeen = room.displayType == RoomSummaryDisplayType.INVITE &&
                         state.seenRoomInvites.contains(room.roomId),
                     showUnreadCount = state.showUnreadCount,
+                    showAllActivity = state.showAllActivity,
                     onClick = onRoomClick,
                     eventSink = eventSink,
                 )
@@ -360,6 +334,108 @@ private fun RoomsViewList(
     }
 }
 
+/**
+ * Displays the [banner] at the top of the room list, and animates every change: when the banner is
+ * dismissed, when it is replaced by another banner, and when a banner appears.
+ * The size of the slot is animated, so that the items below it are not moved abruptly.
+ *
+ * @param banner the banner to display, or null if there is no banner to display.
+ * @param modifier the modifier to apply to the slot.
+ * @param content renders the given banner.
+ */
+@Composable
+private fun RoomListBannerContainer(
+    banner: RoomListBanner?,
+    modifier: Modifier = Modifier,
+    content: @Composable (RoomListBanner) -> Unit,
+) {
+    AnimatedContent(
+        targetState = banner,
+        // Fill the width so that only the height is animated
+        modifier = modifier.fillMaxWidth(),
+        transitionSpec = {
+            fadeIn(tween(durationMillis = HALF_DURATION_MILLIS, delayMillis = HALF_DURATION_MILLIS)) togetherWith
+                fadeOut(tween(durationMillis = HALF_DURATION_MILLIS)) using
+                SizeTransform { _, _ -> tween(durationMillis = 2 * HALF_DURATION_MILLIS) }
+        },
+        contentAlignment = Alignment.Center,
+        label = "RoomListBannerContainer",
+    ) { targetBanner ->
+        if (targetBanner != null) {
+            content(targetBanner)
+        }
+    }
+}
+
+private const val HALF_DURATION_MILLIS = 150
+
+@Composable
+private fun RoomListBannerView(
+    banner: RoomListBanner,
+    // Правка форка: данные баннеров форка (почта, сессии, обновление).
+    accountManagementUrl: String?,
+    manageSessionsUrl: String?,
+    updateBanner: UpdateBannerState?,
+    onActionClick: () -> Unit,
+    onDismissClick: () -> Unit,
+) {
+    when (banner) {
+        RoomListBanner.SetUpRecovery -> SetUpRecoveryKeyBanner(
+            onContinueClick = onActionClick,
+            onDismissClick = onDismissClick,
+        )
+        RoomListBanner.RecoveryKeyConfirmation -> ConfirmRecoveryKeyBanner(
+            onContinueClick = onActionClick,
+            onDismissClick = onDismissClick,
+        )
+        RoomListBanner.FullScreenIntentPermission -> FullScreenIntentPermissionBanner(
+            onActionClick = onActionClick,
+            onDismissClick = onDismissClick,
+        )
+        RoomListBanner.BatteryOptimization -> BatteryOptimizationBanner(
+            onActionClick = onActionClick,
+            onDismissClick = onDismissClick,
+        )
+        RoomListBanner.NewNotificationSound -> NewNotificationSoundBanner(
+            onDismissClick = onDismissClick,
+        )
+        RoomListBanner.SwipeAvatar -> SwipeAvatarBanner(
+            onDismissClick = onDismissClick,
+        )
+        // Правка форка: напоминание про почту.
+        RoomListBanner.ConnectEmail -> ConnectEmailBanner(
+            accountManagementUrl = accountManagementUrl,
+            onDismissClick = onDismissClick,
+        )
+        // Правка форка: предложение почистить старые сессии.
+        RoomListBanner.CleanUpSessions -> CleanUpSessionsBanner(
+            manageSessionsUrl = manageSessionsUrl,
+            onDismissClick = onDismissClick,
+        )
+        // Правка форка: запереть ключ к истории паролем (escrow B).
+        RoomListBanner.ProtectHistory -> ProtectHistoryBanner(
+            onDismissClick = onDismissClick,
+        )
+        // Правка форка: предложение обновиться.
+        RoomListBanner.UpdateAvailable -> updateBanner?.let {
+            UpdateBanner(
+                state = it,
+                onClick = onActionClick,
+                onDismissClick = onDismissClick,
+            )
+        }
+    }
+}
+
+/** Правка форка: у баннеров форка свои события скрытия. */
+private fun RoomListBanner.forkDismissEvent(): RoomListEvent? = when (this) {
+    RoomListBanner.ConnectEmail -> RoomListEvent.DismissConnectEmailBanner
+    RoomListBanner.CleanUpSessions -> RoomListEvent.DismissCleanUpSessionsBanner
+    RoomListBanner.ProtectHistory -> RoomListEvent.DismissProtectHistoryBanner
+    RoomListBanner.UpdateAvailable -> RoomListEvent.DismissUpdateBanner
+    else -> null
+}
+
 @Composable
 private fun EmptyViewForFilterStates(
     selectedFilters: ImmutableList<RoomListFilter>,
@@ -368,39 +444,44 @@ private fun EmptyViewForFilterStates(
 ) {
     val emptyStateResources = RoomListFiltersEmptyStateResources.fromSelectedFilters(selectedFilters, isSpaceFilterSelected) ?: return
     EmptyScaffold(
-        title = emptyStateResources.title,
-        subtitle = emptyStateResources.subtitle,
+        title = stringResource(emptyStateResources.title),
+        subtitle = stringResource(emptyStateResources.subtitle),
         modifier = modifier,
+        bottomPart = {
+            // Keep a spacer so that the content is not too low on the screen
+            Spacer(modifier = Modifier.height(32.dp))
+        }
     )
 }
 
 @Composable
 private fun EmptyScaffold(
-    @StringRes title: Int,
-    @StringRes subtitle: Int,
+    title: String?,
+    subtitle: String,
     modifier: Modifier = Modifier,
-    action: @Composable (ColumnScope.() -> Unit)? = null,
+    bottomPart: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier = modifier.padding(horizontal = 60.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        title?.let {
+            Text(
+                text = title,
+                style = ElementTheme.typography.fontHeadingMdBold,
+                color = ElementTheme.colors.textPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
         Text(
-            text = stringResource(title),
-            style = ElementTheme.typography.fontHeadingMdBold,
-            color = ElementTheme.colors.textPrimary,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(subtitle),
+            text = subtitle,
             style = ElementTheme.typography.fontBodyLgRegular,
             color = ElementTheme.colors.textSecondary,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(32.dp))
-        action?.invoke(this)
+        bottomPart()
     }
 }
 

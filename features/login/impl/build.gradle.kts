@@ -48,18 +48,15 @@ dependencies {
     implementation(projects.libraries.oauth.api)
     implementation(projects.libraries.preferences.api)
     implementation(projects.libraries.uiUtils)
-    implementation(projects.libraries.wellknown.api)
     // Правка форка: регистрация и сброс пароля (экран screens/tg).
     implementation(projects.libraries.accountapi.api)
     // Правка форка: пароль для ключа восстановления, запертого паролем (escrow B).
     implementation(projects.libraries.keyescrow.api)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.webkit)
-    implementation(libs.serialization.json)
     api(projects.features.login.api)
 
     testCommonDependencies(libs, true)
-    testImplementation(projects.features.login.test)
     testImplementation(projects.features.enterprise.test)
     testImplementation(projects.features.preferences.test)
     testImplementation(projects.libraries.preferences.test)
@@ -67,7 +64,6 @@ dependencies {
     testImplementation(projects.libraries.oauth.test)
     testImplementation(projects.libraries.permissions.test)
     testImplementation(projects.libraries.sessionStorage.test)
-    testImplementation(projects.libraries.wellknown.test)
     testImplementation(projects.libraries.accountapi.test)
     testImplementation(projects.libraries.keyescrow.test)
     testImplementation(libs.androidx.camera.camera2)

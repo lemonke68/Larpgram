@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.preferences.impl.R
+import io.element.android.features.preferences.impl.media.MediaOptimizationState // Правка форка (Larpgram): moved to media/ in v26.10
 import io.element.android.libraries.designsystem.components.dialogs.ListDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory

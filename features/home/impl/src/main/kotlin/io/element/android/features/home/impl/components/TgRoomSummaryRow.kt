@@ -77,7 +77,6 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.roomListRoomMessage
 import io.element.android.libraries.designsystem.theme.roomListRoomMessageDate
 import io.element.android.libraries.designsystem.theme.roomListRoomName
-import io.element.android.libraries.designsystem.theme.unreadIndicator
 import io.element.android.libraries.eventformatter.api.LATEST_EVENT_THUMBNAIL_ID
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrix.api.notification.CallIntent
@@ -85,8 +84,8 @@ import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
 import io.element.android.libraries.matrix.ui.components.DisplayNameWithStatus
 import io.element.android.libraries.matrix.ui.components.InviteSenderView
-import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.matrix.ui.model.InviteSender
+import io.element.android.libraries.matrixmedia.api.MediaRequestData
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -119,6 +118,8 @@ internal fun TgRoomSummaryRow(
     onClick: (RoomListRoomSummary) -> Unit,
     modifier: Modifier = Modifier,
     showUnreadCount: Boolean = false,
+    // Правка форка (Larpgram): порт Element v26.10 «показывать всю активность» (тумблер в уведомлениях).
+    showAllActivity: Boolean = true,
     eventSink: (RoomListEvent) -> Unit,
 ) {
     Box(modifier = modifier) {
@@ -173,7 +174,7 @@ internal fun TgRoomSummaryRow(
                         deliveryState = if (room.draft == null) room.latestEvent.deliveryState() else null,
                         isMuted = room.userDefinedNotificationMode == RoomNotificationMode.MUTE,
                     )
-                    MessagePreviewAndIndicatorRow(room = room, showUnreadCount = showUnreadCount)
+                    MessagePreviewAndIndicatorRow(room = room, showUnreadCount = showUnreadCount, showAllActivity = showAllActivity)
                 }
             }
             RoomSummaryDisplayType.KNOCKED -> {
@@ -308,7 +309,8 @@ private fun NameAndTimestampRow(
                 text = timestamp ?: "",
                 style = ElementTheme.typography.fontBodySmMedium,
                 color = if (isHighlighted) {
-                    ElementTheme.colors.unreadIndicator
+                    // Правка форка (Larpgram): Element v26.10 removed the unreadIndicator color alias.
+                    ElementTheme.colors.textActionAccent
                 } else {
                     ElementTheme.colors.roomListRoomMessageDate
                 },
@@ -344,6 +346,7 @@ private fun InviteSubtitle(
 private fun MessagePreviewAndIndicatorRow(
     room: RoomListRoomSummary,
     showUnreadCount: Boolean,
+    showAllActivity: Boolean,
     modifier: Modifier = Modifier,
 ) {
     // Larpgram: плотность строки списка чатов (двустрочный/трёхстрочный) — из настроек чатов.
@@ -434,7 +437,7 @@ private fun MessagePreviewAndIndicatorRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val tint = if (room.isHighlighted) ElementTheme.colors.unreadIndicator else ElementTheme.colors.iconQuaternary
+            val tint = if (room.isHighlighted) ElementTheme.colors.textActionAccent else ElementTheme.colors.iconQuaternary
             if (room.hasRoomCall) {
                 OnGoingCallIcon(
                     color = tint,
@@ -445,7 +448,11 @@ private fun MessagePreviewAndIndicatorRow(
             if (room.numberOfUnreadMentions > 0) {
                 MentionIndicatorAtom()
             }
-            if (room.hasNewContent) {
+            // Без «всей активности» индикатор только у комнат с уведомлениями (как в Element v26.10).
+            val isMuted = room.userDefinedNotificationMode == RoomNotificationMode.MUTE
+            val showUnreadIndicator = room.hasNewContent &&
+                (showAllActivity || (!isMuted && (room.numberOfUnreadNotifications > 0 || room.numberOfUnreadMentions > 0)))
+            if (showUnreadIndicator) {
                 val contentDescription = stringResource(CommonStrings.a11y_notifications_new_messages)
                 val count = if (showUnreadCount) {
                     if (room.userDefinedNotificationMode == RoomNotificationMode.MUTE) {
@@ -458,12 +465,13 @@ private fun MessagePreviewAndIndicatorRow(
                 }
                 UnreadIndicatorAtom(
                     color = tint,
-                    count = count,
+                    // Element v26.10: count null hides the atom, 0 draws the dot (was: null drew the dot).
+                    count = count?.takeIf { it >= 1 } ?: 0L,
                     contentDescription = contentDescription,
                 )
             }
             // Правка форка (роумлесс): пин показываем, когда нет бейджа непрочитанных (как в TG).
-            if (room.isPinned && !room.hasNewContent) {
+            if (room.isPinned && !showUnreadIndicator) {
                 PinIndicatorAtom(tint = ElementTheme.colors.iconQuaternary)
             }
         }
@@ -541,9 +549,7 @@ private fun InviteNameAndIndicatorRow(
             overflow = TextOverflow.Ellipsis
         )
         if (!isInviteSeen) {
-            UnreadIndicatorAtom(
-                color = ElementTheme.colors.unreadIndicator
-            )
+            UnreadIndicatorAtom(count = 0)
         }
     }
 }
@@ -577,7 +583,7 @@ private fun MentionIndicatorAtom() {
         modifier = Modifier.size(16.dp),
         contentDescription = stringResource(CommonStrings.a11y_notifications_new_mentions),
         imageVector = CompoundIcons.Mention(),
-        tint = ElementTheme.colors.unreadIndicator,
+        tint = ElementTheme.colors.iconAccentPrimary,
     )
 }
 

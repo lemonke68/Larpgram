@@ -94,8 +94,8 @@ import io.element.android.libraries.designsystem.utils.hasCompactHeightWindowSiz
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.matrix.api.media.MediaSource
-import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.matrix.ui.media.contentvalidation.collectMediaState
+import io.element.android.libraries.matrixmedia.api.MediaRequestData
 import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.mediaviewer.api.local.LocalMedia
 import io.element.android.libraries.mediaviewer.impl.details.MediaBottomSheetState
@@ -303,7 +303,7 @@ fun TgMediaViewerView(
                             MediaViewerBottomBar(
                                 showDivider = dataForPage.mediaInfo.mimeType.isMimeTypeVideo(),
                                 caption = dataForPage.mediaInfo.caption,
-                                formattedCaption = dataForPage.mediaInfo.formattedCaption,
+                                formattedCaption = dataForPage.formattedCaption, // Правка форка (Larpgram): v26.10 moved it off MediaInfo
                                 onHeightChange = { bottomPaddingInPixels = it },
                             )
                         }

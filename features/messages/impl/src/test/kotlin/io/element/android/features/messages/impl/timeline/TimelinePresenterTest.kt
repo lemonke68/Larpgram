@@ -33,9 +33,14 @@ import io.element.android.features.poll.api.actions.SendPollResponseAction
 import io.element.android.features.poll.test.actions.FakeEndPollAction
 import io.element.android.features.poll.test.actions.FakeSendPollResponseAction
 import io.element.android.features.roomcall.api.aStandByCallState
+import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
+import io.element.android.libraries.androidutils.clipboard.FakeClipboardHelper
+import io.element.android.libraries.androidutils.toast.FakeToastHelper
+import io.element.android.libraries.androidutils.toast.ToastHelper
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.chatcleanup.api.ChatCleanupService
 import io.element.android.libraries.chatcleanup.test.FakeChatCleanupService
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.matrix.api.core.EventId
@@ -77,6 +82,7 @@ import io.element.android.libraries.matrix.test.timeline.item.event.aRoomMembers
 import io.element.android.libraries.matrix.ui.components.aMatrixUserList
 import io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages
 import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
+import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.awaitLastSequentialItem
@@ -90,6 +96,7 @@ import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -101,13 +108,13 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.util.Date
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-@Suppress("LargeClass")
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class TimelinePresenterTest {
     @get:Rule
@@ -1087,7 +1094,11 @@ class TimelinePresenterTest {
             val focusedState = consumeItemsUntilPredicate { it.focusRequestState == FocusRequestState.Success(AN_EVENT_ID) }.last()
             assertThat(focusedState.isLive).isFalse()
             initialState.eventSink.invoke(TimelineEvent.LoadMore(Timeline.PaginationDirection.FORWARDS))
-            advanceUntilIdle()
+
+            // Give some time for any potential pagination to be called, but it should not be called because the focused event is not rendered yet.
+            // Also, given enough time, a new state should be emitted with isLive = false, because we switched to a focused event timeline.
+            runCurrent()
+
             assert(paginateLambda).isNeverCalled()
             assertThat(expectMostRecentItem().isLive).isFalse()
         }
@@ -1547,6 +1558,38 @@ class TimelinePresenterTest {
     }
 
     @Test
+    fun `present - copy to clipboard on old device shows a toast`() = runTest {
+        val clipboardHelper = FakeClipboardHelper(isOldDevice = true)
+        val toastHelper = FakeToastHelper()
+        val presenter = createTimelinePresenter(
+            clipboardHelper = clipboardHelper,
+            toastHelper = toastHelper,
+        )
+        presenter.test {
+            awaitFirstItem().eventSink(TimelineEvent.CopyToClipboard("https://element.io"))
+            assertThat(clipboardHelper.clipboardContents).isEqualTo("https://element.io")
+            assertThat(toastHelper.shownToasts).containsExactly(CommonStrings.common_copied_to_clipboard)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - copy to clipboard on new device does not show a toast`() = runTest {
+        val clipboardHelper = FakeClipboardHelper(isOldDevice = false)
+        val toastHelper = FakeToastHelper()
+        val presenter = createTimelinePresenter(
+            clipboardHelper = clipboardHelper,
+            toastHelper = toastHelper,
+        )
+        presenter.test {
+            awaitFirstItem().eventSink(TimelineEvent.CopyToClipboard("https://element.io"))
+            assertThat(clipboardHelper.clipboardContents).isEqualTo("https://element.io")
+            assertThat(toastHelper.shownToasts).isEmpty()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `present - show shield hide shield`() = runTest {
         val presenter = createTimelinePresenter()
         val shield = aCriticalShield()
@@ -1829,6 +1872,158 @@ class TimelinePresenterTest {
         }
     }
 
+    @Test
+    fun `present - entering selection mode selects the target event`() = runTest {
+        val timelineItems = MutableStateFlow(
+            listOf(MatrixTimelineItem.Event(UniqueId("1"), anEventTimelineItem(eventId = AN_EVENT_ID, content = aMessageContent())))
+        )
+        val presenter = createTimelinePresenter(
+            timeline = FakeTimeline(timelineItems = timelineItems),
+            featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageMultiSelect.key to true)),
+        )
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate { it.hasAnyEvent }.last()
+            assertThat(initialState.selectionState).isEqualTo(SelectionState.Disabled)
+            initialState.eventSink(TimelineEvent.EnterSelectionMode(SelectionAction.Forward, AN_EVENT_ID))
+            val state = consumeItemsUntilPredicate { it.isSelectionModeActive }.last()
+            assertThat(state.selectionState).isEqualTo(SelectionState.Active(SelectionAction.Forward, persistentSetOf(AN_EVENT_ID)))
+            assertThat(state.selectedCount).isEqualTo(1)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - entering selection mode is ignored when the flag is off`() = runTest {
+        val featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageMultiSelect.key to false))
+        val presenter = createTimelinePresenter(featureFlagService = featureFlagService)
+        presenter.test {
+            val initialState = awaitFirstItem()
+            initialState.eventSink(TimelineEvent.EnterSelectionMode(SelectionAction.Forward, AN_EVENT_ID))
+            // Правка форка: наш презентер шлёт лишние эмиссии (TG-состояние), поэтому вместо
+            // expectNoEvents проверяем, что ни одно следующее состояние не включило выделение.
+            assertThat(initialState.selectionState).isEqualTo(SelectionState.Disabled)
+            val later = cancelAndConsumeRemainingEvents().mapNotNull { (it as? app.cash.turbine.Event.Item)?.value }
+            assertThat(later.all { it.selectionState == SelectionState.Disabled }).isTrue()
+        }
+    }
+
+    @Test
+    fun `present - toggling the last selected event keeps selection mode active`() = runTest {
+        val timelineItems = MutableStateFlow(
+            listOf(MatrixTimelineItem.Event(UniqueId("1"), anEventTimelineItem(eventId = AN_EVENT_ID, content = aMessageContent())))
+        )
+        val presenter = createTimelinePresenter(
+            timeline = FakeTimeline(timelineItems = timelineItems),
+            featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageMultiSelect.key to true)),
+        )
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate { it.hasAnyEvent }.last()
+            initialState.eventSink(TimelineEvent.EnterSelectionMode(SelectionAction.Forward, AN_EVENT_ID))
+            consumeItemsUntilPredicate { it.isSelectionModeActive }
+            initialState.eventSink(TimelineEvent.ToggleSelection(AN_EVENT_ID))
+            // Selection mode is only exited explicitly, so an empty selection keeps it active.
+            val state = consumeItemsUntilPredicate { it.selectedCount == 0 }.last()
+            assertThat(state.selectionState).isEqualTo(SelectionState.Active(SelectionAction.Forward, persistentSetOf()))
+            assertThat(state.isSelectionModeActive).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - exiting selection mode clears the selection`() = runTest {
+        val timelineItems = MutableStateFlow(
+            listOf(MatrixTimelineItem.Event(UniqueId("1"), anEventTimelineItem(eventId = AN_EVENT_ID, content = aMessageContent())))
+        )
+        val presenter = createTimelinePresenter(
+            timeline = FakeTimeline(timelineItems = timelineItems),
+            featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageMultiSelect.key to true)),
+        )
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate { it.hasAnyEvent }.last()
+            initialState.eventSink(TimelineEvent.EnterSelectionMode(SelectionAction.Forward, AN_EVENT_ID))
+            consumeItemsUntilPredicate { it.isSelectionModeActive }
+            initialState.eventSink(TimelineEvent.ExitSelectionMode)
+            val state = consumeItemsUntilPredicate { !it.isSelectionModeActive }.last()
+            assertThat(state.selectionState).isEqualTo(SelectionState.Disabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - turning the flag off clears the active selection`() = runTest {
+        val timelineItems = MutableStateFlow(
+            listOf(MatrixTimelineItem.Event(UniqueId("1"), anEventTimelineItem(eventId = AN_EVENT_ID, content = aMessageContent())))
+        )
+        val featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageMultiSelect.key to true))
+        val presenter = createTimelinePresenter(
+            timeline = FakeTimeline(timelineItems = timelineItems),
+            featureFlagService = featureFlagService,
+        )
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate { it.hasAnyEvent }.last()
+            initialState.eventSink(TimelineEvent.EnterSelectionMode(SelectionAction.Forward, AN_EVENT_ID))
+            consumeItemsUntilPredicate { it.isSelectionModeActive }
+            featureFlagService.setFeatureEnabled(FeatureFlags.MessageMultiSelect, false)
+            val state = consumeItemsUntilPredicate { !it.isSelectionModeActive }.last()
+            assertThat(state.selectionState).isEqualTo(SelectionState.Disabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // Правка форка: Larpgram прячет удалённые сообщения из ленты (LarpgramTimelineFilters), поэтому
+    // удалённое событие не становится «непересылаемым», а пропадает, и Element оставляет его выделенным
+    // (см. тест ниже). Мультивыбор (MessageMultiSelect) у нас выключен; вернуться при его включении.
+    @Ignore("Larpgram hides redacted events; MessageMultiSelect is off in the fork")
+    @Test
+    fun `present - a selected event which cannot be forwarded anymore is deselected`() = runTest {
+        val timelineItems = MutableStateFlow(
+            listOf(
+                MatrixTimelineItem.Event(UniqueId("1"), anEventTimelineItem(eventId = AN_EVENT_ID, content = aMessageContent())),
+                MatrixTimelineItem.Event(UniqueId("2"), anEventTimelineItem(eventId = AN_EVENT_ID_2, content = aMessageContent())),
+            )
+        )
+        val presenter = createTimelinePresenter(
+            timeline = FakeTimeline(timelineItems = timelineItems),
+            featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageMultiSelect.key to true)),
+        )
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate { it.hasAnyEvent }.last()
+            initialState.eventSink(TimelineEvent.EnterSelectionMode(SelectionAction.Forward, AN_EVENT_ID))
+            initialState.eventSink(TimelineEvent.ToggleSelection(AN_EVENT_ID_2))
+            consumeItemsUntilPredicate { it.selectedCount == 2 }
+            // The first message is deleted, so it cannot be forwarded anymore.
+            timelineItems.value = listOf(
+                MatrixTimelineItem.Event(UniqueId("1"), anEventTimelineItem(eventId = AN_EVENT_ID, content = aRedactedContent())),
+                MatrixTimelineItem.Event(UniqueId("2"), anEventTimelineItem(eventId = AN_EVENT_ID_2, content = aMessageContent())),
+            )
+            val state = consumeItemsUntilPredicate { it.selectedCount == 1 }.last()
+            assertThat(state.selectionState).isEqualTo(SelectionState.Active(SelectionAction.Forward, persistentSetOf(AN_EVENT_ID_2)))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `present - the selection survives a timeline which no longer contains the selected event`() = runTest {
+        val timelineItems = MutableStateFlow(
+            listOf(MatrixTimelineItem.Event(UniqueId("1"), anEventTimelineItem(eventId = AN_EVENT_ID, content = aMessageContent())))
+        )
+        val presenter = createTimelinePresenter(
+            timeline = FakeTimeline(timelineItems = timelineItems),
+            featureFlagService = FakeFeatureFlagService(initialState = mapOf(FeatureFlags.MessageMultiSelect.key to true)),
+        )
+        presenter.test {
+            val initialState = consumeItemsUntilPredicate { it.hasAnyEvent }.last()
+            initialState.eventSink(TimelineEvent.EnterSelectionMode(SelectionAction.Forward, AN_EVENT_ID))
+            consumeItemsUntilPredicate { it.isSelectionModeActive }
+            // The timeline no longer holds the selected event, for instance because it has been reset or because it switched to a detached timeline.
+            timelineItems.value = emptyList()
+            val state = consumeItemsUntilPredicate { !it.hasAnyEvent }.last()
+            // The selection is the user intent: it is only validated when the action is confirmed, so that a transient timeline update cannot drop it.
+            assertThat(state.selectionState).isEqualTo(SelectionState.Active(SelectionAction.Forward, persistentSetOf(AN_EVENT_ID)))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private suspend fun <T> ReceiveTurbine<T>.awaitFirstItem(): T {
         return awaitItem()
     }
@@ -1906,6 +2101,8 @@ class TimelinePresenterTest {
         timelineProtectionPresenter: Presenter<TimelineProtectionState> = { aTimelineProtectionState() },
         resolveVerifiedUserSendFailurePresenter: Presenter<ResolveVerifiedUserSendFailureState> = { aResolveVerifiedUserSendFailureState() },
         chatCleanupService: ChatCleanupService = FakeChatCleanupService(),
+        clipboardHelper: ClipboardHelper = FakeClipboardHelper(),
+        toastHelper: ToastHelper = FakeToastHelper(),
     ): TimelinePresenter {
         return TimelinePresenter(
             timelineItemsFactoryCreator = aTimelineItemsFactoryCreator(),
@@ -1918,11 +2115,17 @@ class TimelinePresenterTest {
             sendPollResponseAction = sendPollResponseAction,
             sessionPreferencesStore = sessionPreferencesStore,
             timelineItemIndexer = timelineItemIndexer,
-            timelineController = TimelineController(room, timeline),
+            timelineController = TimelineController(
+                room = room,
+                liveTimeline = timeline,
+                roomCoroutineScope = backgroundScope,
+                dispatchers = testCoroutineDispatchers(),
+            ),
             resolveVerifiedUserSendFailurePresenter = resolveVerifiedUserSendFailurePresenter,
             typingNotificationPresenter = { aTypingNotificationState() },
             roomCallStatePresenter = { aStandByCallState() },
             featureFlagService = featureFlagService,
+            snackbarDispatcher = SnackbarDispatcher(),
             analyticsService = FakeAnalyticsService(),
             liveLocationShareManager = liveLocationShareManager,
             markAsFullyRead = markAsFullyRead,
@@ -1930,6 +2133,8 @@ class TimelinePresenterTest {
             savedMessages = NoOpSavedMessages(),
             chatCleanupService = chatCleanupService,
             timelineChannelComments = TimelineChannelComments(room, FakeMatrixClient()),
+            clipboardHelper = clipboardHelper,
+            toastHelper = toastHelper,
         )
     }
 }

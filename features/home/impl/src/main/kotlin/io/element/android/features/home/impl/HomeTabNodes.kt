@@ -85,6 +85,7 @@ class HomeTabNodes(
         onAtRootChange: ((Boolean) -> Unit)?,
     ) = object : PreferencesEntryPoint.Callback {
         override fun navigateToAddAccount() = callback.navigateToAddAccount()
+        override fun navigateToSession(sessionId: SessionId) = callback.navigateToSession(sessionId)
         override fun navigateToLinkNewDevice() = callback.navigateToLinkNewDevice()
         override fun navigateToBugReport() = callback.navigateToBugReport()
         override fun navigateToSecureBackup() = callback.navigateToSecureBackup()

@@ -19,8 +19,6 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
 import io.element.android.compound.theme.ElementTheme
-import io.element.android.features.logout.api.direct.DirectLogoutEvent
-import io.element.android.features.logout.api.direct.DirectLogoutView
 import io.element.android.features.preferences.impl.advanced.AdvancedSettingsPresenter
 import io.element.android.features.preferences.impl.advanced.ChatAppearancePresenter
 import io.element.android.features.preferences.impl.root.PreferencesRootPresenter
@@ -40,7 +38,6 @@ class SettingsCategoryNode(
     private val presenter: PreferencesRootPresenter,
     private val advancedSettingsPresenter: AdvancedSettingsPresenter,
     private val chatAppearancePresenter: ChatAppearancePresenter,
-    private val directLogoutView: DirectLogoutView,
 ) : Node(buildContext, plugins = plugins) {
     data class Inputs(val category: SettingsCategory) : NodeInputs
 
@@ -103,16 +100,9 @@ class SettingsCategoryNode(
             onOpenAnalytics = callback::navigateToAnalyticsSettings,
             onOpenChatThemeSettings = callback::navigateToChatThemeSettings,
             onManageAccountClick = { onManageAccountClick(activity, it, isDark) },
-            onSignOutClick = {
-                if (state.directLogoutState.canDoDirectSignOut) {
-                    state.directLogoutState.eventSink(DirectLogoutEvent.Logout(ignoreSdkError = false))
-                } else {
-                    callback.startSignOutFlow()
-                }
-            },
+            // Element v26.10 always opens the sign out screen (direct logout removed from settings).
+            onSignOutClick = callback::startSignOutFlow,
             onDeactivateClick = callback::startAccountDeactivationFlow,
         )
-
-        directLogoutView.Render(state = state.directLogoutState)
     }
 }

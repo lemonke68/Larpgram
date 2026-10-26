@@ -15,6 +15,8 @@ import io.element.android.features.securebackup.api.SecureBackupSetupEntryPoint
 import io.element.android.features.securebackup.impl.setup.SecureBackupSetupNode
 import io.element.android.features.securebackup.impl.setup.SecureBackupSetupPresenter
 import io.element.android.features.securebackup.impl.setup.SecureBackupSetupStateMachine
+import io.element.android.libraries.androidutils.clipboard.FakeClipboardHelper
+import io.element.android.libraries.androidutils.toast.FakeToastHelper
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.keyescrow.test.FakeRecoveryKeyAutoProvisioner
 import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
@@ -41,6 +43,8 @@ class DefaultSecureBackupSetupEntryPointTest {
                         isChangeRecoveryKeyUserStory = isChangeRecoveryKeyUserStory,
                         stateMachine = SecureBackupSetupStateMachine(),
                         encryptionService = FakeEncryptionService(),
+                        clipboardHelper = FakeClipboardHelper(),
+                        toastHelper = FakeToastHelper(),
                         recoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
                     )
                 },

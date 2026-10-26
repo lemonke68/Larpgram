@@ -107,6 +107,7 @@ class PinnedMessagesListPresenter(
         val timelineRoomInfo by remember {
             derivedStateOf {
                 TimelineRoomInfo(
+                    currentUserId = room.sessionId,
                     isDm = roomInfo.isDm,
                     // Правка форка: каналы.
                     // Pinned list is not a channel context; the comments affordance is not shown here.
@@ -183,7 +184,7 @@ class PinnedMessagesListPresenter(
             }
             TimelineItemAction.Forward -> {
                 targetEvent.eventId?.let { eventId ->
-                    navigator.forwardEvent(eventId)
+                    navigator.forwardEvent(eventId, timelineProvider)
                 }
             }
             TimelineItemAction.Unpin -> handleUnpinAction(targetEvent)

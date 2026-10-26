@@ -16,6 +16,7 @@ import io.element.android.libraries.architecture.FeatureEntryPoint
 import io.element.android.libraries.architecture.NodeInputs
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
 import kotlinx.parcelize.Parcelize
 
 interface PreferencesEntryPoint : FeatureEntryPoint {
@@ -59,6 +60,7 @@ interface PreferencesEntryPoint : FeatureEntryPoint {
 
     interface Callback : Plugin {
         fun navigateToAddAccount()
+        fun navigateToSession(sessionId: SessionId)
         fun navigateToLinkNewDevice()
         fun navigateToBugReport()
         fun navigateToSecureBackup()

@@ -12,6 +12,7 @@ import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.announcement.api.Announcement
 import io.element.android.features.announcement.api.AnnouncementService
+import io.element.android.features.announcement.test.FakeAnnouncementService
 import io.element.android.features.home.impl.FakeDateTimeObserver
 import io.element.android.features.home.impl.datasource.RoomListDataSource
 import io.element.android.features.home.impl.datasource.aRoomListRoomSummaryFactory
@@ -33,7 +34,6 @@ import io.element.android.features.invite.test.InMemorySeenInvitesStore
 import io.element.android.features.leaveroom.api.LeaveRoomEvent
 import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
-import io.element.android.features.rageshake.test.logs.FakeAnnouncementService
 import io.element.android.libraries.accountemail.api.AccountEmailStatus
 import io.element.android.libraries.appupdate.api.UpdateChecker
 import io.element.android.libraries.appupdate.api.UpdateInstallState
@@ -47,6 +47,8 @@ import io.element.android.libraries.dateformatter.test.FakeDateFormatter
 import io.element.android.libraries.eventformatter.api.RoomLatestEventFormatter
 import io.element.android.libraries.eventformatter.test.FakeRoomLatestEventFormatter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
+import io.element.android.libraries.featureflag.api.FeatureFlags
+import io.element.android.libraries.featureflag.api.ShowAllActivityInRoomListFeature
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
 import io.element.android.libraries.keyescrow.api.RecoveryKeyAutoProvisioner
@@ -64,6 +66,7 @@ import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID_2
 import io.element.android.libraries.matrix.test.A_ROOM_ID_3
 import io.element.android.libraries.matrix.test.A_SESSION_ID
+import io.element.android.libraries.matrix.test.A_SESSION_ID_2
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
@@ -84,6 +87,9 @@ import io.element.android.libraries.preferences.test.InMemorySessionPreferencesS
 import io.element.android.libraries.push.api.battery.aBatteryOptimizationState
 import io.element.android.libraries.push.api.notifications.NotificationCleaner
 import io.element.android.libraries.push.test.notifications.FakeNotificationCleaner
+import io.element.android.libraries.sessionstorage.api.SessionStore
+import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
+import io.element.android.libraries.sessionstorage.test.aSessionData
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.services.analytics.test.watchers.FakeAnalyticsColdStartWatcher
@@ -105,7 +111,6 @@ import org.junit.Rule
 import org.junit.Test
 import kotlin.time.Duration.Companion.seconds
 
-@Suppress("LargeClass")
 class RoomListPresenterTest {
     @get:Rule
     val warmUpRule = WarmUpRule()
@@ -401,6 +406,10 @@ class RoomListPresenterTest {
         val presenter = createRoomListPresenter(client = client)
         presenter.test {
             val initialState = awaitItem()
+
+            // Skip intermediate event for loading the value of the feature flags
+            skipItems(1)
+
             val summary = createRoomListRoomSummary()
             initialState.eventSink(RoomListEvent.ShowContextMenu(summary))
 
@@ -461,6 +470,10 @@ class RoomListPresenterTest {
         val presenter = createRoomListPresenter(client = client)
         presenter.test {
             val initialState = awaitItem()
+
+            // Skip intermediate event for loading the value of the feature flags
+            skipItems(1)
+
             val summary = createRoomListRoomSummary()
             initialState.eventSink(RoomListEvent.ShowContextMenu(summary))
 
@@ -520,6 +533,10 @@ class RoomListPresenterTest {
         )
         presenter.test {
             val initialState = awaitItem()
+
+            // Skip intermediate event for loading the value of the feature flags
+            skipItems(1)
+
             eventRecorder.assertEmpty()
             initialState.eventSink(RoomListEvent.ToggleSearchResults)
             eventRecorder.assertSingle(
@@ -866,6 +883,88 @@ class RoomListPresenterTest {
         }
     }
 
+    @Test
+    fun `present - swipe avatar banner is never shown`() = runTest {
+        val roomList = FakeDynamicRoomList(
+            summaries = MutableStateFlow(listOf(aRoomSummary())),
+            loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1))
+        )
+        val roomListService = FakeRoomListService(
+            createRoomListLambda = { roomList },
+            subscribeToVisibleRoomsLambda = { },
+        )
+        val matrixClient = FakeMatrixClient(
+            roomListService = roomListService,
+        )
+        val onAnnouncementDismissedResult = lambdaRecorder<Announcement, Unit> { }
+        val announcementService = FakeAnnouncementService(
+            initialAnnouncementsToShowFlowValue = listOf(Announcement.SwipeAvatarToSwitchAccount),
+            onAnnouncementDismissedResult = onAnnouncementDismissedResult,
+        )
+        val sessionStore = InMemorySessionStore(
+            initialList = listOf(aSessionData(sessionId = A_SESSION_ID.value)),
+        )
+        val presenter = createRoomListPresenter(
+            client = matrixClient,
+            announcementService = announcementService,
+            sessionStore = sessionStore,
+        )
+        presenter.test {
+            // Правка форка (Larpgram): у TG-главной нет аватара в шапке, баннер не показывается
+            // ни с одним, ни с двумя аккаунтами.
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
+            assertThat(state.contentAsRooms().showSwipeAvatarBanner).isFalse()
+            sessionStore.addSession(aSessionData(sessionId = A_SESSION_ID_2.value))
+            val states = cancelAndConsumeRemainingEvents().mapNotNull { (it as? app.cash.turbine.Event.Item)?.value }
+            assertThat(states.none { it.contentState is RoomListContentState.Rooms && it.contentAsRooms().showSwipeAvatarBanner }).isTrue()
+        }
+    }
+
+    @Test
+    fun `present - showAllActivity and showUnreadCount reflect the feature flag values`() = runTest {
+        val roomList = FakeDynamicRoomList(
+            summaries = MutableStateFlow(listOf(aRoomSummary())),
+            loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1)),
+        )
+        val matrixClient = FakeMatrixClient(
+            roomListService = FakeRoomListService(createRoomListLambda = { roomList }),
+        )
+        val featureFlagService = FakeFeatureFlagService(
+            initialState = mapOf(
+                ShowAllActivityInRoomListFeature.key to true,
+                FeatureFlags.UnreadIndicatorCount.key to true,
+            )
+        )
+        val presenter = createRoomListPresenter(
+            client = matrixClient,
+            featureFlagService = featureFlagService,
+        )
+        presenter.test {
+            val enabledState = consumeItemsUntilPredicate { state ->
+                state.contentState is RoomListContentState.Rooms &&
+                    state.contentAsRooms().showAllActivity &&
+                    state.contentAsRooms().showUnreadCount
+            }.last()
+            assertThat(enabledState.contentAsRooms().showAllActivity).isTrue()
+            assertThat(enabledState.contentAsRooms().showUnreadCount).isTrue()
+
+            featureFlagService.setFeatureEnabled(ShowAllActivityInRoomListFeature, false)
+            val allActivityDisabledState = consumeItemsUntilPredicate { state ->
+                state.contentState is RoomListContentState.Rooms && !state.contentAsRooms().showAllActivity
+            }.last()
+            assertThat(allActivityDisabledState.contentAsRooms().showAllActivity).isFalse()
+            assertThat(allActivityDisabledState.contentAsRooms().showUnreadCount).isTrue()
+
+            featureFlagService.setFeatureEnabled(FeatureFlags.UnreadIndicatorCount, false)
+            val unreadCountDisabledState = consumeItemsUntilPredicate { state ->
+                state.contentState is RoomListContentState.Rooms && !state.contentAsRooms().showUnreadCount
+            }.last()
+            assertThat(unreadCountDisabledState.contentAsRooms().showAllActivity).isFalse()
+            assertThat(unreadCountDisabledState.contentAsRooms().showUnreadCount).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun createTestMarkRoomAsRead(
         client: MatrixClient,
         notificationCleaner: NotificationCleaner,
@@ -906,6 +1005,7 @@ class RoomListPresenterTest {
         recoveryKeyAutoProvisioner: RecoveryKeyAutoProvisioner = FakeRecoveryKeyAutoProvisioner(),
         chatCleanupService: ChatCleanupService = FakeChatCleanupService(),
         draftPreviews: DraftPreviews = NoOpDraftPreviews(),
+        sessionStore: SessionStore = InMemorySessionStore(),
     ) = RoomListPresenter(
         client = client,
         leaveRoomPresenter = { leaveRoomState },
@@ -968,5 +1068,6 @@ class RoomListPresenterTest {
             dateFormatter = FakeDateFormatter(),
             savedMessages = NoOpSavedMessages(),
         ),
+        sessionStore = sessionStore,
     )
 }

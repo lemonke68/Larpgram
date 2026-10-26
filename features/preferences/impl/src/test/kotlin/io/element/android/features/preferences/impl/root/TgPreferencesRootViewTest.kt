@@ -20,7 +20,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import io.element.android.features.preferences.impl.R
+import io.element.android.features.preferences.impl.account.aPreferencesAccountState
 import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
@@ -66,22 +68,27 @@ class TgPreferencesRootViewTest : RobolectricTest() {
     }
 
     @Test
-    fun `clicking on other session sends a SwitchToSession`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>()
-        setView(
-            aPreferencesRootState(
-                isMultiAccountEnabled = true,
-                otherSessions = listOf(
-                    aMatrixUser(
-                        id = A_USER_ID_2.value,
-                        displayName = "Bob",
-                    )
+    fun `clicking on other session invokes the switch to session callback`() = runAndroidComposeUiTest {
+        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
+        // Element v26.10: switching account goes through navigation instead of a presenter event.
+        ensureCalledOnceWithParam(A_USER_ID_2) { callback ->
+            setView(
+                aPreferencesRootState(
+                    isMultiAccountEnabled = true,
+                    otherSessions = listOf(
+                        anOtherAccount(
+                            user = aMatrixUser(
+                                id = A_USER_ID_2.value,
+                                displayName = "Bob",
+                            )
+                        )
+                    ),
+                    eventSink = eventsRecorder,
                 ),
-                eventSink = eventsRecorder,
-            ),
-        )
-        onNodeWithText("Bob").performClick()
-        eventsRecorder.assertSingle(PreferencesRootEvent.SwitchToSession(A_USER_ID_2))
+                onSwitchToSession = callback,
+            )
+            onNodeWithText("Bob").performClick()
+        }
     }
 
     @Test
@@ -135,7 +142,7 @@ class TgPreferencesRootViewTest : RobolectricTest() {
         ensureCalledOnce { callback ->
             setView(
                 aPreferencesRootState(
-                    canReportBug = true,
+                    preferencesAccountState = aPreferencesAccountState(canReportBug = true),
                     eventSink = eventsRecorder,
                 ),
                 onOpenRageShake = callback,
@@ -150,7 +157,7 @@ class TgPreferencesRootViewTest : RobolectricTest() {
         val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
         setView(
             aPreferencesRootState(
-                canReportBug = false,
+                preferencesAccountState = aPreferencesAccountState(canReportBug = false),
                 eventSink = eventsRecorder,
             ),
         )
@@ -254,6 +261,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
     state: PreferencesRootState,
     onBackClick: () -> Unit = EnsureNeverCalled(),
     onAddAccountClick: () -> Unit = EnsureNeverCalled(),
+    onSwitchToSession: (SessionId) -> Unit = EnsureNeverCalledWithParam(),
     onOpenCategory: (SettingsCategory) -> Unit = EnsureNeverCalledWithParam(),
     onOpenUserProfile: (MatrixUser) -> Unit = EnsureNeverCalledWithParam(),
     onOpenAbout: () -> Unit = EnsureNeverCalled(),
@@ -268,6 +276,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setView(
             emojiPickerRenderer = NoOpEmojiPickerRenderer,
             onBackClick = onBackClick,
             onAddAccountClick = onAddAccountClick,
+            onSwitchToSession = onSwitchToSession,
             onOpenCategory = onOpenCategory,
             onOpenUserProfile = onOpenUserProfile,
             onOpenAbout = onOpenAbout,

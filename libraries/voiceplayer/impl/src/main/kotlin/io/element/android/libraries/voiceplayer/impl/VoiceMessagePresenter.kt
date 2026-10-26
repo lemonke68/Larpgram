@@ -157,7 +157,9 @@ class VoiceMessagePresenter(
             progress = progress,
             time = time,
             showCursor = showCursor,
+            isPlaying = playerState.isPlaying,
             playbackSpeed = VoicePlayerConfig.availablePlaybackSpeeds[playbackSpeedIndex],
+            durationMs = duration,
             eventSink = ::handleEvent,
         )
     }

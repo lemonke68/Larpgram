@@ -36,6 +36,7 @@ import io.element.android.features.messages.impl.timeline.components.chatWallpap
 import io.element.android.features.messages.impl.timeline.components.selectedChatWallpaper
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.TimelineItemSelectionData
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -140,6 +141,8 @@ private fun PreviewRow(
         isLastOutgoingMessage = false,
         focusedEventId = null,
         displayThreadSummaries = false,
+        // Правка форка (Larpgram): мультивыбор (MessageMultiSelect) у нас выключен.
+        selectionData = TimelineItemSelectionData(),
         onUserDataClick = {},
         onLinkClick = {},
         onLinkLongClick = {},

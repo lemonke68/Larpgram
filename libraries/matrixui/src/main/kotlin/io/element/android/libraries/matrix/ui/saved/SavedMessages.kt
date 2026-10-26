@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.matrix.ui.saved
 
+import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -43,6 +44,22 @@ interface SavedMessages {
 
     /** Открыть «Избранное»: вернуть существующее или создать. */
     suspend fun getOrCreate(): Result<RoomId>
+
+    /**
+     * For app-scoped screens that pick a session themselves (room select since v26.10): builds
+     * «Избранное» for a given client, living as long as [coroutineScope].
+     */
+    fun interface Factory {
+        fun create(client: MatrixClient, coroutineScope: CoroutineScope): SavedMessages
+    }
+}
+
+@ContributesBinding(AppScope::class)
+class DefaultSavedMessagesFactory(
+    private val dispatchers: CoroutineDispatchers,
+) : SavedMessages.Factory {
+    override fun create(client: MatrixClient, coroutineScope: CoroutineScope): SavedMessages =
+        DefaultSavedMessages(client, dispatchers, coroutineScope)
 }
 
 class NoOpSavedMessages(roomId: RoomId? = null) : SavedMessages {

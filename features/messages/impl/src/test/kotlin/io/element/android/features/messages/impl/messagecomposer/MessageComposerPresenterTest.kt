@@ -21,6 +21,7 @@ import im.vector.app.features.analytics.plan.Composer
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.location.api.LocationService
 import io.element.android.features.location.test.FakeLocationService
+import io.element.android.features.messages.api.timeline.TextPillificator
 import io.element.android.features.messages.impl.FakeMessagesNavigator
 import io.element.android.features.messages.impl.MessagesNavigator
 import io.element.android.features.messages.impl.attachments.Attachment
@@ -31,8 +32,7 @@ import io.element.android.features.messages.impl.draft.FakeComposerDraftService
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsProcessor
 import io.element.android.features.messages.impl.timeline.TimelineController
 import io.element.android.features.messages.impl.utils.FakeMentionSpanFormatter
-import io.element.android.features.messages.impl.utils.FakeTextPillificationHelper
-import io.element.android.features.messages.impl.utils.TextPillificationHelper
+import io.element.android.features.messages.test.timeline.FakeTextPillificator
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
@@ -118,6 +118,7 @@ import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import io.element.android.tests.testutils.test
+import io.element.android.tests.testutils.testCoroutineDispatchers
 import io.element.android.tests.testutils.waitForPredicate
 import io.mockk.mockk
 import kotlinx.collections.immutable.ImmutableList
@@ -131,7 +132,6 @@ import org.junit.Test
 import uniffi.wysiwyg_composer.MentionsState
 import java.io.File
 
-@Suppress("LargeClass")
 class MessageComposerPresenterTest : RobolectricTest() {
     @get:Rule
     val warmUpRule = WarmUpRule()
@@ -1749,7 +1749,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
             mentionSpanFormatter = FakeMentionSpanFormatter(),
             mentionSpanTheme = MentionSpanTheme(A_USER_ID)
         ),
-        textPillificationHelper: TextPillificationHelper = FakeTextPillificationHelper(),
+        textPillificator: TextPillificator = FakeTextPillificator(),
         isRichTextEditorEnabled: Boolean = true,
         draftService: ComposerDraftService = FakeComposerDraftService(),
         draftPreviews: DraftPreviews = NoOpDraftPreviews(),
@@ -1787,7 +1787,12 @@ class MessageComposerPresenterTest : RobolectricTest() {
         permissionsPresenterFactory = FakePermissionsPresenterFactory(permissionPresenter),
         permalinkParser = permalinkParser,
         permalinkBuilder = permalinkBuilder,
-        timelineController = TimelineController(room, timeline),
+        timelineController = TimelineController(
+            room = room,
+            liveTimeline = timeline,
+            roomCoroutineScope = backgroundScope,
+            dispatchers = testCoroutineDispatchers(),
+        ),
         draftService = draftService,
         forkActions = ComposerForkActions(
             room = room,
@@ -1811,7 +1816,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
             attachSheetMemory = TgAttachSheetMemory(),
         ),
         mentionSpanProvider = mentionSpanProvider,
-        pillificationHelper = textPillificationHelper,
+        pillificationHelper = textPillificator,
         suggestionsProcessor = SuggestionsProcessor(slashCommandService = slashCommandService),
         mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
         notificationConversationService = notificationConversationService,
@@ -1819,6 +1824,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
         featureFlagService = featureFlagService,
         contentScannerService = { _, _ -> },
         contentValidationCache = InMemoryEventContentValidationCache(),
+        dispatchers = testCoroutineDispatchers(useUnconfinedTestDispatcher = true),
     ).apply {
         isTesting = true
         showTextFormatting = isRichTextEditorEnabled

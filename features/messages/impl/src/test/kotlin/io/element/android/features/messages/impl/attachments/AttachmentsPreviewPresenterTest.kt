@@ -83,7 +83,6 @@ import org.junit.Test
 import java.io.File
 import kotlin.io.path.createTempFile
 
-@Suppress("LargeClass")
 class AttachmentsPreviewPresenterTest : RobolectricTest() {
     @get:Rule
     val warmUpRule = WarmUpRule()

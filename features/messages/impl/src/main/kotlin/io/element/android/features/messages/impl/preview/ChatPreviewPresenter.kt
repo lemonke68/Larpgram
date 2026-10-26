@@ -83,6 +83,7 @@ class ChatPreviewPresenter(
         val timelineRoomInfo by remember {
             derivedStateOf {
                 TimelineRoomInfo(
+                    currentUserId = room.sessionId,
                     isDm = roomInfo.isDm,
                     isChannel = (roomInfo.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L,
                     name = roomInfo.name,

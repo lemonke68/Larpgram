@@ -83,6 +83,7 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
 import kotlinx.coroutines.launch
 
 @Composable
@@ -90,6 +91,8 @@ fun TgHomeView(
     homeState: HomeState,
     onRoomClick: (RoomId, EventId?) -> Unit,
     onSettingsClick: () -> Unit,
+    // Правка форка (Larpgram): Element v26.10 переключает аккаунт навигацией (HomeEvent.SwitchToAccount удалён).
+    onSwitchToAccount: (SessionId) -> Unit,
     onSetUpRecoveryClick: () -> Unit,
     onConfirmRecoveryKeyClick: () -> Unit,
     onStartChatClick: () -> Unit,
@@ -142,6 +145,7 @@ fun TgHomeView(
             onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
             onRoomClick = { roomId -> if (firstThrottler.canHandle()) onRoomClick(roomId, null) },
             onOpenSettings = { if (firstThrottler.canHandle()) onSettingsClick() },
+            onSwitchToAccount = onSwitchToAccount,
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
             onMenuActionClick = onMenuActionClick,
@@ -198,6 +202,7 @@ private fun HomeScaffold(
     onConfirmRecoveryKeyClick: () -> Unit,
     onRoomClick: (RoomId) -> Unit,
     onOpenSettings: () -> Unit,
+    onSwitchToAccount: (SessionId) -> Unit,
     onStartChatClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
@@ -264,8 +269,10 @@ private fun HomeScaffold(
                 },
                 onMenuActionClick = onMenuActionClick,
                 onOpenSettings = onOpenSettings,
-                onAccountSwitch = {
-                    state.eventSink(HomeEvent.SwitchToAccount(it))
+                onAccountSwitch = { sessionId ->
+                    // The user has switched account by swiping their avatar, so they know the gesture.
+                    state.eventSink(HomeEvent.DismissSwipeAvatarAnnouncement)
+                    onSwitchToAccount(sessionId)
                 },
                 scrollBehavior = scrollBehavior,
                 displayFilters = isChatsTab && roomListState.displayFilters,
@@ -429,6 +436,7 @@ internal fun TgHomeViewPreview(@PreviewParameter(HomeStatePreviewParam::class) s
         homeState = state,
         onRoomClick = { _, _ -> },
         onSettingsClick = {},
+        onSwitchToAccount = {},
         onSetUpRecoveryClick = {},
         onConfirmRecoveryKeyClick = {},
         onStartChatClick = {},
@@ -449,6 +457,7 @@ internal fun TgHomeViewA11yPreview() = ElementPreview {
         homeState = aHomeState(),
         onRoomClick = { _, _ -> },
         onSettingsClick = {},
+        onSwitchToAccount = {},
         onSetUpRecoveryClick = {},
         onConfirmRecoveryKeyClick = {},
         onStartChatClick = {},

@@ -47,6 +47,7 @@ import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
+import io.element.android.libraries.featureflag.api.ShowAllActivityInRoomListFeature
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -55,6 +56,7 @@ import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
+import io.element.android.libraries.sessionstorage.api.SessionStore
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsColdStartWatcher
 import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
@@ -65,6 +67,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -90,6 +93,7 @@ class RoomListPresenter(
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
     private val globalSearchPresenter: Presenter<GlobalSearchState>,
     private val featureFlagService: FeatureFlagService,
+    private val sessionStore: SessionStore,
     // Правка форка: баннеры почты, сессий и обновления; строки и свайпы Telegram.
     private val forkBanners: RoomListForkBanners,
     private val forkRows: RoomListForkRows,
@@ -122,12 +126,27 @@ class RoomListPresenter(
                 announcements.contains(Announcement.NewNotificationSound)
             }
         }.collectAsState(false)
+        val showSwipeAvatarBanner by remember {
+            combine(
+                announcementService.announcementsToShowFlow(),
+                sessionStore.sessionsFlow(),
+            ) { announcements, sessions ->
+                // The swipe gesture on the avatar is only available when there are several accounts
+                // Правка форка (Larpgram): the TG home has no avatar in the top bar (accounts switch
+                // from the Profile tab), so Element's swipe-avatar banner is never shown.
+                LARPGRAM_SHOW_SWIPE_AVATAR_BANNER && sessions.size >= 2 && announcements.contains(Announcement.SwipeAvatarToSwitchAccount)
+            }
+        }.collectAsState(false)
 
         // Avatar indicator
         val hideInvitesAvatar by client.rememberHideInvitesAvatar()
 
         val contextMenu = remember { mutableStateOf<RoomListState.ContextMenu>(RoomListState.ContextMenu.Hidden) }
         val declineInviteMenu = remember { mutableStateOf<RoomListState.DeclineInviteMenu>(RoomListState.DeclineInviteMenu.Hidden) }
+
+        val showAllActivity by produceState(initialValue = false) {
+            featureFlagService.isFeatureEnabledFlow(ShowAllActivityInRoomListFeature).collect { value = it }
+        }
 
         fun handleEvent(event: RoomListEvent) {
             when (event) {
@@ -145,6 +164,9 @@ class RoomListPresenter(
                 RoomListEvent.DismissProtectHistoryBanner,
                 RoomListEvent.DismissUpdateBanner,
                 RoomListEvent.InstallUpdate -> forkBannersState.eventSink(event)
+                RoomListEvent.DismissSwipeAvatarBanner -> coroutineScope.launch {
+                    announcementService.onAnnouncementDismissed(Announcement.SwipeAvatarToSwitchAccount)
+                }
                 RoomListEvent.ToggleSearchResults -> searchState.eventSink(RoomListSearchEvent.ToggleSearchVisibility)
                 is RoomListEvent.ShowContextMenu -> {
                     coroutineScope.showContextMenu(event, contextMenu)
@@ -187,7 +209,7 @@ class RoomListPresenter(
 
         val canReportRoom by produceState(false) { value = client.canReportRoom() }
         val showUnreadCount by produceState(false) {
-            value = featureFlagService.isFeatureEnabled(FeatureFlags.UnreadIndicatorCount)
+            featureFlagService.isFeatureEnabledFlow(FeatureFlags.UnreadIndicatorCount).collect { value = it }
         }
 
         val contentState = roomListContentState(
@@ -199,7 +221,9 @@ class RoomListPresenter(
             updateBanner = forkBannersState.updateBanner,
             showProtectHistoryBanner = forkBannersState.showProtectHistoryBanner,
             showNewNotificationSoundBanner,
+            showSwipeAvatarBanner,
             showUnreadCount,
+            showAllActivity = showAllActivity,
             visibleRangeFlow = visibleRangeFlow,
         )
 
@@ -301,7 +325,9 @@ class RoomListPresenter(
         updateBanner: UpdateBannerState?,
         showProtectHistoryBanner: Boolean,
         showNewNotificationSoundBanner: Boolean,
+        showSwipeAvatarBanner: Boolean,
         showUnreadCount: Boolean,
+        showAllActivity: Boolean,
         visibleRangeFlow: StateFlow<IntRange>,
     ): RoomListContentState {
         // Правка форка: пины, черновики, «печатает…» и очистка истории поверх строк (RoomListForkRows).
@@ -347,10 +373,12 @@ class RoomListPresenter(
                     manageSessionsUrl = manageSessionsUrl,
                     updateBanner = updateBanner,
                     showNewNotificationSoundBanner = showNewNotificationSoundBanner,
+                    showSwipeAvatarBanner = showSwipeAvatarBanner,
                     showUnreadCount = showUnreadCount,
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),
                     batteryOptimizationState = batteryOptimizationPresenter.present(),
                     summaries = roomSummaries.dataOrNull().orEmpty().toImmutableList(),
+                    showAllActivity = showAllActivity,
                     seenRoomInvites = seenRoomInvites.toImmutableSet(),
                 )
             }
@@ -418,3 +446,6 @@ class RoomListPresenter(
         }
     }
 }
+
+// Правка форка (Larpgram): see showSwipeAvatarBanner.
+private const val LARPGRAM_SHOW_SWIPE_AVATAR_BANNER = false

@@ -128,19 +128,12 @@ enum class FeatureFlags(
         defaultValue = { false },
         isFinished = false,
     ),
-    RoomThreadList(
-        key = "feature.room_thread_list",
-        title = "Add a list of threads in a room",
-        description = "Add a new screen with a list of threads in a room.",
-        defaultValue = { false },
-        isFinished = false,
-    ),
     AutomaticBackPagination(
         key = "feature.automatic_back_pagination",
         title = "Automatic back pagination of rooms",
         description = "Allow the app to automatically back paginate in rooms to pre-fetch older messages in background." +
             "\nRequires an app restart to take effect.",
-        defaultValue = { false },
+        defaultValue = { true },
         isFinished = false,
     ),
     UnreadIndicatorCount(
@@ -180,4 +173,50 @@ enum class FeatureFlags(
         defaultValue = { true },
         isFinished = false,
     ),
+    MessageMultiSelect(
+        key = "feature.message_multi_select",
+        title = "Multi-select messages",
+        description = "The Forward action enters a selection mode, to pick and forward up to 10 messages at once.",
+        defaultValue = { false },
+        isFinished = false,
+        isInLabs = false,
+    ),
+    NewTimelineEventRenderer(
+        key = "feature.new_timeline_event_renderer",
+        title = "New timeline event renderer",
+        description = "Render formatted message bodies natively with Jetpack Compose instead of the rich text editor view.",
+        defaultValue = { false },
+        isFinished = false,
+        isInLabs = false,
+    ),
+    NativeCall(
+        key = "feature.native_call",
+        title = "Native calls (experimental)",
+        description = "Place calls with the native MatrixRTC stack instead of the Element Call WebView.",
+        defaultValue = { false },
+        isFinished = false,
+    ),
+    ReceiveNotificationsFromOtherSignedInAccounts(
+        key = "feature.receive_notifications_from_other_signed_in_accounts",
+        title = "Receive notifications from other signed-in accounts",
+        description = "Receive push notifications for events sent from other signed-in accounts on this device. " +
+            "Note this may result in duplicate notifications if you have multiple accounts signed in on the same device, it should only be used for testing.",
+        defaultValue = { false },
+        isFinished = false,
+    )
+}
+
+/**
+ * Feature flag to show all activity indicators in the room list, using unread messages instead of notifications.
+ *
+ * This is separate from the [FeatureFlags] enum because it is not a feature flag that can be toggled in developer options,
+ * but rather a setting that can be toggled in the app settings.
+ */
+object ShowAllActivityInRoomListFeature : Feature {
+    override val key: String = "feature.show_all_activity_in_room_list"
+    override val title: String = "Show all activity in room list"
+    override val description: String = "Show all activity indicators in the room list, using unread messages instead of notifications."
+    override val defaultValue: (BuildMeta) -> Boolean = { true }
+    override val isFinished: Boolean = false
+    override val isInLabs: Boolean = false
 }

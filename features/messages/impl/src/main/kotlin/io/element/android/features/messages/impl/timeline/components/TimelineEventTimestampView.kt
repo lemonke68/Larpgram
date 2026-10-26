@@ -77,13 +77,20 @@ fun TimelineEventTimestampView(
     val shield = event.messageShield?.takeIf { it.isCritical }
     val isVerifiedUserSendFailure = event.localSendState is LocalEventSendState.Failed.VerifiedUser
     val onClickLabel = when {
+        hasError -> stringResource(CommonStrings.a11y_view_details)
         shield != null -> stringResource(CommonStrings.a11y_view_details)
         isVerifiedUserSendFailure -> stringResource(CommonStrings.action_open_context_menu)
-        hasError -> stringResource(CommonStrings.a11y_view_details)
         else -> null
     }
     val clickableModifier = remember(event) {
         when {
+            hasError -> {
+                Modifier.clickable(
+                    onClickLabel = onClickLabel,
+                ) {
+                    eventSink(TimelineEvent.ShowSendFailureDialog(event))
+                }
+            }
             shield != null -> {
                 Modifier.clickable(
                     onClickLabel = onClickLabel,
@@ -91,12 +98,6 @@ fun TimelineEventTimestampView(
                     eventSink(TimelineEvent.ShowShieldDialog(shield))
                 }
             }
-            hasError -> Modifier
-                .clickable(
-                    onClickLabel = onClickLabel,
-                ) {
-                    eventSink(TimelineEvent.ShowSendFailureDialog(event))
-                }
             else -> Modifier
         }
     }
@@ -156,7 +157,8 @@ fun TimelineEventTimestampView(
             Spacer(modifier = Modifier.width(3.dp))
             MessageDeliveryTicks(
                 state = when {
-                    event.localSendState is LocalEventSendState.Sending -> MessageDeliveryState.Sending
+                    // Правка форка (Element 26.10): учитываем и неотправленные правку/удаление (pendingSend).
+                    event.pendingSend()?.second is LocalEventSendState.Sending -> MessageDeliveryState.Sending
                     event.readReceiptState.receipts.isNotEmpty() || event.isReadByOthers -> MessageDeliveryState.Read
                     event.isRemote -> MessageDeliveryState.Sent
                     else -> MessageDeliveryState.Sending

@@ -64,14 +64,19 @@ class RoomListSearchDataSource(
         roomList.updateVisibleRange(visibleRange)
     }
 
-    suspend fun setSearchQuery(searchQuery: String) = coroutineScope {
+    suspend fun setSearchQuery(searchQuery: String, additionalFilters: RoomListFilter?) = coroutineScope {
         val query = searchQuery.trim()
         val filter = if (query.isBlank()) {
             RoomListFilter.None
         } else {
             val byName = RoomListFilter.NormalizedMatchRoomName(query)
             val dmsByUsername = dmRoomsMatchingUsername(query)
-            if (dmsByUsername.isEmpty()) byName else RoomListFilter.Any(listOf(byName, RoomListFilter.Identifiers(dmsByUsername)))
+            val byQuery = if (dmsByUsername.isEmpty()) byName else RoomListFilter.Any(listOf(byName, RoomListFilter.Identifiers(dmsByUsername)))
+            if (additionalFilters != null) {
+                RoomListFilter.all(additionalFilters, byQuery)
+            } else {
+                byQuery
+            }
         }
         roomList.updateFilter(filter)
     }

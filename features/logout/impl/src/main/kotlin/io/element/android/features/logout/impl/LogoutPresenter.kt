@@ -44,6 +44,7 @@ class LogoutPresenter(
     @Composable
     override fun present(): LogoutState {
         val localCoroutineScope = rememberCoroutineScope()
+        val currentUser by matrixClient.userProfile.collectAsState()
         val logoutAction: MutableState<AsyncAction<Unit>> = remember {
             mutableStateOf(AsyncAction.Uninitialized)
         }
@@ -93,6 +94,7 @@ class LogoutPresenter(
         }
 
         return LogoutState(
+            currentUser = currentUser,
             isLastDevice = isLastDevice,
             backupState = backupState,
             doesBackupExistOnServer = doesBackupExistOnServerAction.value.dataOrNull().orTrue(),

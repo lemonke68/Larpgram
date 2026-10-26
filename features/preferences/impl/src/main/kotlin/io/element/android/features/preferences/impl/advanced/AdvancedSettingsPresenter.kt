@@ -1,6 +1,9 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
+ * Правка форка (Larpgram): Element removed this in v26.10 (split settings into media/, moderation/,
+ * location/, root/, developer/appsettings/). Restored as fork-owned copy: our TgAdvancedSettingsView
+ * and TG-категории (SettingsCategoryView) still need one combined state.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -17,16 +20,21 @@ import androidx.compose.runtime.remember
 import dev.zacsweers.metro.Inject
 import io.element.android.compound.theme.Theme
 import io.element.android.compound.theme.mapToTheme
+import io.element.android.features.preferences.impl.media.MediaOptimizationState
+import io.element.android.features.preferences.impl.moderation.MediaPreviewConfigStateStore
+import io.element.android.features.preferences.impl.root.ThemeOption
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @Inject
@@ -37,6 +45,7 @@ class AdvancedSettingsPresenter(
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
     private val featureFlagService: FeatureFlagService,
+    private val matrixClient: MatrixClient,
 ) : Presenter<AdvancedSettingsState> {
     @Composable
     override fun present(): AdvancedSettingsState {
@@ -59,6 +68,13 @@ class AdvancedSettingsPresenter(
 
         val mediaPreviewConfigState = mediaPreviewConfigStateStore.state()
 
+        // Same as Element's v26.10 ModerationAndSafetyPresenter.
+        val numberOfBlockedUsers by produceState(initialValue = 0) {
+            matrixClient.ignoredUsersFlow
+                .onEach { value = it.size }
+                .launchIn(this)
+        }
+
         val themeOption by remember {
             derivedStateOf {
                 when (theme.value) {
@@ -70,10 +86,6 @@ class AdvancedSettingsPresenter(
             }
         }
 
-        val hasSplitMediaQualityOptions by produceState<Boolean?>(null) {
-            value = featureFlagService.isFeatureEnabled(FeatureFlags.SelectableMediaQuality)
-        }
-
         val availableThemeOptions = remember(isBlackThemeAllowed) {
             if (isBlackThemeAllowed) {
                 ThemeOption.entries
@@ -82,22 +94,22 @@ class AdvancedSettingsPresenter(
             }.toImmutableList()
         }
 
+        // Same logic as Element's v26.10 MediaSettingsPresenter.
         val mediaOptimizationState by produceState<MediaOptimizationState?>(null) {
-            val hasSplitMediaQualityOptionsFlow = featureFlagService.isFeatureEnabledFlow(FeatureFlags.SelectableMediaQuality)
             combine(
-                hasSplitMediaQualityOptionsFlow,
+                featureFlagService.isFeatureEnabledFlow(FeatureFlags.SelectableMediaQuality),
                 sessionPreferencesStore.doesOptimizeImages(),
                 sessionPreferencesStore.getVideoCompressionPreset()
             ) { hasSplitOptions, compressImages, videoPreset ->
-                if (hasSplitMediaQualityOptions == true) {
-                    value = MediaOptimizationState.Split(
+                if (hasSplitOptions) {
+                    MediaOptimizationState.Split(
                         compressImages = compressImages,
                         videoPreset = videoPreset,
                     )
-                } else if (hasSplitMediaQualityOptions == false) {
-                    value = MediaOptimizationState.AllMedia(isEnabled = compressImages)
+                } else {
+                    MediaOptimizationState.AllMedia(isEnabled = compressImages)
                 }
-            }.collect()
+            }.collect { value = it }
         }
 
         fun handleEvent(event: AdvancedSettingsEvent) {
@@ -141,6 +153,7 @@ class AdvancedSettingsPresenter(
             availableThemeOptions = availableThemeOptions,
             mediaPreviewConfigState = mediaPreviewConfigState,
             liveLocationMinimumDistanceUpdate = liveLocationMinimumDistanceUpdate,
+            numberOfBlockedUsers = numberOfBlockedUsers,
             eventSink = ::handleEvent,
         )
     }

@@ -34,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,7 +58,6 @@ import io.element.android.features.userprofile.shared.tg.TgProfileMenuItem
 import io.element.android.features.userprofile.shared.tg.TgProfileTabs
 import io.element.android.features.userprofile.shared.tg.TgProfileTopBar
 import io.element.android.features.userprofile.shared.tg.rememberTgAvatarExpandState
-import io.element.android.libraries.androidutils.system.copyToClipboard
 import io.element.android.libraries.architecture.coverage.ExcludeFromCoverage
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
@@ -330,8 +328,6 @@ private fun menuItems(
     openRoomNotificationSettings: () -> Unit,
     onReportRoomClick: () -> Unit,
 ): List<TgProfileMenuItem> {
-    val context = LocalContext.current
-    val copiedMessage = stringResource(CommonStrings.common_copied_to_clipboard)
     val dmMemberState = state.dmOtherMemberDetailsState
     return buildList {
         if (state.roomNotificationSettings != null) {
@@ -370,7 +366,8 @@ private fun menuItems(
                 TgProfileMenuItem(
                     title = stringResource(CommonStrings.larpgram_profile_copy_room_id),
                     icon = CompoundIcons.Code(),
-                    onClick = { context.copyToClipboard(text = state.roomId.value, toastMessage = copiedMessage) },
+                    // Правка форка (Larpgram): Element v26.10 убрал copyToClipboard, копирует презентер.
+                    onClick = { state.eventSink(RoomDetailsEvent.CopyRoomId) },
                 )
             )
         }

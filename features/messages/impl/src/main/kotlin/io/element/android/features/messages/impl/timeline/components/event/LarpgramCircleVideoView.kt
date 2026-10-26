@@ -55,7 +55,7 @@ import io.element.android.features.messages.impl.timeline.protection.ProtectedVi
 import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.matrix.ui.media.MediaRequestData
+import io.element.android.libraries.matrixmedia.api.MediaRequestData
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive

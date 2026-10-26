@@ -10,8 +10,6 @@ package io.element.android.features.logout.impl.direct
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -19,21 +17,17 @@ import dev.zacsweers.metro.Inject
 import io.element.android.features.logout.api.direct.DirectLogoutEvent
 import io.element.android.features.logout.api.direct.DirectLogoutState
 import io.element.android.features.logout.impl.logoutOrEndSession
-import io.element.android.features.logout.impl.tools.isBackingUp
 import io.element.android.libraries.accountapi.api.AccountSessionApi
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runCatchingUpdatingState
 import io.element.android.libraries.matrix.api.MatrixClient
-import io.element.android.libraries.matrix.api.encryption.BackupUploadState
-import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @Inject
 class DirectLogoutPresenter(
     private val matrixClient: MatrixClient,
-    private val encryptionService: EncryptionService,
     // Правка форка: выход для сессии, полученной по QR-коду (LarpgramLogout.kt).
     private val accountSessionApi: AccountSessionApi,
 ) : Presenter<DirectLogoutState> {
@@ -44,13 +38,6 @@ class DirectLogoutPresenter(
         val logoutAction: MutableState<AsyncAction<Unit>> = remember {
             mutableStateOf(AsyncAction.Uninitialized)
         }
-
-        val backupUploadState: BackupUploadState by remember {
-            encryptionService.waitForBackupUploadSteadyState()
-        }
-            .collectAsState(initial = BackupUploadState.Unknown)
-
-        val isLastDevice by encryptionService.isLastDevice.collectAsState()
 
         fun handleEvent(event: DirectLogoutEvent) {
             when (event) {
@@ -68,8 +55,6 @@ class DirectLogoutPresenter(
         }
 
         return DirectLogoutState(
-            canDoDirectSignOut = !isLastDevice &&
-                !backupUploadState.isBackingUp(),
             logoutAction = logoutAction.value,
             eventSink = ::handleEvent,
         )

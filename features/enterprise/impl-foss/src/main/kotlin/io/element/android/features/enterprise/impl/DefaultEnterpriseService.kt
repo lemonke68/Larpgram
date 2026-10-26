@@ -16,13 +16,16 @@ import io.element.android.compound.colors.SemanticColorsLightDark
 import io.element.android.features.enterprise.api.BugReportUrl
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.libraries.androidutils.json.JsonProvider
+import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.extensions.mapCatchingExceptions
 import io.element.android.libraries.core.uri.ensureProtocol
 import io.element.android.libraries.matrix.api.ClientUrlContentFetcher
 import io.element.android.libraries.matrix.api.TemporaryMatrixClientFactory
+import io.element.android.libraries.matrix.api.accountprovider.AccountProvider
 import io.element.android.libraries.matrix.api.core.SessionId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import timber.log.Timber
@@ -31,16 +34,19 @@ import timber.log.Timber
 class DefaultEnterpriseService(
     private val temporaryMatrixClientFactory: TemporaryMatrixClientFactory,
     private val jsonProvider: JsonProvider,
+    private val dispatchers: CoroutineDispatchers,
 ) : EnterpriseService {
     override suspend fun isEnterpriseUser(sessionId: SessionId) = false
     override suspend fun tweakMasUrl(url: String, urlContentFetcher: ClientUrlContentFetcher) = url
 
     // Larpgram работает только со своим сервером: единственный элемент списка убирает
-    // выбор сервера из онбординга, а isAllowedToConnectToHomeserver закрывает остальные.
-    override fun homeserverAllowList(): List<String> = listOf(HOMESERVER_URL)
+    // выбор сервера из онбординга, а isAllowedToConnectToAccountProvider закрывает остальные.
+    // Правка форка (Larpgram): адаптировано под AccountProvider API из 26.10.
+    override fun accountProviderAllowList(): List<AccountProvider> = listOf(AccountProvider.Generic(HOMESERVER_URL))
+    override fun canConnectToAnyAccountProvider(): Boolean = false
 
-    override suspend fun isAllowedToConnectToHomeserver(homeserverUrl: String): Boolean {
-        val host = homeserverUrl
+    override suspend fun isAllowedToConnectToAccountProvider(accountProvider: AccountProvider): Boolean {
+        val host = accountProvider.serverNameOrBaseUrl()
             .substringAfter("://")
             .substringBefore('/')
             .substringBefore(':')
@@ -50,9 +56,9 @@ class DefaultEnterpriseService(
         return host == HOMESERVER_DOMAIN || host.endsWith(".$HOMESERVER_DOMAIN")
     }
 
-    override suspend fun isElementProEnforced(serverName: String): Boolean {
-        val temporaryMatrixClient = temporaryMatrixClientFactory.create(serverName).getOrElse { return false }
-        return temporaryMatrixClient.use { client ->
+    override suspend fun isElementProEnforced(serverName: String): Boolean = withContext(dispatchers.io) {
+        val temporaryMatrixClient = temporaryMatrixClientFactory.create(serverName).getOrElse { return@withContext false }
+        temporaryMatrixClient.use { client ->
             val baseUrl = serverName.ensureProtocol().removeSuffix("/")
             // We'll always perform a network request here since we're not interested in any cached value.
             client.getUrl("$baseUrl/.well-known/element/element.json")

@@ -20,6 +20,7 @@ import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.features.userprofile.api.UserProfileEntryPoint
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.services.analytics.test.FakeAnalyticsService
@@ -66,7 +67,6 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 inviteFriendsUseCase = { lambdaError() },
                 analyticsService = FakeAnalyticsService(),
                 acceptDeclineInviteView = { _, _, _, _ -> lambdaError() },
-                directLogoutView = { _ -> lambdaError() },
                 reportRoomEntryPoint = { _, _, _ -> lambdaError() },
                 declineInviteAndBlockUserEntryPoint = FakeDeclineInviteAndBlockEntryPoint(),
                 changeRoomMemberRolesEntryPoint = { _, _, _, _ -> lambdaError() },
@@ -89,6 +89,7 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
             override fun navigateToRoomSettings(roomId: RoomId) = lambdaError()
             override fun navigateToBugReport() = lambdaError()
             override fun navigateToAddAccount() = lambdaError()
+            override fun navigateToSession(sessionId: SessionId) = lambdaError()
             override fun navigateToLinkNewDevice() = lambdaError()
             override fun navigateToSecureBackup() = lambdaError()
             override fun navigateToRoomNotificationSettings(roomId: RoomId) = lambdaError()
