@@ -53,6 +53,7 @@ import io.element.android.libraries.mediaviewer.impl.local.PlayableState
 import io.element.android.libraries.mediaviewer.impl.local.player.MediaPlayerControllerState
 import io.element.android.libraries.mediaviewer.impl.local.player.MediaPlayerControllerView
 import io.element.android.libraries.mediaviewer.impl.music.MusicPagePlayback
+import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
 import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.musicplayer.api.displayArtist
@@ -153,10 +154,10 @@ internal fun MusicPlayerAudioView(
             Spacer(Modifier.height(16.dp))
             QueueControls(
                 isEnabled = isCurrent,
-                shuffle = state.shuffle,
+                shuffle = state.order != MusicOrder.Default,
                 repeatMode = state.repeatMode,
                 hasNext = state.hasNext,
-                onShuffle = player::toggleShuffle,
+                onShuffle = player::cycleOrder,
                 onPrevious = player::skipToPrevious,
                 onNext = player::skipToNext,
                 onRepeat = player::cycleRepeatMode,

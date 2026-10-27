@@ -31,6 +31,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)
+    implementation(platform(libs.network.okhttp.bom))
+    implementation(libs.network.okhttp)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.core)
     implementation(projects.libraries.designsystem)

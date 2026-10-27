@@ -7,6 +7,7 @@
 
 package io.element.android.libraries.musicplayer.impl
 
+import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicTrackTags
 
 class InMemoryTrackPositionStore : TrackPositionStore {
@@ -37,3 +38,8 @@ class FakeMusicServiceConnector : MusicServiceConnector {
         isConnected = false
     }
 }
+
+class InMemoryMusicSettingsStore(
+    override var speed: Float = 1f,
+    override var order: MusicOrder = MusicOrder.Default,
+) : MusicSettingsStore

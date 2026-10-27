@@ -7,6 +7,7 @@
 
 package io.element.android.libraries.musicplayer.impl
 
+import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
 import io.element.android.libraries.musicplayer.api.MusicTrack
 
@@ -56,4 +57,22 @@ internal object MusicQueue {
         MusicRepeatMode.All -> MusicRepeatMode.One
         MusicRepeatMode.One -> MusicRepeatMode.Off
     }
+
+    /** Кнопка ↑↓: обычный → обратный → перемешать → обычный. */
+    fun nextOrder(order: MusicOrder): MusicOrder = when (order) {
+        MusicOrder.Default -> MusicOrder.Reversed
+        MusicOrder.Reversed -> MusicOrder.Shuffle
+        MusicOrder.Shuffle -> MusicOrder.Default
+    }
+
+    /** Скорости кнопки в полосе Telegram (`FragmentContextView.toggleSpeeds`). */
+    val speeds = listOf(1f, 1.5f, 2f)
+
+    /** Следующая скорость по кругу, как у Telegram: нестандартная — к следующей большей. */
+    fun nextSpeed(speed: Float): Float {
+        val index = speeds.indexOfFirst { speed - SPEED_EPSILON <= it }
+        return speeds.getOrElse(index + 1) { speeds.first() }
+    }
+
+    private const val SPEED_EPSILON = 0.1f
 }

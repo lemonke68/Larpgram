@@ -8,5 +8,16 @@
     <string name="larpgram_music_shuffle">Shuffle</string>
     <string name="larpgram_music_repeat">Repeat</string>
     <string name="larpgram_music_close">Close player</string>
-    <string name="larpgram_music_track_position">%1$d of %2$d</string>
+    <string name="larpgram_music_order_default">Play in order</string>
+    <string name="larpgram_music_order_reversed">Reverse order</string>
+    <string name="larpgram_music_speed">Playback speed</string>
+    <string name="larpgram_music_open_player">Open player</string>
+    <string name="larpgram_music_share">Share</string>
+    <string name="larpgram_music_unknown_artist">Unknown artist</string>
+    <string name="larpgram_music_add_to_profile">Add to Profile</string>
+    <string name="larpgram_music_remove_from_profile">Remove from Profile</string>
+    <string name="larpgram_music_added_to_profile">Added to your profile</string>
+    <string name="larpgram_music_removed_from_profile">Removed from your profile</string>
+    <string name="larpgram_music_profile_failed">Could not update your profile music</string>
+    <string name="larpgram_music_profile_playlist">%1$s’s playlist</string>
 </resources>

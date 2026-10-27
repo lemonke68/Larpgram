@@ -8,5 +8,16 @@
     <string name="larpgram_music_shuffle">Перемешать</string>
     <string name="larpgram_music_repeat">Повтор</string>
     <string name="larpgram_music_close">Закрыть плеер</string>
-    <string name="larpgram_music_track_position">%1$d из %2$d</string>
+    <string name="larpgram_music_order_default">По порядку</string>
+    <string name="larpgram_music_order_reversed">В обратном порядке</string>
+    <string name="larpgram_music_speed">Скорость</string>
+    <string name="larpgram_music_open_player">Открыть плеер</string>
+    <string name="larpgram_music_share">Поделиться</string>
+    <string name="larpgram_music_unknown_artist">Неизвестный исполнитель</string>
+    <string name="larpgram_music_add_to_profile">Добавить в профиль</string>
+    <string name="larpgram_music_remove_from_profile">Убрать из профиля</string>
+    <string name="larpgram_music_added_to_profile">Трек добавлен в профиль</string>
+    <string name="larpgram_music_removed_from_profile">Трек убран из профиля</string>
+    <string name="larpgram_music_profile_failed">Не удалось изменить музыку профиля</string>
+    <string name="larpgram_music_profile_playlist">%1$s — плейлист</string>
 </resources>

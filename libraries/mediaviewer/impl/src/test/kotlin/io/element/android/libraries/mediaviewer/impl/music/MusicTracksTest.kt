@@ -24,7 +24,7 @@ import org.junit.Test
 
 class MusicTracksTest {
     @Test
-    fun `room audio becomes a chronological queue without voice messages`() {
+    fun `room audio becomes a newest first queue without voice messages`() {
         val newest = aMediaItemAudio(id = UniqueId("3"), eventId = EventId("\$3"))
         val audioAsFile = aMediaItemFile(id = UniqueId("2")).let {
             MediaItem.File(it.id, EventId("\$2"), anAudioMediaInfo(filename = "doc.flac").copy(mimeType = MimeTypes.Mp3), it.mediaSource, it.validationState)
@@ -32,7 +32,7 @@ class MusicTracksTest {
         val document = aMediaItemFile(id = UniqueId("pdf"))
         val oldest = aMediaItemAudio(id = UniqueId("1"), eventId = EventId("\$1"))
         val tracks = listOf(newest, aMediaItemVoice(), audioAsFile, document, oldest).toMusicTracks(A_SESSION_ID, A_ROOM_ID)
-        assertThat(tracks.map { it.id }).containsExactly("\$1", "\$2", "\$3").inOrder()
+        assertThat(tracks.map { it.id }).containsExactly("\$3", "\$2", "\$1").inOrder()
         assertThat(tracks.first().roomId).isEqualTo(A_ROOM_ID)
         assertThat(tracks.first().sessionId).isEqualTo(A_SESSION_ID)
     }

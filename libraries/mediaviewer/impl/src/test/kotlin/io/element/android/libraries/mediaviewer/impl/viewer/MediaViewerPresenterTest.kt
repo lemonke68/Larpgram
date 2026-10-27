@@ -1003,7 +1003,7 @@ class MediaViewerPresenterTest {
             state.eventSink(MediaViewerEvent.PlayMusic(page))
             val call = musicPlayer.playCalls.single()
             assertThat(call.queueId).isEqualTo(A_ROOM_ID.value)
-            assertThat(call.tracks.map { it.id }).containsExactly(AN_EVENT_ID.value, AN_EVENT_ID_2.value).inOrder()
+            assertThat(call.tracks.map { it.id }).containsExactly(AN_EVENT_ID_2.value, AN_EVENT_ID.value).inOrder()
             assertThat(call.startTrackId).isEqualTo(AN_EVENT_ID.value)
             cancelAndIgnoreRemainingEvents()
         }

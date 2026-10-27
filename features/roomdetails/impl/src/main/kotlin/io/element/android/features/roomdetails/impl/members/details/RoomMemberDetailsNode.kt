@@ -30,6 +30,7 @@ import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
 import io.element.android.libraries.matrix.ui.presence.rememberPresence
+import io.element.android.libraries.musicplayer.api.MusicPlayerUi
 import io.element.android.services.analytics.api.AnalyticsService
 
 @ContributesNode(RoomScope::class)
@@ -42,6 +43,8 @@ class RoomMemberDetailsNode(
     presenterFactory: RoomMemberDetailsPresenter.Factory,
     // Правка форка: «в сети» / «был(а) …» в шапке TG-профиля.
     private val userPresenceFetcher: UserPresenceFetcher,
+    // Правка форка (Larpgram): музыка профиля.
+    private val musicPlayerUi: MusicPlayerUi,
 ) : Node(buildContext, plugins = plugins) {
     data class RoomMemberDetailsInput(
         val roomMemberId: UserId,
@@ -87,6 +90,7 @@ class RoomMemberDetailsNode(
             onStartCall = ::onStartCall,
             openAvatarPreview = callback::navigateToAvatarPreview,
             onVerifyClick = callback::startVerifyUserFlow,
+            profileMusic = { musicModifier -> musicPlayerUi.ProfileMusicRow(inputs.roomMemberId, state.userName, musicModifier) },
             presence = userPresenceFetcher.rememberPresence(inputs.roomMemberId.takeIf { !state.isCurrentUser }),
             isNavigationTab = false,
         )

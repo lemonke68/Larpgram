@@ -29,6 +29,7 @@ import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
 import io.element.android.libraries.matrix.ui.presence.rememberPresence
+import io.element.android.libraries.musicplayer.api.MusicPlayerUi
 import io.element.android.services.analytics.api.AnalyticsService
 
 @ContributesNode(SessionScope::class)
@@ -41,6 +42,8 @@ class UserProfileNode(
     presenterFactory: UserProfilePresenter.Factory,
     // Правка форка: «в сети» / «был(а) …» в шапке TG-профиля.
     private val userPresenceFetcher: UserPresenceFetcher,
+    // Правка форка (Larpgram): музыка профиля.
+    private val musicPlayerUi: MusicPlayerUi,
 ) : Node(buildContext, plugins = plugins) {
     data class UserProfileInputs(
         val userId: UserId
@@ -82,6 +85,7 @@ class UserProfileNode(
             onStartCall = callback::startCall,
             openAvatarPreview = callback::navigateToAvatarPreview,
             onVerifyClick = callback::startVerifyUserFlow,
+            profileMusic = { musicModifier -> musicPlayerUi.ProfileMusicRow(inputs.userId, state.userName, musicModifier) },
             presence = userPresenceFetcher.rememberPresence(inputs.userId.takeIf { !state.isCurrentUser }),
             onOpenSettings = callback::navigateToSettings,
             onEditProfile = callback::navigateToEditProfile,

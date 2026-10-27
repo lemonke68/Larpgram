@@ -9,6 +9,7 @@
 
 package io.element.android.features.userprofile.shared
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -16,12 +17,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -87,6 +90,9 @@ fun TgUserProfileView(
     // Свой профиль открыт вкладкой нижней навигации — возвращаться некуда. Из списка участников
     // группы свой профиль открывается поверх, там «назад» нужна, а плитки своего профиля — нет.
     isNavigationTab: Boolean = state.isCurrentUser,
+    // Правка форка (Larpgram): строка «♫ Трек – Исполнитель ›» с музыкой профиля. Сама прячется,
+    // если музыки нет; получает модификатор карточки.
+    profileMusic: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val avatarExpand = rememberTgAvatarExpandState()
@@ -133,6 +139,13 @@ fun TgUserProfileView(
                     modifier = Modifier.testTag(TestTags.memberDetailAvatar),
                 )
             }
+            profileMusic?.invoke(
+                Modifier
+                    .padding(horizontal = TgProfileDefaults.sidePadding)
+                    .padding(bottom = TgProfileDefaults.cardGap)
+                    .clip(RoundedCornerShape(TgProfileDefaults.cardRadius))
+                    .background(TgProfileDefaults.cardColor)
+            )
             if (state.verificationState == UserProfileVerificationState.VERIFICATION_VIOLATION) {
                 VerificationViolation(state)
             }

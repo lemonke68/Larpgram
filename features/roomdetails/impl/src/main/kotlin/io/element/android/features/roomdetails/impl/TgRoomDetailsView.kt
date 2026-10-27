@@ -10,6 +10,7 @@
 package io.element.android.features.roomdetails.impl
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -33,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -114,6 +117,8 @@ fun TgRoomDetailsView(
     // Правка форка: профиль «Избранного» в TG — только общие медиа, без участников и действий.
     isSavedMessages: Boolean = false,
     leaveRoomView: @Composable () -> Unit = {},
+    // Правка форка (Larpgram): строка музыки профиля собеседника в личном чате.
+    profileMusic: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val dm = state.roomType as? RoomDetailsType.Dm
@@ -177,6 +182,17 @@ fun TgRoomDetailsView(
                     subtitleIsAccent = subtitle?.second == true,
                 ) {
                     RoomAvatar(state = state, expandFraction = avatarExpand.fraction, openAvatarPreview = openAvatarPreview)
+                }
+            }
+            if (profileMusic != null && !isSavedMessages) {
+                item(key = "music") {
+                    profileMusic(
+                        Modifier
+                            .padding(horizontal = TgProfileDefaults.sidePadding)
+                            .padding(bottom = TgProfileDefaults.cardGap)
+                            .clip(RoundedCornerShape(TgProfileDefaults.cardRadius))
+                            .background(TgProfileDefaults.cardColor)
+                    )
                 }
             }
             if (!isSavedMessages) {

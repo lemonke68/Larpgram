@@ -15,7 +15,10 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Один общий плеер музыки на всё приложение: играет в фоне (MediaSession + уведомление),
- * очередь — аудио комнаты. Все методы — с главного потока.
+ * очередь — аудио комнаты или музыка профиля. Все методы — с главного потока.
+ *
+ * Очередь хранится в порядке показа, как в Telegram: от новых к старым. «Следующий» по умолчанию
+ * — трек ниже в списке (старее), [MusicOrder.Reversed] играет вверх, к новым.
  */
 interface MusicPlayer {
     val state: StateFlow<MusicPlayerState>
@@ -24,21 +27,31 @@ interface MusicPlayer {
     val tags: StateFlow<ImmutableMap<String, MusicTrackTags>>
 
     /**
-     * Играть [tracks] (в порядке ленты) с трека [startTrackId]. Если эта очередь уже играет и
+     * Играть [tracks] (от новых к старым) с трека [startTrackId]. Если эта очередь уже играет и
      * трек в ней есть — просто переходит на него, очередь не пересобирается.
+     *
+     * @param title заголовок шторки плеера для этой очереди (плейлист профиля), null — без него.
      */
-    fun play(queueId: String, tracks: List<MusicTrack>, startTrackId: String)
+    fun play(queueId: String, tracks: List<MusicTrack>, startTrackId: String, title: String? = null)
 
     /** Догрузились ещё треки той же очереди: добавить недостающие, не прерывая звук. */
     fun syncQueue(queueId: String, tracks: List<MusicTrack>)
+
+    /** Убрать трек из очереди [queueId] (его убрали из своего профиля). Текущий не трогаем. */
+    fun removeFromQueue(queueId: String, trackId: String)
 
     fun playPause()
     fun pause()
     fun skipToNext()
     fun skipToPrevious()
     fun seekTo(positionMs: Long)
-    fun toggleShuffle()
+
+    /** Порядок как кнопка ↑↓ Telegram: обычный → обратный → перемешать → обычный. */
+    fun cycleOrder()
     fun cycleRepeatMode()
+
+    /** Скорость 1X → 1.5X → 2X → 1X, как у кнопки скорости Telegram. Запоминается. */
+    fun cycleSpeed()
 
     /** Закрыть плеер: очередь очищается, уведомление уходит. */
     fun stop()
@@ -57,9 +70,20 @@ enum class MusicOfflineStatus { Saving, Saved }
 
 enum class MusicRepeatMode { Off, All, One }
 
+enum class MusicOrder {
+    /** Вниз по списку: от новых к старым. */
+    Default,
+
+    /** Вверх по списку: от старых к новым. */
+    Reversed,
+    Shuffle,
+}
+
 @Immutable
 data class MusicPlayerState(
     val queueId: String?,
+    /** Заголовок очереди (плейлист профиля) или null. */
+    val queueTitle: String?,
     val queue: ImmutableList<MusicTrack>,
     val currentIndex: Int,
     val isPlaying: Boolean,
@@ -67,8 +91,9 @@ data class MusicPlayerState(
     val isBuffering: Boolean,
     val positionMs: Long,
     val durationMs: Long,
-    val shuffle: Boolean,
+    val order: MusicOrder,
     val repeatMode: MusicRepeatMode,
+    val speed: Float,
     val hasNext: Boolean,
     val hasPrevious: Boolean,
     val hasError: Boolean,
@@ -80,14 +105,16 @@ data class MusicPlayerState(
         /** Ничего не играет, очереди нет. */
         val Idle = MusicPlayerState(
             queueId = null,
+            queueTitle = null,
             queue = persistentListOf(),
             currentIndex = -1,
             isPlaying = false,
             isBuffering = false,
             positionMs = 0,
             durationMs = 0,
-            shuffle = false,
+            order = MusicOrder.Default,
             repeatMode = MusicRepeatMode.Off,
+            speed = 1f,
             hasNext = false,
             hasPrevious = false,
             hasError = false,

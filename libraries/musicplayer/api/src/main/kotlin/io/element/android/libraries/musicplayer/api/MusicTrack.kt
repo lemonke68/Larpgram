@@ -14,21 +14,25 @@ import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.media.MediaSource
 
 /**
- * Трек очереди: ссылка на аудио-событие комнаты, не копия файла. Файл качается плеером
- * лениво, перед воспроизведением.
+ * Трек очереди: ссылка на аудио-событие комнаты или на открытый файл из «музыки профиля»
+ * (тогда [roomId] и [eventId] пустые), не копия файла. Файл качается плеером лениво, перед
+ * воспроизведением.
  */
 @Immutable
 data class MusicTrack(
-    /** Стабильный ключ в очереди: eventId, а у локального эха — url медиа. */
+    /** Стабильный ключ в очереди: eventId, а у локального эха и трека профиля — url медиа. */
     val id: String,
     val sessionId: SessionId,
-    val roomId: RoomId,
+    val roomId: RoomId?,
     val eventId: EventId?,
     val mediaSource: MediaSource,
     val filename: String,
     val mimeType: String?,
     val fileSize: Long? = null,
     val durationMs: Long? = null,
+    /** Название и артист, уже известные без файла (трек профиля хранит их рядом с url). */
+    val title: String? = null,
+    val artist: String? = null,
 ) {
     /** Ключ файла для тегов и позиции: один файл, переотправленный дважды, делит их. */
     val mediaKey: String get() = mediaSource.safeUrl
@@ -45,7 +49,10 @@ data class MusicTrackTags(
 )
 
 fun MusicTrack.displayTitle(tags: MusicTrackTags?): String =
-    tags?.title?.takeIf { it.isNotBlank() } ?: MusicFilenames.parse(filename).title
+    tags?.title?.takeIf { it.isNotBlank() } ?: title?.takeIf { it.isNotBlank() } ?: MusicFilenames.parse(filename).title
 
 fun MusicTrack.displayArtist(tags: MusicTrackTags?): String? =
-    tags?.artist?.takeIf { it.isNotBlank() } ?: MusicFilenames.parse(filename).artist
+    tags?.artist?.takeIf { it.isNotBlank() }
+        ?: artist?.takeIf { it.isNotBlank() }
+        // Название задано без артиста — артиста из имени файла не выдумываем.
+        ?: MusicFilenames.parse(filename).artist.takeIf { title.isNullOrBlank() }

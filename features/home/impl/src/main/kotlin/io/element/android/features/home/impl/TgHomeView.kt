@@ -290,7 +290,10 @@ private fun HomeScaffold(
                             style = HazeMaterials.thick(),
                         )
                     )
-                    musicMiniPlayer?.invoke(Modifier.fillMaxWidth())
+                    // Стеклянная пилюля размывает список, как шапка.
+                    CompositionLocalProvider(LocalChatGlassState provides hazeState) {
+                        musicMiniPlayer?.invoke(Modifier.fillMaxWidth())
+                    }
                 }
             }
         },

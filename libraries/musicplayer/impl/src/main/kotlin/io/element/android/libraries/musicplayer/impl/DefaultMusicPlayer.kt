@@ -8,11 +8,15 @@
 package io.element.android.libraries.musicplayer.impl
 
 import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ShuffleOrder
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
@@ -20,6 +24,7 @@ import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.di.annotations.AppCoroutineScope
 import io.element.android.libraries.musicplayer.api.MusicOfflineStatus
+import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicPlayer
 import io.element.android.libraries.musicplayer.api.MusicPlayerState
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
@@ -51,8 +56,9 @@ internal object MusicAudibleToken
 
 /**
  * Общий плеер музыки. ExoPlayer живёт здесь, [MusicPlaybackService] оборачивает его в
- * MediaSession (уведомление, экран блокировки, гарнитура). Навигация по очереди, shuffle и
- * repeat — штатные у плейлиста ExoPlayer, поэтому одинаково работают из приложения и снаружи.
+ * MediaSession (уведомление, экран блокировки, гарнитура). Навигация по очереди, порядок
+ * (обратный — через свой [ReversedShuffleOrder]), повтор и скорость — штатные у ExoPlayer, поэтому
+ * одинаково работают из приложения и снаружи.
  */
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
@@ -64,6 +70,7 @@ class DefaultMusicPlayer(
     private val positionStore: TrackPositionStore,
     private val tagsStore: TrackTagsStore,
     private val offlineStore: MusicOfflineStore,
+    private val settingsStore: MusicSettingsStore,
     private val dispatchers: CoroutineDispatchers,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
 ) : MusicPlayer {
@@ -77,6 +84,8 @@ class DefaultMusicPlayer(
 
     private var player: Player? = null
     private var queueId: String? = null
+    private var queueTitle: String? = null
+    private var orderMode: MusicOrder = MusicOrder.Default
     private var queue: List<MusicTrack> = emptyList()
         set(value) {
             field = value
@@ -160,7 +169,7 @@ class DefaultMusicPlayer(
         return keepPlaying
     }
 
-    override fun play(queueId: String, tracks: List<MusicTrack>, startTrackId: String) {
+    override fun play(queueId: String, tracks: List<MusicTrack>, startTrackId: String, title: String?) {
         if (tracks.isEmpty()) return
         arbiter.onUserAction()
         val player = ensurePlayer()
@@ -178,6 +187,7 @@ class DefaultMusicPlayer(
             savePosition()
             val built = MusicQueue.build(tracks, startTrackId)
             this.queueId = queueId
+            queueTitle = title
             queue = built.tracks
             currentTrackId = null
             player.setMediaItems(built.tracks.map(::toMediaItem), built.startIndex, C.TIME_UNSET)
@@ -197,6 +207,16 @@ class DefaultMusicPlayer(
             player.addMediaItems(insert.index, insert.tracks.map(::toMediaItem))
         }
         queue = updated
+        publish()
+    }
+
+    override fun removeFromQueue(queueId: String, trackId: String) {
+        if (queueId != this.queueId) return
+        val player = player ?: return
+        val index = queue.indexOfFirst { it.id == trackId }
+        if (index < 0 || index == player.currentMediaItemIndex || index >= player.mediaItemCount) return
+        player.removeMediaItem(index)
+        queue = queue.toMutableList().apply { removeAt(index) }
         publish()
     }
 
@@ -234,9 +254,19 @@ class DefaultMusicPlayer(
         publish()
     }
 
-    override fun toggleShuffle() {
+    override fun cycleOrder() {
         val player = player ?: return
-        player.shuffleModeEnabled = !player.shuffleModeEnabled
+        orderMode = MusicQueue.nextOrder(currentOrder(player))
+        settingsStore.order = orderMode
+        applyOrder(player)
+        publish()
+    }
+
+    override fun cycleSpeed() {
+        val player = player ?: return
+        val speed = MusicQueue.nextSpeed(player.playbackParameters.speed)
+        settingsStore.speed = speed
+        player.setPlaybackSpeed(speed)
         publish()
     }
 
@@ -256,6 +286,7 @@ class DefaultMusicPlayer(
         }
         queue = emptyList()
         queueId = null
+        queueTitle = null
         currentTrackId = null
         AudiblePlaybackController.release(MusicAudibleToken)
         serviceConnector.disconnect()
@@ -283,6 +314,34 @@ class DefaultMusicPlayer(
         return player ?: playerFactory.create().also {
             it.addListener(listener)
             player = it
+            orderMode = settingsStore.order
+            applyOrder(it)
+            it.setPlaybackSpeed(settingsStore.speed)
+        }
+    }
+
+    /** Порядок, который сейчас действует: shuffle могли выключить из уведомления. */
+    private fun currentOrder(player: Player): MusicOrder = when {
+        !player.shuffleModeEnabled -> MusicOrder.Default
+        orderMode == MusicOrder.Default -> MusicOrder.Shuffle
+        else -> orderMode
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun applyOrder(player: Player) {
+        val exoPlayer = player as? ExoPlayer
+        when (orderMode) {
+            MusicOrder.Default -> player.shuffleModeEnabled = false
+            MusicOrder.Reversed -> if (exoPlayer != null) {
+                exoPlayer.setShuffleOrder(ReversedShuffleOrder(player.mediaItemCount))
+                player.shuffleModeEnabled = true
+            } else {
+                player.shuffleModeEnabled = false
+            }
+            MusicOrder.Shuffle -> {
+                exoPlayer?.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(player.mediaItemCount))
+                player.shuffleModeEnabled = true
+            }
         }
     }
 
@@ -396,14 +455,16 @@ class DefaultMusicPlayer(
         }
         _state.value = MusicPlayerState(
             queueId = queueId,
+            queueTitle = queueTitle,
             queue = immutableQueue,
             currentIndex = index,
             isPlaying = player.isPlaying,
             isBuffering = player.playWhenReady && player.playbackState == Player.STATE_BUFFERING,
             positionMs = position,
             durationMs = duration,
-            shuffle = player.shuffleModeEnabled,
+            order = currentOrder(player),
             repeatMode = player.repeatMode.toMusicRepeatMode(),
+            speed = player.playbackParameters.speed,
             hasNext = player.hasNextMediaItem(),
             hasPrevious = player.hasPreviousMediaItem(),
             hasError = player.playerError != null,

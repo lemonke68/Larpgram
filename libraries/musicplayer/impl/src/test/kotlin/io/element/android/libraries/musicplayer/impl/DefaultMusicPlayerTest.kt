@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.matrix.test.FakeMatrixClientProvider
+import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
 import io.element.android.libraries.musicplayer.api.MusicTrackTags
 import io.element.android.libraries.musicplayer.test.aMusicTrack
@@ -88,11 +89,26 @@ class DefaultMusicPlayerTest : RobolectricTest() {
     }
 
     @Test
-    fun `shuffle visits every track once`() = runTest {
-        val player = createPlayer()
-        player.play("!room", tracks, startTrackId = "a")
-        player.toggleShuffle()
-        assertThat(player.state.value.shuffle).isTrue()
+    fun `order toggle goes reversed then shuffle then back to default`() = runTest {
+        val settings = InMemoryMusicSettingsStore()
+        val player = createPlayer(settingsStore = settings)
+        player.play("!room", tracks, startTrackId = "b")
+        assertThat(player.state.value.order).isEqualTo(MusicOrder.Default)
+        player.skipToNext()
+        assertThat(player.state.value.currentTrack?.id).isEqualTo("c")
+
+        player.cycleOrder()
+        assertThat(player.state.value.order).isEqualTo(MusicOrder.Reversed)
+        assertThat(settings.order).isEqualTo(MusicOrder.Reversed)
+        // Обратный порядок — вверх по списку.
+        player.skipToNext()
+        assertThat(player.state.value.currentTrack?.id).isEqualTo("b")
+        player.skipToNext()
+        assertThat(player.state.value.currentTrack?.id).isEqualTo("a")
+        assertThat(player.state.value.hasNext).isFalse()
+
+        player.cycleOrder()
+        assertThat(player.state.value.order).isEqualTo(MusicOrder.Shuffle)
         // Порядок случайный: идём к началу перемешанного порядка, потом проходим его целиком.
         while (player.state.value.hasPrevious) player.skipToPrevious()
         val visited = mutableListOf(player.state.value.currentTrack!!.id)
@@ -101,8 +117,47 @@ class DefaultMusicPlayerTest : RobolectricTest() {
             visited += player.state.value.currentTrack!!.id
         }
         assertThat(visited).containsExactly("a", "b", "c", "d")
-        player.toggleShuffle()
-        assertThat(player.state.value.shuffle).isFalse()
+
+        player.cycleOrder()
+        assertThat(player.state.value.order).isEqualTo(MusicOrder.Default)
+        assertThat(exoPlayer.shuffleModeEnabled).isFalse()
+    }
+
+    @Test
+    fun `reversed order survives loading more tracks and a new queue`() = runTest {
+        val player = createPlayer(settingsStore = InMemoryMusicSettingsStore(order = MusicOrder.Reversed))
+        player.play("!room", tracks.subList(1, 3), startTrackId = "c")
+        player.syncQueue("!room", tracks)
+        player.skipToNext()
+        assertThat(player.state.value.currentTrack?.id).isEqualTo("b")
+        player.play("!other", tracks, startTrackId = "d")
+        assertThat(player.state.value.order).isEqualTo(MusicOrder.Reversed)
+        player.skipToNext()
+        assertThat(player.state.value.currentTrack?.id).isEqualTo("c")
+    }
+
+    @Test
+    fun `speed cycles like telegram and is remembered`() = runTest {
+        val settings = InMemoryMusicSettingsStore()
+        val player = createPlayer(settingsStore = settings)
+        player.play("!room", tracks, startTrackId = "a")
+        assertThat(player.state.value.speed).isEqualTo(1f)
+        player.cycleSpeed()
+        assertThat(player.state.value.speed).isEqualTo(1.5f)
+        assertThat(exoPlayer.playbackParameters.speed).isEqualTo(1.5f)
+        player.cycleSpeed()
+        assertThat(player.state.value.speed).isEqualTo(2f)
+        assertThat(settings.speed).isEqualTo(2f)
+        player.cycleSpeed()
+        assertThat(player.state.value.speed).isEqualTo(1f)
+    }
+
+    @Test
+    fun `a remembered speed applies to a new player`() = runTest {
+        val player = createPlayer(settingsStore = InMemoryMusicSettingsStore(speed = 1.5f))
+        player.play("!room", tracks, startTrackId = "a", title = "Alice — playlist")
+        assertThat(exoPlayer.playbackParameters.speed).isEqualTo(1.5f)
+        assertThat(player.state.value.queueTitle).isEqualTo("Alice — playlist")
     }
 
     @Test
@@ -122,11 +177,11 @@ class DefaultMusicPlayerTest : RobolectricTest() {
     fun `tapping another track of the same queue only jumps to it`() = runTest {
         val player = createPlayer()
         player.play("!room", tracks, startTrackId = "a")
-        player.toggleShuffle()
+        player.cycleOrder()
         player.play("!room", tracks, startTrackId = "c")
         assertThat(player.state.value.currentTrack?.id).isEqualTo("c")
         // Очередь та же — режимы не сбрасываются.
-        assertThat(player.state.value.shuffle).isTrue()
+        assertThat(player.state.value.order).isEqualTo(MusicOrder.Reversed)
     }
 
     @Test
@@ -195,6 +250,7 @@ class DefaultMusicPlayerTest : RobolectricTest() {
         connector: MusicServiceConnector = FakeMusicServiceConnector(),
         positionStore: TrackPositionStore = InMemoryTrackPositionStore(),
         tagsStore: TrackTagsStore = InMemoryTrackTagsStore(),
+        settingsStore: MusicSettingsStore = InMemoryMusicSettingsStore(),
     ): DefaultMusicPlayer {
         val context = RuntimeEnvironment.getApplication()
         val dispatchers = testCoroutineDispatchers(useUnconfinedTestDispatcher = true)
@@ -214,6 +270,7 @@ class DefaultMusicPlayerTest : RobolectricTest() {
             positionStore = positionStore,
             tagsStore = tagsStore,
             offlineStore = offlineStore,
+            settingsStore = settingsStore,
             dispatchers = dispatchers,
             appCoroutineScope = backgroundScope,
         )

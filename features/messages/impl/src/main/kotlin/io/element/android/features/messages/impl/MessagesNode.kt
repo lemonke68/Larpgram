@@ -81,7 +81,7 @@ import io.element.android.libraries.matrix.ui.model.getBestName
 import io.element.android.libraries.matrix.ui.presence.UserPresenceFetcher
 import io.element.android.libraries.matrix.ui.presence.rememberPresence
 import io.element.android.libraries.mediaplayer.api.MediaPlayer
-import io.element.android.libraries.musicplayer.api.MusicMiniPlayer
+import io.element.android.libraries.musicplayer.api.MusicPlayerUi
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.hasExternalKeyboard
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
@@ -122,7 +122,7 @@ class MessagesNode(
     private val userPresenceFetcher: UserPresenceFetcher,
     private val dispatchers: CoroutineDispatchers,
     // Правка форка (Larpgram): полоса «сейчас играет» под шапкой чата.
-    private val musicMiniPlayer: MusicMiniPlayer,
+    private val musicPlayerUi: MusicPlayerUi,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator, TimelineSelectionOwner {
     data class Inputs(
         val focusedEventId: EventId?,
@@ -383,7 +383,7 @@ class MessagesNode(
                 // Правка форка (фаза 3): тот же рендерер для инлайн-пикера в привязанном оверлее.
                 emojiPickerRenderer = emojiPickerRenderer,
                 dmPresence = userPresenceFetcher.rememberPresence(state.tg.dmUserId),
-                musicMiniPlayer = { musicModifier -> musicMiniPlayer.Render(musicModifier) },
+                musicMiniPlayer = { musicModifier -> musicPlayerUi.NowPlayingBar(musicModifier) },
                 emojiKeyboard = { keyboardModifier, onEmoji ->
                     val emojiKeyboardState = emojiKeyboardPresenter.present()
                     emojiKeyboardRenderer.Render(

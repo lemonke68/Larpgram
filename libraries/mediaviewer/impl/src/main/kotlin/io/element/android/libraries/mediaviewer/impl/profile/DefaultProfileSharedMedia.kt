@@ -43,6 +43,7 @@ import io.element.android.libraries.mediaviewer.impl.model.mediaInfo
 import io.element.android.libraries.mediaviewer.impl.model.mediaSource
 import io.element.android.libraries.mediaviewer.impl.model.thumbnailSource
 import io.element.android.libraries.mediaviewer.impl.music.musicQueueId
+import io.element.android.libraries.mediaviewer.impl.music.musicTrackId
 import io.element.android.libraries.mediaviewer.impl.music.toMusicTracks
 import io.element.android.libraries.musicplayer.api.MusicOfflineStatus
 import io.element.android.libraries.musicplayer.api.MusicPlayer
@@ -118,7 +119,11 @@ class DefaultProfileSharedMedia(
                     onPlay = { track -> musicPlayer.play(queueId, musicTracks, track.id) },
                 ),
                 presenterFactories = mediaItemPresenterFactories,
-                onOpen = { item -> latestOnOpenMedia(item.toViewerParams()) },
+                onOpen = { item ->
+                    // Аудио-файл во вкладке «Файлы» играет общий плеер, как тап в чате.
+                    val track = musicTracks.firstOrNull { it.id == musicTrackId(item.eventId(), item.mediaSource()) }
+                    if (track != null) musicPlayer.play(queueId, musicTracks, track.id) else latestOnOpenMedia(item.toViewerParams())
+                },
                 onLoadMoreMedia = {
                     scope.launch {
                         if (mediaDataSource.isReady) mediaDataSource.loadMore(Timeline.PaginationDirection.BACKWARDS)

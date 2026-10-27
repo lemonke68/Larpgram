@@ -249,11 +249,10 @@ class MediaViewerPresenter(
         )
     }
 
-    /** Музыка страниц просмотрщика в порядке ленты: страницы идут от новых к старым. */
+    /** Музыка страниц просмотрщика от новых к старым, как и страницы. */
     private fun List<MediaViewerPageData>.toMusicTracks(): List<MusicTrack> =
         filterIsInstance<MediaViewerPageData.MediaViewerData>()
             .filter { it.mediaInfo.isMusic() }
-            .asReversed()
             .map { musicTrackOf(room.sessionId, room.roomId, it.eventId, it.mediaSource, it.mediaInfo) }
 
     private fun MediaViewerPageData.withFormattedCaption(): MediaViewerPageData {

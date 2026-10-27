@@ -36,6 +36,7 @@ import io.element.android.libraries.matrix.ui.presence.rememberPresence
 import io.element.android.libraries.matrix.ui.saved.SavedMessages
 import io.element.android.libraries.mediaviewer.api.MediaViewerEntryPoint
 import io.element.android.libraries.mediaviewer.api.ProfileSharedMedia
+import io.element.android.libraries.musicplayer.api.MusicPlayerUi
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -55,6 +56,8 @@ class RoomDetailsNode(
     private val profileSharedMedia: ProfileSharedMedia,
     private val userPresenceFetcher: UserPresenceFetcher,
     private val savedMessages: SavedMessages,
+    // Правка форка (Larpgram): музыка профиля собеседника.
+    private val musicPlayerUi: MusicPlayerUi,
 ) : Node(buildContext, plugins = plugins), RoomDetailsNavigator {
     interface Callback : Plugin {
         fun navigateBack()
@@ -151,6 +154,9 @@ class RoomDetailsNode(
             onSecurityAndPrivacyClick = callback::navigateToSecurityAndPrivacy,
             onMemberClick = callback::navigateToRoomMemberDetails,
             onReportRoomClick = callback::navigateToReportRoom,
+            profileMusic = dmUserId?.let { userId ->
+                { musicModifier -> musicPlayerUi.ProfileMusicRow(userId, state.roomName, musicModifier) }
+            },
             leaveRoomView = {
                 leaveRoomRenderer.Render(
                     state = state.leaveRoomState,

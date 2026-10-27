@@ -23,7 +23,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.test.FakeMatrixClient
-import io.element.android.libraries.musicplayer.api.MusicMiniPlayer
+import io.element.android.libraries.musicplayer.test.FakeMusicPlayerUi
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.node.TestParentNode
@@ -78,10 +78,7 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 },
                 sessionCoroutineScope = backgroundScope,
                 // Правка форка (Larpgram): мини-плеер музыки.
-                musicMiniPlayer = object : MusicMiniPlayer {
-                    @Composable
-                    override fun Render(modifier: Modifier) = lambdaError()
-                },
+                musicPlayerUi = FakeMusicPlayerUi(),
             )
         }
         val callback = object : HomeEntryPoint.Callback {

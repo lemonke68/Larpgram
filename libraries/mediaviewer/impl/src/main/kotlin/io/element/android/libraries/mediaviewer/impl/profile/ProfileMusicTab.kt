@@ -58,7 +58,7 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import java.io.File
 
 /**
- * [tracks] — вся музыка комнаты в порядке ленты; показываем новые сверху, как остальные вкладки.
+ * [tracks] — вся музыка комнаты, новые сверху, как остальные вкладки.
  * Пока внизу виден индикатор, лента догружается сама: музыки среди файлов мало, а поиск должен
  * идти по всей истории.
  */
@@ -88,7 +88,7 @@ internal fun LazyListScope.musicList(
         )
     }
     // Чтение text здесь подписывает список на ввод: LazyColumn пересоберёт строки.
-    val shown = tracks.filterMusic(query.text.toString(), tags).asReversed()
+    val shown = tracks.filterMusic(query.text.toString(), tags)
     if (shown.isEmpty() && loader == null) {
         item(key = "shared_music_not_found") { EmptyTab(stringResource(CommonStrings.larpgram_profile_music_not_found)) }
     } else if (shown.isNotEmpty()) {

@@ -77,6 +77,7 @@ import io.element.android.libraries.architecture.overlay.Overlay
 import io.element.android.libraries.architecture.overlay.operation.hide
 import io.element.android.libraries.architecture.overlay.operation.show
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeAudio
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.dateformatter.api.toHumanReadableDuration
@@ -105,6 +106,7 @@ import io.element.android.libraries.mediaviewer.api.GalleryInfo
 import io.element.android.libraries.mediaviewer.api.GalleryItemData
 import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.mediaviewer.api.MediaViewerEntryPoint
+import io.element.android.libraries.mediaviewer.api.RoomMusicPlayback
 import io.element.android.libraries.textcomposer.mentions.LocalMentionSpanUpdater
 import io.element.android.libraries.textcomposer.mentions.MentionSpanTheme
 import io.element.android.libraries.textcomposer.mentions.MentionSpanUpdater
@@ -146,6 +148,8 @@ class MessagesFlowNode(
     private val dateFormatter: DateFormatter,
     private val coroutineDispatchers: CoroutineDispatchers,
     private val hasVulkanSupport: DeviceHasVulkanSupport,
+    // Правка форка (Larpgram): аудио из ленты играет общий плеер, без просмотрщика.
+    private val roomMusicPlayback: RoomMusicPlayback,
 ) : BaseFlowNode<MessagesFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = plugins.filterIsInstance<MessagesEntryPoint.Params>().first().initialTarget.toNavTarget(),
@@ -767,6 +771,9 @@ class MessagesFlowNode(
         event: TimelineItem.Event,
         canUseOverlay: Boolean,
     ): Boolean {
+        // Правка форка (Larpgram): музыка как в Telegram — тап играет очередь чата с этого трека
+        // и показывает полосу под шапкой, тап по играющему — пауза. Голосовые сюда не попадают.
+        if (playMusic(event)) return true
         val navTarget = when (event.content) {
             is TimelineItemImageContent -> {
                 buildMediaViewerNavTarget(
@@ -844,6 +851,26 @@ class MessagesFlowNode(
             }
             else -> false
         }
+    }
+
+    /** Правка форка (Larpgram): аудио-файл (и документ с аудио-типом) → общий плеер. */
+    private fun playMusic(event: TimelineItem.Event): Boolean {
+        val content = event.content
+        val durationMs = when (content) {
+            is TimelineItemAudioContent -> content.duration.inWholeMilliseconds
+            is TimelineItemFileContent -> if (content.mimeType.isMimeTypeAudio()) null else return false
+            else -> return false
+        }
+        content as TimelineItemEventContentWithAttachment
+        roomMusicPlayback.playFromTimeline(
+            eventId = event.eventId,
+            mediaSource = content.mediaSource,
+            filename = content.filename,
+            mimeType = content.mimeType,
+            fileSize = content.fileSize,
+            durationMs = durationMs,
+        )
+        return true
     }
 
     private fun processGalleryEventClick(

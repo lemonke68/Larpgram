@@ -47,10 +47,10 @@ internal fun musicTrackOf(
 internal fun musicQueueId(roomId: RoomId): String = roomId.value
 
 /**
- * Аудио комнаты в порядке ленты (от старых к новым). Списки галереи идут от новых к старым.
+ * Аудио комнаты от новых к старым — как списки галереи и как очередь общего плеера.
  */
 internal fun List<MediaItem>.toMusicTracks(sessionId: SessionId, roomId: RoomId): List<MusicTrack> =
-    asReversed().mapNotNull { item ->
+    mapNotNull { item ->
         when (item) {
             is MediaItem.Audio -> musicTrackOf(sessionId, roomId, item.eventId, item.mediaSource, item.mediaInfo)
             is MediaItem.File -> item.takeIf { it.mediaInfo.isMusic() }?.let {

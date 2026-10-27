@@ -7,7 +7,9 @@
 
 package io.element.android.libraries.musicplayer.impl
 
+import androidx.media3.common.C
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
 import io.element.android.libraries.musicplayer.test.aMusicTrack
 import org.junit.Test
@@ -58,5 +60,36 @@ class MusicQueueTest {
         assertThat(MusicQueue.nextRepeatMode(MusicRepeatMode.Off)).isEqualTo(MusicRepeatMode.All)
         assertThat(MusicQueue.nextRepeatMode(MusicRepeatMode.All)).isEqualTo(MusicRepeatMode.One)
         assertThat(MusicQueue.nextRepeatMode(MusicRepeatMode.One)).isEqualTo(MusicRepeatMode.Off)
+    }
+
+    @Test
+    fun `order cycles default, reversed, shuffle`() {
+        assertThat(MusicQueue.nextOrder(MusicOrder.Default)).isEqualTo(MusicOrder.Reversed)
+        assertThat(MusicQueue.nextOrder(MusicOrder.Reversed)).isEqualTo(MusicOrder.Shuffle)
+        assertThat(MusicQueue.nextOrder(MusicOrder.Shuffle)).isEqualTo(MusicOrder.Default)
+    }
+
+    @Test
+    fun `speed cycles 1x, 1_5x, 2x and snaps odd speeds up`() {
+        assertThat(MusicQueue.nextSpeed(1f)).isEqualTo(1.5f)
+        assertThat(MusicQueue.nextSpeed(1.5f)).isEqualTo(2f)
+        assertThat(MusicQueue.nextSpeed(2f)).isEqualTo(1f)
+        assertThat(MusicQueue.nextSpeed(1.2f)).isEqualTo(2f)
+        assertThat(MusicQueue.nextSpeed(0.5f)).isEqualTo(1.5f)
+        assertThat(MusicQueue.nextSpeed(3f)).isEqualTo(1f)
+    }
+
+    @Test
+    fun `reversed shuffle order walks the playlist upwards`() {
+        val order = ReversedShuffleOrder(3)
+        assertThat(order.firstIndex).isEqualTo(2)
+        assertThat(order.lastIndex).isEqualTo(0)
+        assertThat(order.getNextIndex(2)).isEqualTo(1)
+        assertThat(order.getNextIndex(0)).isEqualTo(C.INDEX_UNSET)
+        assertThat(order.getPreviousIndex(0)).isEqualTo(1)
+        assertThat(order.getPreviousIndex(2)).isEqualTo(C.INDEX_UNSET)
+        assertThat(order.cloneAndInsert(0, 2).length).isEqualTo(5)
+        assertThat(order.cloneAndRemove(0, 2).length).isEqualTo(1)
+        assertThat(order.cloneAndClear().firstIndex).isEqualTo(C.INDEX_UNSET)
     }
 }

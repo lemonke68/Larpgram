@@ -37,6 +37,7 @@ import io.element.android.libraries.matrix.test.roomlist.FakeRoomListService
 import io.element.android.libraries.matrix.ui.messages.RoomMemberProfilesCache
 import io.element.android.libraries.matrix.ui.messages.RoomNamesCache
 import io.element.android.libraries.mediaviewer.test.FakeMediaViewerEntryPoint
+import io.element.android.libraries.mediaviewer.test.FakeRoomMusicPlayback
 import io.element.android.libraries.textcomposer.mentions.MentionSpanTheme
 import io.element.android.libraries.textcomposer.mentions.MentionSpanUpdater
 import io.element.android.services.analytics.test.FakeAnalyticsService
@@ -87,7 +88,8 @@ class DefaultMessagesEntryPointTest {
                 knockRequestsListEntryPoint = FakeKnockRequestsListEntryPoint(),
                 dateFormatter = FakeDateFormatter(),
                 coroutineDispatchers = testCoroutineDispatchers(),
-                hasVulkanSupport = DeviceHasVulkanSupport(mockk(relaxed = true))
+                hasVulkanSupport = DeviceHasVulkanSupport(mockk(relaxed = true)),
+                roomMusicPlayback = FakeRoomMusicPlayback(),
             )
         }
         val callback = object : MessagesEntryPoint.Callback {
