@@ -221,6 +221,11 @@ class PreferencesFlowNode(
                     override fun navigateToUserProfile(matrixUser: MatrixUser) {
                         backstack.push(NavTarget.UserProfile(matrixUser))
                     }
+
+                    // Правка форка (V1 final): «Шифрование и ключи» на вкладке «Профиль».
+                    override fun navigateToSecureBackup() {
+                        callback.navigateToSecureBackup()
+                    }
                 }
                 createNode<PreferencesRootNode>(buildContext, plugins = listOf(callback))
             }

@@ -9,6 +9,10 @@
 package io.element.android.features.preferences.impl.root
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.bumble.appyx.core.modality.BuildContext
@@ -20,10 +24,16 @@ import io.element.android.annotations.ContributesNode
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
+import io.element.android.libraries.matrix.api.encryption.RecoveryState
+import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
+import io.element.android.libraries.matrix.ui.profile.PublicBio
 import io.element.android.libraries.matrix.ui.saved.SavedMessages
+import io.element.android.libraries.musicplayer.api.MusicPlayerUi
 import kotlinx.coroutines.launch
 
 @ContributesNode(SessionScope::class)
@@ -34,6 +44,11 @@ class PreferencesRootNode(
     private val presenter: PreferencesRootPresenter,
     private val emojiPickerRenderer: EmojiPickerRenderer,
     private val savedMessages: SavedMessages,
+    // Правка форка (Larpgram V1 final): вкладка «Профиль» = профиль + настройки.
+    private val matrixClient: MatrixClient,
+    private val publicBio: PublicBio,
+    private val musicPlayerUi: MusicPlayerUi,
+    private val permalinkBuilder: PermalinkBuilder,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : Plugin {
         fun navigateToCategory(category: SettingsCategory)
@@ -49,6 +64,9 @@ class PreferencesRootNode(
         fun navigateToUserProfile(matrixUser: MatrixUser)
         fun navigateToRoom(roomId: RoomId)
 
+        // Правка форка (V1 final): строка «Шифрование и ключи» и предупреждение о неподтверждённой сессии.
+        fun navigateToSecureBackup() = Unit
+
         // Правка форка: во вкладке «Настройки» стрелки назад нет.
         val showBackButton: Boolean get() = true
     }
@@ -59,6 +77,17 @@ class PreferencesRootNode(
     override fun View(modifier: Modifier) {
         val state = presenter.present()
         val coroutineScope = rememberCoroutineScope()
+        val about by produceState<String?>(null) { value = publicBio.ownBio() }
+        val recoveryState by matrixClient.encryptionService.recoveryStateStateFlow.collectAsState()
+        val verifiedStatus by matrixClient.sessionVerificationService.sessionVerifiedStatus.collectAsState()
+        val profileLink = remember { permalinkBuilder.permalinkForUser(matrixClient.sessionId).getOrNull() }
+        val extras = TgProfileExtras(
+            about = about,
+            isKeyBackupMissing = recoveryState == RecoveryState.DISABLED,
+            isSessionUnverified = verifiedStatus == SessionVerifiedStatus.NotVerified,
+            profileLink = profileLink,
+            profileMusic = { musicModifier -> musicPlayerUi.ProfileMusicRow(matrixClient.sessionId, state.myUser.displayName, musicModifier) },
+        )
         // Правка форка: корень настроек Telegram, элементовский PreferencesRootView не трогаем (C-009).
         TgPreferencesRootView(
             state = state,
@@ -74,6 +103,8 @@ class PreferencesRootNode(
             onOpenLabs = callback::navigateToLabs,
             onOpenDeveloperSettings = callback::navigateToDeveloperSettings,
             onOpenAdvancedSettings = callback::navigateToAdvancedSettings,
+            onOpenEncryption = callback::navigateToSecureBackup,
+            extras = extras,
             // Правка форка: «Избранное» создаётся при первом открытии.
             onOpenSavedMessages = {
                 coroutineScope.launch {

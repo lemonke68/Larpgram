@@ -159,4 +159,16 @@
     <string name="larpgram_encryption_info_limits_server_recovery">If \"Recovery through the server\" is on in History protection, the server can open your history itself.</string>
     <string name="larpgram_encryption_info_limits_forgot_password">If you forget your password and have no other device with Larpgram, your old chats are lost unless you wrote down the recovery key. New messages will still be visible.</string>
     <string name="larpgram_encryption_info_limits_metadata">The server sees who talks to whom and when, but not what you write.</string>
+    <!-- Profile tab (V1 final: profile + settings). -->
+    <string name="larpgram_profile_matrix_id">Matrix ID</string>
+    <string name="larpgram_profile_about">About</string>
+    <string name="larpgram_profile_about_empty">Tell people about yourself</string>
+    <string name="larpgram_profile_copied">Copied</string>
+    <string name="larpgram_profile_qr_title">Profile QR code</string>
+    <string name="larpgram_profile_qr_hint">Scan to open the profile in any Matrix app</string>
+    <string name="larpgram_profile_edit">Edit profile</string>
+    <string name="larpgram_settings_encryption_title">Encryption and keys</string>
+    <string name="larpgram_settings_no_backup">No backup</string>
+    <string name="larpgram_session_unverified_title">Session not verified</string>
+    <string name="larpgram_session_unverified_message">Confirm it with your recovery key</string>
 </resources>

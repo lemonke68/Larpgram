@@ -59,6 +59,8 @@ dependencies {
     // Правка форка: пароль для ключа восстановления, запертого паролем (escrow B).
     implementation(projects.libraries.keyescrow.api)
     implementation(projects.libraries.qrcode)
+    // Larpgram V1 final: profile music chip on the Profile tab.
+    implementation(projects.libraries.musicplayer.api)
     implementation(projects.libraries.pushstore.api)
     implementation(projects.libraries.indicator.api)
     implementation(projects.libraries.preferences.api)

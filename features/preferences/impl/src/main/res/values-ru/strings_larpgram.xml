@@ -140,4 +140,15 @@
     <string name="larpgram_encryption_info_limits_server_recovery">Если в «Защите истории» включено «Восстановление через сервер», сервер может открыть вашу историю сам.</string>
     <string name="larpgram_encryption_info_limits_forgot_password">Если вы забыли пароль и других устройств с Ларпграмом нет, старая переписка пропадёт, если вы не записали ключ восстановления. Новые сообщения будут видны.</string>
     <string name="larpgram_encryption_info_limits_metadata">Сервер видит, кто с кем переписывается и когда, но не что вы пишете.</string>
+    <string name="larpgram_profile_matrix_id">Matrix ID</string>
+    <string name="larpgram_profile_about">О себе</string>
+    <string name="larpgram_profile_about_empty">Расскажите о себе</string>
+    <string name="larpgram_profile_copied">Скопировано</string>
+    <string name="larpgram_profile_qr_title">QR-код профиля</string>
+    <string name="larpgram_profile_qr_hint">Наведите камеру, чтобы открыть профиль в любом приложении Matrix</string>
+    <string name="larpgram_profile_edit">Изменить профиль</string>
+    <string name="larpgram_settings_encryption_title">Шифрование и ключи</string>
+    <string name="larpgram_settings_no_backup">Нет копии</string>
+    <string name="larpgram_session_unverified_title">Сессия не подтверждена</string>
+    <string name="larpgram_session_unverified_message">Подтвердите её ключом восстановления</string>
 </resources>

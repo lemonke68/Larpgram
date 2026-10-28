@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
- * Правка форка: корень настроек в стиле Telegram (категории, «Избранное», шапка профиля).
+ * Правка форка: вкладка «Профиль» Larpgram (редизайн V1 final) — профиль и корень настроек на одном
+ * экране: аватар-«капля», музыка профиля, карточка Matrix ID, стеклянные карточки настроек.
  * Заменяет элементовский `PreferencesRootView`, который оставлен как в апстриме (аудит C-009).
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
@@ -10,48 +11,82 @@
 
 package io.element.android.features.preferences.impl.root
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.preferences.impl.userstatus.UserStatusState
+import io.element.android.compound.tokens.larpgramColors
+import io.element.android.features.preferences.impl.R
 import io.element.android.features.preferences.impl.userstatus.UserStatusView
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.coverage.ExcludeFromCoverage
 import io.element.android.libraries.designsystem.components.async.AsyncActionIndicator
 import io.element.android.libraries.designsystem.components.async.AsyncIndicator
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
-import io.element.android.libraries.designsystem.components.list.ListItemContent
-import io.element.android.libraries.designsystem.components.preferences.PreferencePage
+import io.element.android.libraries.designsystem.components.avatar.TgOwnAvatar
+import io.element.android.libraries.designsystem.components.glass.TgOwnAvatarShape
+import io.element.android.libraries.designsystem.components.glass.tgGlowBackground
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.preview.ElementPreviewLight
 import io.element.android.libraries.designsystem.preview.PreviewWithLargeHeight
+import io.element.android.libraries.designsystem.theme.components.DropdownMenu
+import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
-import io.element.android.libraries.designsystem.theme.components.IconSource
-import io.element.android.libraries.designsystem.theme.components.ListItem
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.CommonDrawables
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
@@ -60,20 +95,39 @@ import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.matrix.ui.components.MatrixUserRow
-import io.element.android.libraries.matrix.ui.model.tgHandle
+import io.element.android.libraries.matrix.ui.model.getAvatarData
+import io.element.android.libraries.matrix.ui.model.getBestName
 import io.element.android.libraries.matrix.ui.saved.SavedMessagesAvatar
+import io.element.android.libraries.qrcode.QrCodeImage
 import io.element.android.libraries.ui.strings.CommonStrings
 import timber.log.Timber
+
+/**
+ * Extra data of the Profile tab that the settings presenter does not provide; filled by
+ * [PreferencesRootNode].
+ *
+ * @property about the public "about" text, null when not set.
+ * @property isKeyBackupMissing recovery (key backup) is not set up: «Нет копии» next to the encryption row.
+ * @property isSessionUnverified this session is not verified: a warning row, nothing when verified.
+ * @property profileLink matrix.to link of the user for the profile QR code.
+ * @property profileMusic the profile music chip (MSC4133 field), null in previews.
+ */
+data class TgProfileExtras(
+    val about: String? = null,
+    val isKeyBackupMissing: Boolean = false,
+    val isSessionUnverified: Boolean = false,
+    val profileLink: String? = null,
+    val profileMusic: (@Composable (Modifier) -> Unit)? = null,
+)
 
 @Composable
 fun TgPreferencesRootView(
     state: PreferencesRootState,
     emojiPickerRenderer: EmojiPickerRenderer,
     onBackClick: (() -> Unit)?,
-    onAddAccountClick: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onAddAccountClick: () -> Unit,
     // Правка форка (Larpgram): Element v26.10 switches accounts via navigation (SwitchToSession event removed).
-    onSwitchToSession: (SessionId) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onSwitchToSession: (SessionId) -> Unit,
     onOpenCategory: (SettingsCategory) -> Unit,
     onOpenUserProfile: (MatrixUser) -> Unit,
     onOpenAbout: () -> Unit,
@@ -83,49 +137,83 @@ fun TgPreferencesRootView(
     onOpenAdvancedSettings: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenSavedMessages: () -> Unit = {},
+    onOpenEncryption: () -> Unit = {},
+    extras: TgProfileExtras = TgProfileExtras(),
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
+    val context = LocalContext.current
+    var showQr by remember { mutableStateOf(false) }
+    val onEditProfile = { onOpenUserProfile(state.myUser) }
 
-    Box(modifier = modifier) {
-        PreferencePage(
-            onBackClick = onBackClick,
-            title = stringResource(id = CommonStrings.common_settings),
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            containerColor = tgSettingsPageColor(),
+    Box(modifier = modifier.fillMaxSize().tgGlowBackground()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
         ) {
-            // Правка форка: шапка TG — крупный аватар с камерой, имя и @имя по центру.
-            TgSettingsProfileHeader(
-                matrixUser = state.myUser,
-                onClick = { onOpenUserProfile(state.myUser) },
+            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            ProfileTopButtons(
+                onBackClick = onBackClick,
+                onQrClick = { showQr = true },
+                onEditProfile = onEditProfile,
+                hasQr = extras.profileLink != null,
             )
-            if (state.isMultiAccountEnabled) {
-                MultiAccountSection(
-                    state = state,
-                    onAddAccountClick = onAddAccountClick,
-                    onSwitchToSession = onSwitchToSession,
+            ProfileHeader(
+                matrixUser = state.myUser,
+                onEditProfile = onEditProfile,
+                modifier = Modifier.offset(y = (-14).dp),
+            )
+            extras.profileMusic?.let { music ->
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    music(Modifier.widthIn(max = 320.dp).padding(horizontal = 24.dp))
+                }
+            }
+            // The Matrix ID card is the only place in the app that shows the server name.
+            ProfileCard(modifier = Modifier.padding(top = 12.dp)) {
+                InfoRow(
+                    value = state.myUser.userId.value,
+                    label = stringResource(R.string.larpgram_profile_matrix_id),
+                    trailingIcon = CompoundIcons.Copy(),
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        clipboard?.setPrimaryClip(ClipData.newPlainText("Matrix ID", state.myUser.userId.value))
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            Toast.makeText(context, R.string.larpgram_profile_copied, Toast.LENGTH_SHORT).show()
+                        }
+                    },
                 )
+                CardDivider()
+                if (extras.about.isNullOrBlank()) {
+                    InfoRow(
+                        value = stringResource(R.string.larpgram_profile_about_empty),
+                        label = stringResource(R.string.larpgram_profile_about),
+                        valueColor = ElementTheme.colors.textSecondary,
+                        onClick = onEditProfile,
+                    )
+                } else {
+                    InfoRow(
+                        value = extras.about,
+                        label = stringResource(R.string.larpgram_profile_about),
+                        onClick = onEditProfile,
+                    )
+                }
             }
             if (state.userStatusState != null) {
-                UserStatusSection(
-                    userStatusState = state.userStatusState,
-                    emojiPickerRenderer = emojiPickerRenderer,
-                    showTopDivider = !state.isMultiAccountEnabled,
-                )
+                ProfileCard(modifier = Modifier.padding(top = 10.dp)) {
+                    UserStatusView(
+                        state = state.userStatusState,
+                        emojiPickerRenderer = emojiPickerRenderer,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
-            // Правка форка: «Избранное» отдельной карточкой над категориями, как в TG.
-            TgSettingsGroup {
-                TgSettingsItem(
-                    title = stringResource(CommonStrings.larpgram_saved_messages),
-                    color = SAVED_MESSAGES_COLOR,
-                    iconVector = SavedMessagesAvatar.icon,
-                    trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
-                    onClick = onOpenSavedMessages,
-                )
-            }
-            // TG-категории (Ф2): один верхнеуровневый список, каждая строка ведёт в свой под-экран.
-            CategoriesSection(onOpenCategory = onOpenCategory)
-            // «О приложении» — аналог блока «Помощь» в TG-настройках.
-            AppInfoSection(
+            SettingsCard(
+                extras = extras,
+                onOpenSavedMessages = onOpenSavedMessages,
+                onOpenCategory = onOpenCategory,
+                onOpenEncryption = onOpenEncryption,
+            )
+            AppInfoCard(
                 state = state,
                 onOpenAbout = onOpenAbout,
                 onOpenRageShake = onOpenRageShake,
@@ -133,7 +221,6 @@ fun TgPreferencesRootView(
                 onOpenDeveloperSettings = onOpenDeveloperSettings,
                 onOpenAdvancedSettings = onOpenAdvancedSettings,
             )
-            // Version
             Footer(
                 version = state.version,
                 onClick = if (!state.showDeveloperSettings) {
@@ -142,56 +229,319 @@ fun TgPreferencesRootView(
                     null
                 }
             )
-            // Правка форка: корень вкладки лежит под плавающей панелью вкладок — отступ, чтобы
-            // строка версии прокручивалась выше неё (аудит A-030). Как bottom = 96.dp у списка чатов.
+            // The tab lies under the floating bottom bar: room for the last rows to scroll above it.
             if (onBackClick == null) {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(96.dp))
             }
+            Spacer(Modifier.navigationBarsPadding())
         }
+        SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
         state.userStatusState?.let {
             UserStatusUpdateIndicator(it.updateStatusAction)
         }
     }
+    if (showQr && extras.profileLink != null) {
+        ProfileQrDialog(link = extras.profileLink, user = state.myUser, onDismiss = { showQr = false })
+    }
+}
+
+/** A translucent profile card (`glass.card`, radius 20, 1 dp light border). */
+@Composable
+private fun ProfileCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = larpgramColors
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier = modifier
+            .padding(horizontal = 12.dp)
+            .fillMaxWidth()
+            .glassSurface(shape, colors.glassCard)
+            .padding(vertical = 2.dp),
+        content = content,
+    )
 }
 
 @Composable
-private fun ColumnScope.CategoriesSection(
-    onOpenCategory: (SettingsCategory) -> Unit,
+private fun Modifier.glassSurface(shape: Shape, fill: Color): Modifier {
+    val colors = larpgramColors
+    // Over the soft glow a blur would change nothing visible, so the profile cards are plain
+    // translucent fills; the bottom bar above them still blurs the content.
+    return this
+        .clip(shape)
+        .background(fill)
+        .border(1.dp, Brush.verticalGradient(listOf(colors.glassTopHighlight, colors.glassBorder.copy(alpha = colors.glassBorder.alpha * 0.6f))), shape)
+}
+
+@Composable
+private fun CardDivider() {
+    HorizontalDivider(color = ElementTheme.colors.separatorPrimary)
+}
+
+@Composable
+private fun ProfileTopButtons(
+    onBackClick: (() -> Unit)?,
+    onQrClick: () -> Unit,
+    onEditProfile: () -> Unit,
+    hasQr: Boolean,
 ) {
-    val context = LocalContext.current
-    TgSettingsGroup {
-        SettingsCategory.entries.filter { it.isAvailable }.forEach { category ->
-            TgSettingsItem(
-                title = stringResource(category.titleRes),
-                subtitle = stringResource(category.subtitleRes),
-                color = category.color,
-                iconVector = category.icon,
-                trailingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChevronRight())),
-                onClick = {
-                    if (category == SettingsCategory.Language) {
-                        openAppLanguageSettings(context)
-                    } else {
-                        onOpenCategory(category)
-                    }
-                },
-            )
+    var showMenu by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBackClick != null) {
+            RoundGlassButton(icon = CompoundIcons.ArrowLeft(), contentDescription = stringResource(CommonStrings.action_back), onClick = onBackClick)
+        }
+        Spacer(Modifier.weight(1f))
+        if (hasQr) {
+            RoundGlassButton(icon = CompoundIcons.QrCode(), contentDescription = stringResource(R.string.larpgram_profile_qr_title), onClick = onQrClick)
+        }
+        Box {
+            RoundGlassButton(icon = CompoundIcons.OverflowVertical(), contentDescription = null, onClick = { showMenu = true })
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.larpgram_profile_edit)) },
+                    leadingIcon = { Icon(imageVector = CompoundIcons.Edit(), contentDescription = null, tint = ElementTheme.colors.iconSecondary) },
+                    onClick = {
+                        showMenu = false
+                        onEditProfile()
+                    },
+                )
+            }
         }
     }
 }
 
-// Цвет иконки «Избранного» в настройках TG.
-private val SAVED_MESSAGES_COLOR = Color(0xFF3D9DE0)
+@Composable
+private fun RoundGlassButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .glassSurface(CircleShape, larpgramColors.glassSurface)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(imageVector = icon, contentDescription = contentDescription, tint = ElementTheme.colors.iconPrimary, modifier = Modifier.size(22.dp))
+    }
+}
 
-/** Правка форка: системный выбор языка приложения (Android 13+), как «Язык» в TG. */
-private fun openAppLanguageSettings(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-    val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
-    runCatching { context.startActivity(intent) }
-        .onFailure { Timber.w(it, "Не открылся системный выбор языка") }
+/** Own avatar 108 dp in the blob shape with an accent camera badge, name in Unbounded, «@nick · в сети». */
+@Composable
+private fun ProfileHeader(
+    matrixUser: MatrixUser,
+    onEditProfile: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = larpgramColors
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(modifier = Modifier.clickable(onClick = onEditProfile)) {
+            TgOwnAvatar(
+                avatarData = matrixUser.getAvatarData(size = AvatarSize.UserHeader),
+                size = 108.dp,
+                contentDescription = stringResource(CommonStrings.a11y_user_avatar),
+                modifier = Modifier.shadow(16.dp, TgOwnAvatarShape, ambientColor = colors.glassShadow, spotColor = colors.accent.copy(alpha = 0.35f)),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 4.dp)
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(colors.background)
+                    .padding(3.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(colors.accent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    modifier = Modifier.size(16.dp),
+                    imageVector = CompoundIcons.TakePhoto(),
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            modifier = Modifier.padding(horizontal = 24.dp),
+            text = matrixUser.getBestName(),
+            style = LarpgramType.profileName,
+            color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            // The localpart only: the server name is shown in the Matrix ID card.
+            text = "@" + matrixUser.userId.extractedDisplayName + " · " + stringResource(CommonStrings.larpgram_presence_online),
+            style = LarpgramType.chatRowPreview.copy(fontWeight = FontWeight.SemiBold),
+            color = ElementTheme.colors.textSecondary,
+        )
+        Spacer(Modifier.height(12.dp))
+    }
 }
 
 @Composable
-private fun ColumnScope.AppInfoSection(
+private fun InfoRow(
+    value: String,
+    label: String,
+    onClick: () -> Unit,
+    trailingIcon: ImageVector? = null,
+    valueColor: Color = ElementTheme.colors.textPrimary,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(text = value, style = LarpgramType.listItem, color = valueColor, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(text = label, style = LarpgramType.caption, color = ElementTheme.colors.textSecondary)
+        }
+        if (trailingIcon != null) {
+            Icon(imageVector = trailingIcon, contentDescription = null, tint = ElementTheme.colors.iconSecondary, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+/** Settings row (50 dp, 30 dp coloured rounded-square icon), the V1 list of the Profile tab. */
+@Composable
+private fun SettingsRow(
+    title: String,
+    color: Color,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    value: String? = null,
+    valueColor: Color = ElementTheme.colors.textSecondary,
+    titleColor: Color = ElementTheme.colors.textPrimary,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(color, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
+        Text(
+            text = title,
+            style = LarpgramType.listItem,
+            color = titleColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (value != null) {
+            Text(text = value, style = LarpgramType.listItem.copy(fontSize = LarpgramType.folderChip.fontSize), color = valueColor, maxLines = 1)
+        }
+        Icon(
+            imageVector = CompoundIcons.ChevronRight(),
+            contentDescription = null,
+            tint = ElementTheme.colors.iconSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+/** `tokens.json` → `settingsIconColors`. */
+private object TgProfileIconColors {
+    val Saved = Color(0xFF5B8DEF)
+    val Account = Color(0xFF7C5CE6)
+    val ChatSettings = Color(0xFFF0A030)
+    val Privacy = Color(0xFF3DB46D)
+    val Encryption = Color(0xFF9B6BF0)
+    val Notifications = Color(0xFFEF5A5A)
+    val Data = Color(0xFF2BA8C9)
+    val Devices = Color(0xFF2DB7A3)
+}
+
+private fun SettingsCategory.v1Color(): Color = when (this) {
+    SettingsCategory.Account -> TgProfileIconColors.Account
+    SettingsCategory.Chats -> TgProfileIconColors.ChatSettings
+    SettingsCategory.Privacy -> TgProfileIconColors.Privacy
+    SettingsCategory.Notifications -> TgProfileIconColors.Notifications
+    SettingsCategory.Data -> TgProfileIconColors.Data
+    SettingsCategory.Devices -> TgProfileIconColors.Devices
+    else -> color
+}
+
+@Composable
+private fun SettingsCard(
+    extras: TgProfileExtras,
+    onOpenSavedMessages: () -> Unit,
+    onOpenCategory: (SettingsCategory) -> Unit,
+    onOpenEncryption: () -> Unit,
+) {
+    val colors = larpgramColors
+    val categories = SettingsCategory.entries.filter { it.isAvailable && it != SettingsCategory.Language }
+    ProfileCard(modifier = Modifier.padding(top = 10.dp)) {
+        // Shown only when this session is NOT verified; a verified session shows nothing.
+        if (extras.isSessionUnverified) {
+            SettingsRow(
+                title = stringResource(R.string.larpgram_session_unverified_title),
+                color = colors.danger,
+                icon = CompoundIcons.ErrorSolid(),
+                titleColor = colors.danger,
+                onClick = onOpenEncryption,
+            )
+            CardDivider()
+        }
+        SettingsRow(
+            title = stringResource(CommonStrings.larpgram_saved_messages),
+            color = TgProfileIconColors.Saved,
+            icon = SavedMessagesAvatar.icon,
+            onClick = onOpenSavedMessages,
+        )
+        categories.forEach { category ->
+            CardDivider()
+            SettingsRow(
+                title = stringResource(category.titleRes),
+                color = category.v1Color(),
+                icon = category.icon,
+                onClick = { onOpenCategory(category) },
+            )
+            // «Шифрование и ключи» goes right after «Конфиденциальность», as in the mockup.
+            if (category == SettingsCategory.Privacy) {
+                CardDivider()
+                SettingsRow(
+                    title = stringResource(R.string.larpgram_settings_encryption_title),
+                    color = TgProfileIconColors.Encryption,
+                    icon = CompoundIcons.Shield(),
+                    value = if (extras.isKeyBackupMissing) stringResource(R.string.larpgram_settings_no_backup) else null,
+                    valueColor = colors.warning,
+                    onClick = onOpenEncryption,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppInfoCard(
     state: PreferencesRootState,
     onOpenAbout: () -> Unit,
     onOpenRageShake: () -> Unit,
@@ -199,117 +549,105 @@ private fun ColumnScope.AppInfoSection(
     onOpenDeveloperSettings: () -> Unit,
     onOpenAdvancedSettings: () -> Unit,
 ) {
-    TgSettingsGroup {
-        TgSettingsItem(
+    val context = LocalContext.current
+    ProfileCard(modifier = Modifier.padding(top = 10.dp)) {
+        if (SettingsCategory.Language.isAvailable) {
+            SettingsRow(
+                title = stringResource(SettingsCategory.Language.titleRes),
+                color = SettingsCategory.Language.color,
+                icon = SettingsCategory.Language.icon,
+                onClick = { openAppLanguageSettings(context) },
+            )
+            CardDivider()
+        }
+        SettingsRow(
             title = stringResource(id = CommonStrings.common_about),
             color = TgSettingsColors.Blue,
-            iconVector = CompoundIcons.Info(),
+            icon = CompoundIcons.Info(),
             onClick = onOpenAbout,
         )
+        CardDivider()
         // Полный экран «Дополнительно» (dev-режим, live-location и пр. — то, что не легло в категории).
-        TgSettingsItem(
+        SettingsRow(
             title = stringResource(id = CommonStrings.common_advanced_settings),
             color = TgSettingsColors.Gray,
-            iconVector = CompoundIcons.Settings(),
+            icon = CompoundIcons.Settings(),
             onClick = onOpenAdvancedSettings,
         )
         if (state.preferencesAccountState.canReportBug) {
-            TgSettingsItem(
+            CardDivider()
+            SettingsRow(
                 title = stringResource(id = CommonStrings.common_report_a_problem),
                 color = TgSettingsColors.Orange,
-                iconVector = CompoundIcons.ChatProblem(),
+                icon = CompoundIcons.ChatProblem(),
                 onClick = onOpenRageShake,
             )
         }
         if (state.showLabsItem) {
-            TgSettingsItem(
-                title = stringResource(id = io.element.android.features.preferences.impl.R.string.screen_labs_title),
+            CardDivider()
+            SettingsRow(
+                title = stringResource(id = R.string.screen_labs_title),
                 color = TgSettingsColors.Purple,
-                iconVector = CompoundIcons.Labs(),
+                icon = CompoundIcons.Labs(),
                 onClick = onOpenLabs,
             )
         }
         // В конце, чтобы случайный 8-кратный тап по версии ничего не ломал.
         if (state.showDeveloperSettings) {
-            TgSettingsItem(
+            CardDivider()
+            SettingsRow(
                 title = stringResource(id = CommonStrings.common_developer_options),
                 color = TgSettingsColors.Gray,
-                iconVector = CompoundIcons.Code(),
+                icon = CompoundIcons.Code(),
                 onClick = onOpenDeveloperSettings,
             )
         }
     }
 }
 
+/** Profile QR: the matrix.to link of the user, opens the profile in any Matrix app. */
 @Composable
-private fun ColumnScope.UserStatusSection(
-    userStatusState: UserStatusState,
-    emojiPickerRenderer: EmojiPickerRenderer,
-    showTopDivider: Boolean,
+private fun ProfileQrDialog(
+    link: String,
+    user: MatrixUser,
+    onDismiss: () -> Unit,
 ) {
-    if (showTopDivider) {
-        HorizontalDivider(
-            thickness = 8.dp,
-            color = ElementTheme.colors.bgSubtleSecondary,
-        )
-    }
-    UserStatusView(
-        state = userStatusState,
-        emojiPickerRenderer = emojiPickerRenderer,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    HorizontalDivider(
-        thickness = 1.dp,
-        color = ElementTheme.colors.bgSubtleSecondary,
-    )
-}
-
-/**
- * Другие аккаунты карточкой, как список аккаунтов TG: аватар, имя и @id, ниже «Добавить аккаунт»
- * цветом акцента. Тап по аккаунту переключает на него.
- */
-@Composable
-private fun ColumnScope.MultiAccountSection(
-    state: PreferencesRootState,
-    onAddAccountClick: () -> Unit,
-    onSwitchToSession: (SessionId) -> Unit,
-) {
-    TgSettingsGroup {
-        // Element v26.10: otherSessions is a list of OtherAccount (user + unreadCount).
-        state.otherSessions.forEach { otherAccount ->
-            val matrixUser = otherAccount.user
-            MatrixUserRow(
-                modifier = Modifier
-                    .clickable {
-                        onSwitchToSession(matrixUser.userId)
-                    }
-                    .padding(top = 2.dp, bottom = 2.dp, end = 8.dp),
-                matrixUser = matrixUser,
-                // Свои аккаунты — коротким @ником: сервер один, домен человеку ни о чём не говорит.
-                subtext = matrixUser.userId.tgHandle(state.myUser.userId.domainName.orEmpty()),
-                avatarSize = AvatarSize.AccountItem,
-                verticalSpaceWidth = 16.dp,
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(ElementTheme.colors.bgCanvasDefault)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(text = user.getBestName(), style = LarpgramType.screenTitle, color = ElementTheme.colors.textPrimary)
+            Spacer(Modifier.height(16.dp))
+            // QR-код всегда на белом: тёмный фон камеры читают хуже.
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
+                    .padding(12.dp)
+            ) {
+                QrCodeImage(data = link, modifier = Modifier.size(220.dp))
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.larpgram_profile_qr_hint),
+                style = LarpgramType.caption,
+                color = ElementTheme.colors.textSecondary,
+                textAlign = TextAlign.Center,
             )
         }
-        ListItem(
-            leadingContent = ListItemContent.Custom {
-                Box(modifier = Modifier.size(AvatarSize.AccountItem.dp), contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = CompoundIcons.Plus(),
-                        contentDescription = null,
-                        tint = ElementTheme.colors.textActionAccent,
-                    )
-                }
-            },
-            content = {
-                Text(
-                    text = stringResource(CommonStrings.common_add_another_account),
-                    color = ElementTheme.colors.textActionAccent,
-                )
-            },
-            onClick = onAddAccountClick,
-        )
     }
+}
+
+/** Правка форка: системный выбор языка приложения (Android 13+), как «Язык» в TG. */
+private fun openAppLanguageSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
+    runCatching { context.startActivity(intent) }
+        .onFailure { Timber.w(it, "Не открылся системный выбор языка") }
 }
 
 @Composable
@@ -361,7 +699,7 @@ private fun ContentToPreview(state: PreferencesRootState) {
     TgPreferencesRootView(
         state = state,
         emojiPickerRenderer = NoOpEmojiPickerRenderer,
-        onBackClick = {},
+        onBackClick = null,
         onAddAccountClick = {},
         onSwitchToSession = {},
         onOpenCategory = {},
@@ -371,5 +709,6 @@ private fun ContentToPreview(state: PreferencesRootState) {
         onOpenLabs = {},
         onOpenDeveloperSettings = {},
         onOpenAdvancedSettings = {},
+        extras = TgProfileExtras(about = "Мастер по реквизиту", isKeyBackupMissing = true, profileLink = "https://matrix.to/#/@mila:example.org"),
     )
 }
