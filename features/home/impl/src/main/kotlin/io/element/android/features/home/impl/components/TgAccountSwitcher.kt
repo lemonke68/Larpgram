@@ -42,27 +42,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.compound.tokens.larpgramColors
+import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.TgAccount
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.avatar.TgOwnAvatar
 import io.element.android.libraries.designsystem.components.glass.TgGlassTint
-import io.element.android.libraries.designsystem.components.glass.rememberGlassBlurEnabled
 import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.ui.model.getAvatarData
-import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
 
 /**
@@ -83,16 +79,9 @@ internal fun TgAccountSwitcher(
 ) {
     BackHandler(enabled = isVisible, onBack = onDismiss)
     val colors = larpgramColors
-    val blurState = hazeState?.takeIf { rememberGlassBlurEnabled() }
     AnimatedVisibility(visible = isVisible, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
-        val dimModifier = if (blurState != null) {
-            Modifier.hazeEffect(
-                state = blurState,
-                style = HazeStyle(backgroundColor = colors.background, tint = HazeTint(colors.dim), blurRadius = 6.dp, noiseFactor = 0f),
-            )
-        } else {
-            Modifier.background(colors.dim)
-        }
+        // A plain dim: a haze layer here would paint the blurred list over the floating header.
+        val dimModifier = Modifier.background(colors.dim)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -141,7 +130,7 @@ internal fun TgAccountSwitcher(
                         )
                     }
                     Text(
-                        text = stringResource(CommonStrings.common_add_another_account),
+                        text = stringResource(R.string.larpgram_add_account),
                         style = LarpgramType.listItem.copy(fontWeight = LarpgramType.chatRowName.fontWeight),
                         color = colors.accentText,
                     )

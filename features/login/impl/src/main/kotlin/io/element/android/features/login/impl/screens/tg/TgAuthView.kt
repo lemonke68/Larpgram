@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -64,10 +63,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -258,11 +260,15 @@ private fun FormStep(
     title: String,
     subtitle: String,
     showLogo: Boolean = false,
+    // Pinned under the scrolling part (V1 final: QR link + next button + register link).
+    bottom: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    Column(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .weight(1f)
+            .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
     ) {
@@ -289,6 +295,10 @@ private fun FormStep(
         )
         Spacer(Modifier.height(28.dp))
         content()
+    }
+    if (bottom != null) {
+        Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 20.dp, bottom = 16.dp), content = bottom)
+    }
     }
 }
 
@@ -354,6 +364,59 @@ private fun LoginStep(state: TgAuthState) {
         title = stringResource(R.string.larpgram_auth_login_title),
         subtitle = stringResource(R.string.larpgram_auth_login_subtitle),
         showLogo = true,
+        bottom = {
+            // V1 final: «Войти по QR-коду» слева, телеграмная кнопка «→» справа, под ними регистрация.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = !state.isBusy, role = Role.Button) { state.eventSink(TgAuthEvent.OpenQrScan) }
+                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(imageVector = CompoundIcons.QrCode(), contentDescription = null, tint = larpgramColors.accentText)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.larpgram_auth_qr),
+                        style = LarpgramType.listItem.copy(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold),
+                        color = larpgramColors.accentText,
+                    )
+                }
+                TgFormNextButton(
+                    contentDescription = stringResource(R.string.larpgram_auth_sign_in),
+                    onClick = ::submit,
+                    enabled = state.canSubmitLogin,
+                    showProgress = state.isBusy,
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(enabled = !state.isBusy, role = Role.Button) { state.eventSink(TgAuthEvent.OpenRegister) }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            ) {
+                // One text, so a large system font wraps it instead of cutting the link.
+                val secondary = ElementTheme.colors.textSecondary
+                val accent = larpgramColors.accentText
+                val noAccount = stringResource(R.string.larpgram_auth_no_account)
+                val register = stringResource(R.string.larpgram_auth_register)
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = secondary, fontWeight = FontWeight.Medium)) { append(noAccount) }
+                        append(' ')
+                        withStyle(SpanStyle(color = accent, fontWeight = FontWeight.ExtraBold)) { append(register) }
+                    },
+                    style = ElementTheme.typography.fontBodyMdRegular,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        },
     ) {
         TgFormTextField(
             value = state.login,
@@ -379,54 +442,6 @@ private fun LoginStep(state: TgAuthState) {
             enabled = !state.isBusy,
             modifier = Modifier.align(Alignment.End),
         )
-        Spacer(Modifier.weight(1f).heightIn(min = 24.dp))
-        // V1 final: «Войти по QR-коду» слева, телеграмная кнопка «→» справа, под ними регистрация.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(enabled = !state.isBusy, role = Role.Button) { state.eventSink(TgAuthEvent.OpenQrScan) }
-                    .padding(vertical = 10.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(imageVector = CompoundIcons.QrCode(), contentDescription = null, tint = larpgramColors.accentText)
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.larpgram_auth_qr),
-                    style = LarpgramType.listItem.copy(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold),
-                    color = larpgramColors.accentText,
-                )
-            }
-            TgFormNextButton(
-                contentDescription = stringResource(R.string.larpgram_auth_sign_in),
-                onClick = ::submit,
-                enabled = state.canSubmitLogin,
-                showProgress = state.isBusy,
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Row(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .clip(RoundedCornerShape(8.dp))
-                .clickable(enabled = !state.isBusy, role = Role.Button) { state.eventSink(TgAuthEvent.OpenRegister) }
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.larpgram_auth_no_account) + " ",
-                style = ElementTheme.typography.fontBodyLgRegular.copy(fontWeight = FontWeight.Medium),
-                color = ElementTheme.colors.textSecondary,
-            )
-            Text(
-                text = stringResource(R.string.larpgram_auth_register),
-                style = ElementTheme.typography.fontBodyLgRegular.copy(fontWeight = FontWeight.ExtraBold),
-                color = larpgramColors.accentText,
-            )
-        }
     }
 }
 

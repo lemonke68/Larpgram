@@ -156,7 +156,10 @@ fun Modifier.tgGlass(
                 blurRadius = TgGlassDefaults.blurRadius,
                 noiseFactor = 0f,
             ),
-        )
+        ) {
+            // Below Android 12 haze only blurs when asked to (RenderScript); the Honor is Android 10.
+            blurEnabled = true
+        }
     } else if (overrideTint != null) {
         // The custom tint is the point of the surface (accent button): keep it, over the fallback.
         Modifier.background(colors.glassFallback).background(fill)
@@ -188,6 +191,7 @@ fun Modifier.tgTopFade(): Modifier {
                 noiseFactor = 0f,
             ),
         ) {
+            blurEnabled = true
             progressive = HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
             // Маска гасит и блюр, и заливку к низу — иначе у подложки была бы видимая граница.
             mask = Brush.verticalGradient(0.6f to Color.Black, 1f to Color.Transparent)

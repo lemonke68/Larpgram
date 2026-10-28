@@ -39,4 +39,6 @@
     <string name="larpgram_banner_sessions_message">There are other sign-ins to the account</string>
     <string name="larpgram_banner_history_title">Protect your history with the password</string>
     <string name="larpgram_banner_history_message">So your chats open on a new device</string>
+    <!-- Account switcher on the Profile tab. -->
+    <string name="larpgram_add_account">Add account</string>
 </resources>

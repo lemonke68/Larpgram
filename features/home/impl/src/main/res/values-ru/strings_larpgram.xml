@@ -31,4 +31,5 @@
     <string name="larpgram_banner_sessions_message">Есть другие входы в аккаунт</string>
     <string name="larpgram_banner_history_title">Защитите историю паролем</string>
     <string name="larpgram_banner_history_message">Чтобы чаты открылись на новом устройстве</string>
+    <string name="larpgram_add_account">Добавить аккаунт</string>
 </resources>

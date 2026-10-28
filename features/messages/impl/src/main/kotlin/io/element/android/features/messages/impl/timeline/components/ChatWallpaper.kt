@@ -154,7 +154,7 @@ fun Modifier.chatWallpaper(wallpaper: ChatWallpaper): Modifier = when (wallpaper
         }
     }
     is ChatWallpaper.Larpgram -> drawBehind {
-        drawLarpgramWallpaper(wallpaper, dotRadius = 0.6.dp.toPx(), step = 24.dp.toPx())
+        drawLarpgramWallpaper(wallpaper, dotRadius = 1.dp.toPx(), step = 24.dp.toPx())
     }
     is ChatWallpaper.Gradient -> drawBehind {
         // Угол в направление: 0° = слева направо, растём по часовой. Линию тянем через центр так,

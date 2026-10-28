@@ -165,7 +165,13 @@ fun TgPreferencesRootView(
             )
             extras.profileMusic?.let { music ->
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    music(Modifier.widthIn(max = 320.dp).padding(horizontal = 24.dp))
+                    // The row draws nothing without tracks, so the glass pill only appears with music.
+                    music(
+                        Modifier
+                            .widthIn(max = 340.dp)
+                            .padding(horizontal = 24.dp)
+                            .glassSurface(RoundedCornerShape(18.dp), larpgramColors.glassSurface)
+                    )
                 }
             }
             // The Matrix ID card is the only place in the app that shows the server name.

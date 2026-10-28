@@ -8,7 +8,6 @@
 package io.element.android.libraries.designsystem.components.tg
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
@@ -24,12 +23,22 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
@@ -67,6 +76,9 @@ internal fun TgOutlinedField(
         else -> Color(0x29FFFFFF)
     }
     val fill = if (colors.isLight) Color(0x8CFFFFFF) else colors.glassSurface
+    // Width of the label in px: the border is cut under it, so the label sits on the border line.
+    var labelWidthPx by remember { mutableIntStateOf(0) }
+    val borderWidth = if (isFocused || isError) 2.dp else 1.dp
     Column(modifier = modifier) {
         Box(Modifier.fillMaxWidth()) {
             Row(
@@ -76,7 +88,20 @@ internal fun TgOutlinedField(
                     .height(56.dp)
                     .clip(shape)
                     .background(fill)
-                    .border(if (isFocused || isError) 2.dp else 1.dp, borderColor, shape)
+                    .drawWithContent {
+                        drawContent()
+                        val stroke = borderWidth.toPx()
+                        val gapStart = 14.dp.toPx()
+                        clipRect(left = gapStart, top = -stroke, right = gapStart + labelWidthPx, bottom = stroke * 2, clipOp = ClipOp.Difference) {
+                            drawRoundRect(
+                                color = borderColor,
+                                topLeft = Offset(stroke / 2, stroke / 2),
+                                size = Size(size.width - stroke, size.height - stroke),
+                                cornerRadius = CornerRadius(14.dp.toPx()),
+                                style = Stroke(stroke),
+                            )
+                        }
+                    }
                     .padding(start = 18.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -106,7 +131,7 @@ internal fun TgOutlinedField(
                 maxLines = 1,
                 modifier = Modifier
                     .offset(x = 14.dp)
-                    .background(colors.background, RoundedCornerShape(4.dp))
+                    .onSizeChanged { labelWidthPx = it.width }
                     .padding(horizontal = 6.dp, vertical = 1.dp),
             )
         }

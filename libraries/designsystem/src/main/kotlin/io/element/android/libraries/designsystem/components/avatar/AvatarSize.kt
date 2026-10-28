@@ -22,7 +22,8 @@ enum class AvatarSize(val dp: Dp) {
 
     // Правка форка: 60dp вместо 52dp. Сперва взяли 56 с концепта 2023 года, 2026-08-16
     // переснято по живому клиенту: там ровно 60.
-    RoomListItem(60.dp),
+    // Правка форка (Larpgram V1 final): аватар строки списка чатов 54 dp.
+    RoomListItem(54.dp),
     SearchRoomListItem(32.dp),
     ThreadsListItem(52.dp),
 

@@ -444,7 +444,7 @@ private fun ActionsMenu(
         if (event.isMine && readers.isNotEmpty()) {
             // V1 final: who read it and when; a thick separator before the actions.
             TgReadReceiptsSection(readers = readers, otherMembersCount = otherMembersCount)
-            HorizontalDivider(thickness = 8.dp, color = ElementTheme.colors.bgSubtleSecondary.copy(alpha = 0.6f))
+            HorizontalDivider(thickness = 8.dp, color = if (ElementTheme.isLightTheme) Color(0x0F3C2878) else Color(0x33000000))
         } else if (event.isMine && deliveryState != null) {
             DeliveryStatusRow(state = deliveryState, sentTime = target.sentTimeFull)
             HorizontalDivider()
