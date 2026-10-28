@@ -7,10 +7,13 @@
 
 package io.element.android.libraries.designsystem.components.glass
 
+import android.content.Context
+import android.os.PowerManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,6 +21,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeProgressive
@@ -26,15 +31,15 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramColors
+import io.element.android.compound.tokens.larpgramColors
 
 /**
- * Правка форка: «стеклянные» панели экрана чата, как в Telegram 12 — поле ввода, шапка,
- * плашки поверх обоев. Под панелью размытая лента (haze), сверху полупрозрачная заливка цвета
- * панели и тонкая светлая обводка.
+ * Правка форка: «жидкое стекло» Larpgram (редизайн V1 final, `tokens.json` → `glass`). Под панелью
+ * размытый контент (haze), сверху полупрозрачная заливка и тонкая светлая обводка.
  *
- * Цифры из исходников Telegram Android 12.10.3: `BlurredBackgroundColorProviderThemed` (заливка
- * `chat_messagePanelBackground` с альфой 0.76, обводка и тень по яркости фона),
- * `BlurredBackgroundDrawable` (обводка 1dp сверху и 2/3dp снизу).
+ * Сначала было сделано для экрана чата (отсюда имя), теперь тот же источник размытия ставят и
+ * список чатов, и профиль.
  */
 val LocalChatGlassState = staticCompositionLocalOf<HazeState?> { null }
 
@@ -47,62 +52,116 @@ val LocalChatBottomOverlayHeight = compositionLocalOf { 0.dp }
 /** Правка форка: высота плавающей шапки чата сверху (вместе со статус-баром). */
 val LocalChatTopOverlayHeight = compositionLocalOf { 0.dp }
 
+/** Which glass fill to use, from the lightest to the most opaque. */
+enum class TgGlassTint {
+    Surface,
+    SurfaceStrong,
+    Card,
+    Menu,
+}
+
 object TgGlassDefaults {
-    /** Скругление пилюли поля ввода (`ChatInputViewsContainer.INPUT_BUBBLE_RADIUS`). */
-    val inputRadius: Dp = 22.dp
+    /** Скругление пилюли поля ввода (`radius.composer`). */
+    val inputRadius: Dp = 26.dp
 
-    /** Минимальная высота поля ввода и размер его кнопок (`ChatActivityEnterView.DEFAULT_HEIGHT`). */
-    val inputHeight: Dp = 44.dp
+    /** Высота поля ввода (`sizes.composerHeight`). */
+    val inputHeight: Dp = 52.dp
 
-    /** Отступ пилюли от краёв экрана и от низа (`ChatActivity`, `INPUT_BUBBLE_BOTTOM`). */
-    val inputSideMargin: Dp = 7.dp
-    val inputBottomMargin: Dp = 9.dp
+    /** Отступ пилюли от краёв экрана и от низа. */
+    val inputSideMargin: Dp = 8.dp
+    val inputBottomMargin: Dp = 8.dp
 
-    private val blurRadius: Dp = 16.dp
-    private const val FILL_ALPHA = 0.76f
+    val blurRadius: Dp = 26.dp
+
+    /** Opaque panel colour: the `fallback` of the glass tokens. */
+    @Composable
+    fun panelColor(): Color = larpgramColors.glassFallback
 
     @Composable
-    fun panelColor(): Color = if (ElementTheme.isLightTheme) Color.White else Color(0xFF1E1E1F)
+    fun tintColor(tint: TgGlassTint): Color = larpgramColors.tint(tint)
 
     @Composable
-    internal fun style(): HazeStyle {
-        val panel = panelColor()
+    internal fun style(tint: TgGlassTint = TgGlassTint.Surface): HazeStyle {
+        val colors = larpgramColors
         return HazeStyle(
-            backgroundColor = panel,
-            tint = HazeTint(panel.copy(alpha = FILL_ALPHA)),
+            backgroundColor = colors.background,
+            tint = HazeTint(colors.tint(tint)),
             blurRadius = blurRadius,
             noiseFactor = 0f,
         )
     }
 
-    /** Цвет иконок на стекле (`glass_defaultIcon`). */
+    /** Цвет иконок на стекле. */
     @Composable
-    fun iconColor(): Color = if (ElementTheme.isLightTheme) Color(0x991B2227) else Color(0xA0FFFFFF)
+    fun iconColor(): Color = ElementTheme.colors.iconPrimary
+}
+
+private fun LarpgramColors.tint(tint: TgGlassTint): Color = when (tint) {
+    TgGlassTint.Surface -> glassSurface
+    TgGlassTint.SurfaceStrong -> glassSurfaceStrong
+    TgGlassTint.Card -> glassCard
+    TgGlassTint.Menu -> glassMenu
+}
+
+/**
+ * Правка форка: blur is skipped in battery saver (and in previews), the glass then falls back to
+ * the opaque `glass.fallback` colour, as the design asks for reduced effects.
+ */
+@Composable
+fun rememberGlassBlurEnabled(): Boolean {
+    if (LocalInspectionMode.current) return false
+    val context = LocalContext.current
+    return remember(context) {
+        val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        power?.isPowerSaveMode != true
+    }
 }
 
 /**
  * Правка форка: стеклянная подложка по форме [shape]. Если размывать нечего (нет
- * [LocalChatGlassState], превью, тесты) — непрозрачная заливка цвета панели.
+ * [LocalChatGlassState], превью, энергосбережение) — непрозрачная заливка `glass.fallback`.
+ *
+ * @param tint how opaque the glass fill is.
+ * @param overrideTint a custom fill instead of [tint] (e.g. the accent-tinted search button).
+ * @param elevation shadow under the panel, 0 for none.
  */
 @Composable
-fun Modifier.tgGlass(shape: Shape): Modifier {
-    val hazeState = LocalChatGlassState.current
-    val isLight = ElementTheme.isLightTheme
-    val panel = TgGlassDefaults.panelColor()
-    val stroke = if (isLight) {
-        Brush.verticalGradient(listOf(Color.White, Color.White))
+fun Modifier.tgGlass(
+    shape: Shape,
+    tint: TgGlassTint = TgGlassTint.Surface,
+    overrideTint: Color? = null,
+    borderColor: Color? = null,
+    elevation: Dp = 0.dp,
+): Modifier {
+    val hazeState = LocalChatGlassState.current?.takeIf { rememberGlassBlurEnabled() }
+    val colors = larpgramColors
+    val fill = overrideTint ?: colors.tint(tint)
+    val stroke = if (borderColor != null) {
+        Brush.verticalGradient(listOf(borderColor, borderColor))
     } else {
-        Brush.verticalGradient(listOf(Color(0x28FFFFFF), Color(0x14FFFFFF)))
+        // 1 dp light border, brighter on top (`glass.topHighlight`).
+        Brush.verticalGradient(listOf(colors.glassTopHighlight, colors.glassBorder.copy(alpha = colors.glassBorder.alpha * 0.6f)))
     }
-    val shadowModifier = if (isLight) {
-        Modifier.shadow(elevation = 2.dp, shape = shape, ambientColor = Color(0x20000000), spotColor = Color(0x20000000))
+    val shadowModifier = if (elevation > 0.dp) {
+        Modifier.shadow(elevation = elevation, shape = shape, ambientColor = colors.glassShadow, spotColor = colors.glassShadow)
     } else {
         Modifier
     }
     val fillModifier = if (hazeState != null) {
-        Modifier.hazeEffect(state = hazeState, style = TgGlassDefaults.style())
+        Modifier.hazeEffect(
+            state = hazeState,
+            style = HazeStyle(
+                backgroundColor = colors.background,
+                tint = HazeTint(fill),
+                blurRadius = TgGlassDefaults.blurRadius,
+                noiseFactor = 0f,
+            ),
+        )
+    } else if (overrideTint != null) {
+        // The custom tint is the point of the surface (accent button): keep it, over the fallback.
+        Modifier.background(colors.glassFallback).background(fill)
     } else {
-        Modifier.background(panel)
+        Modifier.background(colors.glassFallback)
     }
     return this
         .then(shadowModifier)
@@ -112,20 +171,19 @@ fun Modifier.tgGlass(shape: Shape): Modifier {
 }
 
 /**
- * Правка форка: размытая подложка под статус-баром и шапкой чата — сверху сильнее, к низу
- * сходит на нет (прогрессивный блюр haze), поверх лёгкая заливка цветом панели. Без источника
- * размытия — просто градиент цвета панели.
+ * Правка форка: размытая подложка под статус-баром и шапкой — сверху сильнее, к низу сходит на нет
+ * (прогрессивный блюр haze), поверх `glass.headerFade`. Без источника размытия — просто градиент.
  */
 @Composable
 fun Modifier.tgTopFade(): Modifier {
-    val hazeState = LocalChatGlassState.current
-    val panel = TgGlassDefaults.panelColor()
+    val hazeState = LocalChatGlassState.current?.takeIf { rememberGlassBlurEnabled() }
+    val colors = larpgramColors
     return if (hazeState != null) {
         this.hazeEffect(
             state = hazeState,
             style = HazeStyle(
-                backgroundColor = panel,
-                tint = HazeTint(panel.copy(alpha = 0.55f)),
+                backgroundColor = colors.background,
+                tint = HazeTint(colors.headerFadeTop.copy(alpha = colors.headerFadeTop.alpha * 0.7f)),
                 blurRadius = 20.dp,
                 noiseFactor = 0f,
             ),
@@ -135,6 +193,6 @@ fun Modifier.tgTopFade(): Modifier {
             mask = Brush.verticalGradient(0.6f to Color.Black, 1f to Color.Transparent)
         }
     } else {
-        this.background(Brush.verticalGradient(listOf(panel.copy(alpha = 0.85f), panel.copy(alpha = 0f))))
+        this.background(Brush.verticalGradient(listOf(colors.headerFadeTop, colors.headerFadeBottom.copy(alpha = 0f))))
     }
 }

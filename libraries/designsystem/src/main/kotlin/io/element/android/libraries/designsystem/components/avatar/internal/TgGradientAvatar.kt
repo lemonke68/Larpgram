@@ -7,7 +7,6 @@
 
 package io.element.android.libraries.designsystem.components.avatar.internal
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -18,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -38,8 +39,8 @@ import io.element.android.libraries.designsystem.text.toSp
 import io.element.android.libraries.designsystem.theme.components.Text
 
 /**
- * Правка форка: заглушка аватара как в Telegram (`AvatarDrawable`): вертикальный градиент одной из
- * семи пар цветов по id и белые инициалы (до двух букв) среднего начертания.
+ * Правка форка: заглушка аватара (редизайн V1 final): градиент под 140° одной из восьми пар цветов
+ * по id и белые жирные инициалы (до двух букв).
  *
  * Размер букв — доля размера аватара: в TG 18dp на аватаре списка чатов (≈52dp) и 12dp на мелких
  * (≈36dp), то есть около 0.34.
@@ -58,7 +59,16 @@ internal fun TgGradientAvatar(
         modifier
             .size(size)
             .clip(avatarShape)
-            .background(Brush.verticalGradient(listOf(gradient.top, gradient.bottom)))
+            .drawBehind {
+                // 140° CSS gradient: from the top, slightly left, to the bottom, slightly right.
+                drawRect(
+                    Brush.linearGradient(
+                        colors = listOf(gradient.top, gradient.bottom),
+                        start = Offset(this.size.width * 0.18f, 0f),
+                        end = Offset(this.size.width * 0.82f, this.size.height),
+                    )
+                )
+            }
     ) {
         val fontSize = (size * TEXT_SIZE_RATIO).toSp()
         Text(
@@ -73,7 +83,7 @@ internal fun TgGradientAvatar(
             style = TextStyle(
                 fontSize = fontSize,
                 lineHeight = fontSize,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp,
             ),
             color = Color.White,

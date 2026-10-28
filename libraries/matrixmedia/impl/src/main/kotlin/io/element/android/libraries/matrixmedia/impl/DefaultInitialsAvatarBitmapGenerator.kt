@@ -62,10 +62,11 @@ class DefaultInitialsAvatarBitmapGenerator : InitialsAvatarBitmapGenerator {
         val bitmap = createBitmap(size, size)
         Canvas(bitmap).run {
             val backgroundPaint = Paint().apply {
+                // Правка форка (Larpgram V1): 140° gradient, as in TgGradientAvatar.
                 shader = LinearGradient(
+                    size * 0.18f,
                     0f,
-                    0f,
-                    0f,
+                    size * 0.82f,
                     size.toFloat(),
                     gradient.top.toArgb(),
                     gradient.bottom.toArgb(),

@@ -11,7 +11,6 @@ package io.element.android.compound.tokens
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.em
@@ -26,7 +25,8 @@ internal val compoundHeadingLgRegular = TypographyTokens.fontHeadingLgRegular
 
 // These are the default M3 values, but we're setting them manually so an update in M3 doesn't break our designs
 internal val defaultHeadlineSmall = TextStyle(
-    fontFamily = FontFamily.Default,
+    // Правка форка (Larpgram): Manrope.
+    fontFamily = LarpgramFonts.text,
     fontWeight = FontWeight.Normal,
     lineHeight = 32.sp,
     fontSize = 24.sp,

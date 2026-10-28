@@ -10,70 +10,43 @@ package io.element.android.libraries.designsystem.colors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.larpgramExtraColorsDark
+import io.element.android.compound.tokens.larpgramExtraColorsLight
 
 /**
- * Правка форка: палитра аватаров Telegram.
+ * Правка форка: палитра аватаров Larpgram (редизайн V1 final, `tokens.json` → `avatarGradients`).
  *
- * Семь пар цветов для заглушки без фото (вертикальный градиент сверху вниз, белая буква) и
- * цвет имени отправителя того же индекса. Значения из исходников Telegram Android 12.10.3:
- * `ThemeColors.java` (`key_avatar_background*`, `key_avatar_background2*`,
- * `key_avatar_nameInMessage*`) с переопределениями из `day.attheme` и `night.attheme`.
- * Порядок как в `Theme.keys_avatar_background`: красный, оранжевый, фиолетовый, зелёный, голубой,
- * синий, розовый.
+ * Восемь пар цветов для заглушки без фото (линейный градиент под 140°, белые инициалы), одни и те
+ * же в обеих темах. Цвет имени отправителя — из `senderNames` своей темы.
  */
 object TgAvatarPalette {
-    const val SIZE = 7
+    const val SIZE = 8
 
+    /** [top] is the lighter, first stop of the 140° gradient, [bottom] the darker second one. */
     data class Gradient(val top: Color, val bottom: Color)
 
-    private val lightGradients = listOf(
-        Gradient(Color(0xFFFF845E), Color(0xFFD45246)),
+    private val gradients = listOf(
+        // violet, blue, pink, green, orange, teal, cyan, rose
+        Gradient(Color(0xFFB69DF8), Color(0xFF6D4BD8)),
+        Gradient(Color(0xFF8FD3FF), Color(0xFF3D7FD6)),
+        Gradient(Color(0xFFFF8AAC), Color(0xFFD95574)),
+        Gradient(Color(0xFF9AD164), Color(0xFF46BA43)),
         Gradient(Color(0xFFFEBB5B), Color(0xFFF68136)),
-        Gradient(Color(0xFFB694F9), Color(0xFF6C61DF)),
-        Gradient(Color(0xFF9AD164), Color(0xFF46BA43)),
+        Gradient(Color(0xFF53EDD6), Color(0xFF28C9B7)),
         Gradient(Color(0xFF5BCBE3), Color(0xFF359AD4)),
-        Gradient(Color(0xFF5CAFFA), Color(0xFF408ACF)),
-        Gradient(Color(0xFFFF8AAC), Color(0xFFD95574)),
-    )
-
-    private val darkGradients = listOf(
-        Gradient(Color(0xFFDC805B), Color(0xFFD9614F)),
-        Gradient(Color(0xFFF2BC64), Color(0xFFE58943)),
-        Gradient(Color(0xFFB694F9), Color(0xFF6C61DF)),
-        Gradient(Color(0xFF9AD164), Color(0xFF46BA43)),
-        Gradient(Color(0xFF5BCBE3), Color(0xFF359AD4)),
-        Gradient(Color(0xFF5CAFFA), Color(0xFF408ACF)),
-        Gradient(Color(0xFFFF8AAC), Color(0xFFD95574)),
-    )
-
-    private val lightNameColors = listOf(
-        Color(0xFFCC5049),
-        Color(0xFFD67722),
-        Color(0xFF836FE6),
-        Color(0xFF40A920),
-        Color(0xFF309EBA),
-        Color(0xFF2586D6),
-        Color(0xFFCB4F86),
-    )
-
-    private val darkNameColors = listOf(
-        Color(0xFFE88878),
-        Color(0xFFE8AB5A),
-        Color(0xFF8C8DEA),
-        Color(0xFF7DD071),
-        Color(0xFF53CCC6),
-        Color(0xFF5CADEA),
-        Color(0xFFE8749A),
+        Gradient(Color(0xFFFF8AAC), Color(0xFFC2477A)),
     )
 
     /** Стабильный индекс цвета для id пользователя или комнаты. */
     fun indexFor(id: String): Int = id.toHash(SIZE)
 
-    fun gradient(id: String, isDark: Boolean): Gradient =
-        (if (isDark) darkGradients else lightGradients)[indexFor(id)]
+    @Suppress("UNUSED_PARAMETER")
+    fun gradient(id: String, isDark: Boolean): Gradient = gradients[indexFor(id)]
 
-    fun nameColor(id: String, isDark: Boolean): Color =
-        (if (isDark) darkNameColors else lightNameColors)[indexFor(id)]
+    fun nameColor(id: String, isDark: Boolean): Color {
+        val names = (if (isDark) larpgramExtraColorsDark else larpgramExtraColorsLight).senderNames
+        return names[id.toHash(names.size)]
+    }
 
     @Composable
     fun gradient(id: String): Gradient = gradient(id, isDark = !ElementTheme.isLightTheme)
