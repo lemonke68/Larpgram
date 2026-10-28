@@ -23,7 +23,9 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.test.FakeMatrixClient
+import io.element.android.libraries.matrix.test.FakeMatrixClientProvider
 import io.element.android.libraries.musicplayer.test.FakeMusicPlayerUi
+import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.node.TestParentNode
@@ -65,6 +67,12 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 },
                 ),
                 presenter = createHomePresenter(),
+                // Правка форка (Larpgram): переключатель аккаунтов на вкладке «Профиль».
+                tgAccountsPresenter = TgAccountsPresenter(
+                    matrixClient = FakeMatrixClient(),
+                    sessionStore = InMemorySessionStore(),
+                    matrixClientProvider = FakeMatrixClientProvider(),
+                ),
                 inviteFriendsUseCase = { lambdaError() },
                 analyticsService = FakeAnalyticsService(),
                 acceptDeclineInviteView = { _, _, _, _ -> lambdaError() },

@@ -9,194 +9,135 @@
 
 package io.element.android.features.home.impl.components
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.pager.VerticalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.minimumInteractiveComponentSize
-import androidx.compose.material3.rememberTopAppBarState
-import androidx.compose.material3.ripple
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.element.android.appconfig.RoomListConfig
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
-import io.element.android.features.home.impl.TgHomeTab
-import io.element.android.features.home.impl.filters.RoomListFiltersState
-import io.element.android.features.home.impl.filters.aRoomListFiltersState
+import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFolderPillsView
 import io.element.android.features.home.impl.spacefilters.aSelectedSpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.anUnselectedSpaceFiltersState
-import io.element.android.features.home.impl.spacefilters.availableFilters
-import io.element.android.libraries.designsystem.atomic.atoms.RedIndicatorAtom
-import io.element.android.libraries.designsystem.components.avatar.Avatar
-import io.element.android.libraries.designsystem.components.avatar.AvatarSize
-import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.modifiers.backgroundVerticalGradient
+import io.element.android.libraries.designsystem.components.glass.TgGlassTint
+import io.element.android.libraries.designsystem.components.glass.tgGlass
+import io.element.android.libraries.designsystem.components.glass.tgTopFade
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.preview.USER_NAME_ALICE
-import io.element.android.libraries.designsystem.theme.aliasScreenTitle
 import io.element.android.libraries.designsystem.theme.components.DropdownMenu
 import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TopAppBar
-import io.element.android.libraries.matrix.api.core.SessionId
-import io.element.android.libraries.matrix.api.user.DisplayedStatus
-import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.matrix.api.user.UserStatus
-import io.element.android.libraries.matrix.ui.components.aMatrixUser
-import io.element.android.libraries.matrix.ui.components.aMatrixUserList
-import io.element.android.libraries.matrix.ui.model.getAvatarData
-import io.element.android.libraries.matrix.ui.model.toEmojiText
-import io.element.android.libraries.testtags.TestTags
-import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.strings.CommonStrings
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.flow.filter
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Header of the chat list (redesign V1 final), floating over the list: the `larpgram` wordmark with
+ * compose (new chat) and the overflow menu on a blurred fade, and under it the glass folder card.
+ * The card's top row is the folder strip; system notices ([notices]) are glued under it inside the
+ * same card. Search moved to the bottom bar, compose moved here from the old floating button.
+ */
 @Composable
 fun TgHomeTopBar(
-    selectedNavigationItem: TgHomeTab,
-    currentUserAndNeighbors: ImmutableList<MatrixUser>,
-    showAvatarIndicator: Boolean,
-    areSearchResultsDisplayed: Boolean,
-    onToggleSearch: () -> Unit,
-    onMenuActionClick: (RoomListMenuAction) -> Unit,
-    onOpenSettings: () -> Unit,
-    onAccountSwitch: (SessionId) -> Unit,
-    scrollBehavior: TopAppBarScrollBehavior,
-    canReportBug: Boolean,
-    displayFilters: Boolean,
-    filtersState: RoomListFiltersState,
     spaceFiltersState: SpaceFiltersState,
+    allUnreadCount: Int,
+    onStartChatClick: () -> Unit,
+    onMenuActionClick: (RoomListMenuAction) -> Unit,
+    canReportBug: Boolean,
     modifier: Modifier = Modifier,
+    notices: @Composable ColumnScope.() -> Unit = {},
 ) {
-    val contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
-    Column(modifier) {
-        TopAppBar(
-            modifier = Modifier
-                .backgroundVerticalGradient(
-                    isVisible = !areSearchResultsDisplayed,
-                )
-                .statusBarsPadding()
-                .padding(contentPadding),
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent,
-            ),
-            title = {
-                // This top bar only renders on the Chats tab; Settings/Profile host their own.
-                val displayTitle = when (spaceFiltersState) {
+    val horizontalInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
+    Box(modifier) {
+        // Blurred fade behind the status bar, the wordmark row and the upper half of the card.
+        Box(
+            Modifier
+                .matchParentSize()
+                .padding(bottom = 36.dp)
+                .tgTopFade()
+        )
+        Column(Modifier.padding(horizontalInsets)) {
+            Row(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .padding(start = 18.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val title = when (spaceFiltersState) {
                     is SpaceFiltersState.Selected -> spaceFiltersState.selectedFilter.spaceRoom.displayName
-                    // Правка форка: как в TG, над списком чатов — имя приложения.
-                    else -> "Larpgram"
+                    else -> null
                 }
                 Text(
-                    modifier = Modifier.semantics {
-                        heading()
-                    },
-                    style = ElementTheme.typography.aliasScreenTitle,
-                    text = displayTitle,
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() },
+                    // Правка форка: словесный знак `larpgram` (Unbounded); в папке — её имя.
+                    text = title ?: "larpgram",
+                    style = if (title == null) LarpgramType.wordmark else LarpgramType.screenTitle,
+                    color = ElementTheme.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            },
-            // Avatar removed from the top-left: the Profile tab covers it now (user request).
-            // The title left-aligns to the default top-app-bar inset.
-            actions = {
-                if (selectedNavigationItem == TgHomeTab.Chats) {
-                    RoomListMenuItems(
-                        onToggleSearch = onToggleSearch,
-                        onMenuActionClick = onMenuActionClick,
-                        canReportBug = canReportBug,
+                IconButton(onClick = onStartChatClick) {
+                    Icon(
+                        modifier = Modifier.size(23.dp),
+                        imageVector = CompoundIcons.Edit(),
+                        contentDescription = stringResource(R.string.screen_home_new_chat),
                     )
                 }
-            },
-            windowInsets = WindowInsets(left = 16.dp),
-        )
-        // Telegram-style folder row: only the user's folders (Matrix spaces). Like Telegram,
-        // it appears once there is at least one folder; a fresh account has just "All chats"
-        // and no strip. Element's own quick filters (Unread/People/Rooms) are intentionally
-        // dropped here — folders replace them.
-        val showFolderPills = selectedNavigationItem == TgHomeTab.Chats &&
-            spaceFiltersState.availableFilters().isNotEmpty()
-        if (showFolderPills) {
-            // Закреплено: раньше пилюли жили в TopAppBarScrollBehaviorLayout и сворачивались при
-            // скролле списка. По TG папки-вкладки не уезжают — рендерим их статично под заголовком.
-            SpaceFolderPillsView(
-                state = spaceFiltersState,
-                modifier = Modifier.padding(bottom = 16.dp).padding(contentPadding),
-            )
+                OverflowMenu(onMenuActionClick = onMenuActionClick, canReportBug = canReportBug)
+            }
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .fillMaxWidth()
+                    .tgGlass(RoundedCornerShape(22.dp), tint = TgGlassTint.Surface, elevation = 10.dp),
+            ) {
+                SpaceFolderPillsView(state = spaceFiltersState, allUnreadCount = allUnreadCount)
+                notices()
+            }
         }
     }
 }
 
 @Composable
-private fun RowScope.RoomListMenuItems(
-    onToggleSearch: () -> Unit,
+private fun OverflowMenu(
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     canReportBug: Boolean,
 ) {
-    IconButton(
-        onClick = onToggleSearch,
-    ) {
-        Icon(
-            imageVector = CompoundIcons.Search(),
-            contentDescription = stringResource(CommonStrings.action_search),
-        )
-    }
-    // Правка форка: «Новое сообщение» переехало в плавающую кнопку над вкладками (как в TG).
-    if (RoomListConfig.HAS_DROP_DOWN_MENU) {
-        var showMenu by remember { mutableStateOf(false) }
-        IconButton(
-            onClick = { showMenu = !showMenu }
-        ) {
+    if (!RoomListConfig.HAS_DROP_DOWN_MENU) return
+    var showMenu by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { showMenu = !showMenu }) {
             Icon(
                 imageVector = CompoundIcons.OverflowVertical(),
                 contentDescription = null,
@@ -242,274 +183,26 @@ private fun RowScope.RoomListMenuItems(
     }
 }
 
-@Composable
-private fun NavigationIcon(
-    currentUserAndNeighbors: ImmutableList<MatrixUser>,
-    showAvatarIndicator: Boolean,
-    onAccountSwitch: (SessionId) -> Unit,
-    onClick: () -> Unit,
-) {
-    if (currentUserAndNeighbors.size == 1) {
-        AccountIcon(
-            matrixUser = currentUserAndNeighbors.single(),
-            isCurrentAccount = true,
-            showAvatarIndicator = showAvatarIndicator,
-            onClick = onClick,
-        )
-    } else {
-        // Render a vertical pager
-        val pagerState = rememberPagerState(initialPage = 1) { currentUserAndNeighbors.size }
-        // Listen to page changes and switch account if needed
-        val latestOnAccountSwitch by rememberUpdatedState(onAccountSwitch)
-        LaunchedEffect(pagerState) {
-            snapshotFlow { pagerState.settledPage }
-                // The current account is on page 1, so there is nothing to switch to (порт Element v26.10)
-                .filter { page -> page != 1 }
-                .collect { page ->
-                    latestOnAccountSwitch(SessionId(currentUserAndNeighbors[page].userId.value))
-                }
-        }
-        VerticalPager(
-            state = pagerState,
-            modifier = Modifier.height(48.dp),
-        ) { page ->
-            AccountIcon(
-                matrixUser = currentUserAndNeighbors[page],
-                isCurrentAccount = page == 1,
-                showAvatarIndicator = page == 1 && showAvatarIndicator,
-                onClick = if (page == 1) {
-                    onClick
-                } else {
-                    {}
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun AccountIcon(
-    matrixUser: MatrixUser,
-    isCurrentAccount: Boolean,
-    showAvatarIndicator: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val testTag = if (isCurrentAccount) Modifier.testTag(TestTags.homeScreenSettings) else Modifier
-    val interactionSource = remember { MutableInteractionSource() }
-    Box(
-        modifier = modifier
-            .then(testTag)
-            .minimumInteractiveComponentSize()
-            .clickable(
-                interactionSource = interactionSource,
-                onClick = onClick,
-                indication = ripple(bounded = false),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        val avatarData by remember(matrixUser) {
-            derivedStateOf {
-                matrixUser.getAvatarData(size = AvatarSize.CurrentUserTopBar)
-            }
-        }
-        val statusEmoji = matrixUser.displayedStatus?.toEmojiText()
-        val avatarModifier = if (statusEmoji != null) {
-            Modifier.eraseStatusEmojiBackground(
-                parentSize = AvatarSize.CurrentUserTopBar.dp,
-                layoutDirection = LocalLayoutDirection.current,
-            )
-        } else {
-            Modifier
-        }
-        Avatar(
-            avatarData = avatarData,
-            avatarType = AvatarType.User,
-            modifier = avatarModifier,
-            contentDescription = if (isCurrentAccount) {
-                if (showAvatarIndicator) {
-                    stringResource(CommonStrings.a11y_settings_with_required_action)
-                } else {
-                    stringResource(CommonStrings.common_settings)
-                }
-            } else {
-                null
-            },
-        )
-        if (statusEmoji != null) {
-            StatusEmojiBadge(
-                emoji = statusEmoji,
-                modifier = Modifier.align(Alignment.BottomEnd),
-            )
-        }
-        if (showAvatarIndicator) {
-            RedIndicatorAtom(
-                modifier = Modifier.align(Alignment.TopEnd)
-            )
-        }
-    }
-}
-
-private val statusEmojiBadgeSize = 20.dp
-private val statusEmojiBadgeRadius = statusEmojiBadgeSize / 2
-private val statusEmojiBadgeOffset = 8.dp
-
-private fun Modifier.eraseStatusEmojiBackground(
-    parentSize: Dp,
-    layoutDirection: LayoutDirection,
-): Modifier = this
-    .graphicsLayer {
-        compositingStrategy = CompositingStrategy.Offscreen
-    }
-    .drawWithContent {
-        drawContent()
-        drawCircle(
-            color = Color.Black,
-            center = Offset(
-                x = if (layoutDirection == LayoutDirection.Ltr) {
-                    (parentSize - statusEmojiBadgeRadius + statusEmojiBadgeOffset).toPx()
-                } else {
-                    (statusEmojiBadgeRadius - statusEmojiBadgeOffset).toPx()
-                },
-                y = size.height - statusEmojiBadgeRadius.toPx(),
-            ),
-            radius = statusEmojiBadgeRadius.toPx(),
-            blendMode = BlendMode.Clear,
-        )
-    }
-
-@Composable
-private fun StatusEmojiBadge(
-    emoji: String,
-    modifier: Modifier = Modifier,
-) {
-    val density = LocalDensity.current
-    // Ensure the emoji size is not affected by the user's font scale settings
-    val fixedFontScaleDensity = remember(density.density) {
-        Density(density = density.density, fontScale = 1f)
-    }
-    Box(
-        modifier = modifier
-            .offset(x = statusEmojiBadgeOffset)
-            .size(statusEmojiBadgeSize),
-        contentAlignment = Alignment.Center,
-    ) {
-        CompositionLocalProvider(LocalDensity provides fixedFontScaleDensity) {
-            Text(
-                text = emoji,
-                style = ElementTheme.typography.fontBodyMdRegular,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable
 internal fun TgHomeTopBarPreview() = ElementPreview {
     TgHomeTopBar(
-        selectedNavigationItem = TgHomeTab.Chats,
-        currentUserAndNeighbors = persistentListOf(aMatrixUser(id = "@id:domain", displayName = USER_NAME_ALICE)),
-        showAvatarIndicator = false,
-        areSearchResultsDisplayed = false,
-        scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
-        onOpenSettings = {},
-        onAccountSwitch = {},
-        onToggleSearch = {},
-        canReportBug = true,
-        displayFilters = true,
-        filtersState = aRoomListFiltersState(),
         spaceFiltersState = anUnselectedSpaceFiltersState(),
+        allUnreadCount = 3,
+        onStartChatClick = {},
         onMenuActionClick = {},
+        canReportBug = true,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @PreviewsDayNight
 @Composable
 internal fun TgHomeTopBarSpaceFiltersSelectedPreview() = ElementPreview {
     TgHomeTopBar(
-        selectedNavigationItem = TgHomeTab.Chats,
-        currentUserAndNeighbors = persistentListOf(aMatrixUser(id = "@id:domain", displayName = USER_NAME_ALICE)),
-        showAvatarIndicator = false,
-        areSearchResultsDisplayed = false,
-        scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
-        onOpenSettings = {},
-        onAccountSwitch = {},
-        onToggleSearch = {},
-        canReportBug = true,
-        displayFilters = true,
-        filtersState = aRoomListFiltersState(),
         spaceFiltersState = aSelectedSpaceFiltersState(),
+        allUnreadCount = 0,
+        onStartChatClick = {},
         onMenuActionClick = {},
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@PreviewsDayNight
-@Composable
-internal fun TgHomeTopBarWithIndicatorPreview() = ElementPreview {
-    TgHomeTopBar(
-        selectedNavigationItem = TgHomeTab.Chats,
-        currentUserAndNeighbors = persistentListOf(aMatrixUser(id = "@id:domain", displayName = USER_NAME_ALICE)),
-        showAvatarIndicator = true,
-        areSearchResultsDisplayed = false,
-        scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
-        onOpenSettings = {},
-        onAccountSwitch = {},
-        onToggleSearch = {},
         canReportBug = true,
-        displayFilters = true,
-        filtersState = aRoomListFiltersState(),
-        spaceFiltersState = anUnselectedSpaceFiltersState(),
-        onMenuActionClick = {},
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@PreviewsDayNight
-@Composable
-internal fun TgHomeTopBarWithStatusPreview() = ElementPreview {
-    TgHomeTopBar(
-        selectedNavigationItem = TgHomeTab.Chats,
-        currentUserAndNeighbors = persistentListOf(
-            aMatrixUser(
-                id = "@id:domain",
-                displayName = USER_NAME_ALICE,
-                displayedStatus = DisplayedStatus.UserSet(UserStatus(emoji = "🌴", text = "Away")),
-            )
-        ),
-        showAvatarIndicator = false,
-        areSearchResultsDisplayed = false,
-        scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
-        onOpenSettings = {},
-        onAccountSwitch = {},
-        onToggleSearch = {},
-        canReportBug = true,
-        displayFilters = true,
-        filtersState = aRoomListFiltersState(),
-        spaceFiltersState = anUnselectedSpaceFiltersState(),
-        onMenuActionClick = {},
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@PreviewsDayNight
-@Composable
-internal fun TgHomeTopBarMultiAccountPreview() = ElementPreview {
-    TgHomeTopBar(
-        selectedNavigationItem = TgHomeTab.Chats,
-        currentUserAndNeighbors = aMatrixUserList().take(3).toImmutableList(),
-        showAvatarIndicator = false,
-        areSearchResultsDisplayed = false,
-        scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
-        onOpenSettings = {},
-        onAccountSwitch = {},
-        onToggleSearch = {},
-        canReportBug = true,
-        displayFilters = true,
-        filtersState = aRoomListFiltersState(),
-        spaceFiltersState = anUnselectedSpaceFiltersState(),
-        onMenuActionClick = {},
     )
 }

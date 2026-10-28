@@ -8,12 +8,19 @@
 package io.element.android.features.home.impl
 
 import androidx.annotation.StringRes
-import androidx.compose.runtime.Composable
-import io.element.android.compound.tokens.generated.CompoundIcons
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.unit.dp
 
 /**
- * Telegram-style home tabs: «Чаты», «Настройки», «Профиль». Replaces Element's [HomeNavigationBarItem]
- * (Chats/Spaces), which is kept as upstream (аудит C-009); the selection lives in [TgHomeView].
+ * Home tabs of the V1 final redesign: «Чаты» and «Профиль». There is no Settings tab: the Profile
+ * tab hosts the screen that merges the profile and the settings. Search is a separate round
+ * button next to the tabs. Replaces Element's [HomeNavigationBarItem] (Chats/Spaces), which is
+ * kept as upstream (аудит C-009); the selection lives in [TgHomeView].
  */
 enum class TgHomeTab(
     @StringRes
@@ -22,19 +29,30 @@ enum class TgHomeTab(
     Chats(
         labelRes = R.string.screen_home_tab_chats
     ),
-    Settings(
-        labelRes = R.string.screen_home_tab_settings
-    ),
     Profile(
         labelRes = R.string.screen_home_tab_profile
-    );
+    ),
+}
 
-    @Composable
-    fun icon(
-        isSelected: Boolean,
-    ) = when (this) {
-        Chats -> if (isSelected) CompoundIcons.ChatSolid() else CompoundIcons.Chat()
-        Settings -> if (isSelected) CompoundIcons.SettingsSolid() else CompoundIcons.Settings()
-        Profile -> if (isSelected) CompoundIcons.UserProfileSolid() else CompoundIcons.UserProfile()
-    }
+/**
+ * The Telegram-like speech bubble of the Chats tab (`tokens.json` → `icons.chatsTab`): 24 dp grid,
+ * 1.9 stroke, round caps. Tinted by the caller.
+ */
+val TgChatsTabIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "TgChatsTab",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).addPath(
+        pathData = addPathNodes(
+            "M12 3.6c-4.9 0-8.8 3.4-8.8 7.6 0 2.4 1.2 4.5 3.2 5.9-.2 1.3-.8 2.5-1.8 3.3 2 .1 3.8-.6 5-1.6.8.2 1.6.3 2.4.3 " +
+                "4.9 0 8.8-3.4 8.8-7.9S16.9 3.6 12 3.6z"
+        ),
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = 1.9f,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    ).build()
 }

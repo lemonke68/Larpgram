@@ -96,6 +96,8 @@ class HomeFlowNode(
     private val changeRoomMemberRolesEntryPoint: ChangeRoomMemberRolesEntryPoint,
     // Правка форка: вкладки Telegram.
     private val homeTabNodes: HomeTabNodes,
+    // Правка форка (Larpgram): аккаунты для переключателя по долгому нажатию на «Профиль».
+    private val tgAccountsPresenter: TgAccountsPresenter,
     private val leaveRoomRenderer: LeaveRoomRenderer,
     private val chatPreviewRenderer: ChatPreviewRenderer,
     // Правка форка (Larpgram): полоса «сейчас играет» над списком чатов.
@@ -109,7 +111,7 @@ class HomeFlowNode(
     // Settings and Profile are hosted as always-alive permanent children so their tabs keep
     // state; the Chats tab is the backstack Root. Rendered in-place under the persistent bar.
     permanentNavModel = PermanentNavModel(
-        navTargets = setOf(NavTarget.TabSettings, NavTarget.TabProfile),
+        navTargets = setOf(NavTarget.TabSettings),
         savedStateMap = buildContext.savedStateMap,
     ),
     buildContext = buildContext,
@@ -151,9 +153,6 @@ class HomeFlowNode(
 
         @Parcelize
         data object TabSettings : NavTarget
-
-        @Parcelize
-        data object TabProfile : NavTarget
 
         // Full-screen edit-profile opened from the profile tab (TG-style), pushed over the tabs.
         @Parcelize
@@ -266,10 +265,8 @@ class HomeFlowNode(
             TgHomeView(
                 homeState = state,
                 onRoomClick = ::navigateToRoom,
-                onSettingsClick = callback::navigateToSettings,
                 onSwitchToAccount = callback::navigateToSession,
                 onStartChatClick = callback::navigateToCreateRoom,
-                onCreateSpaceClick = callback::navigateToCreateSpace,
                 onSetUpRecoveryClick = callback::navigateToSetUpRecovery,
                 onConfirmRecoveryKeyClick = callback::navigateToEnterRecoveryKey,
                 onRoomSettingsClick = callback::navigateToRoomSettings,
@@ -296,14 +293,13 @@ class HomeFlowNode(
                         modifier = Modifier
                     )
                 },
-                settingsTabAtRoot = settingsTabAtRoot.collectAsState().value,
-                // Real Settings/Profile screens, hosted as permanent children and rendered in
-                // the tab content area under the persistent bottom bar.
-                settingsContent = {
-                    PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.TabSettings)
-                },
+                // Правка форка (Larpgram, V1 final): нет вкладки «Настройки», «Профиль» — это корень
+                // настроек, объединённый с профилем. Аккаунты — для переключателя на долгом нажатии.
+                accounts = tgAccountsPresenter.present(),
+                onAddAccountClick = callback::navigateToAddAccount,
+                profileTabAtRoot = settingsTabAtRoot.collectAsState().value,
                 profileContent = {
-                    PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.TabProfile)
+                    PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.TabSettings)
                 },
             )
         }
@@ -356,9 +352,6 @@ class HomeFlowNode(
             }
             // Правка форка: вкладки «Настройки», «Профиль» и редактирование профиля (HomeTabNodes).
             NavTarget.TabSettings -> homeTabNodes.settings(this, buildContext, callback) { settingsTabAtRoot.value = it }
-            NavTarget.TabProfile -> homeTabNodes.profile(this, buildContext, matrixClient.sessionId, callback) {
-                backstack.push(NavTarget.EditProfile)
-            }
             NavTarget.EditProfile -> homeTabNodes.editProfile(this, buildContext, callback)
             NavTarget.AccountEmail -> homeTabNodes.settingsScreen(this, buildContext, callback, PreferencesEntryPoint.InitialTarget.AccountEmail)
             NavTarget.AccountDevices -> homeTabNodes.settingsScreen(this, buildContext, callback, PreferencesEntryPoint.InitialTarget.Devices)
