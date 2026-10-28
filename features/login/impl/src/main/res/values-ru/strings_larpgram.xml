@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="larpgram_auth_welcome_start">Начать общение</string>
-    <string name="larpgram_auth_login_title">Вход</string>
-    <string name="larpgram_auth_login_subtitle">Введите ник или почту и пароль.</string>
+    <string name="larpgram_auth_login_title">Вход в Larpgram</string>
+    <string name="larpgram_auth_login_subtitle">Введите ник или почту и пароль</string>
     <string name="larpgram_auth_login_field">Ник или почта</string>
     <string name="larpgram_auth_password_field">Пароль</string>
     <string name="larpgram_auth_forgot">Забыли пароль?</string>
     <string name="larpgram_auth_sign_in">Войти</string>
-    <string name="larpgram_auth_no_account">Ещё нет аккаунта?</string>
+    <string name="larpgram_auth_no_account">Нет аккаунта?</string>
     <string name="larpgram_auth_register">Зарегистрироваться</string>
     <string name="larpgram_auth_qr">Войти по QR-коду</string>
     <string name="larpgram_auth_register_title">Регистрация</string>

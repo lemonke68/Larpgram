@@ -28,8 +28,6 @@ import io.element.android.libraries.designsystem.modifiers.bringIntoViewOnImeVis
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.PasswordVisibilityToggle
-import io.element.android.libraries.designsystem.theme.components.TextField
-import io.element.android.libraries.designsystem.theme.components.TextFieldValidity
 
 @Composable
 fun TgFormPasswordField(
@@ -46,7 +44,8 @@ fun TgFormPasswordField(
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var fieldValue by textFieldState(stateValue = value)
-    TextField(
+    // Правка форка (Larpgram V1 final): контурное поле с подписью на рамке и глазком.
+    TgOutlinedField(
         value = fieldValue,
         onValueChange = { text ->
             val sanitized = text.filterNot { it == '\n' || it == '\r' }
@@ -55,12 +54,11 @@ fun TgFormPasswordField(
         },
         label = label,
         supportingText = error ?: hint,
-        validity = if (error != null) TextFieldValidity.Invalid else TextFieldValidity.None,
+        isError = error != null,
         enabled = enabled,
-        singleLine = true,
         // Пока идёт запрос, пароль прячем: поле выключено, глазок не нажать.
         visualTransformation = if (isVisible && enabled) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
+        trailing = {
             PasswordVisibilityToggle(visible = isVisible, onToggle = { isVisible = !isVisible })
         },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),

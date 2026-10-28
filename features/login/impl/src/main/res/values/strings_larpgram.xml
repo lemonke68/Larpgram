@@ -3,13 +3,13 @@
 <resources>
     <!-- Вход, регистрация и сброс пароля без браузера (screens/tg). -->
     <string name="larpgram_auth_welcome_start">Start messaging</string>
-    <string name="larpgram_auth_login_title">Sign in</string>
-    <string name="larpgram_auth_login_subtitle">Enter your username or email and your password.</string>
+    <string name="larpgram_auth_login_title">Sign in to Larpgram</string>
+    <string name="larpgram_auth_login_subtitle">Enter your nick or email and password</string>
     <string name="larpgram_auth_login_field">Username or email</string>
     <string name="larpgram_auth_password_field">Password</string>
     <string name="larpgram_auth_forgot">Forgot password?</string>
     <string name="larpgram_auth_sign_in">Sign in</string>
-    <string name="larpgram_auth_no_account">No account yet?</string>
+    <string name="larpgram_auth_no_account">No account?</string>
     <string name="larpgram_auth_register">Create account</string>
     <string name="larpgram_auth_qr">Sign in with QR code</string>
     <string name="larpgram_auth_register_title">Create account</string>

@@ -24,8 +24,6 @@ import io.element.android.libraries.designsystem.modifiers.bringIntoViewOnImeVis
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Text
-import io.element.android.libraries.designsystem.theme.components.TextField
-import io.element.android.libraries.designsystem.theme.components.TextFieldValidity
 
 /**
  * Строка формы: подпись, под полем — подсказка или ошибка этого поля.
@@ -50,7 +48,8 @@ fun TgFormTextField(
     // Своё состояние поля: значение из презентера приходит с опозданием на кадр, и при быстром
     // наборе буквы двоятся или пропадают (так же сделано в LoginPasswordView).
     var fieldValue by textFieldState(stateValue = value)
-    TextField(
+    // Правка форка (Larpgram V1 final): контурное поле с подписью на рамке.
+    TgOutlinedField(
         value = fieldValue,
         onValueChange = { text ->
             // Вставка из буфера может принести перевод строки.
@@ -60,9 +59,8 @@ fun TgFormTextField(
         },
         label = label,
         supportingText = error ?: hint,
-        validity = if (error != null) TextFieldValidity.Invalid else TextFieldValidity.None,
+        isError = error != null,
         enabled = enabled,
-        singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction, autoCorrectEnabled = false),
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         modifier = modifier

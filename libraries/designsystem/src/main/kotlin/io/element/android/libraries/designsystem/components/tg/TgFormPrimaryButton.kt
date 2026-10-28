@@ -18,6 +18,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -36,7 +37,8 @@ fun TgFormPrimaryButton(
     androidx.compose.material3.Button(
         onClick = onClick,
         enabled = enabled && !showProgress,
-        shape = RoundedCornerShape(12.dp),
+        // Larpgram V1 final: radius 14, 52 dp, as the auth fields.
+        shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = ElementTheme.colors.bgAccentRest,
             contentColor = Color.White,
@@ -46,7 +48,7 @@ fun TgFormPrimaryButton(
         ),
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp),
+            .height(52.dp),
     ) {
         if (showProgress) {
             CircularProgressIndicator(
@@ -55,7 +57,7 @@ fun TgFormPrimaryButton(
                 strokeWidth = 2.dp,
             )
         } else {
-            Text(text = text, style = ElementTheme.typography.fontBodyLgMedium)
+            Text(text = text, style = ElementTheme.typography.fontBodyLgMedium.copy(fontWeight = FontWeight.Bold))
         }
     }
 }

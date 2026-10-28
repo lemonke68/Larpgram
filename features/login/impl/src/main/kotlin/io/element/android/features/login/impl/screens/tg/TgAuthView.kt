@@ -25,20 +25,25 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,28 +54,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.login.impl.R
 import io.element.android.features.login.impl.screens.tg.TgAuthError.Kind
-import io.element.android.libraries.designsystem.components.button.BackButton
+import io.element.android.libraries.designsystem.components.glass.TgLogoShape
+import io.element.android.libraries.designsystem.components.glass.tgGlass
+import io.element.android.libraries.designsystem.components.glass.tgGlowBackground
 import io.element.android.libraries.designsystem.components.tg.TgFormCodeEntry
 import io.element.android.libraries.designsystem.components.tg.TgFormLink
+import io.element.android.libraries.designsystem.components.tg.TgFormNextButton
 import io.element.android.libraries.designsystem.components.tg.TgFormPasswordField
 import io.element.android.libraries.designsystem.components.tg.TgFormPrimaryButton
-import io.element.android.libraries.designsystem.components.tg.TgFormSecondaryButton
 import io.element.android.libraries.designsystem.components.tg.TgFormTextField
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -108,13 +123,16 @@ fun TgAuthView(
 
     BackHandler(enabled = !isFirstStep || state.isAddingAccount, onBack = ::goBack)
 
+    // Правка форка (Larpgram V1 final): мягкое свечение фона, стеклянная круглая «назад».
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.tgGlowBackground(),
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {},
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 navigationIcon = {
-                    if (!isFirstStep || state.isAddingAccount) BackButton(onClick = ::goBack)
+                    if (!isFirstStep || state.isAddingAccount) GlassBackButton(onClick = ::goBack)
                 },
                 actions = {
                     if (state.step == TgAuthStep.Welcome && state.showDeveloperSettings) {
@@ -239,6 +257,7 @@ private fun WelcomeStep(
 private fun FormStep(
     title: String,
     subtitle: String,
+    showLogo: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -247,19 +266,69 @@ private fun FormStep(
             .verticalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
     ) {
+        // Правка форка (V1 final): логотип-«сквиркл», заголовок Unbounded и подпись по центру.
+        if (showLogo) {
+            Spacer(Modifier.height(24.dp))
+            TgAuthLogo(modifier = Modifier.align(Alignment.CenterHorizontally))
+            Spacer(Modifier.height(36.dp))
+        }
         Text(
             text = title,
-            style = ElementTheme.typography.fontHeadingLgBold,
+            style = LarpgramType.screenTitle,
             color = ElementTheme.colors.textPrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             text = subtitle,
-            style = ElementTheme.typography.fontBodyMdRegular,
+            style = ElementTheme.typography.fontBodyLgRegular.copy(fontWeight = FontWeight.Medium),
             color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(28.dp))
         content()
+    }
+}
+
+/** V1 final logo: 104 dp violet squircle rotated −6° with a white «L» in Unbounded. */
+@Composable
+private fun TgAuthLogo(modifier: Modifier = Modifier) {
+    val colors = larpgramColors
+    Box(
+        modifier = modifier
+            .size(104.dp)
+            .rotate(-6f)
+            .shadow(24.dp, TgLogoShape, ambientColor = colors.accent, spotColor = colors.accent.copy(alpha = 0.5f))
+            .clip(TgLogoShape)
+            .background(Brush.linearGradient(listOf(Color(0xFFA48BF5), colors.accent, Color(0xFF5B3CC4)))),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "L",
+            color = Color.White,
+            style = LarpgramType.wordmark.copy(fontSize = 52.sp, letterSpacing = 0.sp),
+            modifier = Modifier.rotate(6f),
+        )
+    }
+}
+
+@Composable
+private fun GlassBackButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .size(44.dp)
+            .tgGlass(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = CompoundIcons.ArrowLeft(),
+            contentDescription = stringResource(CommonStrings.action_back),
+            tint = ElementTheme.colors.iconPrimary,
+        )
     }
 }
 
@@ -284,6 +353,7 @@ private fun LoginStep(state: TgAuthState) {
     FormStep(
         title = stringResource(R.string.larpgram_auth_login_title),
         subtitle = stringResource(R.string.larpgram_auth_login_subtitle),
+        showLogo = true,
     ) {
         TgFormTextField(
             value = state.login,
@@ -309,34 +379,54 @@ private fun LoginStep(state: TgAuthState) {
             enabled = !state.isBusy,
             modifier = Modifier.align(Alignment.End),
         )
-        Spacer(Modifier.height(8.dp))
-        TgFormPrimaryButton(
-            text = stringResource(R.string.larpgram_auth_sign_in),
-            onClick = ::submit,
-            enabled = state.canSubmitLogin,
-            showProgress = state.isBusy,
-        )
-        Spacer(Modifier.height(32.dp))
-        // Регистрация — заметно: большинство людей приходит сюда без аккаунта.
-        Text(
-            text = stringResource(R.string.larpgram_auth_no_account),
-            style = ElementTheme.typography.fontBodyMdRegular,
-            color = ElementTheme.colors.textSecondary,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
-        Spacer(Modifier.height(8.dp))
-        TgFormSecondaryButton(
-            text = stringResource(R.string.larpgram_auth_register),
-            onClick = { state.eventSink(TgAuthEvent.OpenRegister) },
-            enabled = !state.isBusy,
-        )
-        Spacer(Modifier.height(8.dp))
-        TgFormLink(
-            text = stringResource(R.string.larpgram_auth_qr),
-            onClick = { state.eventSink(TgAuthEvent.OpenQrScan) },
-            enabled = !state.isBusy,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
+        Spacer(Modifier.weight(1f).heightIn(min = 24.dp))
+        // V1 final: «Войти по QR-коду» слева, телеграмная кнопка «→» справа, под ними регистрация.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(enabled = !state.isBusy, role = Role.Button) { state.eventSink(TgAuthEvent.OpenQrScan) }
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(imageVector = CompoundIcons.QrCode(), contentDescription = null, tint = larpgramColors.accentText)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.larpgram_auth_qr),
+                    style = LarpgramType.listItem.copy(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold),
+                    color = larpgramColors.accentText,
+                )
+            }
+            TgFormNextButton(
+                contentDescription = stringResource(R.string.larpgram_auth_sign_in),
+                onClick = ::submit,
+                enabled = state.canSubmitLogin,
+                showProgress = state.isBusy,
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = !state.isBusy, role = Role.Button) { state.eventSink(TgAuthEvent.OpenRegister) }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.larpgram_auth_no_account) + " ",
+                style = ElementTheme.typography.fontBodyLgRegular.copy(fontWeight = FontWeight.Medium),
+                color = ElementTheme.colors.textSecondary,
+            )
+            Text(
+                text = stringResource(R.string.larpgram_auth_register),
+                style = ElementTheme.typography.fontBodyLgRegular.copy(fontWeight = FontWeight.ExtraBold),
+                color = larpgramColors.accentText,
+            )
+        }
     }
 }
 
