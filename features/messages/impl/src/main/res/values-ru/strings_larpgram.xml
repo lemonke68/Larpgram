@@ -86,4 +86,7 @@
     <string name="larpgram_leave_group_message">Вы точно хотите выйти из группы «%1$s»?</string>
     <string name="larpgram_leave_channel">Покинуть канал</string>
     <string name="larpgram_leave_channel_message">Вы точно хотите покинуть канал «%1$s»?</string>
+    <!-- Message menu (V1 final): who read the user's message. -->
+    <string name="larpgram_message_read_by">Прочитали: %1$d</string>
+    <string name="larpgram_message_read_by_of">Прочитали %1$d из %2$d</string>
 </resources>

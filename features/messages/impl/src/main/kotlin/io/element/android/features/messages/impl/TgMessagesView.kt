@@ -85,6 +85,7 @@ import io.element.android.features.messages.impl.actionlist.LocalMessageActionsA
 import io.element.android.features.messages.impl.actionlist.MessageActionsAnchor
 import io.element.android.features.messages.impl.actionlist.MessageActionsOverlay
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.actionlist.readersOf
 import io.element.android.features.messages.impl.attachments.tgattach.TgAttachAction
 import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheet
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeStateView
@@ -554,6 +555,11 @@ fun TgMessagesView(
             onSelectEmoji = { uniqueId, emoji ->
                 state.eventSink(MessagesEvent.ToggleReaction(emoji.unicode, uniqueId))
             },
+            // Правка форка (V1 final): кто прочитал своё сообщение — первым разделом меню.
+            readers = remember(overlayTarget.event.id, state.timelineState.timelineItems) {
+                state.timelineState.timelineItems.readersOf(overlayTarget.event)
+            },
+            otherMembersCount = state.tg.memberCount?.minus(1)?.takeIf { it > 0 },
             onDismiss = {
                 messageActionsAnchor.bubbleBounds = null
                 state.actionListState.eventSink(ActionListEvent.Clear)

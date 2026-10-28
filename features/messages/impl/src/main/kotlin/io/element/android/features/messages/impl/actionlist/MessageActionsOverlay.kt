@@ -77,24 +77,30 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.emojibasebindings.Emoji
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.timeline.a11y.a11yReactionAction
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
+import io.element.android.features.messages.impl.timeline.model.ReadReceiptData
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.libraries.designsystem.components.glass.TgGlassTint
+import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.captureBlurredBackdrop
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 // Замеры по chat_menu_*.png: меню и плашка — одна скруглённая карточка, ширина меню около 250,
 // зазор от сообщения 8. Реакции сидят в такой же скруглённой плашке над сообщением.
-private val MENU_CORNER = 14.dp
+private val MENU_CORNER = 22.dp
 
 // 320: «Пожаловаться на сообщение» должно влезать целиком (в 280 обрезалось).
 private val MENU_WIDTH = 320.dp
@@ -144,6 +150,9 @@ fun MessageActionsOverlay(
     onSelectEmoji: (EventOrTransactionId, Emoji) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    // V1 final: who read the user's message, shown first in the menu.
+    readers: ImmutableList<ReadReceiptData> = persistentListOf(),
+    otherMembersCount: Long? = null,
 ) {
     val event = target.event
     val eventKey = event.id.value
@@ -276,6 +285,8 @@ fun MessageActionsOverlay(
                         }
                         ActionsMenu(
                             target = target,
+                            readers = readers,
+                            otherMembersCount = otherMembersCount,
                             onActionClick = { action ->
                                 onSelectAction(action, event)
                                 onDismiss()
@@ -355,8 +366,7 @@ private fun ReactionPill(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(PILL_CORNER))
-            .background(larpgramActionSheetColor())
+            .tgGlass(RoundedCornerShape(PILL_CORNER), tint = TgGlassTint.Menu)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -416,6 +426,8 @@ private fun EmojiPickerPanel(
 @Composable
 private fun ActionsMenu(
     target: ActionListState.Target.Success,
+    readers: ImmutableList<ReadReceiptData>,
+    otherMembersCount: Long?,
     onActionClick: (TimelineItemAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -424,13 +436,16 @@ private fun ActionsMenu(
         modifier = modifier
             .width(IntrinsicSize.Max)
             .widthIn(min = MENU_MIN_WIDTH, max = MENU_WIDTH)
-            .clip(RoundedCornerShape(MENU_CORNER))
-            .background(larpgramActionSheetColor())
+            .tgGlass(RoundedCornerShape(MENU_CORNER), tint = TgGlassTint.Menu)
             // Высоту ограничивает оверлей: всё, что не влезло между плашкой и низом экрана, листается.
             .verticalScroll(rememberScrollState()),
     ) {
         val deliveryState = event.deliveryStateForMenu()
-        if (event.isMine && deliveryState != null) {
+        if (event.isMine && readers.isNotEmpty()) {
+            // V1 final: who read it and when; a thick separator before the actions.
+            TgReadReceiptsSection(readers = readers, otherMembersCount = otherMembersCount)
+            HorizontalDivider(thickness = 8.dp, color = ElementTheme.colors.bgSubtleSecondary.copy(alpha = 0.6f))
+        } else if (event.isMine && deliveryState != null) {
             DeliveryStatusRow(state = deliveryState, sentTime = target.sentTimeFull)
             HorizontalDivider()
         }
@@ -468,7 +483,7 @@ private fun TgMenuItem(
         Text(
             text = stringResource(id = action.titleRes),
             color = color,
-            style = ElementTheme.typography.fontBodyLgRegular,
+            style = LarpgramType.listItem.copy(fontSize = LarpgramType.field.fontSize * (16f / 17f)),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

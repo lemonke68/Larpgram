@@ -84,4 +84,7 @@
     <string name="larpgram_leave_group_message">Are you sure you want to leave %1$s?</string>
     <string name="larpgram_leave_channel">Leave channel</string>
     <string name="larpgram_leave_channel_message">Are you sure you want to leave %1$s?</string>
+    <!-- Message menu (V1 final): who read the user's message. -->
+    <string name="larpgram_message_read_by">Read by %1$d</string>
+    <string name="larpgram_message_read_by_of">Read by %1$d of %2$d</string>
 </resources>
