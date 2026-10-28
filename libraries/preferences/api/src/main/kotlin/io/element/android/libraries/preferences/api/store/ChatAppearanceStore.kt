@@ -12,8 +12,7 @@ import kotlinx.coroutines.flow.Flow
 /** Baseline message text size, mapping to text scale 1.0 in the timeline. */
 const val DEFAULT_MESSAGE_TEXT_SIZE_SP = 16
 
-/** Baseline message bubble corner radius, matching [TelegramBubbleShape] defaults. */
-// Larpgram V1 final: 18 dp bubbles.
+/** Baseline message bubble corner radius (Larpgram V1 final: 18 dp). */
 const val DEFAULT_BUBBLE_CORNER_RADIUS_DP = 18
 
 /**
