@@ -23,8 +23,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.messages.impl.R
 import io.element.android.libraries.designsystem.theme.ChatWallpaperOption
 import io.element.android.libraries.designsystem.theme.LocalChatWallpaperCustomColor
@@ -63,6 +65,17 @@ sealed interface ChatWallpaper {
 
     /** Двухцветный линейный градиент под углом [angleDeg] (0 = слева направо, 90 = сверху вниз). */
     data class Gradient(val start: Color, val end: Color, val angleDeg: Int) : ChatWallpaper
+
+    /**
+     * Обои редизайна V1 final (`tokens.json` → `chatWallpaper`, `chatWallpaperDots`): мягкий
+     * фиолетовый градиент под 160° (в тёмной — тёмное полотно с двумя радиальными пятнами) и
+     * точки 1.2dp с шагом 24dp.
+     */
+    data class Larpgram(
+        val stops: List<Pair<Float, Color>>,
+        val glows: List<Color>,
+        val dots: Color,
+    ) : ChatWallpaper
 }
 
 /**
@@ -72,7 +85,15 @@ sealed interface ChatWallpaper {
  * темы: в светлой рисунок белый и заметный, в тёмной еле уловимый.
  */
 @Composable
-fun defaultChatWallpaper(): ChatWallpaper = ChatWallpaper.Image(
+fun defaultChatWallpaper(): ChatWallpaper {
+    // V1 final: вместо паттерна TG — градиент с точками.
+    val colors = larpgramColors
+    return ChatWallpaper.Larpgram(stops = colors.wallpaperStops, glows = colors.wallpaperGlow, dots = colors.wallpaperDots)
+}
+
+/** Прежний паттерн в духе Telegram (пока не выбирается, оставлен для будущего пункта в настройках). */
+@Composable
+fun patternChatWallpaper(): ChatWallpaper = ChatWallpaper.Image(
     background = ElementTheme.colors.chatWallpaperBackground,
     drawable = R.drawable.chat_wallpaper_pattern,
     tint = Color.White.copy(alpha = if (ElementTheme.isLightTheme) 0.45f else 0.05f),
@@ -132,6 +153,9 @@ fun Modifier.chatWallpaper(wallpaper: ChatWallpaper): Modifier = when (wallpaper
             drawCovering(painter, null)
         }
     }
+    is ChatWallpaper.Larpgram -> drawBehind {
+        drawLarpgramWallpaper(wallpaper, dotRadius = 0.6.dp.toPx(), step = 24.dp.toPx())
+    }
     is ChatWallpaper.Gradient -> drawBehind {
         // Угол в направление: 0° = слева направо, растём по часовой. Линию тянем через центр так,
         // чтобы покрыть весь прямоугольник.
@@ -147,6 +171,36 @@ fun Modifier.chatWallpaper(wallpaper: ChatWallpaper): Modifier = when (wallpaper
             end = Offset(cx + dx * half, cy + dy * half),
         )
         drawRect(brush)
+    }
+}
+
+private fun DrawScope.drawLarpgramWallpaper(wallpaper: ChatWallpaper.Larpgram, dotRadius: Float, step: Float) {
+    // 160° CSS: from the top-left-ish corner down to the bottom-right-ish one.
+    val rad = Math.toRadians(160.0 - 90.0)
+    val dx = kotlin.math.cos(rad).toFloat()
+    val dy = kotlin.math.sin(rad).toFloat()
+    val half = (kotlin.math.abs(dx) * size.width + kotlin.math.abs(dy) * size.height) / 2f
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    drawRect(
+        Brush.linearGradient(
+            colorStops = wallpaper.stops.toTypedArray(),
+            start = Offset(cx - dx * half, cy - dy * half),
+            end = Offset(cx + dx * half, cy + dy * half),
+        )
+    )
+    val glowCenters = listOf(Offset(size.width * 0.15f, size.height * 0.25f), Offset(size.width * 0.9f, size.height * 0.75f))
+    wallpaper.glows.zip(glowCenters).forEach { (color, center) ->
+        drawRect(Brush.radialGradient(listOf(color, color.copy(alpha = 0f)), center = center, radius = size.maxDimension * 0.55f))
+    }
+    var y = step / 2f
+    while (y < size.height) {
+        var x = step / 2f
+        while (x < size.width) {
+            drawCircle(wallpaper.dots, radius = dotRadius, center = Offset(x, y))
+            x += step
+        }
+        y += step
     }
 }
 

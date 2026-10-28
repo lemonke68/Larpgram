@@ -39,11 +39,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.messages.impl.MessagesState
 import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.TgChatEvent
@@ -56,7 +57,6 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
-import io.element.android.libraries.designsystem.components.glass.TgGlassDefaults
 import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.components.glass.tgTopFade
 import io.element.android.libraries.designsystem.theme.components.Icon
@@ -96,7 +96,7 @@ internal fun TgChatHeader(
             onChatDeleted = onBackClick,
         )
     }
-    val pillShape = RoundedCornerShape(TgGlassDefaults.inputRadius)
+    val pillShape = RoundedCornerShape(HEADER_HEIGHT / 2)
     val iconTint = ElementTheme.colors.iconPrimary
     // Под статус-баром и шапкой — размытая подложка, сходящая на нет книзу, чтобы лента,
     // уходящая под шапку, не спорила с часами и пилюлями (как в TG).
@@ -105,7 +105,7 @@ internal fun TgChatHeader(
             .fillMaxWidth()
             .tgTopFade()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -138,19 +138,21 @@ internal fun TgChatHeader(
                         heroes = state.heroes,
                         isTombstoned = state.isTombstoned,
                     ),
-                    forcedAvatarSize = 36.dp,
+                    forcedAvatarSize = 38.dp,
                 )
                 // Размеры текста в dp, как у TG (`AndroidUtilities.dp`): крупный системный шрифт
                 // не раздувает пилюлю, и «был(а) вчера в 23:59» влезает.
+                // V1 final: Manrope 16/800 и 12/700; размеры в dp, чтобы крупный системный шрифт не
+                // раздувал пилюлю.
                 val density = LocalDensity.current
-                val nameSize = with(density) { 17.dp.toSp() }
+                val nameSize = with(density) { 16.dp.toSp() }
                 val nameLineHeight = with(density) { 20.dp.toSp() }
-                val subtitleSize = with(density) { 13.dp.toSp() }
-                val subtitleLineHeight = with(density) { 16.dp.toSp() }
-                Column(modifier = Modifier.padding(start = 8.dp)) {
+                val subtitleSize = with(density) { 12.dp.toSp() }
+                val subtitleLineHeight = with(density) { 15.dp.toSp() }
+                Column(modifier = Modifier.padding(start = 10.dp)) {
                     Text(
                         text = state.roomName ?: stringResource(CommonStrings.common_no_room_name),
-                        style = ElementTheme.typography.fontBodyLgMedium.copy(fontSize = nameSize, lineHeight = nameLineHeight, fontWeight = FontWeight.Medium),
+                        style = LarpgramType.headerTitle.copy(fontSize = nameSize, lineHeight = nameLineHeight),
                         color = ElementTheme.colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -158,8 +160,8 @@ internal fun TgChatHeader(
                     if (subtitle != null) {
                         Text(
                             text = subtitle.text,
-                            style = ElementTheme.typography.fontBodySmRegular.copy(fontSize = subtitleSize, lineHeight = subtitleLineHeight),
-                            color = if (subtitle.isAccent) ElementTheme.colors.textActionAccent else ElementTheme.colors.textSecondary,
+                            style = LarpgramType.headerSubtitle.copy(fontSize = subtitleSize, lineHeight = subtitleLineHeight),
+                            color = if (subtitle.isAccent) larpgramColors.accentText else ElementTheme.colors.textSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -359,7 +361,7 @@ private fun headerSubtitle(state: MessagesState, dmPresence: UserPresence?): Hea
 }
 
 /** Высота пилюль шапки, как у поля ввода. */
-private val HEADER_HEIGHT = 44.dp
+private val HEADER_HEIGHT = 46.dp
 
 /** Время сервера самого свежего отправленного события в ленте — граница «Очистить историю». */
 private fun List<TimelineItem>.latestRemoteEventTs(): Long = asSequence()

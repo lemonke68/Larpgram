@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -172,11 +173,6 @@ fun TgMessageEventBubble(
                         .toInt()
                         .toDp()
                 )
-                // The tail is drawn inside the bubble bounds, so keep the content off it.
-                .padding(
-                    start = if (state.isMine || !showBubble) 0.dp else TelegramBubbleShape.TAIL_WIDTH,
-                    end = if (state.isMine && showBubble) TelegramBubbleShape.TAIL_WIDTH else 0.dp,
-                )
                 .then(clickableModifier),
         ) {
             // Larpgram: text, time and link colors of an outgoing bubble are derived from the bubble
@@ -215,13 +211,13 @@ object TgMessageEventBubbleDefaults {
         isMine: Boolean,
         radius: Dp = BUBBLE_RADIUS,
     ): Shape {
-        return TelegramBubbleShape(
+        // Правка форка (Larpgram V1 final): без «носика» TG — малый угол 5dp на стороне отправителя
+        // (снизу слева у входящих, снизу справа у своих).
+        return RoundedCornerShape(
             topStart = if (cutTopStart) 0.dp else radius,
             topEnd = radius,
-            bottomEnd = radius,
-            bottomStart = radius,
-            tailSide = if (isMine) BubbleTailSide.End else BubbleTailSide.Start,
-            hasTail = true,
+            bottomEnd = if (isMine) TAIL_CORNER else radius,
+            bottomStart = if (isMine) radius else TAIL_CORNER,
         )
     }
 
@@ -233,6 +229,9 @@ object TgMessageEventBubbleDefaults {
             ElementTheme.colors.messageFromOtherBackground
         }
     }
+
+    /** The small corner on the sender's side (`radius.bubble.tailCorner`). */
+    val TAIL_CORNER = 5.dp
 
     // Design says: The maximum width of a bubble is still 3/4 of the screen width. But try with 78% now.
     const val BUBBLE_WIDTH_RATIO = 0.78f

@@ -17,7 +17,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,10 +94,11 @@ internal fun LarpgramRecordModeButton(
     }
     val shapeModifier = if (tgStyle) {
         holdModifier
-            .size(44.dp)
-            .clip(CircleShape)
+            // Larpgram V1 final: 52 dp accent rounded square (radius 20) next to the glass pill.
+            .size(52.dp)
+            .clip(RoundedCornerShape(20.dp))
             .background(ElementTheme.colors.bgAccentRest)
-            .padding(10.dp)
+            .padding(15.dp)
     } else {
         holdModifier
             .padding(bottom = 5.dp, top = 5.dp, end = 6.dp, start = 6.dp)

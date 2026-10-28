@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +36,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
+import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.messages.impl.timeline.model.AggregatedReaction
 import io.element.android.features.messages.impl.timeline.model.AggregatedReactionSender
 import io.element.android.libraries.designsystem.components.avatar.Avatar
@@ -156,19 +158,24 @@ private fun ReactionPill(
     onLongClick: () -> Unit,
 ) {
     val accent = ElementTheme.colors.bgAccentRest
-    // В исходящем пузыре (он сам цвета акцента) основа белая, во входящем — акцент.
-    val base = if (isMine) Color.White else accent
-    val background = if (reaction.isHighlighted) base else base.copy(alpha = 0.18f)
+    // Larpgram V1 final: своя реакция — сплошной акцент, чужие — `reaction` с текстом акцента.
+    // Только в тёмном исходящем пузыре (он сам цвета акцента) основа белая.
+    val onSolidBubble = isMine && !ElementTheme.isLightTheme
+    val colors = larpgramColors
+    val background = when {
+        onSolidBubble -> if (reaction.isHighlighted) Color.White else Color.White.copy(alpha = 0.18f)
+        reaction.isHighlighted -> colors.reactionMine
+        else -> colors.reaction
+    }
     val contentColor = when {
-        reaction.isHighlighted && isMine -> accent
+        onSolidBubble -> if (reaction.isHighlighted) accent else Color.White
         reaction.isHighlighted -> Color.White
-        isMine -> Color.White
-        else -> accent
+        else -> colors.accentText
     }
     Row(
         modifier = Modifier
             .height(PILL_HEIGHT)
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(12.dp))
             .background(background)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 8.dp)
@@ -194,7 +201,7 @@ private fun ReactionPill(
             Text(
                 text = reaction.count.toString(),
                 color = contentColor,
-                style = ElementTheme.typography.fontBodyMdMedium,
+                style = LarpgramType.messageSender,
             )
         } else {
             Spacer(Modifier.width(2.dp))

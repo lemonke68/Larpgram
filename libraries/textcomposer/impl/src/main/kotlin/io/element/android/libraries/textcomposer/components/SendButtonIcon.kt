@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,8 +60,9 @@ internal fun SendButtonIcon(
     val isTgSize = size != 36.dp
     Box(
         modifier = modifier
-            .then(if (isTgSize && !canSendMessage) Modifier.tgGlass(CircleShape) else Modifier)
-            .clip(CircleShape)
+            // Larpgram V1 final: in the TG bar the button is a rounded square like the mic button.
+            .then(if (isTgSize && !canSendMessage) Modifier.tgGlass(RoundedCornerShape(20.dp)) else Modifier)
+            .clip(if (isTgSize) RoundedCornerShape(20.dp) else CircleShape)
             .size(size)
             .background(backgroundColor)
     ) {

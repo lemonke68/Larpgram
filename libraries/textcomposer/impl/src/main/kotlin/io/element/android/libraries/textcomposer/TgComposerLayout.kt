@@ -100,7 +100,8 @@ internal fun TgStandardLayout(
     modifier: Modifier = Modifier,
 ) {
     val hapticFeedback = LocalHapticFeedback.current
-    val iconTint = TgGlassDefaults.iconColor()
+    // Larpgram V1 final: composer icons are secondary grey, as in the mockup.
+    val iconTint = ElementTheme.colors.iconSecondary
     Row(
         modifier = modifier.padding(
             start = TgGlassDefaults.inputSideMargin,
@@ -194,7 +195,7 @@ internal fun TgStandardLayout(
             }
         }
         Spacer(modifier = Modifier.width(6.dp))
-        // Круг цвета акцента справа: запись (удержание) или отправка.
+        // Квадрат цвета акцента справа: запись (удержание) или отправка.
         Box(
             modifier = Modifier.size(TgGlassDefaults.inputHeight),
             contentAlignment = Alignment.Center,

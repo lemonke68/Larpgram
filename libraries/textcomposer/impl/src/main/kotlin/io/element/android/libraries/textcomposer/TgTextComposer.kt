@@ -863,7 +863,7 @@ private fun TextInputBox(
     Column(
         modifier = Modifier
             .clip(roundedCorners)
-            .requiredHeightIn(min = if (tgStyle) 44.dp else 42.dp)
+            .requiredHeightIn(min = if (tgStyle) 52.dp else 42.dp)
             .fillMaxSize()
             .then(modifier),
     ) {

@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 val LocalMessageTextScale = staticCompositionLocalOf { 1f }
 
 /** Message bubble corner radius. Matches `TelegramBubbleShape.BUBBLE_RADIUS` when unset. */
-val LocalChatBubbleRadius = staticCompositionLocalOf { 20.dp }
+val LocalChatBubbleRadius = staticCompositionLocalOf { 18.dp }
 
 /**
  * Chat list row density. `false` (default) = two-line rows (name + one preview line); `true` =

@@ -121,7 +121,6 @@ import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UserId
-import io.element.android.libraries.matrix.api.core.toThreadId
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.EmbeddedEventInfo
 import io.element.android.libraries.matrix.api.timeline.item.ThreadSummary
@@ -332,26 +331,8 @@ fun TgTimelineItemEventRow(
             )
         }
 
-        if (displayThreadSummaries && timelineMode !is Timeline.Mode.Thread && event.threadInfo is TimelineItemThreadInfo.ThreadRoot) {
-            TgThreadSummaryView(
-                modifier = if (event.isMine) {
-                    Modifier
-                        .align(Alignment.End)
-                        .padding(end = 16.dp)
-                } else {
-                    if (timelineRoomInfo.isDm) Modifier else Modifier.padding(start = 16.dp)
-                }.padding(top = 2.dp),
-                threadSummary = event.threadInfo.summary,
-                latestEventText = event.threadInfo.latestEventText,
-                isOutgoing = event.isMine,
-                onClick = {
-                    event.eventId?.let {
-                        eventSink(TimelineEvent.OpenThread(it.toThreadId(), null))
-                    }
-                }
-            )
-        }
-
+        // Правка форка (Larpgram V1 final): плашки «N ответов в ветке» под сообщением убраны, ветки
+        // открываются из меню шапки чата («Ветки») и из меню сообщения.
         if (isChannelCommentRoot) {
             ChannelCommentsDivider()
         }

@@ -41,14 +41,16 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.messages.impl.R
-import io.element.android.libraries.designsystem.components.glass.TgGlassDefaults
 import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -96,10 +98,10 @@ private fun PinnedMessagesBannerRow(
     Row(
         modifier = modifier
             .padding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues())
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = 8.dp, vertical = 0.dp)
             .fillMaxWidth()
             .heightIn(min = 48.dp)
-            .tgGlass(RoundedCornerShape(TgGlassDefaults.inputRadius))
+            .tgGlass(RoundedCornerShape(18.dp))
             .clickable {
                 if (state is PinnedMessagesBannerState.Loaded) {
                     analyticsService.captureInteraction(Interaction.Name.PinnedMessageBannerClick)
@@ -132,9 +134,10 @@ private fun PinnedMessagesBannerRow(
                 },
             ) {
                 Icon(
-                    imageVector = CompoundIcons.ListBulleted(),
+                    // V1 final: значок булавки; по тапу, как и раньше, — список закреплённых.
+                    imageVector = CompoundIcons.Pin(),
                     contentDescription = stringResource(id = CommonStrings.screen_room_pinned_banner_view_all_button_title),
-                    tint = TgGlassDefaults.iconColor(),
+                    tint = ElementTheme.colors.iconSecondary,
                 )
             }
         }
@@ -198,7 +201,7 @@ private fun PinIndicators(
         for (index in 0 until indicatorsCount) {
             Box(
                 modifier = Modifier
-                    .width(2.dp)
+                    .width(3.dp)
                     .height(indicatorHeight.dp)
                     .background(
                         color = if (index == activeIndex) {
@@ -231,23 +234,23 @@ private fun PinnedMessageItem(
                     text = fullCountMessage,
                     boldText = countMessage,
                 ),
-                style = ElementTheme.typography.fontBodySmMedium,
-                color = ElementTheme.colors.textActionAccent,
+                style = LarpgramType.caption.copy(fontWeight = FontWeight.ExtraBold),
+                color = larpgramColors.accentText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         } else {
             Text(
                 text = stringResource(id = R.string.larpgram_pinned_message_title),
-                style = ElementTheme.typography.fontBodySmMedium,
-                color = ElementTheme.colors.textActionAccent,
+                style = LarpgramType.caption.copy(fontWeight = FontWeight.ExtraBold),
+                color = larpgramColors.accentText,
                 maxLines = 1,
             )
         }
         if (message != null) {
             Text(
                 text = message,
-                style = ElementTheme.typography.fontBodyMdRegular,
+                style = LarpgramType.chatRowPreview,
                 color = ElementTheme.colors.textPrimary,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
