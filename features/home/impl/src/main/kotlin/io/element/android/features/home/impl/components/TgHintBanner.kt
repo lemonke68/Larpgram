@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2026 Larpgram.
- * Правка форка: подсказка над списком чатов как `DialogsHintCell` в Telegram — строка во всю
- * ширину с жирным заголовком 14, серым текстом 13 и крестиком справа; тап по строке — действие.
- * Вместо элементовской карточки-объявления с большой кнопкой на треть экрана.
+ * Правка форка: системное уведомление над списком чатов (редизайн V1 final) — строка, приклеенная
+ * снизу к стеклянной карточке папок: плитка с иконкой, заголовок, одна строка пояснения и крестик.
+ * Тап по строке — действие.
  *
  * SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
  * Please see LICENSE files in the repository root for full details.
@@ -10,22 +10,29 @@
 
 package io.element.android.features.home.impl.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.home.impl.R
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -43,34 +50,52 @@ internal fun TgHintBanner(
     onClick: () -> Unit,
     onDismissClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    icon: ImageVector = CompoundIcons.Info(),
     isError: Boolean = false,
-    // Полоса хода вместо разделителя снизу: 0..1, [INDETERMINATE_PROGRESS] — без процентов.
+    // Полоса хода внизу строки: 0..1, [INDETERMINATE_PROGRESS] — без процентов.
     progress: Float? = null,
 ) {
+    val colors = larpgramColors
     Column(modifier = modifier.fillMaxWidth()) {
+        // 1 dp divider between the folder strip (or the previous notice) and this row.
+        HorizontalDivider(color = ElementTheme.colors.separatorPrimary)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(start = 16.dp, end = 4.dp, top = 9.dp, bottom = 10.dp),
+                .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val tint = if (isError) colors.danger else colors.accentText
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(if (isError) colors.danger.copy(alpha = 0.12f) else colors.accentSoft, RoundedCornerShape(11.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(modifier = Modifier.size(18.dp), imageVector = icon, contentDescription = null, tint = tint)
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = ElementTheme.typography.fontBodyMdMedium.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                    color = if (isError) ElementTheme.colors.textCriticalPrimary else ElementTheme.colors.textPrimary,
+                    style = LarpgramType.listItem.copy(fontSize = LarpgramType.folderChip.fontSize, fontWeight = FontWeight.ExtraBold),
+                    color = if (isError) colors.danger else ElementTheme.colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = message,
-                    style = ElementTheme.typography.fontBodySmRegular.copy(fontSize = 13.sp, lineHeight = 17.sp),
+                    style = LarpgramType.caption.copy(fontWeight = FontWeight.Medium),
                     color = ElementTheme.colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             if (onDismissClick != null) {
-                IconButton(onClick = onDismissClick) {
+                IconButton(onClick = onDismissClick, modifier = Modifier.size(34.dp)) {
                     Icon(
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         imageVector = CompoundIcons.Close(),
                         contentDescription = stringResource(CommonStrings.action_close),
                         tint = ElementTheme.colors.iconSecondary,
@@ -79,7 +104,7 @@ internal fun TgHintBanner(
             }
         }
         when {
-            progress == null -> HorizontalDivider()
+            progress == null -> Unit
             progress < 0f -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
             else -> LinearProgressIndicator(
                 progress = { progress },
@@ -98,6 +123,7 @@ internal fun TgHintBannerPreview() = ElementPreview {
     TgHintBanner(
         title = stringResource(R.string.larpgram_banner_email_title),
         message = stringResource(R.string.larpgram_banner_email_message),
+        icon = CompoundIcons.Email(),
         onClick = {},
         onDismissClick = {},
     )

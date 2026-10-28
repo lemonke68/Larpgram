@@ -10,6 +10,7 @@ package io.element.android.features.home.impl.components
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -39,6 +40,7 @@ private fun ProtectHistoryBannerView(
 ) {
     TgHintBanner(
         modifier = modifier,
+        icon = CompoundIcons.Lock(),
         title = stringResource(R.string.larpgram_banner_history_title),
         message = stringResource(R.string.larpgram_banner_history_message),
         onClick = onClick,

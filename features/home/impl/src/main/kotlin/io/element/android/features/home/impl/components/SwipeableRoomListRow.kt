@@ -170,13 +170,17 @@ private fun SwipeableRowLayout(
     Box(modifier) {
         // matchParentSize: fill the row's content height without dictating it (the front
         // content is what sizes the Box; in a LazyColumn the height is otherwise unbounded).
-        Row(modifier = Modifier.matchParentSize()) {
-            startActions.forEach { action ->
-                SwipeActionPanel(action = action, onClick = { onActionClick(action) })
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            endActions.forEach { action ->
-                SwipeActionPanel(action = action, onClick = { onActionClick(action) })
+        // Larpgram V1: the list background has a soft glow, so a closed row stays transparent and
+        // the action panels are only drawn while the row is moved.
+        if (offsetX != 0f) {
+            Row(modifier = Modifier.matchParentSize()) {
+                startActions.forEach { action ->
+                    SwipeActionPanel(action = action, onClick = { onActionClick(action) })
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                endActions.forEach { action ->
+                    SwipeActionPanel(action = action, onClick = { onActionClick(action) })
+                }
             }
         }
         Box(
@@ -189,7 +193,7 @@ private fun SwipeableRowLayout(
                 }
                 // Opaque background so the action panel behind is hidden when the row is closed
                 // and only appears in the gap that opens as the row slides.
-                .background(ElementTheme.colors.bgCanvasDefault),
+                .then(if (offsetX != 0f) Modifier.background(ElementTheme.colors.bgCanvasDefault) else Modifier),
         ) {
             content()
             if (offsetX != 0f) {

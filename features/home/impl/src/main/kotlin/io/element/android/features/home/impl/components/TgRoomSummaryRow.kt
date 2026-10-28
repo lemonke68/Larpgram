@@ -9,6 +9,7 @@
 
 package io.element.android.features.home.impl.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.ripple
@@ -35,24 +39,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
+import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
@@ -94,9 +106,12 @@ import timber.log.Timber
 // Правка форка. Замеры сперва брались с концепта 2023 года, а 2026-08-16 переснялись по
 // живому клиенту (design/tg-ref/current/chats_list_dark.png): высоту строки концепт угадал,
 // а аватар на деле крупнее и придвинут к краю. Текст в итоге начинается с 86dp.
-internal val tgRoomSummaryMinHeight = 76.dp
-private val ROW_HORIZONTAL_PADDING = 16.dp
-private val AVATAR_TO_TEXT_GAP = 10.dp
+// V1 final (2026-10-29): строка 72, аватар 54, текст с 78dp, разделитель только под текстом.
+internal val tgRoomSummaryMinHeight = 72.dp
+private val ROW_START_PADDING = 12.dp
+private val ROW_END_PADDING = 14.dp
+private val AVATAR_SIZE = 54.dp
+private val AVATAR_TO_TEXT_GAP = 12.dp
 
 // Правка форка: превью последнего сообщения в одну строку. Element держал ровно две
 // (minLines = maxLines = 2), из-за чего строка списка не могла быть ниже ~84dp.
@@ -196,7 +211,7 @@ internal fun TgRoomSummaryRow(
                             text = room.canonicalAlias.value,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = ElementTheme.typography.fontBodyMdRegular,
+                            style = LarpgramType.chatRowPreview,
                             color = ElementTheme.colors.textSecondary,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -205,7 +220,7 @@ internal fun TgRoomSummaryRow(
                         text = stringResource(id = R.string.screen_roomlist_knock_event_sent_description),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = ElementTheme.typography.fontBodyMdRegular,
+                        style = LarpgramType.chatRowPreview,
                         color = ElementTheme.colors.textSecondary,
                     )
                 }
@@ -232,15 +247,18 @@ private fun RoomSummaryScaffoldRow(
             interactionSource = remember { MutableInteractionSource() }
         )
         .onKeyboardContextMenuAction { onLongClick(room) }
+    val dividerColor = ElementTheme.colors.separatorPrimary
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = tgRoomSummaryMinHeight)
             .then(clickModifier)
-            .padding(horizontal = ROW_HORIZONTAL_PADDING, vertical = 10.dp)
+            .padding(start = ROW_START_PADDING)
             .height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Avatar(
+            forcedAvatarSize = AVATAR_SIZE,
             avatarData = room.avatarData,
             avatarType = if (room.isSpace) {
                 AvatarType.Space(isTombstoned = room.isTombstoned)
@@ -254,7 +272,17 @@ private fun RoomSummaryScaffoldRow(
         )
         Spacer(modifier = Modifier.width(AVATAR_TO_TEXT_GAP))
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .heightIn(min = tgRoomSummaryMinHeight)
+                // 1 dp divider under the text, not under the avatar.
+                .drawBehind {
+                    val y = size.height - 0.5.dp.toPx()
+                    drawLine(dividerColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                }
+                .padding(end = ROW_END_PADDING, top = 9.dp, bottom = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
             content = content,
         )
     }
@@ -285,7 +313,7 @@ private fun NameAndTimestampRow(
                 name = displayName,
                 status = dmUserStatus,
                 modifier = Modifier.weight(1f, fill = false),
-                style = ElementTheme.typography.fontBodyLgMedium,
+                style = LarpgramType.chatRowName,
                 nameColor = ElementTheme.colors.roomListRoomName,
                 nameFontStyle = FontStyle.Italic.takeIf { name == null },
             )
@@ -307,10 +335,10 @@ private fun NameAndTimestampRow(
             // Timestamp
             Text(
                 text = timestamp ?: "",
-                style = ElementTheme.typography.fontBodySmMedium,
+                style = LarpgramType.chatRowTime,
                 color = if (isHighlighted) {
                     // Правка форка (Larpgram): Element v26.10 removed the unreadIndicator color alias.
-                    ElementTheme.colors.textActionAccent
+                    larpgramColors.accentText
                 } else {
                     ElementTheme.colors.roomListRoomMessageDate
                 },
@@ -336,7 +364,7 @@ private fun InviteSubtitle(
             text = subtitle,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            style = ElementTheme.typography.fontBodyMdRegular,
+            style = LarpgramType.chatRowPreview,
             color = ElementTheme.colors.roomListRoomMessage,
         )
     }
@@ -359,7 +387,7 @@ private fun MessagePreviewAndIndicatorRow(
                 modifier = Modifier.weight(1f),
                 text = stringResource(R.string.screen_roomlist_tombstoned_room_description),
                 color = ElementTheme.colors.roomListRoomMessage,
-                style = ElementTheme.typography.fontBodyMdRegular,
+                style = LarpgramType.chatRowPreview,
                 maxLines = previewMaxLines,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -379,7 +407,7 @@ private fun MessagePreviewAndIndicatorRow(
                     modifier = Modifier.weight(1f),
                     text = stringResource(CommonStrings.common_message_failed_to_send),
                     color = ElementTheme.colors.textCriticalPrimary,
-                    style = ElementTheme.typography.fontBodyMdRegular,
+                    style = LarpgramType.chatRowPreview,
                     maxLines = previewMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -388,24 +416,24 @@ private fun MessagePreviewAndIndicatorRow(
                 Text(
                     modifier = Modifier.weight(1f),
                     text = typingText(room.typing),
-                    color = ElementTheme.colors.textActionAccent,
-                    style = ElementTheme.typography.fontBodyMdRegular,
+                    color = larpgramColors.accentText,
+                    style = LarpgramType.chatRowPreview.copy(fontWeight = FontWeight.Bold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             } else if (room.draft != null) {
                 // Правка форка: «Черновик:» красным, дальше текст черновика (TG `key_chats_draft`).
                 val draftLabel = stringResource(CommonStrings.larpgram_chat_draft)
-                val criticalColor = ElementTheme.colors.textCriticalPrimary
+                val criticalColor = larpgramColors.draft
                 Text(
                     modifier = Modifier.weight(1f),
                     text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = criticalColor)) { append(draftLabel) }
+                        withStyle(SpanStyle(color = criticalColor, fontWeight = FontWeight.Bold)) { append(draftLabel) }
                         append(' ')
                         append(room.draft.replace('\n', ' '))
                     },
                     color = ElementTheme.colors.roomListRoomMessage,
-                    style = ElementTheme.typography.fontBodyMdRegular,
+                    style = LarpgramType.chatRowPreview,
                     maxLines = previewMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -414,30 +442,34 @@ private fun MessagePreviewAndIndicatorRow(
                 // рядом со временем, а два индикатора одного и того же это шум.
                 val messagePreview = room.latestEvent.content()
                 val annotatedMessagePreview = messagePreview as? AnnotatedString ?: AnnotatedString(text = messagePreview.orEmpty().toString())
+                    // V1: the bold sender prefix («Мила:», «Вы:») is primary-coloured, the text stays secondary.
+                    .withPrimarySenderPrefix(ElementTheme.colors.textPrimary)
                 Text(
                     modifier = Modifier
                         .weight(1f)
                         .clipToBounds(),
                     text = annotatedMessagePreview,
                     color = ElementTheme.colors.roomListRoomMessage,
-                    style = ElementTheme.typography.fontBodyMdRegular,
+                    style = LarpgramType.chatRowPreview,
                     maxLines = previewMaxLines,
                     overflow = TextOverflow.Ellipsis,
                     inlineContent = latestEventThumbnailContent(room.latestEvent.thumbnail()),
                 )
             }
         }
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         // Call and unread
         Row(
             modifier = Modifier
-                .height(16.dp)
+                .height(22.dp)
                 // Used to force this line to be read aloud earlier than the latest event when using Talkback
                 .zIndex(-1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val tint = if (room.isHighlighted) ElementTheme.colors.textActionAccent else ElementTheme.colors.iconQuaternary
+            val isMutedRoom = room.userDefinedNotificationMode == RoomNotificationMode.MUTE
+            // V1: accent badge, muted chats use `badgeMuted`.
+            val tint = if (isMutedRoom) larpgramColors.badgeMuted else larpgramColors.accent
             if (room.hasRoomCall) {
                 OnGoingCallIcon(
                     color = tint,
@@ -463,19 +495,27 @@ private fun MessagePreviewAndIndicatorRow(
                 } else {
                     null
                 }
-                UnreadIndicatorAtom(
+                TgUnreadBadge(
                     color = tint,
-                    // Element v26.10: count null hides the atom, 0 draws the dot (was: null drew the dot).
+                    // Без числа — точка.
                     count = count?.takeIf { it >= 1 } ?: 0L,
                     contentDescription = contentDescription,
                 )
             }
             // Правка форка (роумлесс): пин показываем, когда нет бейджа непрочитанных (как в TG).
             if (room.isPinned && !showUnreadIndicator) {
-                PinIndicatorAtom(tint = ElementTheme.colors.iconQuaternary)
+                PinIndicatorAtom(tint = ElementTheme.colors.iconSecondary)
             }
         }
     }
+}
+
+private fun AnnotatedString.withPrimarySenderPrefix(color: Color): AnnotatedString {
+    val boldRanges = spanStyles.filter { it.item.fontWeight == FontWeight.Bold }
+    if (boldRanges.isEmpty()) return this
+    return AnnotatedString.Builder(this).apply {
+        boldRanges.forEach { addStyle(SpanStyle(color = color), it.start, it.end) }
+    }.toAnnotatedString()
 }
 
 @Composable
@@ -541,7 +581,7 @@ private fun InviteNameAndIndicatorRow(
             modifier = Modifier
                 .weight(1f)
                 .clipToBounds(),
-            style = ElementTheme.typography.fontBodyLgMedium,
+            style = LarpgramType.chatRowName,
             text = name?.toSafeLength(ellipsize = true) ?: stringResource(id = CommonStrings.common_no_room_name),
             fontStyle = FontStyle.Italic.takeIf { name == null },
             color = ElementTheme.colors.roomListRoomName,
@@ -579,12 +619,48 @@ private fun NotificationOffIndicatorAtom() {
 
 @Composable
 private fun MentionIndicatorAtom() {
-    Icon(
-        modifier = Modifier.size(16.dp),
-        contentDescription = stringResource(CommonStrings.a11y_notifications_new_mentions),
-        imageVector = CompoundIcons.Mention(),
-        tint = ElementTheme.colors.iconAccentPrimary,
-    )
+    // V1: white «@» on an accent circle, the size of the unread badge.
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .background(larpgramColors.accent, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            modifier = Modifier.size(14.dp),
+            contentDescription = stringResource(CommonStrings.a11y_notifications_new_mentions),
+            imageVector = CompoundIcons.Mention(),
+            tint = Color.White,
+        )
+    }
+}
+
+/** V1 unread badge: 22 dp accent (or muted) pill with a white 12/800 number; a dot without a number. */
+@Composable
+private fun TgUnreadBadge(
+    color: Color,
+    count: Long,
+    contentDescription: String,
+) {
+    val description = Modifier.semantics { this.contentDescription = contentDescription }
+    if (count <= 0) {
+        Box(description.size(10.dp).background(color, CircleShape))
+    } else {
+        Box(
+            modifier = description
+                .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
+                .background(color, CircleShape)
+                .padding(horizontal = 7.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = if (count > 999) "999+" else count.toString(),
+                style = LarpgramType.badge.copy(lineHeight = 14.sp),
+                color = Color.White,
+                maxLines = 1,
+            )
+        }
+    }
 }
 
 // Правка форка (роумлесс): значок типа перед именем. ЛС метки не несёт.

@@ -81,6 +81,8 @@ fun RoomListContentView(
     onCreateRoomClick: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    // Правка форка (Larpgram V1 final): уведомления рисует карточка папок (RoomListNotices), не список.
+    showBannersInList: Boolean = true,
 ) {
     when (contentState) {
         is RoomListContentState.Skeleton -> {
@@ -98,6 +100,7 @@ fun RoomListContentView(
                 onSetUpRecoveryClick = onSetUpRecoveryClick,
                 onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
                 onCreateRoomClick = onCreateRoomClick,
+                showBanner = showBannersInList,
             )
         }
         is RoomListContentState.Rooms -> {
@@ -113,6 +116,7 @@ fun RoomListContentView(
                 onRoomClick = onRoomClick,
                 lazyListState = lazyListState,
                 contentPadding = contentPadding,
+                showBanner = showBannersInList,
             )
         }
     }
@@ -147,6 +151,7 @@ private fun EmptyView(
     onConfirmRecoveryKeyClick: () -> Unit,
     onCreateRoomClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showBanner: Boolean = true,
 ) {
     Box(modifier.fillMaxSize()) {
         val text = buildString {
@@ -168,7 +173,7 @@ private fun EmptyView(
             modifier = Modifier.align(Alignment.Center),
         )
         RoomListBannerContainer(
-            banner = state.securityBannerState.toRoomListBanner(),
+            banner = state.securityBannerState.toRoomListBanner().takeIf { showBanner },
         ) { banner ->
             RoomListBannerView(
                 banner = banner,
@@ -203,6 +208,7 @@ private fun RoomsView(
     contentPadding: PaddingValues,
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
+    showBanner: Boolean = true,
 ) {
     val isSpaceFilterSelected = spaceFiltersState is SpaceFiltersState.Selected
     val hasAnyFilterSelected = filtersState.hasAnyFilterSelected || isSpaceFilterSelected
@@ -223,6 +229,7 @@ private fun RoomsView(
             contentPadding = contentPadding,
             lazyListState = lazyListState,
             modifier = modifier.fillMaxSize(),
+            showBanner = showBanner,
         )
     }
 }
@@ -238,8 +245,9 @@ private fun RoomsViewList(
     contentPadding: PaddingValues,
     lazyListState: LazyListState,
     modifier: Modifier = Modifier,
+    showBanner: Boolean = true,
 ) {
-    val banner = state.toRoomListBanner()
+    val banner = state.toRoomListBanner().takeIf { showBanner }
     // The banner slot must never be 0px high, else the LazyColumn considers that it is not visible and it is
     // removed from the composition. A new banner would then be added above the visible area of the list.
     val bannerSlotMinHeight = with(LocalDensity.current) { 1.toDp() }
@@ -266,38 +274,8 @@ private fun RoomsViewList(
                     accountManagementUrl = state.accountManagementUrl,
                     manageSessionsUrl = state.manageSessionsUrl,
                     updateBanner = state.updateBanner,
-                    onActionClick = {
-                        when (displayedBanner) {
-                            RoomListBanner.SetUpRecovery -> onSetUpRecoveryClick()
-                            RoomListBanner.RecoveryKeyConfirmation -> onConfirmRecoveryKeyClick()
-                            RoomListBanner.FullScreenIntentPermission ->
-                                state.fullScreenIntentPermissionsState.eventSink(FullScreenIntentPermissionsEvent.OpenSettings)
-                            RoomListBanner.BatteryOptimization ->
-                                state.batteryOptimizationState.eventSink(BatteryOptimizationEvent.RequestDisableOptimizations)
-                            RoomListBanner.NewNotificationSound,
-                            RoomListBanner.SwipeAvatar -> Unit
-                            // Правка форка: баннеры форка.
-                            RoomListBanner.UpdateAvailable -> eventSink(RoomListEvent.InstallUpdate)
-                            RoomListBanner.ConnectEmail,
-                            RoomListBanner.CleanUpSessions,
-                            RoomListBanner.ProtectHistory -> Unit
-                        }
-                    },
-                    onDismissClick = {
-                        when (displayedBanner) {
-                            RoomListBanner.SetUpRecovery,
-                            RoomListBanner.RecoveryKeyConfirmation -> eventSink(RoomListEvent.DismissBanner)
-                            RoomListBanner.FullScreenIntentPermission ->
-                                state.fullScreenIntentPermissionsState.eventSink(FullScreenIntentPermissionsEvent.Dismiss)
-                            RoomListBanner.BatteryOptimization -> state.batteryOptimizationState.eventSink(BatteryOptimizationEvent.Dismiss)
-                            RoomListBanner.NewNotificationSound -> eventSink(RoomListEvent.DismissNewNotificationSoundBanner)
-                            RoomListBanner.SwipeAvatar -> eventSink(RoomListEvent.DismissSwipeAvatarBanner)
-                            RoomListBanner.ConnectEmail,
-                            RoomListBanner.CleanUpSessions,
-                            RoomListBanner.ProtectHistory,
-                            RoomListBanner.UpdateAvailable -> displayedBanner.forkDismissEvent()?.let(eventSink)
-                        }
-                    },
+                    onActionClick = { state.onBannerAction(displayedBanner, eventSink, onSetUpRecoveryClick, onConfirmRecoveryKeyClick) },
+                    onDismissClick = { state.onBannerDismiss(displayedBanner, eventSink) },
                 )
             }
         }
@@ -380,23 +358,41 @@ private fun RoomListBannerView(
     onDismissClick: () -> Unit,
 ) {
     when (banner) {
-        RoomListBanner.SetUpRecovery -> SetUpRecoveryKeyBanner(
-            onContinueClick = onActionClick,
+        // Правка форка (Larpgram V1 final): баннеры Element — строками карточки папок, как и наши.
+        RoomListBanner.SetUpRecovery -> TgHintBanner(
+            title = stringResource(R.string.banner_set_up_recovery_title),
+            message = stringResource(R.string.banner_set_up_recovery_content),
+            icon = CompoundIcons.Key(),
+            onClick = onActionClick,
             onDismissClick = onDismissClick,
         )
-        RoomListBanner.RecoveryKeyConfirmation -> ConfirmRecoveryKeyBanner(
-            onContinueClick = onActionClick,
+        // The unverified-session warning: shown only while this session is not verified.
+        RoomListBanner.RecoveryKeyConfirmation -> TgHintBanner(
+            title = stringResource(R.string.confirm_recovery_key_banner_title),
+            message = stringResource(R.string.confirm_recovery_key_banner_message),
+            icon = CompoundIcons.Shield(),
+            onClick = onActionClick,
             onDismissClick = onDismissClick,
         )
-        RoomListBanner.FullScreenIntentPermission -> FullScreenIntentPermissionBanner(
-            onActionClick = onActionClick,
+        RoomListBanner.FullScreenIntentPermission -> TgHintBanner(
+            title = stringResource(R.string.full_screen_intent_banner_title),
+            message = stringResource(R.string.full_screen_intent_banner_message),
+            icon = CompoundIcons.Notifications(),
+            onClick = onActionClick,
             onDismissClick = onDismissClick,
         )
-        RoomListBanner.BatteryOptimization -> BatteryOptimizationBanner(
-            onActionClick = onActionClick,
+        RoomListBanner.BatteryOptimization -> TgHintBanner(
+            title = stringResource(R.string.banner_battery_optimization_title_android),
+            message = stringResource(R.string.banner_battery_optimization_content_android),
+            icon = CompoundIcons.Notifications(),
+            onClick = onActionClick,
             onDismissClick = onDismissClick,
         )
-        RoomListBanner.NewNotificationSound -> NewNotificationSoundBanner(
+        RoomListBanner.NewNotificationSound -> TgHintBanner(
+            title = stringResource(R.string.banner_new_sound_title),
+            message = stringResource(R.string.banner_new_sound_message),
+            icon = CompoundIcons.Notifications(),
+            onClick = onDismissClick,
             onDismissClick = onDismissClick,
         )
         RoomListBanner.SwipeAvatar -> SwipeAvatarBanner(
@@ -434,6 +430,92 @@ private fun RoomListBanner.forkDismissEvent(): RoomListEvent? = when (this) {
     RoomListBanner.ProtectHistory -> RoomListEvent.DismissProtectHistoryBanner
     RoomListBanner.UpdateAvailable -> RoomListEvent.DismissUpdateBanner
     else -> null
+}
+
+private fun RoomListContentState.Rooms.onBannerAction(
+    banner: RoomListBanner,
+    eventSink: (RoomListEvent) -> Unit,
+    onSetUpRecoveryClick: () -> Unit,
+    onConfirmRecoveryKeyClick: () -> Unit,
+) {
+    when (banner) {
+        RoomListBanner.SetUpRecovery -> onSetUpRecoveryClick()
+        RoomListBanner.RecoveryKeyConfirmation -> onConfirmRecoveryKeyClick()
+        RoomListBanner.FullScreenIntentPermission ->
+            fullScreenIntentPermissionsState.eventSink(FullScreenIntentPermissionsEvent.OpenSettings)
+        RoomListBanner.BatteryOptimization ->
+            batteryOptimizationState.eventSink(BatteryOptimizationEvent.RequestDisableOptimizations)
+        RoomListBanner.NewNotificationSound,
+        RoomListBanner.SwipeAvatar -> Unit
+        // Правка форка: баннеры форка.
+        RoomListBanner.UpdateAvailable -> eventSink(RoomListEvent.InstallUpdate)
+        RoomListBanner.ConnectEmail,
+        RoomListBanner.CleanUpSessions,
+        RoomListBanner.ProtectHistory -> Unit
+    }
+}
+
+private fun RoomListContentState.Rooms.onBannerDismiss(
+    banner: RoomListBanner,
+    eventSink: (RoomListEvent) -> Unit,
+) {
+    when (banner) {
+        RoomListBanner.SetUpRecovery,
+        RoomListBanner.RecoveryKeyConfirmation -> eventSink(RoomListEvent.DismissBanner)
+        RoomListBanner.FullScreenIntentPermission ->
+            fullScreenIntentPermissionsState.eventSink(FullScreenIntentPermissionsEvent.Dismiss)
+        RoomListBanner.BatteryOptimization -> batteryOptimizationState.eventSink(BatteryOptimizationEvent.Dismiss)
+        RoomListBanner.NewNotificationSound -> eventSink(RoomListEvent.DismissNewNotificationSoundBanner)
+        RoomListBanner.SwipeAvatar -> eventSink(RoomListEvent.DismissSwipeAvatarBanner)
+        RoomListBanner.ConnectEmail,
+        RoomListBanner.CleanUpSessions,
+        RoomListBanner.ProtectHistory,
+        RoomListBanner.UpdateAvailable -> banner.forkDismissEvent()?.let(eventSink)
+    }
+}
+
+/**
+ * Правка форка (Larpgram V1 final): системные уведомления списка чатов («Привяжите почту»,
+ * «Защитите историю», неподтверждённая сессия…) строками в карточке папок под лентой папок, а не
+ * первой строкой списка. Рисуется в [TgHomeTopBar]; список тогда зовётся с `showBannersInList = false`.
+ */
+@Composable
+internal fun RoomListNotices(
+    contentState: RoomListContentState,
+    eventSink: (RoomListEvent) -> Unit,
+    onSetUpRecoveryClick: () -> Unit,
+    onConfirmRecoveryKeyClick: () -> Unit,
+) {
+    when (contentState) {
+        is RoomListContentState.Rooms -> RoomListBannerContainer(banner = contentState.toRoomListBanner()) { banner ->
+            RoomListBannerView(
+                banner = banner,
+                accountManagementUrl = contentState.accountManagementUrl,
+                manageSessionsUrl = contentState.manageSessionsUrl,
+                updateBanner = contentState.updateBanner,
+                onActionClick = { contentState.onBannerAction(banner, eventSink, onSetUpRecoveryClick, onConfirmRecoveryKeyClick) },
+                onDismissClick = { contentState.onBannerDismiss(banner, eventSink) },
+            )
+        }
+        is RoomListContentState.Empty -> RoomListBannerContainer(banner = contentState.securityBannerState.toRoomListBanner()) { banner ->
+            RoomListBannerView(
+                banner = banner,
+                accountManagementUrl = contentState.accountManagementUrl,
+                manageSessionsUrl = contentState.manageSessionsUrl,
+                updateBanner = contentState.updateBanner,
+                onActionClick = {
+                    when (banner) {
+                        RoomListBanner.SetUpRecovery -> onSetUpRecoveryClick()
+                        RoomListBanner.RecoveryKeyConfirmation -> onConfirmRecoveryKeyClick()
+                        RoomListBanner.UpdateAvailable -> eventSink(RoomListEvent.InstallUpdate)
+                        else -> Unit
+                    }
+                },
+                onDismissClick = { eventSink(banner.forkDismissEvent() ?: RoomListEvent.DismissBanner) },
+            )
+        }
+        is RoomListContentState.Skeleton -> Unit
+    }
 }
 
 @Composable

@@ -24,7 +24,7 @@
     <string name="screen_roomlist_block_user">Block</string>
     <!-- Баннеры над списком чатов. -->
     <string name="larpgram_banner_update_title">Larpgram %1$s is out</string>
-    <string name="larpgram_banner_update_message">Tap to update.</string>
+    <string name="larpgram_banner_update_message">Tap to update</string>
     <string name="larpgram_banner_update_downloading">Downloading the update…%1$s</string>
     <string name="larpgram_banner_update_downloading_message">The app restarts after the installation.</string>
     <string name="larpgram_banner_update_confirm">Confirm the installation</string>
@@ -34,9 +34,9 @@
     <string name="larpgram_banner_update_failed">Could not update</string>
     <string name="larpgram_banner_update_failed_message">Check the connection and tap to try again.</string>
     <string name="larpgram_banner_email_title">Link an email</string>
-    <string name="larpgram_banner_email_message">Without it you cannot get back in if you forget the password. Tap to link it.</string>
+    <string name="larpgram_banner_email_message">Without it you can\'t reset the password</string>
     <string name="larpgram_banner_sessions_title">Check your sessions</string>
-    <string name="larpgram_banner_sessions_message">There are other sign-ins to the account. Tap to end the ones you do not need.</string>
+    <string name="larpgram_banner_sessions_message">There are other sign-ins to the account</string>
     <string name="larpgram_banner_history_title">Protect your history with the password</string>
-    <string name="larpgram_banner_history_message">Then your chats open on a new device when you sign in. Tap to enter the password.</string>
+    <string name="larpgram_banner_history_message">So your chats open on a new device</string>
 </resources>

@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -58,6 +59,7 @@ private fun CleanUpSessionsBannerView(
     // Правка форка: компактная подсказка TG вместо карточки с кнопкой.
     TgHintBanner(
         modifier = modifier,
+        icon = CompoundIcons.Devices(),
         title = stringResource(R.string.larpgram_banner_sessions_title),
         message = stringResource(R.string.larpgram_banner_sessions_message),
         onClick = onContinueClick,

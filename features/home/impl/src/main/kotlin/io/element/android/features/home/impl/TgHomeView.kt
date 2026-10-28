@@ -49,6 +49,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.home.impl.components.RoomListContentView
 import io.element.android.features.home.impl.components.RoomListMenuAction
+import io.element.android.features.home.impl.components.RoomListNotices
 import io.element.android.features.home.impl.components.TgAccountSwitcher
 import io.element.android.features.home.impl.components.TgHomeBarDefaults
 import io.element.android.features.home.impl.components.TgHomeTabBar
@@ -375,6 +376,7 @@ private fun ChatsTab(
                     top = headerHeight + 6.dp,
                     bottom = navBottom + TgHomeBarDefaults.contentBottomPadding,
                 ),
+                showBannersInList = false,
             )
         }
         Column(
@@ -388,6 +390,14 @@ private fun ChatsTab(
                 onStartChatClick = onStartChatClick,
                 onMenuActionClick = onMenuActionClick,
                 canReportBug = state.canReportBug,
+                notices = {
+                    RoomListNotices(
+                        contentState = roomListState.contentState,
+                        eventSink = roomListState.eventSink,
+                        onSetUpRecoveryClick = onSetUpRecoveryClick,
+                        onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
+                    )
+                },
             )
             // Правка форка (Larpgram): мини-плеер — стеклянная пилюля под карточкой папок.
             musicMiniPlayer?.invoke(Modifier.fillMaxWidth().padding(top = 6.dp))

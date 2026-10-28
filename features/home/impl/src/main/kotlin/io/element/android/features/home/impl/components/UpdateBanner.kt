@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.roomlist.UpdateBannerState
 import io.element.android.libraries.appupdate.api.UpdateInstallState
@@ -51,6 +52,7 @@ internal fun UpdateBanner(
     val isBusy = install is UpdateInstallState.Downloading
     TgHintBanner(
         modifier = modifier,
+        icon = CompoundIcons.Download(),
         title = title,
         message = message,
         onClick = { if (!isBusy) onClick() },
