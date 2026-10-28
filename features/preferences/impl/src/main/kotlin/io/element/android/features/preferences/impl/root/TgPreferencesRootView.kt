@@ -343,10 +343,10 @@ private fun ProfileHeader(
 ) {
     val colors = larpgramColors
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onEditProfile),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(modifier = Modifier.clickable(onClick = onEditProfile)) {
+        Box {
             TgOwnAvatar(
                 avatarData = matrixUser.getAvatarData(size = AvatarSize.UserHeader),
                 size = 108.dp,

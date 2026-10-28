@@ -24,7 +24,6 @@ import io.element.android.features.preferences.impl.account.aPreferencesAccountS
 import io.element.android.libraries.emoji.api.picker.NoOpEmojiPickerRenderer
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.user.MatrixUser
-import io.element.android.libraries.matrix.test.A_USER_ID_2
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.tests.testutils.EnsureNeverCalled
@@ -67,29 +66,8 @@ class TgPreferencesRootViewTest : RobolectricTest() {
         }
     }
 
-    @Test
-    fun `clicking on other session invokes the switch to session callback`() = runAndroidComposeUiTest {
-        val eventsRecorder = EventsRecorder<PreferencesRootEvent>(expectEvents = false)
-        // Element v26.10: switching account goes through navigation instead of a presenter event.
-        ensureCalledOnceWithParam(A_USER_ID_2) { callback ->
-            setView(
-                aPreferencesRootState(
-                    isMultiAccountEnabled = true,
-                    otherSessions = listOf(
-                        anOtherAccount(
-                            user = aMatrixUser(
-                                id = A_USER_ID_2.value,
-                                displayName = "Bob",
-                            )
-                        )
-                    ),
-                    eventSink = eventsRecorder,
-                ),
-                onSwitchToSession = callback,
-            )
-            onNodeWithText("Bob").performClick()
-        }
-    }
+    // Larpgram V1 final: the account list moved from this screen to the long-press switcher on
+    // the Profile tab (TgAccountSwitcher in features/home), so there is no other-session row here.
 
     @Test
     fun `only available category rows are shown`() = runAndroidComposeUiTest {

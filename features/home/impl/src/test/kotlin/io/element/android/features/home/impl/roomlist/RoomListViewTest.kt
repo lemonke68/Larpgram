@@ -135,7 +135,8 @@ class RoomListViewTest : RobolectricTest() {
             // Remove automatic initial events
             eventsRecorder.clear()
 
-            clickOn(CommonStrings.action_continue)
+            // Larpgram V1 final: the notice is a row in the folder card, tapping it acts.
+            clickOn(R.string.confirm_recovery_key_banner_title)
 
             eventsRecorder.assertEmpty()
         }
@@ -154,7 +155,7 @@ class RoomListViewTest : RobolectricTest() {
             )
             // Remove automatic initial events
             eventsRecorder.clear()
-            clickOn(R.string.banner_set_up_recovery_submit)
+            clickOn(R.string.banner_set_up_recovery_title)
             eventsRecorder.assertEmpty()
         }
     }

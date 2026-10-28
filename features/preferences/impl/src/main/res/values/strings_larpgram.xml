@@ -161,7 +161,7 @@
     <string name="larpgram_encryption_info_limits_metadata">The server sees who talks to whom and when, but not what you write.</string>
     <!-- Profile tab (V1 final: profile + settings). -->
     <string name="larpgram_profile_matrix_id">Matrix ID</string>
-    <string name="larpgram_profile_about">About</string>
+    <string name="larpgram_profile_about">Bio</string>
     <string name="larpgram_profile_about_empty">Tell people about yourself</string>
     <string name="larpgram_profile_copied">Copied</string>
     <string name="larpgram_profile_qr_title">Profile QR code</string>
