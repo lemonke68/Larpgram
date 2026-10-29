@@ -35,12 +35,15 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -63,6 +66,7 @@ import io.element.android.features.home.impl.components.TgHomeBarDefaults
 import io.element.android.features.home.impl.components.TgHomeTabBar
 import io.element.android.features.home.impl.components.TgHomeTopBar
 import io.element.android.features.home.impl.model.RoomListRoomSummary
+import io.element.android.features.home.impl.roomlist.RoomListContentState
 import io.element.android.features.home.impl.roomlist.RoomListContextMenu
 import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
 import io.element.android.features.home.impl.roomlist.RoomListEvent
@@ -75,6 +79,7 @@ import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersView
 import io.element.android.features.home.impl.spacefilters.SpaceFolderSwipe
+import io.element.android.features.home.impl.spacefilters.availableFilters
 import io.element.android.features.home.impl.spacefilters.rememberSpaceFolderPagerState
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
 import io.element.android.libraries.designsystem.animation.TgMotion
@@ -258,6 +263,8 @@ private fun HomeScaffold(
 
     val hazeState = rememberHazeState()
     val roomsLazyListState = rememberLazyListState()
+    // Folder pages seen before, by folder: they outlive the Chats tab, so switching tabs keeps them.
+    val folderPageCache = remember { mutableStateMapOf<String, RoomListContentState>() }
     val coroutineScope = rememberCoroutineScope()
 
     CompositionLocalProvider(LocalChatGlassState provides hazeState) {
@@ -291,6 +298,7 @@ private fun HomeScaffold(
                         onMenuActionClick = onMenuActionClick,
                         musicMiniPlayer = musicMiniPlayer,
                         isSearchActive = isSearchActive,
+                        folderPageCache = folderPageCache,
                     )
                     // The Profile tab renders the merged profile + settings screen, hosted as a child
                     // node by HomeFlowNode (persistent bottom bar, Telegram-style in-place switch).
@@ -392,6 +400,7 @@ private fun ChatsTab(
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     musicMiniPlayer: (@Composable (Modifier) -> Unit)?,
     isSearchActive: Boolean = false,
+    folderPageCache: SnapshotStateMap<String, RoomListContentState> = remember { mutableStateMapOf() },
 ) {
     val roomListState = state.roomListState
     // While the search button grows into the search pill, the header slides up and fades out.
@@ -405,11 +414,52 @@ private fun ChatsTab(
     val horizontal = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val folderPager = rememberSpaceFolderPagerState()
+    val contentPadding = PaddingValues(
+        start = horizontal.calculateLeftPadding(LayoutDirection.Ltr),
+        end = horizontal.calculateRightPadding(LayoutDirection.Ltr),
+        top = headerHeight + 6.dp,
+        bottom = navBottom + TgHomeBarDefaults.contentBottomPadding,
+    )
+    // Remember the list of the folder the presenter shows for sure, so a later move to that
+    // folder slides in a ready page instead of waiting for the presenter.
+    val spaceFiltersState = roomListState.spaceFiltersState
+    val folderKeys = listOf(ALL_FOLDERS_KEY) + spaceFiltersState.availableFilters().map { it.spaceRoom.roomId.value }
+    val freshFolder = folderPager.freshIndex
+    LaunchedEffect(roomListState.contentState, freshFolder) {
+        val content = roomListState.contentState
+        val key = freshFolder?.let(folderKeys::getOrNull) ?: return@LaunchedEffect
+        if (content is RoomListContentState.Rooms || content is RoomListContentState.Empty) folderPageCache[key] = content
+    }
+    // A remembered page must not tell the presenter which rooms are on screen: that is the live list's job.
+    val cachedPageEventSink = remember(roomListState.eventSink) {
+        { event: RoomListEvent -> if (event !is RoomListEvent.UpdateVisibleRange) roomListState.eventSink(event) }
+    }
     Box(Modifier.fillMaxSize()) {
         SpaceFolderSwipe(
-            state = roomListState.spaceFiltersState,
+            state = spaceFiltersState,
             pagerState = folderPager,
-            contentKey = roomListState.contentState,
+            // A folder switch goes through an empty list first: only a list with rooms counts.
+            contentKey = (roomListState.contentState as? RoomListContentState.Rooms)?.summaries?.takeIf { it.isNotEmpty() },
+            hasCachedPage = { index -> folderKeys.getOrNull(index)?.let { it in folderPageCache } == true },
+            cachedPage = { index ->
+                val cached = folderKeys.getOrNull(index)?.let { folderPageCache[it] }
+                if (cached != null) {
+                    RoomListContentView(
+                        contentState = cached,
+                        filtersState = roomListState.filtersState,
+                        spaceFiltersState = spaceFiltersState,
+                        lazyListState = rememberLazyListState(),
+                        hideInvitesAvatars = roomListState.hideInvitesAvatars,
+                        eventSink = cachedPageEventSink,
+                        onSetUpRecoveryClick = onSetUpRecoveryClick,
+                        onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
+                        onRoomClick = { room -> onRoomClick(room.roomId) },
+                        onCreateRoomClick = onStartChatClick,
+                        contentPadding = contentPadding,
+                        showBannersInList = false,
+                    )
+                }
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(state = hazeState)
@@ -426,12 +476,7 @@ private fun ChatsTab(
                 onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
                 onRoomClick = { room -> onRoomClick(room.roomId) },
                 onCreateRoomClick = onStartChatClick,
-                contentPadding = PaddingValues(
-                    start = horizontal.calculateLeftPadding(LayoutDirection.Ltr),
-                    end = horizontal.calculateRightPadding(LayoutDirection.Ltr),
-                    top = headerHeight + 6.dp,
-                    bottom = navBottom + TgHomeBarDefaults.contentBottomPadding,
-                ),
+                contentPadding = contentPadding,
                 showBannersInList = false,
             )
         }
@@ -499,6 +544,7 @@ private fun HomeTabContent(
     }
 }
 
+private const val ALL_FOLDERS_KEY = "all"
 private val TAB_SHIFT = 24.dp
 private val HEADER_SEARCH_SHIFT = 16.dp
 private const val SEARCH_REVEAL_MS = 150

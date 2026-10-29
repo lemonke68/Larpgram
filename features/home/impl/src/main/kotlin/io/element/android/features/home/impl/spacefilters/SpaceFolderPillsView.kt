@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
@@ -53,6 +55,9 @@ import io.element.android.libraries.matrix.api.spaces.SpaceServiceFilter
 import kotlin.math.floor
 
 private const val ALL_KEY = "all"
+private val STRIP_PADDING = 4.dp
+private val FOLDER_HEIGHT = 34.dp
+private val FOLDER_GAP = 2.dp
 
 /**
  * Folder strip of the chat list (redesign V1 final): one horizontal, scrollable row of folders
@@ -114,11 +119,14 @@ fun SpaceFolderPillsView(
         return lerp(a.first, b.first, fraction) to lerp(a.second, b.second, fraction)
     }
 
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+    // Width the folders share when they all fit (plan 9.2).
+    val stripWidthPx = constraints.maxWidth - with(density) { (STRIP_PADDING * 2).roundToPx() }
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(scrollState)
-            .padding(4.dp),
+            .padding(STRIP_PADDING),
     ) {
         if (selectedBounds != null) {
             Box(
@@ -133,7 +141,7 @@ fun SpaceFolderPillsView(
                     .background(larpgramColors.folderChipSelected, RoundedCornerShape(17.dp))
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+        FolderStrip(stripWidthPx = stripWidthPx) {
             fun Modifier.track(key: String) = onPlaced { coordinates ->
                 with(density) {
                     bounds[key] = coordinates.positionInParent().x.toDp() to coordinates.size.width.toDp()
@@ -155,6 +163,42 @@ fun SpaceFolderPillsView(
                     onClick = { onSelectSpace(i + 1, filter) },
                     modifier = Modifier.track(key),
                 )
+            }
+        }
+    }
+    }
+}
+
+/**
+ * Lays the folders out (plan 9.2): when every folder fits into an equal share of the strip, the
+ * strip is split into equal parts with each folder centred in its part, so the selected pill takes
+ * the whole strip with one folder, half of it with two, and so on. When they do not fit, the
+ * folders keep their own widths and the strip scrolls.
+ */
+@Composable
+private fun FolderStrip(
+    stripWidthPx: Int,
+    content: @Composable () -> Unit,
+) {
+    Layout(content = content) { measurables, _ ->
+        val height = FOLDER_HEIGHT.roundToPx()
+        val gap = FOLDER_GAP.roundToPx()
+        val count = measurables.size.coerceAtLeast(1)
+        val share = stripWidthPx / count
+        val fitsEqually = stripWidthPx > 0 && measurables.all { it.maxIntrinsicWidth(height) <= share }
+        val placeables = measurables.map { measurable ->
+            measurable.measure(if (fitsEqually) Constraints.fixed(share, height) else Constraints(maxHeight = height))
+        }
+        val width = if (fitsEqually) {
+            share * count
+        } else {
+            placeables.sumOf { it.width } + gap * (placeables.size - 1).coerceAtLeast(0)
+        }
+        layout(width, height) {
+            var x = 0
+            placeables.forEach { placeable ->
+                placeable.place(x, 0)
+                x += placeable.width + if (fitsEqually) 0 else gap
             }
         }
     }
@@ -190,7 +234,8 @@ private fun FolderItem(
             .clip(RoundedCornerShape(17.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        // Centred: in an equal share of the strip the folder sits in the middle of its part.
+        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
