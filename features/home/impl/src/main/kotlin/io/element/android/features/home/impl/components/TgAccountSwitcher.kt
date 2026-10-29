@@ -48,6 +48,7 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.TgAccount
+import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
@@ -79,7 +80,13 @@ internal fun TgAccountSwitcher(
 ) {
     BackHandler(enabled = isVisible, onBack = onDismiss)
     val colors = larpgramColors
-    AnimatedVisibility(visible = isVisible, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
+    // Plan 9.3: the dim comes in over 180 ms; the popover pops out of the Профиль tab.
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(TgMotion.tween(TgMotion.ACCOUNTS_DIM_MS, TgMotion.Std)),
+        exit = fadeOut(TgMotion.tween(TgMotion.ACCOUNTS_OUT_MS, TgMotion.Exit)),
+        modifier = modifier,
+    ) {
         // A plain dim: a haze layer here would paint the blurred list over the floating header.
         val dimModifier = Modifier.background(colors.dim)
         Box(
@@ -95,8 +102,10 @@ internal fun TgAccountSwitcher(
     }
     AnimatedVisibility(
         visible = isVisible,
-        enter = fadeIn() + scaleIn(initialScale = 0.9f, transformOrigin = TransformOrigin(0.6f, 1f)),
-        exit = fadeOut() + scaleOut(targetScale = 0.9f, transformOrigin = TransformOrigin(0.6f, 1f)),
+        enter = fadeIn(TgMotion.tween(TgMotion.POP_FADE_MS, TgMotion.Std)) +
+            scaleIn(TgMotion.tween(TgMotion.ACCOUNTS_IN_MS, TgMotion.Pop), initialScale = 0.6f, transformOrigin = PopoverOrigin),
+        exit = fadeOut(TgMotion.tween(TgMotion.ACCOUNTS_OUT_MS, TgMotion.Exit)) +
+            scaleOut(TgMotion.tween(TgMotion.ACCOUNTS_OUT_MS, TgMotion.Exit), targetScale = 0.6f, transformOrigin = PopoverOrigin),
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.navigationBars),
@@ -139,6 +148,10 @@ internal fun TgAccountSwitcher(
         }
     }
 }
+
+// The popover (268 dp) is centered over the bar; the Профиль tab's centre is 12 dp right of the
+// screen centre (bar group 276 dp: tabs pill 202 + gap 10 + search 64). As a fraction of the popover.
+private val PopoverOrigin = TransformOrigin((134f + 12f) / 268f, 1f)
 
 @Composable
 private fun AccountRow(

@@ -10,6 +10,13 @@
 package io.element.android.features.home.impl
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -67,7 +75,9 @@ import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersView
 import io.element.android.features.home.impl.spacefilters.SpaceFolderSwipe
+import io.element.android.features.home.impl.spacefilters.rememberSpaceFolderPagerState
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
+import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
 import io.element.android.libraries.designsystem.components.glass.tgGlowBackground
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -115,6 +125,18 @@ fun TgHomeView(
     val state: RoomListState = homeState.roomListState
     val coroutineScope = rememberCoroutineScope()
     val firstThrottler = remember { FirstThrottler(300, coroutineScope) }
+    val isSearchActive = if (state.globalSearchState.isEnabled) state.globalSearchState.isSearchActive else state.searchState.isSearchActive
+    // Plan 9.3: the round search button first grows into a pill (bottom bar), then the search
+    // screen fades in over it; on close the screen goes first and the pill shrinks back.
+    val searchReveal by animateFloatAsState(
+        targetValue = if (isSearchActive) 1f else 0f,
+        animationSpec = if (isSearchActive) {
+            TgMotion.tween(SEARCH_REVEAL_MS, TgMotion.Std, delayMillis = TgMotion.SEARCH_MS - SEARCH_REVEAL_MS)
+        } else {
+            TgMotion.tween(SEARCH_HIDE_MS, TgMotion.Std)
+        },
+        label = "searchReveal",
+    )
     Box(modifier) {
         // Без рендерера превью (превью-композиции, тесты) — прежняя шторка действий.
         if (state.contextMenu is RoomListState.ContextMenu.Shown && chatPreview == null) {
@@ -151,6 +173,7 @@ fun TgHomeView(
             profileContent = profileContent,
             initialTab = initialTab,
             musicMiniPlayer = musicMiniPlayer,
+            isSearchActive = isSearchActive,
         )
 
         if (state.globalSearchState.isEnabled) {
@@ -159,6 +182,7 @@ fun TgHomeView(
                 onSelectSearchResult = { roomId, eventId -> if (firstThrottler.canHandle()) onRoomClick(roomId, eventId) },
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer { alpha = searchReveal }
                     .background(ElementTheme.colors.bgCanvasDefault),
             )
         } else {
@@ -170,6 +194,7 @@ fun TgHomeView(
                 onRoomClick = { roomId -> if (firstThrottler.canHandle()) onRoomClick(roomId, null) },
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer { alpha = searchReveal }
                     .background(ElementTheme.colors.bgCanvasDefault)
             )
         }
@@ -208,6 +233,7 @@ private fun HomeScaffold(
     profileContent: (@Composable () -> Unit)? = null,
     initialTab: TgHomeTab = TgHomeTab.Chats,
     musicMiniPlayer: (@Composable (Modifier) -> Unit)? = null,
+    isSearchActive: Boolean = false,
 ) {
     // The selected tab lives here: Element's HomePresenter only knows its own Chats/Spaces items.
     var currentItem by rememberSaveable { mutableStateOf(initialTab) }
@@ -236,25 +262,44 @@ private fun HomeScaffold(
 
     CompositionLocalProvider(LocalChatGlassState provides hazeState) {
         Box(modifier = modifier.fillMaxSize()) {
-            when (currentItem) {
-                TgHomeTab.Chats -> ChatsTab(
-                    state = state,
-                    hazeState = hazeState,
-                    lazyListState = roomsLazyListState,
-                    onSetUpRecoveryClick = onSetUpRecoveryClick,
-                    onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
-                    onRoomClick = onRoomClick,
-                    onStartChatClick = onStartChatClick,
-                    onMenuActionClick = onMenuActionClick,
-                    musicMiniPlayer = musicMiniPlayer,
-                )
-                // The Profile tab renders the merged profile + settings screen, hosted as a child
-                // node by HomeFlowNode (persistent bottom bar, Telegram-style in-place switch).
-                TgHomeTab.Profile -> HomeTabContent(
-                    content = profileContent,
-                    placeholderLabel = stringResource(TgHomeTab.Profile.labelRes),
-                    modifier = Modifier.hazeSource(state = hazeState),
-                )
+            // Plan 9.3: the tabs cross-fade with a 24 dp shift towards the tab being opened.
+            val tabShiftPx = with(LocalDensity.current) { TAB_SHIFT.roundToPx() }
+            AnimatedContent(
+                targetState = currentItem,
+                transitionSpec = {
+                    val toRight = targetState.ordinal > initialState.ordinal
+                    val enterFrom = if (toRight) tabShiftPx else -tabShiftPx
+                    (
+                        fadeIn(TgMotion.tween(TgMotion.TAB_MS)) +
+                            slideInHorizontally(TgMotion.tween(TgMotion.TAB_MS)) { enterFrom }
+                        ) togetherWith (
+                        fadeOut(TgMotion.tween(TgMotion.TAB_MS)) +
+                            slideOutHorizontally(TgMotion.tween(TgMotion.TAB_MS)) { -enterFrom }
+                        )
+                },
+                label = "homeTabs",
+            ) { tab ->
+                when (tab) {
+                    TgHomeTab.Chats -> ChatsTab(
+                        state = state,
+                        hazeState = hazeState,
+                        lazyListState = roomsLazyListState,
+                        onSetUpRecoveryClick = onSetUpRecoveryClick,
+                        onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
+                        onRoomClick = onRoomClick,
+                        onStartChatClick = onStartChatClick,
+                        onMenuActionClick = onMenuActionClick,
+                        musicMiniPlayer = musicMiniPlayer,
+                        isSearchActive = isSearchActive,
+                    )
+                    // The Profile tab renders the merged profile + settings screen, hosted as a child
+                    // node by HomeFlowNode (persistent bottom bar, Telegram-style in-place switch).
+                    TgHomeTab.Profile -> HomeTabContent(
+                        content = profileContent,
+                        placeholderLabel = stringResource(TgHomeTab.Profile.labelRes),
+                        modifier = Modifier.hazeSource(state = hazeState),
+                    )
+                }
             }
 
             TgAccountSwitcher(
@@ -281,6 +326,7 @@ private fun HomeScaffold(
                     },
                     unreadCount = state.totalUnreadCount,
                     isProfilePressed = showAccountSwitcher,
+                    isSearchExpanded = isSearchActive,
                     onItemClick = { item ->
                         showAccountSwitcher = false
                         if (item == currentItem) {
@@ -345,15 +391,25 @@ private fun ChatsTab(
     onStartChatClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     musicMiniPlayer: (@Composable (Modifier) -> Unit)?,
+    isSearchActive: Boolean = false,
 ) {
     val roomListState = state.roomListState
+    // While the search button grows into the search pill, the header slides up and fades out.
+    val headerHidden by animateFloatAsState(
+        targetValue = if (isSearchActive) 1f else 0f,
+        animationSpec = TgMotion.tween(TgMotion.SEARCH_MS),
+        label = "headerHidden",
+    )
     val density = LocalDensity.current
     var headerHeight by remember { mutableStateOf(140.dp) }
     val horizontal = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val folderPager = rememberSpaceFolderPagerState()
     Box(Modifier.fillMaxSize()) {
         SpaceFolderSwipe(
             state = roomListState.spaceFiltersState,
+            pagerState = folderPager,
+            contentKey = roomListState.contentState,
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(state = hazeState)
@@ -379,10 +435,15 @@ private fun ChatsTab(
                 showBannersInList = false,
             )
         }
+        val headerShiftPx = with(density) { HEADER_SEARCH_SHIFT.toPx() }
         Column(
             Modifier
                 .fillMaxWidth()
                 .onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
+                .graphicsLayer {
+                    alpha = 1f - headerHidden
+                    translationY = -headerShiftPx * headerHidden
+                }
         ) {
             TgHomeTopBar(
                 spaceFiltersState = roomListState.spaceFiltersState,
@@ -390,6 +451,7 @@ private fun ChatsTab(
                 onStartChatClick = onStartChatClick,
                 onMenuActionClick = onMenuActionClick,
                 canReportBug = state.canReportBug,
+                pagerState = folderPager,
                 notices = {
                     RoomListNotices(
                         contentState = roomListState.contentState,
@@ -436,6 +498,11 @@ private fun HomeTabContent(
         }
     }
 }
+
+private val TAB_SHIFT = 24.dp
+private val HEADER_SEARCH_SHIFT = 16.dp
+private const val SEARCH_REVEAL_MS = 150
+private const val SEARCH_HIDE_MS = 100
 
 @PreviewsDayNight
 @Composable

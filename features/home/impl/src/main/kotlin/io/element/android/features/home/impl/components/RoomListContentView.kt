@@ -10,9 +10,10 @@ package io.element.android.features.home.impl.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +57,7 @@ import io.element.android.features.home.impl.roomlist.UpdateBannerState
 import io.element.android.features.home.impl.roomlist.toRoomListBanner
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.anUnselectedSpaceFiltersState
+import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Button
@@ -327,14 +329,24 @@ private fun RoomListBannerContainer(
     modifier: Modifier = Modifier,
     content: @Composable (RoomListBanner) -> Unit,
 ) {
+    val noticeShiftPx = with(LocalDensity.current) { 10.dp.roundToPx() }
     AnimatedContent(
         targetState = banner,
         // Fill the width so that only the height is animated
         modifier = modifier.fillMaxWidth(),
+        // Правка форка (Larpgram, план 9.3): строка уведомления выезжает из плашки папок вниз —
+        // высота, проявление и сдвиг на 10 dp; уходит быстрее и мягче.
         transitionSpec = {
-            fadeIn(tween(durationMillis = HALF_DURATION_MILLIS, delayMillis = HALF_DURATION_MILLIS)) togetherWith
-                fadeOut(tween(durationMillis = HALF_DURATION_MILLIS)) using
-                SizeTransform { _, _ -> tween(durationMillis = 2 * HALF_DURATION_MILLIS) }
+            val isClosing = targetState == null
+            val shift = { _: Int -> -noticeShiftPx }
+            (
+                fadeIn(TgMotion.tween(TgMotion.NOTICE_IN_MS)) + slideInVertically(TgMotion.tween(TgMotion.NOTICE_IN_MS), shift)
+                ) togetherWith (
+                fadeOut(TgMotion.tween(TgMotion.NOTICE_OUT_MS, TgMotion.Std)) +
+                    slideOutVertically(TgMotion.tween(TgMotion.NOTICE_OUT_MS, TgMotion.Std), shift)
+                ) using SizeTransform(clip = true) { _, _ ->
+                if (isClosing) TgMotion.tween(TgMotion.NOTICE_OUT_MS, TgMotion.Std) else TgMotion.tween(TgMotion.NOTICE_IN_MS)
+            }
         },
         contentAlignment = Alignment.Center,
         label = "RoomListBannerContainer",
@@ -344,8 +356,6 @@ private fun RoomListBannerContainer(
         }
     }
 }
-
-private const val HALF_DURATION_MILLIS = 150
 
 @Composable
 private fun RoomListBannerView(

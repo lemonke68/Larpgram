@@ -42,6 +42,7 @@ import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
+import io.element.android.features.home.impl.spacefilters.SpaceFolderPagerState
 import io.element.android.features.home.impl.spacefilters.SpaceFolderPillsView
 import io.element.android.features.home.impl.spacefilters.aSelectedSpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.anUnselectedSpaceFiltersState
@@ -71,6 +72,7 @@ fun TgHomeTopBar(
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     canReportBug: Boolean,
     modifier: Modifier = Modifier,
+    pagerState: SpaceFolderPagerState? = null,
     notices: @Composable ColumnScope.() -> Unit = {},
 ) {
     val horizontalInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
@@ -121,7 +123,7 @@ fun TgHomeTopBar(
                     .fillMaxWidth()
                     .tgGlass(RoundedCornerShape(22.dp), tint = TgGlassTint.Surface, elevation = 10.dp),
             ) {
-                SpaceFolderPillsView(state = spaceFiltersState, allUnreadCount = allUnreadCount)
+                SpaceFolderPillsView(state = spaceFiltersState, allUnreadCount = allUnreadCount, pagerState = pagerState)
                 notices()
             }
         }

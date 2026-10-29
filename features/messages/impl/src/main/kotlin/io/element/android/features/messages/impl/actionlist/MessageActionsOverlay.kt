@@ -13,7 +13,6 @@ package io.element.android.features.messages.impl.actionlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,6 +41,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -84,6 +85,7 @@ import io.element.android.features.messages.impl.timeline.a11y.a11yReactionActio
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
 import io.element.android.features.messages.impl.timeline.model.ReadReceiptData
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.components.glass.TgGlassTint
 import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
@@ -95,6 +97,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransa
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -122,9 +125,12 @@ private val SCREEN_EDGE_PADDING = 8.dp
 private const val STABLE_FRAMES = 3
 private const val SETTLE_TIMEOUT_MS = 600L
 
-// Появление и уход меню: у Telegram меню проявляется за 150 мс и гаснет за 220.
-private const val FADE_IN_MS = 150
-private const val FADE_OUT_MS = 180
+// Появление и уход меню — TgMotion (план 9.3): фон 260 мс, пузырь приподнимается, плашка и
+// меню выскакивают пружинкой из угла у пузыря; уход — 180 мс.
+private const val BUBBLE_LIFT_SCALE = 0.03f
+private const val PILL_START_SCALE = 0.4f
+private const val MENU_START_SCALE = 0.82f
+private val MENU_START_SHIFT = 10.dp
 
 /**
  * Меню долгого нажатия вокруг сообщения, как в Telegram (`ChatActivity.createMenu`).
@@ -163,7 +169,11 @@ fun MessageActionsOverlay(
     // когда лента встала на место: иначе в размытие попадала уезжающая клавиатура.
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
     val context = LocalContext.current
-    val alpha = remember { Animatable(0f) }
+    val backdropAlpha = remember { Animatable(0f) }
+    val lift = remember { Animatable(0f) }
+    val pillIn = remember { Animatable(0f) }
+    val menuIn = remember { Animatable(0f) }
+    val popAlpha = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var isClosing by remember { mutableStateOf(false) }
     LaunchedEffect(eventKey) {
@@ -181,14 +191,27 @@ fun MessageActionsOverlay(
         bubbleRect = last
         backdrop = captureBlurredBackdrop(context)
         isSettled = true
-        alpha.animateTo(1f, tween(FADE_IN_MS))
+        coroutineScope {
+            launch { backdropAlpha.animateTo(1f, TgMotion.tween(TgMotion.MENU_DIM_MS, TgMotion.Std)) }
+            launch { lift.animateTo(1f, TgMotion.tween(TgMotion.MENU_IN_MS)) }
+            launch { pillIn.animateTo(1f, TgMotion.tween(TgMotion.MENU_IN_MS, TgMotion.Pop, TgMotion.MENU_REACTIONS_DELAY_MS)) }
+            launch { menuIn.animateTo(1f, TgMotion.tween(TgMotion.MENU_IN_MS, TgMotion.Pop, TgMotion.MENU_LIST_DELAY_MS)) }
+            launch { popAlpha.animateTo(1f, TgMotion.tween(TgMotion.POP_FADE_MS, TgMotion.Std, TgMotion.MENU_LIST_DELAY_MS)) }
+        }
     }
 
     fun dismiss() {
         if (isClosing) return
         isClosing = true
         scope.launch {
-            alpha.animateTo(0f, tween(FADE_OUT_MS))
+            val out = TgMotion.tween<Float>(TgMotion.MENU_OUT_MS, TgMotion.Exit)
+            coroutineScope {
+                launch { backdropAlpha.animateTo(0f, out) }
+                launch { lift.animateTo(0f, TgMotion.tween(TgMotion.MENU_OUT_MS)) }
+                launch { pillIn.animateTo(0f, out) }
+                launch { menuIn.animateTo(0f, out) }
+                launch { popAlpha.animateTo(0f, out) }
+            }
             onDismiss()
         }
     }
@@ -202,8 +225,7 @@ fun MessageActionsOverlay(
                 .fillMaxSize()
                 .onGloballyPositioned { popupOrigin = it.positionOnScreen() }
                 // Перехватывает и жесты: лента под меню не листается (в Telegram она заморожена).
-                .pointerInput(Unit) { detectTapGestures { dismiss() } }
-                .graphicsLayer { this.alpha = alpha.value },
+                .pointerInput(Unit) { detectTapGestures { dismiss() } },
         ) {
             val backdropBitmap = backdrop
             if (backdropBitmap != null) {
@@ -211,11 +233,18 @@ fun MessageActionsOverlay(
                     bitmap = backdropBitmap,
                     contentDescription = null,
                     contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = backdropAlpha.value },
                 )
             } else if (isSettled) {
                 // Снимок не получился (до Android 8 его нет): обычное затемнение.
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = backdropAlpha.value }
+                        .background(Color.Black.copy(alpha = 0.5f))
+                )
             }
             if (!isSettled) return@BoxWithConstraints
             val origin = popupOrigin ?: return@BoxWithConstraints
@@ -240,11 +269,25 @@ fun MessageActionsOverlay(
             val bubbleRight = rect.right.roundToInt()
             // Где легли плашка и меню (в координатах пузыря): там вместо чёткого пузыря — фон.
             var coveredRects by remember { mutableStateOf(emptyList<Rect>()) }
+            // How far the layout lifted the bubble to make room for the menu: the bubble starts at
+            // its place in the timeline and travels there while the menu opens.
+            var liftShift by remember { mutableIntStateOf(0) }
+            val sideX = if (event.isMine) 1f else 0f
+            val menuShiftPx = with(density) { MENU_START_SHIFT.toPx() }
 
             Layout(
                 content = {
                     Box(
-                        modifier = Modifier.drawBehind {
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val p = lift.value
+                                translationY = liftShift * (1f - p)
+                                val scale = 1f + BUBBLE_LIFT_SCALE * p
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = TransformOrigin(sideX, 1f)
+                            }
+                            .drawBehind {
                             // Слой берём на каждой отрисовке: строка ленты могла пересоздать его.
                             val bubbleLayer = anchor.layerFor(eventKey) ?: return@drawBehind
                             val holes = Path().apply {
@@ -271,6 +314,13 @@ fun MessageActionsOverlay(
                     } else {
                         if (target.displayEmojiReactions) {
                             ReactionPill(
+                                modifier = Modifier.graphicsLayer {
+                                    val scale = PILL_START_SCALE + (1f - PILL_START_SCALE) * pillIn.value
+                                    scaleX = scale
+                                    scaleY = scale
+                                    alpha = popAlpha.value
+                                    transformOrigin = TransformOrigin(if (event.isMine) 0.85f else 0.15f, 1f)
+                                },
                                 recentEmojis = target.recentEmojis,
                                 onEmojiClick = { emoji ->
                                     onEmojiReactionClick(emoji, event)
@@ -284,6 +334,15 @@ fun MessageActionsOverlay(
                             Spacer(modifier = Modifier)
                         }
                         ActionsMenu(
+                            modifier = Modifier.graphicsLayer {
+                                val p = menuIn.value
+                                val scale = MENU_START_SCALE + (1f - MENU_START_SCALE) * p
+                                scaleX = scale
+                                scaleY = scale
+                                translationY = -menuShiftPx * (1f - p)
+                                alpha = popAlpha.value
+                                transformOrigin = TransformOrigin(sideX, 0f)
+                            },
                             target = target,
                             readers = readers,
                             otherMembersCount = otherMembersCount,
@@ -346,6 +405,7 @@ fun MessageActionsOverlay(
                     val pillX = xFor(pill.width)
                     val menuX = xFor(menu.width)
                     coveredRects = listOf(pill.rectAt(pillX, pillY, shift), menu.rectAt(menuX, menuY, shift))
+                    liftShift = shift
                     layout(width, height) {
                         bubblePlaceable.place(bubbleLeft, rect.top.roundToInt() - shift)
                         pill.place(pillX, pillY)

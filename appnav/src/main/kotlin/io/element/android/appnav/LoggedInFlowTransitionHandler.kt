@@ -17,7 +17,6 @@ import com.bumble.appyx.core.navigation.transition.ModifierTransitionHandler
 import com.bumble.appyx.core.navigation.transition.TransitionDescriptor
 import com.bumble.appyx.navmodel.backstack.BackStack
 import com.bumble.appyx.navmodel.backstack.transitionhandler.rememberBackstackFader
-import com.bumble.appyx.navmodel.backstack.transitionhandler.rememberBackstackSlider
 
 /**
  * A TransitionHandler that uses fade transition when Placeholder is being removed,
@@ -46,9 +45,9 @@ class LoggedInFlowTransitionHandler(
 fun rememberLoggedInFlowTransitionHandler(
     backstack: BackStack<LoggedInFlowNode.NavTarget>,
 ): ModifierTransitionHandler<LoggedInFlowNode.NavTarget, BackStack.State> {
-    val slider = rememberBackstackSlider<LoggedInFlowNode.NavTarget>(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
-    )
+    // Правка форка (Larpgram, план 9.3): экран въезжает справа, нижний уходит на четверть влево
+    // под затемнение, как в Telegram.
+    val slider = remember { TgBackStackSlider<LoggedInFlowNode.NavTarget>() }
     val fader = rememberBackstackFader<LoggedInFlowNode.NavTarget>(
         transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
     )

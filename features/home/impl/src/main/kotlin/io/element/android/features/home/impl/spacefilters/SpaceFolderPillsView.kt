@@ -17,9 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -32,22 +30,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.larpgramColors
 import io.element.android.features.home.impl.R
+import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.spaces.SpaceServiceFilter
+import kotlin.math.floor
 
 private const val ALL_KEY = "all"
 
@@ -64,19 +67,25 @@ fun SpaceFolderPillsView(
     state: SpaceFiltersState,
     modifier: Modifier = Modifier,
     allUnreadCount: Int = 0,
+    pagerState: SpaceFolderPagerState? = null,
 ) {
     val filters = state.availableFilters()
     val selectedFilter = state.selectedFilter()
     val selectedKey = selectedFilter?.spaceRoom?.roomId?.value ?: ALL_KEY
+    // Strip order: «Все» first, then the folders. Index i here is page i of the pager.
+    val keys = listOf(ALL_KEY) + filters.map { it.spaceRoom.roomId.value }
 
     fun onSelectAll() {
+        // With the pager the list slides to the folder; without it (previews) select directly.
+        if (pagerState?.selectIndex(0) == true) return
         when (state) {
             is SpaceFiltersState.Selected -> state.eventSink(SpaceFiltersEvent.Selected.ClearSelection)
             else -> Unit
         }
     }
 
-    fun onSelectSpace(filter: SpaceServiceFilter) {
+    fun onSelectSpace(index: Int, filter: SpaceServiceFilter) {
+        if (pagerState?.selectIndex(index) == true) return
         when (state) {
             is SpaceFiltersState.Unselected -> state.eventSink(SpaceFiltersEvent.Unselected.SelectFilter(filter))
             is SpaceFiltersState.Selected -> state.eventSink(SpaceFiltersEvent.Selected.SelectFilter(filter))
@@ -89,9 +98,21 @@ fun SpaceFolderPillsView(
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
     val selectedBounds = bounds[selectedKey]
-    val pillOffset by animateDpAsState(selectedBounds?.first ?: 0.dp, label = "folderPillOffset")
-    val pillWidth by animateDpAsState(selectedBounds?.second ?: 0.dp, label = "folderPillWidth")
+    val pillOffset by animateDpAsState(selectedBounds?.first ?: 0.dp, TgMotion.tween(TgMotion.FOLDER_MS), label = "folderPillOffset")
+    val pillWidth by animateDpAsState(selectedBounds?.second ?: 0.dp, TgMotion.tween(TgMotion.FOLDER_MS), label = "folderPillWidth")
     KeepSelectedVisible(scrollState, selectedBounds, density.run { 1.dp.toPx() })
+
+    // Where the pill is: with the pager it follows the pages (also mid-swipe), interpolating
+    // position and width between the two chips it is between; without it, it animates itself.
+    fun pillGeometry(): Pair<Dp, Dp> {
+        val position = pagerState?.position ?: return pillOffset to pillWidth
+        val from = floor(position).toInt().coerceIn(0, keys.lastIndex)
+        val to = (from + 1).coerceAtMost(keys.lastIndex)
+        val fraction = (position - from).coerceIn(0f, 1f)
+        val a = bounds[keys[from]] ?: return pillOffset to pillWidth
+        val b = bounds[keys[to]] ?: a
+        return lerp(a.first, b.first, fraction) to lerp(a.second, b.second, fraction)
+    }
 
     Box(
         modifier = modifier
@@ -102,9 +123,12 @@ fun SpaceFolderPillsView(
         if (selectedBounds != null) {
             Box(
                 Modifier
-                    .offset(x = pillOffset)
-                    .width(pillWidth)
-                    .height(34.dp)
+                    .layout { measurable, _ ->
+                        // Read in the layout phase: a swipe moves the pill without recomposing.
+                        val (x, width) = pillGeometry()
+                        val placeable = measurable.measure(Constraints.fixed(width.roundToPx().coerceAtLeast(0), 34.dp.roundToPx()))
+                        layout(placeable.width, placeable.height) { placeable.place(x.roundToPx(), 0) }
+                    }
                     .shadow(4.dp, RoundedCornerShape(17.dp), ambientColor = Color(0x24000000), spotColor = Color(0x24000000))
                     .background(larpgramColors.folderChipSelected, RoundedCornerShape(17.dp))
             )
@@ -122,13 +146,13 @@ fun SpaceFolderPillsView(
                 onClick = ::onSelectAll,
                 modifier = Modifier.track(ALL_KEY),
             )
-            filters.forEach { filter ->
+            filters.forEachIndexed { i, filter ->
                 val key = filter.spaceRoom.roomId.value
                 FolderItem(
                     label = filter.spaceRoom.displayName,
                     selected = selectedKey == key,
                     count = 0,
-                    onClick = { onSelectSpace(filter) },
+                    onClick = { onSelectSpace(i + 1, filter) },
                     modifier = Modifier.track(key),
                 )
             }
