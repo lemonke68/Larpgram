@@ -346,8 +346,9 @@ private fun TgSearchButton(
 ) {
     val colors = larpgramColors
     val expanded = progress() > 0.5f
-    // The accent-tinted round button turns into a neutral glass pill as it grows.
-    val tint = lerp(colors.searchButton, colors.glassMenu, progress())
+    // The accent-tinted round button turns into a neutral, opaque pill as it grows: the list
+    // must not show through behind the «Поиск» hint.
+    val tint = lerp(colors.searchButton, colors.glassFallback, progress())
     val border = lerp(colors.searchButtonBorder, colors.glassBorder, progress())
     val iconTint = lerp(Color.White, ElementTheme.colors.iconPrimary, progress())
     Row(

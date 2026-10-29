@@ -10,6 +10,7 @@ package io.element.android.appnav
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Transition
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import com.bumble.appyx.core.navigation.transition.ModifierTransitionHandler
 import com.bumble.appyx.core.navigation.transition.TransitionDescriptor
 import com.bumble.appyx.navmodel.backstack.BackStack
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.designsystem.animation.TgMotion
 
 /**
@@ -41,8 +43,12 @@ class TgBackStackSlider<NavTarget> : ModifierTransitionHandler<NavTarget, BackSt
         val shade = transition.animateFloat(transitionSpec = { specFor(this) }, label = "screenShade") { state ->
             if (state == BackStack.State.STASHED) TgMotion.CHAT_UNDER_SHADE else 0f
         }
+        // A screen may still be loading while it slides in (a chat waits for its timeline): the
+        // canvas colour keeps it from sliding in see-through.
+        val canvas = ElementTheme.colors.bgCanvasDefault
         Modifier
             .graphicsLayer { translationX = position.value * size.width }
+            .background(canvas)
             .drawWithContent {
                 drawContent()
                 val alpha = shade.value

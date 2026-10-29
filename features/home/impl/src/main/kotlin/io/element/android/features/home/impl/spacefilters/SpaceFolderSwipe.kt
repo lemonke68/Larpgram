@@ -7,6 +7,17 @@
 
 package io.element.android.features.home.impl.spacefilters
 
+import android.graphics.Bitmap
+import android.graphics.ColorSpace
+import android.graphics.PixelFormat
+import android.graphics.PorterDuff
+import android.hardware.HardwareBuffer
+import android.media.Image
+import android.media.ImageReader
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -25,22 +36,33 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.element.android.libraries.designsystem.animation.TgMotion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sign
@@ -54,6 +76,14 @@ private const val EDGE_RESISTANCE = 0.2f
 
 // Сколько ждать новый список после переключения папки, прежде чем показать его как есть.
 private const val CONTENT_WAIT_MS = 400L
+
+// По тапу лента трогается, когда новый список уже пришёл и отрисован, но ждёт не дольше этого.
+// На Honor (Android 10) список «Все» с аватарками собирается ~200 мс: если ехать раньше, сборка
+// списка съедает кадры анимации.
+private const val TAP_CONTENT_WAIT_MS = 350L
+
+// Кадры после прихода списка: первый его собирает, второй рисует.
+private const val FRAMES_TO_DRAW_CONTENT = 2
 
 /** Индекс текущей вкладки в ленте (0 = «Все», далее папки в порядке ленты). */
 internal fun SpaceFiltersState.currentTabIndex(): Int {
@@ -158,6 +188,7 @@ fun SpaceFolderSwipe(
         return
     }
     val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
     val scope = rememberCoroutineScope()
     val thresholdPx = with(density) { FOLDER_SWIPE_THRESHOLD.toPx() }
     val layer = rememberGraphicsLayer()
@@ -177,7 +208,14 @@ fun SpaceFolderSwipe(
     fun lastIndex() = latest.value.availableFilters().size
 
     suspend fun capture(): ImageBitmap? = try {
-        if (layer.size.width > 0) layer.toImageBitmap() else null
+        when {
+            layer.size.width <= 0 -> null
+            // The Picture-based snapshot of Android 9-11 drops child layers and hardware bitmaps
+            // (all the avatars): render through a hardware canvas instead.
+            Build.VERSION.SDK_INT in Build.VERSION_CODES.Q until Build.VERSION_CODES.S ->
+                layer.captureOnHardwareCanvas(density, layoutDirection)
+            else -> layer.toImageBitmap()
+        }
     } catch (e: CancellationException) {
         throw e
     } catch (_: Exception) {
@@ -220,6 +258,10 @@ fun SpaceFolderSwipe(
                     offset.snapTo(0f)
                     snapshot = capture()
                     switchLive(target)
+                    withTimeoutOrNull(TAP_CONTENT_WAIT_MS) {
+                        snapshotFlow { liveReady }.first { it }
+                        repeat(FRAMES_TO_DRAW_CONTENT) { withFrameNanos { } }
+                    }
                     val dir = sign((target - base).toFloat())
                     offset.animateTo(-dir * widthPx, TgMotion.tween(TgMotion.FOLDER_MS))
                     settle()
@@ -328,5 +370,48 @@ fun SpaceFolderSwipe(
                     }
             )
         }
+    }
+}
+
+/**
+ * Draws this layer on a hardware canvas of an [ImageReader] surface and wraps the result, like
+ * Compose's own snapshot for Android 5-8. Unlike the Picture path of Android 9+, it keeps child
+ * layers and hardware bitmaps.
+ */
+@RequiresApi(Build.VERSION_CODES.Q)
+private suspend fun GraphicsLayer.captureOnHardwareCanvas(density: Density, layoutDirection: LayoutDirection): ImageBitmap? {
+    val width = size.width
+    val height = size.height
+    val reader = ImageReader.newInstance(
+        width,
+        height,
+        PixelFormat.RGBA_8888,
+        1,
+        HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or HardwareBuffer.USAGE_GPU_COLOR_OUTPUT,
+    )
+    try {
+        val image = suspendCancellableCoroutine<Image?> { continuation ->
+            reader.setOnImageAvailableListener(
+                { source -> if (continuation.isActive) continuation.resume(source.acquireLatestImage()) },
+                Handler(Looper.getMainLooper()),
+            )
+            val surface = reader.surface
+            val canvas = surface.lockHardwareCanvas()
+            try {
+                canvas.drawColor(android.graphics.Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+                CanvasDrawScope().draw(density, layoutDirection, Canvas(canvas), Size(width.toFloat(), height.toFloat())) {
+                    drawLayer(this@captureOnHardwareCanvas)
+                }
+            } finally {
+                surface.unlockCanvasAndPost(canvas)
+            }
+        } ?: return null
+        return image.use { frame ->
+            frame.hardwareBuffer?.use { buffer ->
+                Bitmap.wrapHardwareBuffer(buffer, ColorSpace.get(ColorSpace.Named.SRGB))?.asImageBitmap()
+            }
+        }
+    } finally {
+        reader.close()
     }
 }
