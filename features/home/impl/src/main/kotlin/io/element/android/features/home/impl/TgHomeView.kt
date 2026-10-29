@@ -11,7 +11,6 @@ package io.element.android.features.home.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -46,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -130,18 +128,6 @@ fun TgHomeView(
     val state: RoomListState = homeState.roomListState
     val coroutineScope = rememberCoroutineScope()
     val firstThrottler = remember { FirstThrottler(300, coroutineScope) }
-    val isSearchActive = if (state.globalSearchState.isEnabled) state.globalSearchState.isSearchActive else state.searchState.isSearchActive
-    // Plan 9.3: the round search button first grows into a pill (bottom bar), then the search
-    // screen fades in over it; on close the screen goes first and the pill shrinks back.
-    val searchReveal by animateFloatAsState(
-        targetValue = if (isSearchActive) 1f else 0f,
-        animationSpec = if (isSearchActive) {
-            TgMotion.tween(SEARCH_REVEAL_MS, TgMotion.Std, delayMillis = TgMotion.SEARCH_MS - SEARCH_REVEAL_MS)
-        } else {
-            TgMotion.tween(SEARCH_HIDE_MS, TgMotion.Std)
-        },
-        label = "searchReveal",
-    )
     Box(modifier) {
         // Без рендерера превью (превью-композиции, тесты) — прежняя шторка действий.
         if (state.contextMenu is RoomListState.ContextMenu.Shown && chatPreview == null) {
@@ -178,7 +164,6 @@ fun TgHomeView(
             profileContent = profileContent,
             initialTab = initialTab,
             musicMiniPlayer = musicMiniPlayer,
-            isSearchActive = isSearchActive,
         )
 
         if (state.globalSearchState.isEnabled) {
@@ -187,7 +172,6 @@ fun TgHomeView(
                 onSelectSearchResult = { roomId, eventId -> if (firstThrottler.canHandle()) onRoomClick(roomId, eventId) },
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = searchReveal }
                     .background(ElementTheme.colors.bgCanvasDefault),
             )
         } else {
@@ -199,7 +183,6 @@ fun TgHomeView(
                 onRoomClick = { roomId -> if (firstThrottler.canHandle()) onRoomClick(roomId, null) },
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = searchReveal }
                     .background(ElementTheme.colors.bgCanvasDefault)
             )
         }
@@ -238,7 +221,6 @@ private fun HomeScaffold(
     profileContent: (@Composable () -> Unit)? = null,
     initialTab: TgHomeTab = TgHomeTab.Chats,
     musicMiniPlayer: (@Composable (Modifier) -> Unit)? = null,
-    isSearchActive: Boolean = false,
 ) {
     // The selected tab lives here: Element's HomePresenter only knows its own Chats/Spaces items.
     var currentItem by rememberSaveable { mutableStateOf(initialTab) }
@@ -297,7 +279,6 @@ private fun HomeScaffold(
                         onStartChatClick = onStartChatClick,
                         onMenuActionClick = onMenuActionClick,
                         musicMiniPlayer = musicMiniPlayer,
-                        isSearchActive = isSearchActive,
                         folderPageCache = folderPageCache,
                     )
                     // The Profile tab renders the merged profile + settings screen, hosted as a child
@@ -334,7 +315,6 @@ private fun HomeScaffold(
                     },
                     unreadCount = state.totalUnreadCount,
                     isProfilePressed = showAccountSwitcher,
-                    isSearchExpanded = isSearchActive,
                     onItemClick = { item ->
                         showAccountSwitcher = false
                         if (item == currentItem) {
@@ -399,16 +379,9 @@ private fun ChatsTab(
     onStartChatClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     musicMiniPlayer: (@Composable (Modifier) -> Unit)?,
-    isSearchActive: Boolean = false,
     folderPageCache: SnapshotStateMap<String, RoomListContentState> = remember { mutableStateMapOf() },
 ) {
     val roomListState = state.roomListState
-    // While the search button grows into the search pill, the header slides up and fades out.
-    val headerHidden by animateFloatAsState(
-        targetValue = if (isSearchActive) 1f else 0f,
-        animationSpec = TgMotion.tween(TgMotion.SEARCH_MS),
-        label = "headerHidden",
-    )
     val density = LocalDensity.current
     var headerHeight by remember { mutableStateOf(140.dp) }
     val horizontal = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
@@ -480,15 +453,10 @@ private fun ChatsTab(
                 showBannersInList = false,
             )
         }
-        val headerShiftPx = with(density) { HEADER_SEARCH_SHIFT.toPx() }
         Column(
             Modifier
                 .fillMaxWidth()
                 .onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
-                .graphicsLayer {
-                    alpha = 1f - headerHidden
-                    translationY = -headerShiftPx * headerHidden
-                }
         ) {
             TgHomeTopBar(
                 spaceFiltersState = roomListState.spaceFiltersState,
@@ -546,9 +514,6 @@ private fun HomeTabContent(
 
 private const val ALL_FOLDERS_KEY = "all"
 private val TAB_SHIFT = 24.dp
-private val HEADER_SEARCH_SHIFT = 16.dp
-private const val SEARCH_REVEAL_MS = 150
-private const val SEARCH_HIDE_MS = 100
 
 @PreviewsDayNight
 @Composable

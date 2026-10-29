@@ -18,7 +18,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,7 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -39,18 +37,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -78,12 +72,6 @@ internal object TgHomeBarDefaults {
     val tabGap = 2.dp
     val navPadding = 4.dp
 
-    /** Width of the glass pill with the two tabs. */
-    val navWidth = navPadding * 2 + tabWidth * 2 + tabGap
-
-    /** Side margins of the search pill when the search button has grown to full width. */
-    val searchExpandedMargin = 12.dp
-
     /** The bar floats this far above the navigation-bar inset. */
     val bottomMargin = 18.dp
 
@@ -97,8 +85,8 @@ internal object TgHomeBarDefaults {
  * account switcher ([onProfileLongClick] is null with a single account: then it does nothing).
  *
  * Motion (plan 9.3): the selected-tab background is one indicator that slides between the tabs;
- * holding Профиль presses it down to 0.94; when [isSearchExpanded] the round search button grows
- * into a full-width pill while the tabs fade out.
+ * holding Профиль presses it down to 0.94. Search has no transition of its own: the search screen
+ * opens over everything, with the keyboard covering the bar.
  */
 @Composable
 internal fun TgHomeTabBar(
@@ -110,31 +98,15 @@ internal fun TgHomeTabBar(
     onProfileLongClick: (() -> Unit)?,
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isSearchExpanded: Boolean = false,
 ) {
-    val searchProgress by animateFloatAsState(
-        targetValue = if (isSearchExpanded) 1f else 0f,
-        animationSpec = TgMotion.tween(TgMotion.SEARCH_MS),
-        label = "searchMorph",
-    )
-    BoxWithConstraints(modifier = modifier.height(TgHomeBarDefaults.barHeight)) {
-        val groupWidth = TgHomeBarDefaults.navWidth + TgHomeBarDefaults.gap + TgHomeBarDefaults.searchSize
-        val groupStart = (maxWidth - groupWidth) / 2
-        val restSearchStart = groupStart + TgHomeBarDefaults.navWidth + TgHomeBarDefaults.gap
-        val density = LocalDensity.current
-        val navShiftPx = with(density) { (-20).dp.toPx() }
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(TgHomeBarDefaults.gap, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Row(
             modifier = Modifier
-                .offset(x = groupStart)
-                .graphicsLayer {
-                    alpha = 1f - searchProgress
-                    val scale = 1f - 0.1f * searchProgress
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = navShiftPx * searchProgress
-                }
                 .height(TgHomeBarDefaults.barHeight)
-                .width(TgHomeBarDefaults.navWidth)
                 .tgGlass(RoundedCornerShape(32.dp), tint = TgGlassTint.SurfaceStrong, elevation = 10.dp)
                 .padding(horizontal = TgHomeBarDefaults.navPadding),
             verticalAlignment = Alignment.CenterVertically,
@@ -144,17 +116,11 @@ internal fun TgHomeTabBar(
                 isProfilePressed = isProfilePressed,
                 currentUser = currentUser,
                 unreadCount = unreadCount,
-                enabled = !isSearchExpanded,
                 onItemClick = onItemClick,
                 onProfileLongClick = onProfileLongClick,
             )
         }
-        TgSearchButton(
-            progress = { searchProgress },
-            start = lerp(restSearchStart, TgHomeBarDefaults.searchExpandedMargin, searchProgress),
-            width = lerp(TgHomeBarDefaults.searchSize, maxWidth - TgHomeBarDefaults.searchExpandedMargin * 2, searchProgress),
-            onClick = onSearchClick,
-        )
+        TgSearchButton(onClick = onSearchClick)
     }
 }
 
@@ -164,7 +130,6 @@ private fun TabsWithIndicator(
     isProfilePressed: Boolean,
     currentUser: MatrixUser?,
     unreadCount: Int,
-    enabled: Boolean,
     onItemClick: (TgHomeTab) -> Unit,
     onProfileLongClick: (() -> Unit)?,
 ) {
@@ -192,7 +157,6 @@ private fun TabsWithIndicator(
                     isPressed = item == TgHomeTab.Profile && isProfilePressed,
                     currentUser = currentUser,
                     unreadCount = if (item == TgHomeTab.Chats) unreadCount else 0,
-                    enabled = enabled,
                     onClick = { onItemClick(item) },
                     onLongClick = if (item == TgHomeTab.Profile) onProfileLongClick else null,
                 )
@@ -209,7 +173,6 @@ private fun TgTab(
     isPressed: Boolean,
     currentUser: MatrixUser?,
     unreadCount: Int,
-    enabled: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
 ) {
@@ -248,7 +211,6 @@ private fun TgTab(
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = null,
-                    enabled = enabled,
                     onClick = onClick,
                     onLongClick = onLongClick?.let {
                         {
@@ -339,46 +301,25 @@ private fun TabBadge(
 
 @Composable
 private fun TgSearchButton(
-    progress: () -> Float,
-    start: Dp,
-    width: Dp,
     onClick: () -> Unit,
 ) {
     val colors = larpgramColors
-    val expanded = progress() > 0.5f
-    // The accent-tinted round button turns into a neutral, opaque pill as it grows: the list
-    // must not show through behind the «Поиск» hint.
-    val tint = lerp(colors.searchButton, colors.glassFallback, progress())
-    val border = lerp(colors.searchButtonBorder, colors.glassBorder, progress())
-    val iconTint = lerp(Color.White, ElementTheme.colors.iconPrimary, progress())
-    Row(
+    Box(
         modifier = Modifier
-            .offset(x = start)
-            .size(width, TgHomeBarDefaults.searchSize)
+            .size(TgHomeBarDefaults.searchSize)
             .tgGlass(
                 shape = CircleShape,
-                overrideTint = tint,
-                borderColor = border,
+                overrideTint = colors.searchButton,
+                borderColor = colors.searchButtonBorder,
                 elevation = 10.dp,
             )
             .combinedClickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
+        contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.size(TgHomeBarDefaults.searchSize), contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = CompoundIcons.Search(),
-                contentDescription = stringResource(CommonStrings.action_search),
-                tint = iconTint,
-            )
-        }
-        if (expanded) {
-            Text(
-                text = stringResource(CommonStrings.action_search),
-                style = LarpgramType.field,
-                color = ElementTheme.colors.textSecondary,
-                maxLines = 1,
-                modifier = Modifier.graphicsLayer { alpha = ((progress() - 0.5f) * 2f).coerceIn(0f, 1f) },
-            )
-        }
+        Icon(
+            imageVector = CompoundIcons.Search(),
+            contentDescription = stringResource(CommonStrings.action_search),
+            tint = Color.White,
+        )
     }
 }

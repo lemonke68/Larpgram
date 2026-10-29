@@ -50,7 +50,6 @@ object TgMotion {
     const val MENU_DIM_MS = 260
     const val MENU_REACTIONS_DELAY_MS = 60
     const val MENU_LIST_DELAY_MS = 30
-    const val SEARCH_MS = 300
 
     /** Long-press delay of the prototype (TG uses the platform long-press timeout, ~400 ms). */
     const val HOLD_MS = 400L
