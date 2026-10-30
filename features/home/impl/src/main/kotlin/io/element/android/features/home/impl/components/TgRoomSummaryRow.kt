@@ -17,11 +17,9 @@ import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -253,8 +251,9 @@ private fun RoomSummaryScaffoldRow(
             .fillMaxWidth()
             .heightIn(min = tgRoomSummaryMinHeight)
             .then(clickModifier)
-            .padding(start = ROW_START_PADDING)
-            .height(IntrinsicSize.Min),
+            // No IntrinsicSize.Min (an extra measure pass of every row while scrolling): the text
+            // column is never shorter than the avatar, so it already sets the row's height.
+            .padding(start = ROW_START_PADDING),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Avatar(
@@ -274,7 +273,6 @@ private fun RoomSummaryScaffoldRow(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
                 .heightIn(min = tgRoomSummaryMinHeight)
                 // 1 dp divider under the text, not under the avatar.
                 .drawBehind {
