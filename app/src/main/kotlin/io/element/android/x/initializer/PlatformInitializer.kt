@@ -40,10 +40,11 @@ class PlatformInitializer : Initializer<Unit> {
         val tracingService = appBindings.tracingService()
         val platformService = appBindings.platformService()
         val bugReporter = appBindings.bugReporter()
-        Timber.plant(tracingService.createTimberTree(ELEMENT_X_TARGET))
         val preferencesStore = appBindings.preferencesStore()
         val featureFlagService = appBindings.featureFlagService()
         val logLevel = runBlocking { preferencesStore.getTracingLogLevelFlow().first() }
+        // Правка форка: логи ниже уровня трассировки отсекаем до FFI (LevelFilteredTree).
+        Timber.plant(LevelFilteredTree(tracingService.createTimberTree(ELEMENT_X_TARGET), logLevel))
         val tracingConfiguration = TracingConfiguration(
             writesToLogcat = runBlocking { featureFlagService.isFeatureEnabled(FeatureFlags.PrintLogsToLogcat) },
             writesToFilesConfiguration = bugReporter.createWriteToFilesConfiguration(),
