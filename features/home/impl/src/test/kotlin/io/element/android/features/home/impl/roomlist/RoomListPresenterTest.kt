@@ -1067,6 +1067,7 @@ class RoomListPresenterTest {
             typingTracker = RoomListTypingTracker(client),
             dateFormatter = FakeDateFormatter(),
             savedMessages = NoOpSavedMessages(),
+            dispatchers = testCoroutineDispatchers(),
         ),
         sessionStore = sessionStore,
     )

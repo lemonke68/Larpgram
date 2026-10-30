@@ -16,6 +16,7 @@ import io.element.android.features.home.impl.model.LatestEvent
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.features.home.impl.model.TypingPreview
 import io.element.android.libraries.chatcleanup.api.ChatCleanupService
+import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.matrix.api.MatrixClient
@@ -29,7 +30,9 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 @Inject
@@ -41,6 +44,7 @@ class RoomListForkRows(
     private val typingTracker: RoomListTypingTracker,
     private val dateFormatter: DateFormatter,
     private val savedMessages: SavedMessages,
+    private val dispatchers: CoroutineDispatchers,
 ) {
     /**
      * Готовый список SDK поверх наших данных. Сортировкой SDK и diff-кэшем не рулим —
@@ -63,6 +67,10 @@ class RoomListForkRows(
             .map { it.withoutClearedLatestEvent(clearedHistory[it.roomId]) }
             .toImmutableList()
     }
+        // Пересборка списка — O(n) с копиями строк на каждое «печатает…»/черновик/пин: не на main.
+        // Промежуточные списки, которые UI не успел бы показать, пропускаем.
+        .flowOn(dispatchers.computation)
+        .conflate()
 
     /** «Печатает…» слушаем только у видимых строк. */
     suspend fun trackTypingOfVisibleRows(scope: CoroutineScope, visibleRange: Flow<IntRange>, rows: Flow<List<RoomListRoomSummary>>) {

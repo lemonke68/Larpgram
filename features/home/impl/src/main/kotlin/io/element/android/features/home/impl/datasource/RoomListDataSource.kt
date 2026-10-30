@@ -101,7 +101,11 @@ class RoomListDataSource(
     }
 
     suspend fun updateFilter(filter: RoomListFilter) {
-        roomList.updateFilter(filter)
+        // Правка форка: смена фильтра (папки) — несколько синхронных вызовов в Rust SDK
+        // (resetToOnePage, setFilter, addPages); событие приходит из LaunchedEffect на main.
+        withContext(coroutineDispatchers.computation) {
+            roomList.updateFilter(filter)
+        }
     }
 
     suspend fun updateVisibleRange(visibleRange: IntRange) = coroutineScope {
