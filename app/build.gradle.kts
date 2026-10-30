@@ -96,6 +96,9 @@ android {
 
         androidResources {
             localeFilters += locales
+            // Правка форка: source maps встроенного Element Call (~4 МБ в APK) нужны только для
+            // отладки JS в devtools. Остальное — стандартный шаблон AGP.
+            ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!*.js.map"
         }
     }
 
