@@ -8,6 +8,7 @@
 package io.element.android.libraries.designsystem.components.glass
 
 import android.content.Context
+import android.os.Build
 import android.os.PowerManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -106,10 +107,16 @@ private fun LarpgramColors.tint(tint: TgGlassTint): Color = when (tint) {
 /**
  * Правка форка: blur is skipped in battery saver (and in previews), the glass then falls back to
  * the opaque `glass.fallback` colour, as the design asks for reduced effects.
+ *
+ * Also skipped below Android 12 (decided 2026-10-31, docs/perf.md): there haze blurs with
+ * RenderScript on the CPU during the draw on the main thread, and on the Honor (Android 10) that
+ * was ~70% of the lag of the message menu, most of the lag while typing and a third of it when a
+ * chat opens; next to a progressive panel it also kept an idle chat list redrawing at 60 fps.
  */
 @Composable
 fun rememberGlassBlurEnabled(): Boolean {
     if (LocalInspectionMode.current) return false
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
     val context = LocalContext.current
     return remember(context) {
         val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -157,7 +164,7 @@ fun Modifier.tgGlass(
                 noiseFactor = 0f,
             ),
         ) {
-            // Below Android 12 haze only blurs when asked to (RenderScript); the Honor is Android 10.
+            // Haze blurs below Android 12 only when asked to; rememberGlassBlurEnabled() keeps it off there.
             blurEnabled = true
         }
     } else if (overrideTint != null) {
