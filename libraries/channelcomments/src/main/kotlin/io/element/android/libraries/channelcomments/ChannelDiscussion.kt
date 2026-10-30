@@ -44,6 +44,8 @@ object ChannelDiscussion {
 
     /** (discussionRoomId, commentId) embedded in a channel post's raw event JSON, or null. */
     fun commentRefFromPost(originalJson: String): Pair<String, String>? = runCatching {
+        // Дешёвая проверка до разбора: у почти всех событий поля нет.
+        if (!originalJson.contains("\"$COMMENT_REF_FIELD\"")) return@runCatching null
         val comment = json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
             ?.get(COMMENT_REF_FIELD)?.jsonObject ?: return@runCatching null
         val room = comment["room"]?.jsonPrimitive?.content ?: return@runCatching null
@@ -53,6 +55,7 @@ object ChannelDiscussion {
 
     /** The commentId a mirror message in the discussion group carries, or null. */
     fun commentIdFromMirror(originalJson: String): String? = runCatching {
+        if (!originalJson.contains("\"$COMMENT_ID_FIELD\"")) return@runCatching null
         json.parseToJsonElement(originalJson).jsonObject["content"]?.jsonObject
             ?.get(COMMENT_ID_FIELD)?.jsonPrimitive?.content
     }.getOrNull()

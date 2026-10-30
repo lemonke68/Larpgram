@@ -566,9 +566,13 @@ private fun TimelineItemEventRowContent(
         // Старые текстовые посты несут ссылку на дискуссию в своём контенте; новые текстовые, медиа
         // и стикеры зеркалятся в дискуссию по id поста, поэтому чип у них есть, когда у канала есть
         // дискуссия.
-        val hasTextComments = remember(event.id) {
-            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) != null } ?: false
+        // Разбор JSON события — только в канале и один раз на строку (раньше — дважды на каждую
+        // строку любого чата при скролле).
+        val isChannel = timelineRoomInfo.isChannel
+        val commentRef = remember(event.id, isChannel) {
+            if (isChannel) event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it) } else null
         }
+        val hasTextComments = commentRef != null
         val isMirroredPost = event.content is TimelineItemImageContent ||
             event.content is TimelineItemVideoContent ||
             event.content is TimelineItemAudioContent ||
@@ -582,10 +586,7 @@ private fun TimelineItemEventRowContent(
         // Число комментариев: текстовый пост коррелируется по correlation-id из своего контента,
         // медиа-пост — по своему eventId (в его зеркале comment_id = eventId поста). Нет числа
         // (дискуссия ещё не загружена) → подпись без числа.
-        val commentKey = remember(event.id) {
-            event.debugInfo.originalJson?.let { ChannelDiscussion.commentRefFromPost(it)?.second }
-                ?: event.eventId?.value
-        }
+        val commentKey = commentRef?.second ?: event.eventId?.value
         val commentCount = commentKey?.let { timelineRoomInfo.channelCommentCounts[it] }
         val commentsFooter: (@Composable () -> Unit)? = if (showChannelComments) {
             { ChannelPostCommentsFooter(count = commentCount, onClick = { eventSink(TimelineEvent.OpenChannelPostComments(event)) }) }

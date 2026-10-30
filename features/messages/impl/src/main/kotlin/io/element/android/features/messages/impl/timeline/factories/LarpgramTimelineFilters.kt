@@ -49,6 +49,11 @@ internal fun List<TimelineItem>.dropEmptyDaySeparators(): List<TimelineItem> =
 
 internal val roomCreateTypeRegex = Regex(""""type"\s*:\s*"m\.room\.create"""")
 
+// Список пересобирается на каждое обновление таймлайна: сначала дешёвый поиск подстроки, regex — только
+// если она есть.
+private fun isRoomCreateJson(json: String): Boolean =
+    json.contains("m.room.create") && roomCreateTypeRegex.containsMatchIn(json)
+
 /**
  * Правка форка: свёрнутый блок «N изменений в комнате» от создания чата (m.room.create, вход
  * создателя, права, правила входа…) в Telegram не показывается: новый чат пустой. Прячем группу
@@ -57,7 +62,7 @@ internal val roomCreateTypeRegex = Regex(""""type"\s*:\s*"m\.room\.create"""")
 internal fun List<TimelineItem>.dropRoomCreationGroup(): List<TimelineItem> =
     filterNot { item ->
         item is TimelineItem.GroupedEvents &&
-            item.events.any { event -> event.debugInfo.originalJson?.let(roomCreateTypeRegex::containsMatchIn) == true }
+            item.events.any { event -> event.debugInfo.originalJson?.let(::isRoomCreateJson) == true }
     }
 
 /**
