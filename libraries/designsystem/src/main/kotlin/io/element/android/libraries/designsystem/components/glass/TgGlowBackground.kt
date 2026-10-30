@@ -9,7 +9,7 @@ package io.element.android.libraries.designsystem.components.glass
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import io.element.android.compound.tokens.larpgramColors
@@ -25,22 +25,25 @@ fun Modifier.tgGlowBackground(): Modifier {
     val colors = larpgramColors
     val base = colors.background
     val glow = colors.backgroundGlow
-    return drawBehind {
-        drawRect(base)
+    return drawWithCache {
+        // Shaders are built once per size: this background sits under the scrolling chat list
+        // (inside the haze source), so it is re-recorded on every frame of a scroll.
         val r = max(size.width, size.height) * 0.62f
         val spots = listOf(
             Offset(size.width * 0.05f, size.height * 0.04f),
             Offset(size.width * 1.0f, size.height * 0.48f),
             Offset(size.width * 0.0f, size.height * 0.95f),
         )
-        spots.zip(glow).forEach { (center, color) ->
-            drawRect(
-                Brush.radialGradient(
-                    colors = listOf(color, color.copy(alpha = 0f)),
-                    center = center,
-                    radius = r,
-                ),
+        val brushes = spots.zip(glow).map { (center, color) ->
+            Brush.radialGradient(
+                colors = listOf(color, color.copy(alpha = 0f)),
+                center = center,
+                radius = r,
             )
+        }
+        onDrawBehind {
+            drawRect(base)
+            brushes.forEach { drawRect(it) }
         }
     }
 }

@@ -12,13 +12,17 @@ import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.CacheDrawScope
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
@@ -153,8 +157,11 @@ fun Modifier.chatWallpaper(wallpaper: ChatWallpaper): Modifier = when (wallpaper
             drawCovering(painter, null)
         }
     }
-    is ChatWallpaper.Larpgram -> drawBehind {
-        drawLarpgramWallpaper(wallpaper, dotRadius = 1.dp.toPx(), step = 24.dp.toPx())
+    // Шейдеры и сетка точек строятся один раз на размер (а не на каждую отрисовку, например при
+    // анимации клавиатуры); точки — одним drawPoints вместо ~500 drawCircle.
+    is ChatWallpaper.Larpgram -> drawWithCache {
+        val cached = cacheLarpgramWallpaper(wallpaper, dotRadius = 1.dp.toPx(), step = 24.dp.toPx())
+        onDrawBehind { drawLarpgramWallpaper(cached) }
     }
     is ChatWallpaper.Gradient -> drawBehind {
         // Угол в направление: 0° = слева направо, растём по часовой. Линию тянем через центр так,
@@ -174,7 +181,15 @@ fun Modifier.chatWallpaper(wallpaper: ChatWallpaper): Modifier = when (wallpaper
     }
 }
 
-private fun DrawScope.drawLarpgramWallpaper(wallpaper: ChatWallpaper.Larpgram, dotRadius: Float, step: Float) {
+private class LarpgramWallpaperCache(
+    val gradient: Brush,
+    val glows: List<Brush>,
+    val dots: List<Offset>,
+    val dotColor: Color,
+    val dotRadius: Float,
+)
+
+private fun CacheDrawScope.cacheLarpgramWallpaper(wallpaper: ChatWallpaper.Larpgram, dotRadius: Float, step: Float): LarpgramWallpaperCache {
     // 160° CSS: from the top-left-ish corner down to the bottom-right-ish one.
     val rad = Math.toRadians(160.0 - 90.0)
     val dx = kotlin.math.cos(rad).toFloat()
@@ -182,26 +197,42 @@ private fun DrawScope.drawLarpgramWallpaper(wallpaper: ChatWallpaper.Larpgram, d
     val half = (kotlin.math.abs(dx) * size.width + kotlin.math.abs(dy) * size.height) / 2f
     val cx = size.width / 2f
     val cy = size.height / 2f
-    drawRect(
-        Brush.linearGradient(
-            colorStops = wallpaper.stops.toTypedArray(),
-            start = Offset(cx - dx * half, cy - dy * half),
-            end = Offset(cx + dx * half, cy + dy * half),
-        )
+    val gradient = Brush.linearGradient(
+        colorStops = wallpaper.stops.toTypedArray(),
+        start = Offset(cx - dx * half, cy - dy * half),
+        end = Offset(cx + dx * half, cy + dy * half),
     )
     val glowCenters = listOf(Offset(size.width * 0.15f, size.height * 0.25f), Offset(size.width * 0.9f, size.height * 0.75f))
-    wallpaper.glows.zip(glowCenters).forEach { (color, center) ->
-        drawRect(Brush.radialGradient(listOf(color, color.copy(alpha = 0f)), center = center, radius = size.maxDimension * 0.55f))
+    val glows = wallpaper.glows.zip(glowCenters).map { (color, center) ->
+        Brush.radialGradient(listOf(color, color.copy(alpha = 0f)), center = center, radius = size.maxDimension * 0.55f)
     }
-    var y = step / 2f
-    while (y < size.height) {
-        var x = step / 2f
-        while (x < size.width) {
-            drawCircle(wallpaper.dots, radius = dotRadius, center = Offset(x, y))
-            x += step
+    val width = size.width
+    val height = size.height
+    val dots = buildList {
+        var y = step / 2f
+        while (y < height) {
+            var x = step / 2f
+            while (x < width) {
+                add(Offset(x, y))
+                x += step
+            }
+            y += step
         }
-        y += step
     }
+    return LarpgramWallpaperCache(gradient, glows, dots, wallpaper.dots, dotRadius)
+}
+
+private fun DrawScope.drawLarpgramWallpaper(cache: LarpgramWallpaperCache) {
+    drawRect(cache.gradient)
+    cache.glows.forEach { drawRect(it) }
+    // Round caps make each point a circle of the same radius as the old drawCircle.
+    drawPoints(
+        points = cache.dots,
+        pointMode = PointMode.Points,
+        color = cache.dotColor,
+        strokeWidth = cache.dotRadius * 2f,
+        cap = StrokeCap.Round,
+    )
 }
 
 /** Рисует [painter] по центру, увеличив до покрытия всей площади и сохранив пропорции. */

@@ -17,7 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -59,15 +59,15 @@ internal fun TgGradientAvatar(
         modifier
             .size(size)
             .clip(avatarShape)
-            .drawBehind {
+            .drawWithCache {
                 // 140° CSS gradient: from the top, slightly left, to the bottom, slightly right.
-                drawRect(
-                    Brush.linearGradient(
-                        colors = listOf(gradient.top, gradient.bottom),
-                        start = Offset(this.size.width * 0.18f, 0f),
-                        end = Offset(this.size.width * 0.82f, this.size.height),
-                    )
+                // The brush is built once per size, not on every draw of a scrolling list.
+                val brush = Brush.linearGradient(
+                    colors = listOf(gradient.top, gradient.bottom),
+                    start = Offset(this.size.width * 0.18f, 0f),
+                    end = Offset(this.size.width * 0.82f, this.size.height),
                 )
+                onDrawBehind { drawRect(brush) }
             }
     ) {
         val fontSize = (size * TEXT_SIZE_RATIO).toSp()
