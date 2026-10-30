@@ -294,6 +294,11 @@ androidComponents {
                 } else {
                     logger.warn("Proguard folder ${File(projectDir, flavorProguardDir).absolutePath} does not exist")
                 }
+
+                // Правка форка: сборка «perf» с читаемыми именами для профилировщика (docs/perf.md).
+                if (variant.buildType == "perf" && project.findProperty("perfSymbols") == "true") {
+                    keepRules.addStaticSourceDirectory("proguard/perf-symbols")
+                }
             }
         }
 

@@ -1,0 +1,3 @@
+# Larpgram: perf build with readable names for simpleperf/Perfetto (-PperfSymbols=true).
+# R8 still shrinks and optimizes; only renaming is off.
+-dontobfuscate
