@@ -66,6 +66,8 @@ object AppBindingContainer {
     @Provides
     @SingleIn(AppScope::class)
     fun providesBuildType(): BuildType {
+        // Правка форка: сборка «perf» (замеры, docs/perf.md) ведёт себя как релиз.
+        if (BuildConfig.BUILD_TYPE == "perf") return BuildType.RELEASE
         return BuildType.valueOf(BuildConfig.BUILD_TYPE.uppercase())
     }
 

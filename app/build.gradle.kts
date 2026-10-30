@@ -173,6 +173,22 @@ android {
             }
         }
 
+        // Правка форка: «perf» — релизная сборка (R8, без debuggable) с profileable и
+        // debug-подписью, ставится рядом с основными пакетами. Только для замеров (docs/perf.md).
+        register("perf") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".perf"
+            versionNameSuffix = "-perf"
+            resValue("string", "app_name", "$baseAppName perf")
+            resValue(
+                "string",
+                "login_redirect_scheme",
+                "$oAuthRedirectSchemeBase.perf",
+            )
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug")
+        }
+
         register("nightly") {
             val release = getByName("release")
             initWith(release)
