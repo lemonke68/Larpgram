@@ -214,13 +214,10 @@ private fun RoomsView(
 ) {
     val isSpaceFilterSelected = spaceFiltersState is SpaceFiltersState.Selected
     val hasAnyFilterSelected = filtersState.hasAnyFilterSelected || isSpaceFilterSelected
-    if (state.summaries.isEmpty() && hasAnyFilterSelected) {
-        EmptyViewForFilterStates(
-            selectedFilters = filtersState.selectedFilters(),
-            isSpaceFilterSelected = isSpaceFilterSelected,
-            modifier = modifier.fillMaxSize()
-        )
-    } else {
+    val isFilteredEmpty = state.summaries.isEmpty() && hasAnyFilterSelected
+    // Правка форка: Rust emits an empty batch while replacing the folder filter. Keep the
+    // LazyColumn's composition/reuse pool alive through that batch instead of rebuilding it.
+    Box(modifier.fillMaxSize()) {
         RoomsViewList(
             state = state,
             hideInvitesAvatars = hideInvitesAvatars,
@@ -230,9 +227,16 @@ private fun RoomsView(
             onRoomClick = onRoomClick,
             contentPadding = contentPadding,
             lazyListState = lazyListState,
-            modifier = modifier.fillMaxSize(),
-            showBanner = showBanner,
+            modifier = Modifier.fillMaxSize(),
+            showBanner = showBanner && !isFilteredEmpty,
         )
+        if (isFilteredEmpty) {
+            EmptyViewForFilterStates(
+                selectedFilters = filtersState.selectedFilters(),
+                isSpaceFilterSelected = isSpaceFilterSelected,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 

@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -96,7 +98,7 @@ fun SwipeableRoomListRow(
     }
 
     SwipeableRowLayout(
-        offsetX = offsetX.value,
+        offsetX = { offsetX.value },
         startActions = startActions,
         endActions = endActions,
         onActionClick = { action ->
@@ -159,7 +161,7 @@ fun SwipeableRoomListRow(
  */
 @Composable
 private fun SwipeableRowLayout(
-    offsetX: Float,
+    offsetX: () -> Float,
     startActions: List<SwipeAction>,
     endActions: List<SwipeAction>,
     onActionClick: (SwipeAction) -> Unit,
@@ -167,12 +169,13 @@ private fun SwipeableRowLayout(
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isOpen by remember(offsetX) { derivedStateOf { offsetX() != 0f } }
     Box(modifier) {
         // matchParentSize: fill the row's content height without dictating it (the front
         // content is what sizes the Box; in a LazyColumn the height is otherwise unbounded).
         // Larpgram V1: the list background has a soft glow, so a closed row stays transparent and
         // the action panels are only drawn while the row is moved.
-        if (offsetX != 0f) {
+        if (isOpen) {
             Row(modifier = Modifier.matchParentSize()) {
                 startActions.forEach { action ->
                     SwipeActionPanel(action = action, onClick = { onActionClick(action) })
@@ -188,15 +191,15 @@ private fun SwipeableRowLayout(
                 .layout { measurable, constraints ->
                     val placeable = measurable.measure(constraints)
                     layout(placeable.width, placeable.height) {
-                        placeable.placeRelative(offsetX.roundToInt(), 0)
+                        placeable.placeRelative(offsetX().roundToInt(), 0)
                     }
                 }
                 // Opaque background so the action panel behind is hidden when the row is closed
                 // and only appears in the gap that opens as the row slides.
-                .then(if (offsetX != 0f) Modifier.background(ElementTheme.colors.bgCanvasDefault) else Modifier),
+                .then(if (isOpen) Modifier.background(ElementTheme.colors.bgCanvasDefault) else Modifier),
         ) {
             content()
-            if (offsetX != 0f) {
+            if (isOpen) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -335,7 +338,7 @@ private fun SwipeableRowLayoutPreviewHost(
     val density = LocalDensity.current
     val revealed = with(density) { -(ACTION_WIDTH * endActions.size).toPx() }
     SwipeableRowLayout(
-        offsetX = revealed,
+        offsetX = { revealed },
         startActions = emptyList(),
         endActions = endActions,
         onActionClick = {},

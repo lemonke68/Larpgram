@@ -41,6 +41,7 @@ import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
+import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -314,11 +315,12 @@ class HomePresenterTest {
     }
 
     @Test
-    fun `present - total unread count is loaded in the initial state`() = runTest {
+    fun `present - total unread count is loaded without blocking the initial state`() = runTest {
         val presenter = createHomePresenter(
             client = FakeMatrixClient(totalUnreadCountResult = { Result.success(5) }),
         )
         presenter.test {
+            assertThat(awaitItem().totalUnreadCount).isEqualTo(0)
             assertThat(awaitItem().totalUnreadCount).isEqualTo(5)
         }
     }
@@ -346,5 +348,6 @@ internal fun TestScope.createHomePresenter(
     sessionStore = sessionStore,
     announcementService = announcementService,
     featureFlagService = featureFlagService,
+    coroutineDispatchers = testCoroutineDispatchers(),
     appCoroutineScope = appCoroutineScope,
 )

@@ -439,9 +439,11 @@ private fun MessagePreviewAndIndicatorRow(
                 // Правка форка: часиков перед текстом больше нет, отправку показывают галочки
                 // рядом со временем, а два индикатора одного и того же это шум.
                 val messagePreview = room.latestEvent.content()
-                val annotatedMessagePreview = messagePreview as? AnnotatedString ?: AnnotatedString(text = messagePreview.orEmpty().toString())
-                    // V1: the bold sender prefix («Мила:», «Вы:») is primary-coloured, the text stays secondary.
-                    .withPrimarySenderPrefix(ElementTheme.colors.textPrimary)
+                val primaryColor = ElementTheme.colors.textPrimary
+                val annotatedMessagePreview = remember(messagePreview, primaryColor) {
+                    messagePreview as? AnnotatedString ?: AnnotatedString(text = messagePreview.orEmpty().toString())
+                        .withPrimarySenderPrefix(primaryColor)
+                }
                 Text(
                     modifier = Modifier
                         .weight(1f)
@@ -541,27 +543,29 @@ private fun typingText(typing: TypingPreview): String {
 private fun latestEventThumbnailContent(thumbnail: MediaSource?): ImmutableMap<String, InlineTextContent> {
     if (thumbnail == null) return persistentMapOf()
     val size = with(LocalDensity.current) { PREVIEW_THUMBNAIL_SIZE.toSp() }
-    return persistentMapOf(
-        LATEST_EVENT_THUMBNAIL_ID to InlineTextContent(
-            placeholder = Placeholder(
-                width = size,
-                height = size,
-                placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
-            ),
-        ) {
-            AsyncImage(
-                model = MediaRequestData(
-                    source = thumbnail,
-                    kind = MediaRequestData.Kind.Thumbnail(PREVIEW_THUMBNAIL_REQUEST_PX),
+    return remember(thumbnail, size) {
+        persistentMapOf(
+            LATEST_EVENT_THUMBNAIL_ID to InlineTextContent(
+                placeholder = Placeholder(
+                    width = size,
+                    height = size,
+                    placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
                 ),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(PREVIEW_THUMBNAIL_CORNER)),
-            )
-        }
-    )
+            ) {
+                AsyncImage(
+                    model = MediaRequestData(
+                        source = thumbnail,
+                        kind = MediaRequestData.Kind.Thumbnail(PREVIEW_THUMBNAIL_REQUEST_PX),
+                    ),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(PREVIEW_THUMBNAIL_CORNER)),
+                )
+            }
+        )
+    }
 }
 
 @Composable

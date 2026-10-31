@@ -30,6 +30,7 @@ import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.lambda.lambdaError
 import io.element.android.tests.testutils.node.TestParentNode
 import io.element.android.tests.testutils.robolectric.RobolectricTest
+import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -72,6 +73,7 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                     matrixClient = FakeMatrixClient(),
                     sessionStore = InMemorySessionStore(),
                     matrixClientProvider = FakeMatrixClientProvider(),
+                    coroutineDispatchers = testCoroutineDispatchers(),
                 ),
                 inviteFriendsUseCase = { lambdaError() },
                 analyticsService = FakeAnalyticsService(),

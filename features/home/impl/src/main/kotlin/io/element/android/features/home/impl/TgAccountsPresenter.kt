@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import dev.zacsweers.metro.Inject
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.MatrixClientProvider
 import io.element.android.libraries.matrix.api.core.SessionId
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 
 /** One row of the account switcher popover. */
 @Immutable
@@ -51,6 +53,7 @@ class TgAccountsPresenter(
     private val matrixClient: MatrixClient,
     private val sessionStore: SessionStore,
     private val matrixClientProvider: MatrixClientProvider,
+    private val coroutineDispatchers: CoroutineDispatchers,
 ) : Presenter<ImmutableList<TgAccount>> {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Composable
@@ -76,7 +79,7 @@ class TgAccountsPresenter(
             emit(TgAccount(user = user, unreadCount = 0, isCurrent = false))
         } else {
             emitAll(
-                combine(client.userProfile, client.totalUnreadCountFlow()) { profile, unread ->
+                combine(client.userProfile, client.totalUnreadCountFlow().flowOn(coroutineDispatchers.io)) { profile, unread ->
                     TgAccount(
                         // The current profile is the freshest; for the others keep the stored avatar thumbnail.
                         user = if (isCurrent) profile else user,

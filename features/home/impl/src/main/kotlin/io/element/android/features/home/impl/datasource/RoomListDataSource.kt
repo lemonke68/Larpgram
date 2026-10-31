@@ -110,7 +110,10 @@ class RoomListDataSource(
 
     suspend fun updateVisibleRange(visibleRange: IntRange) = coroutineScope {
         launch {
-            roomList.updateVisibleRange(visibleRange, PAGINATION_THRESHOLD)
+            // Правка форка: pagination can synchronously call the Rust controller too.
+            withContext(coroutineDispatchers.computation) {
+                roomList.updateVisibleRange(visibleRange, PAGINATION_THRESHOLD)
+            }
         }
         launch {
             subscribeToVisibleRoomsIfNeeded(visibleRange)
@@ -221,7 +224,8 @@ class RoomListDataSource(
         return roomListSummary
     }
 
-    private suspend fun rebuildAllRoomSummaries() {
+    // Правка форка: date/time broadcasts must not reformat the full list on main.
+    private suspend fun rebuildAllRoomSummaries() = withContext(coroutineDispatchers.computation) {
         lock.withLock {
             roomList.summaries.replayCache.firstOrNull()?.let { roomSummaries ->
                 diffCacheUpdater.updateWith(roomSummaries)

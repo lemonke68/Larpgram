@@ -25,6 +25,7 @@ import io.element.android.features.home.impl.roomlist.RoomListState
 import io.element.android.features.home.impl.spaces.HomeSpacesState
 import io.element.android.features.rageshake.api.RageshakeFeatureAvailability
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.di.annotations.AppCoroutineScope
@@ -39,6 +40,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 @Inject
@@ -53,6 +55,7 @@ class HomePresenter(
     private val sessionStore: SessionStore,
     private val announcementService: AnnouncementService,
     private val featureFlagService: FeatureFlagService,
+    private val coroutineDispatchers: CoroutineDispatchers,
     @AppCoroutineScope
     private val appCoroutineScope: CoroutineScope,
 ) : Presenter<HomeState> {
@@ -62,9 +65,10 @@ class HomePresenter(
     override fun present(): HomeState {
         val coroutineScope = rememberCoroutineScope()
         val matrixUser by client.userProfile.collectAsState()
-        val totalUnreadCount by remember { client.totalUnreadCountFlow() }
-            // The initial value is only used for the first composition, remember it to avoid calling the SDK on every recomposition.
-            .collectAsState(initial = remember { client.totalUnreadCount().getOrDefault(0).toInt() })
+        // Правка форка: totalUnreadCount is a synchronous FFI call, including its first read.
+        val totalUnreadCount by remember(client) {
+            client.totalUnreadCountFlow().flowOn(coroutineDispatchers.io)
+        }.collectAsState(initial = 0)
         val currentUserAndNeighbors by remember {
             combine(
                 client.userProfile,

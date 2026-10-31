@@ -397,6 +397,9 @@ private fun ChatsTab(
     // folder slides in a ready page instead of waiting for the presenter.
     val spaceFiltersState = roomListState.spaceFiltersState
     val folderKeys = listOf(ALL_FOLDERS_KEY) + spaceFiltersState.availableFilters().map { it.spaceRoom.roomId.value }
+    LaunchedEffect(folderKeys) {
+        folderPageCache.keys.retainAll(folderKeys.toSet())
+    }
     val freshFolder = folderPager.freshIndex
     LaunchedEffect(roomListState.contentState, freshFolder) {
         val content = roomListState.contentState
