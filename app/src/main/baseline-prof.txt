@@ -1,0 +1,19 @@
+# Measured application hot paths, curated for the sideloaded APK.
+# Keep this list narrow: library profiles already cover Compose, coroutines and AndroidX.
+# Review against the chat/folder scenarios in tools/larpgram/perf when these screens change.
+Lio/element/android/x/MainActivity;
+Lio/element/android/x/initializer/PlatformInitializer;
+HSPLio/element/android/x/MainActivity;->**(**)**
+HSPLio/element/android/x/initializer/PlatformInitializer;->**(**)**
+HSPLio/element/android/features/home/impl/TgHomeViewKt;->**(**)**
+HSPLio/element/android/features/home/impl/components/TgRoomSummaryRowKt;->**(**)**
+HSPLio/element/android/features/home/impl/components/RoomListContentViewKt;->**(**)**
+HSPLio/element/android/features/home/impl/components/TgHomeTopBarKt;->**(**)**
+HSPLio/element/android/features/home/impl/components/TgHomeTabBarKt;->**(**)**
+HSPLio/element/android/features/home/impl/spacefilters/SpaceFolderSwipeKt;->**(**)**
+HSPLio/element/android/features/home/impl/spacefilters/SpaceFolderPillsViewKt;->**(**)**
+HSPLio/element/android/features/messages/impl/TgMessagesViewKt;->**(**)**
+HSPLio/element/android/features/messages/impl/TgMessagesScaffoldKt;->**(**)**
+HSPLio/element/android/features/messages/impl/topbars/TgChatHeaderKt;->**(**)**
+HSPLio/element/android/features/messages/impl/timeline/components/TgTimelineItemEventRowKt;->**(**)**
+HSPLio/element/android/features/messages/impl/actionlist/MessageActionsOverlayKt;->**(**)**
