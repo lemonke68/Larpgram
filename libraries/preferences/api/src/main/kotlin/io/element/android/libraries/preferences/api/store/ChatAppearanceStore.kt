@@ -8,6 +8,8 @@
 package io.element.android.libraries.preferences.api.store
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /** Baseline message text size, mapping to text scale 1.0 in the timeline. */
 const val DEFAULT_MESSAGE_TEXT_SIZE_SP = 16
@@ -21,6 +23,25 @@ const val DEFAULT_BUBBLE_CORNER_RADIUS_DP = 18
  * Lives beside Element's [AppPreferencesStore] (same file, own keys) so Element's store stays upstream (аудит C-009).
  */
 interface ChatAppearanceStore {
+    /** Production stores override this to map all fields from the same DataStore emission. */
+    fun getAppearanceFlow(): Flow<ChatAppearance> = combine(
+        getMessageTextSizeSpFlow(),
+        getBubbleCornerRadiusDpFlow(),
+        getChatWallpaperIdFlow(),
+        getChatWallpaperCustomColorArgbFlow(),
+        getChatBubbleColorArgbFlow(),
+    ) { textSize, radius, wallpaper, wallpaperColor, bubbleColor ->
+        ChatAppearance(textSize, radius, wallpaper, wallpaperColor, bubbleColor)
+    }.combine(getChatAccentColorArgbFlow()) { appearance, accent ->
+        appearance.copy(chatAccentColorArgb = accent)
+    }.combine(getChatWallpaperImageUriFlow()) { appearance, uri ->
+        appearance.copy(chatWallpaperImageUri = uri)
+    }.combine(getChatListThreeLineFlow()) { appearance, threeLine ->
+        appearance.copy(chatListThreeLine = threeLine)
+    }.combine(getChatWallpaperGradientFlow()) { appearance, gradient ->
+        appearance.copy(chatWallpaperGradient = gradient)
+    }.distinctUntilChanged()
+
     /** Message text size in sp. Default [DEFAULT_MESSAGE_TEXT_SIZE_SP]. */
     suspend fun setMessageTextSizeSp(value: Int)
     fun getMessageTextSizeSpFlow(): Flow<Int>

@@ -14,11 +14,13 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.libraries.preferences.api.store.ChatAppearance
 import io.element.android.libraries.preferences.api.store.ChatAppearanceStore
 import io.element.android.libraries.preferences.api.store.DEFAULT_BUBBLE_CORNER_RADIUS_DP
 import io.element.android.libraries.preferences.api.store.DEFAULT_MESSAGE_TEXT_SIZE_SP
 import io.element.android.libraries.preferences.api.store.PreferenceDataStoreFactory
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 private val messageTextSizeSpKey = intPreferencesKey("larpgramMessageTextSizeSp")
@@ -40,6 +42,20 @@ class DefaultChatAppearanceStore(
     preferenceDataStoreFactory: PreferenceDataStoreFactory,
 ) : ChatAppearanceStore {
     private val store = preferenceDataStoreFactory.create("elementx_preferences")
+
+    override fun getAppearanceFlow(): Flow<ChatAppearance> = store.data.map { prefs ->
+        ChatAppearance(
+            messageTextSizeSp = prefs[messageTextSizeSpKey] ?: DEFAULT_MESSAGE_TEXT_SIZE_SP,
+            bubbleCornerRadiusDp = prefs[bubbleCornerRadiusDpKey] ?: DEFAULT_BUBBLE_CORNER_RADIUS_DP,
+            chatWallpaperId = prefs[chatWallpaperIdKey],
+            chatWallpaperCustomColorArgb = prefs[chatWallpaperCustomColorKey],
+            chatBubbleColorArgb = prefs[chatBubbleColorKey],
+            chatAccentColorArgb = prefs[chatAccentColorKey],
+            chatWallpaperImageUri = prefs[chatWallpaperImageUriKey],
+            chatListThreeLine = prefs[chatListThreeLineKey] ?: false,
+            chatWallpaperGradient = prefs[chatWallpaperGradientKey],
+        )
+    }.distinctUntilChanged()
 
     override suspend fun setMessageTextSizeSp(value: Int) = set(messageTextSizeSpKey, value)
 
