@@ -149,13 +149,11 @@ import io.element.android.libraries.designsystem.text.toAnnotatedString
 import io.element.android.libraries.designsystem.text.toDp
 import io.element.android.libraries.designsystem.theme.components.BottomSheetDragHandle
 import io.element.android.libraries.designsystem.theme.components.Icon
-import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.HideKeyboardWhenDisposed
 import io.element.android.libraries.designsystem.utils.KeepScreenOn
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
 import io.element.android.libraries.designsystem.utils.rememberBlurredBackdrop
-import io.element.android.libraries.designsystem.utils.scaffoldScrollableContentInsets
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
@@ -329,8 +327,8 @@ fun TgMessagesView(
                 maxComposerHeightPx = (size.height * 0.5f).toInt()
             },
         content = {
-            Scaffold(
-                contentWindowInsets = if (isThreadTimeline) scaffoldScrollableContentInsets else WindowInsets(0),
+            TgMessagesScaffold(
+                isThreadTimeline = isThreadTimeline,
                 topBar = {
                     if (state.timelineState.timelineMode is Timeline.Mode.Thread) {
                         ThreadTopBar(
