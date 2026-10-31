@@ -16,6 +16,7 @@ import dev.zacsweers.metro.Provides
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.mediaplayer.impl.DefaultSimplePlayer
+import io.element.android.libraries.mediaplayer.impl.LazySimplePlayer
 import io.element.android.libraries.mediaplayer.impl.SimplePlayer
 
 @ContributesTo(RoomScope::class)
@@ -24,5 +25,8 @@ object SimplePlayerBindingContainer {
     @Provides
     fun providesSimplePlayer(
         @ApplicationContext context: Context,
-    ): SimplePlayer = DefaultSimplePlayer(ExoPlayer.Builder(context).setWakeMode(C.WAKE_MODE_LOCAL).build())
+    // Правка форка: не создавать ExoPlayer при открытии текстового чата.
+    ): SimplePlayer = LazySimplePlayer {
+        DefaultSimplePlayer(ExoPlayer.Builder(context).setWakeMode(C.WAKE_MODE_LOCAL).build())
+    }
 }
