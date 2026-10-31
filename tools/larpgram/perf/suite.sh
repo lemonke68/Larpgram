@@ -18,11 +18,7 @@ tap_text() {
 "$DIR/run.sh" list "$RUNS"
 "$DIR/run.sh" folders "$RUNS"
 adb shell input swipe 300 1100 900 1100 180; sleep 2
-for i in $(seq 1 "$RUNS"); do
-  reset
-  for k in 1 2 3; do adb shell input tap 540 647; sleep 2.5; adb shell input keyevent KEYCODE_BACK; sleep 2; done
-  stats "chat#$i"
-done
+CHAT_OPEN_SECS=2.5 CHAT_CLOSE_SECS=2 "$DIR/run.sh" chat "$RUNS"
 tap_text "$TIMELINE_CHAT"; sleep 3
 for k in 1 2 3 4 5 6; do adb shell input swipe 540 700 540 1900 100; sleep 0.6; done
 "$DIR/run.sh" timeline "$RUNS"

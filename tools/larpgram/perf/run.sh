@@ -8,7 +8,7 @@
 #   timeline   fling an open chat up/down
 #   chat       open/close the first chat row
 # Frame stats come from dumpsys gfxinfo framestats, parsed by gfx.py.
-set -u
+set -euo pipefail
 PKG=${PKG:-ru.mangokokos.larpgram.perf}
 ACT=io.element.android.x.MainActivity
 export ANDROID_SERIAL=${ANDROID_SERIAL:-SBXDU19428000351}
@@ -43,10 +43,31 @@ case "$1" in
       sleep 1; stats "folders#$i"
     done ;;
   chat)
-    ROW_Y=${ROW_Y:-$((H * 28 / 100))}
+    CHAT_TITLE=${CHAT_TITLE:-Избранное}
     for i in $(seq 1 "$RUNS"); do
+      # Resolve outside the measured interval: banners can move the first row.
+      adb shell uiautomator dump /sdcard/larpgram-perf-ui.xml >/dev/null
+      read -r ROW_X ROW_Y < <(adb exec-out cat /sdcard/larpgram-perf-ui.xml | python3 -c '
+import sys
+import xml.etree.ElementTree as ET
+import re
+for node in ET.parse(sys.stdin).iter("node"):
+    if node.get("text") != sys.argv[1]:
+        continue
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds", "")))
+    if x2 > x1 and y2 > y1:
+        print((x1 + x2) // 2, (y1 + y2) // 2)
+        break
+else:
+    sys.exit("Chat row is not visible: " + sys.argv[1])
+' "$CHAT_TITLE")
       reset
-      for k in 1 2 3; do adb shell input tap $CX "$ROW_Y"; sleep 1.5; adb shell input keyevent KEYCODE_BACK; sleep 1.5; done
+      for k in 1 2 3; do
+        adb shell input tap "$ROW_X" "$ROW_Y"
+        sleep "${CHAT_OPEN_SECS:-1.5}"
+        adb shell input keyevent KEYCODE_BACK
+        sleep "${CHAT_CLOSE_SECS:-1.5}"
+      done
       stats "chat#$i"
     done ;;
   *) echo "unknown scenario"; exit 1 ;;
