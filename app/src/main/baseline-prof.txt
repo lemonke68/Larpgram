@@ -13,7 +13,6 @@ HSPLio/element/android/features/home/impl/components/TgHomeTabBarKt;->**(**)**
 HSPLio/element/android/features/home/impl/spacefilters/SpaceFolderSwipeKt;->**(**)**
 HSPLio/element/android/features/home/impl/spacefilters/SpaceFolderPillsViewKt;->**(**)**
 HSPLio/element/android/features/messages/impl/TgMessagesViewKt;->**(**)**
-HSPLio/element/android/features/messages/impl/TgMessagesScaffoldKt;->**(**)**
 HSPLio/element/android/features/messages/impl/topbars/TgChatHeaderKt;->**(**)**
 HSPLio/element/android/features/messages/impl/timeline/components/TgTimelineItemEventRowKt;->**(**)**
 HSPLio/element/android/features/messages/impl/actionlist/MessageActionsOverlayKt;->**(**)**
