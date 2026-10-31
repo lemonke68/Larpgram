@@ -158,6 +158,10 @@ class SpaceFolderPagerState {
     var freshIndex: Int? by mutableStateOf(null)
         internal set
 
+    /** True only until the selected folder's response arrives or its bounded wait expires. */
+    var isContentPending: Boolean by mutableStateOf(false)
+        internal set
+
     /**
      * Where the strip is, in folder indices (0 = «Все»), fractional while the pages move. Null
      * without a pager. Read it in the layout or draw phase: it changes every frame of a swipe.
@@ -214,6 +218,7 @@ fun SpaceFolderSwipe(
             pagerState.positionProvider = null
             pagerState.request = null
             pagerState.freshIndex = state.currentTabIndex()
+            pagerState.isContentPending = false
         }
         Box(modifier) { content() }
         return
@@ -274,6 +279,7 @@ fun SpaceFolderSwipe(
         val keyBefore = latestKey.value
         val token = ++switchToken
         liveReady = false
+        pagerState.isContentPending = true
         pagerState.freshIndex = null
         requested = index
         selectSpaceFilterIndex(latest.value, index)
@@ -285,6 +291,7 @@ fun SpaceFolderSwipe(
             } != null
             if (token == switchToken) {
                 liveReady = true
+                pagerState.isContentPending = false
                 if (arrived && selected() == index) pagerState.freshIndex = index
             }
         }

@@ -70,6 +70,7 @@ import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.home.impl.roomlist.RoomListState
 import io.element.android.features.home.impl.roomlist.TgChatPreviewOverlay
+import io.element.android.features.home.impl.roomlist.roomListContentDuringFolderSwitch
 import io.element.android.features.home.impl.search.GlobalSearchEvent
 import io.element.android.features.home.impl.search.GlobalSearchView
 import io.element.android.features.home.impl.search.RoomListSearchView
@@ -79,6 +80,7 @@ import io.element.android.features.home.impl.spacefilters.SpaceFiltersView
 import io.element.android.features.home.impl.spacefilters.SpaceFolderSwipe
 import io.element.android.features.home.impl.spacefilters.availableFilters
 import io.element.android.features.home.impl.spacefilters.rememberSpaceFolderPagerState
+import io.element.android.features.home.impl.spacefilters.selectedFilter
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
 import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
@@ -401,6 +403,21 @@ private fun ChatsTab(
         folderPageCache.keys.retainAll(folderKeys.toSet())
     }
     val freshFolder = folderPager.freshIndex
+    val selectedFolderKey = spaceFiltersState.selectedFilter()?.spaceRoom?.roomId?.value ?: ALL_FOLDERS_KEY
+    var previousFolderKey by remember { mutableStateOf(selectedFolderKey) }
+    LaunchedEffect(selectedFolderKey) {
+        if (previousFolderKey != selectedFolderKey) {
+            previousFolderKey = selectedFolderKey
+            // The old empty batch reset the live list to its top; keep that behavior without
+            // discarding its measured rows. Returning from the Profile tab keeps its position.
+            lazyListState.scrollToItem(0)
+        }
+    }
+    val livePageContent = roomListContentDuringFolderSwitch(
+        live = roomListState.contentState,
+        cached = folderPageCache[selectedFolderKey],
+        isContentPending = folderPager.isContentPending,
+    )
     LaunchedEffect(roomListState.contentState, freshFolder) {
         val content = roomListState.contentState
         val key = freshFolder?.let(folderKeys::getOrNull) ?: return@LaunchedEffect
@@ -442,7 +459,7 @@ private fun ChatsTab(
                 .tgGlowBackground(),
         ) {
             RoomListContentView(
-                contentState = roomListState.contentState,
+                contentState = livePageContent,
                 filtersState = roomListState.filtersState,
                 spaceFiltersState = roomListState.spaceFiltersState,
                 lazyListState = lazyListState,
