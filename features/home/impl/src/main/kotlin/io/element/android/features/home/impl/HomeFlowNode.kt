@@ -25,6 +25,7 @@ import com.bumble.appyx.core.composable.PermanentChild
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.navigation.model.permanent.PermanentNavModel
+import com.bumble.appyx.core.node.LocalNodeTargetVisibility
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.node.node
 import com.bumble.appyx.core.plugin.Plugin
@@ -53,6 +54,8 @@ import io.element.android.features.rolesandpermissions.api.ChangeRoomMemberRoles
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
+import io.element.android.libraries.architecture.LocalScreenContentVisible
+import io.element.android.libraries.architecture.ScreenContentRetention
 import io.element.android.libraries.architecture.appyx.launchMolecule
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.core.extensions.runCatchingExceptions
@@ -211,7 +214,12 @@ class HomeFlowNode(
             val activity = requireNotNull(LocalActivity.current)
 
             val loadingJoinedRoomJob = remember { mutableStateOf<AsyncData<Job>>(AsyncData.Uninitialized) }
-            if (loadingJoinedRoomJob.value.isLoading()) {
+            // Правка форка: only the normal Home root may survive under a room, without its dialogs.
+            val contentVisible = LocalScreenContentVisible.current
+            ScreenContentRetention(
+                eligible = LocalNodeTargetVisibility.current && !loadingJoinedRoomJob.value.isLoading(),
+            )
+            if (contentVisible && loadingJoinedRoomJob.value.isLoading()) {
                 DelayedVisibility(duration = 400.milliseconds) {
                     ProgressDialog(
                         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true),

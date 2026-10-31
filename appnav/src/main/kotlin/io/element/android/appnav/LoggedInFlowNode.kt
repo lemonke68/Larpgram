@@ -737,7 +737,11 @@ class LoggedInFlowNode(
                     ) { contentModifier ->
                         Box(modifier = contentModifier) {
                             val ftueState by ftueService.state.collectAsState()
-                            BackstackView(transitionHandler = rememberLoggedInFlowTransitionHandler(backstack))
+                            // Правка форка: keep only Home's UI state; hidden rooms are still disposed.
+                            BackstackView(
+                                transitionHandler = rememberLoggedInFlowTransitionHandler(backstack),
+                                retainOffScreen = { it == NavTarget.Home },
+                            )
                             if (ftueState is FtueState.Complete) {
                                 PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.LoggedInPermanent)
                             }

@@ -43,6 +43,7 @@ import com.bumble.appyx.core.node.LocalMovableContentMap
 import com.bumble.appyx.core.node.LocalNodeTargetVisibility
 import com.bumble.appyx.core.node.LocalSharedElementScope
 import com.bumble.appyx.core.node.ParentNode
+import io.element.android.libraries.architecture.RetainedScreenContent
 import io.element.android.libraries.core.coroutine.withPreviousValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -60,7 +61,9 @@ import kotlin.reflect.KClass
 class SafeChildrenTransitionScope<T : Any, S>(
     val transitionHandler: TransitionHandler<T, S>,
     val transitionParams: TransitionParams,
-    val navModel: NavModel<T, S>
+    val navModel: NavModel<T, S>,
+    // Правка форка: retain only explicitly selected roots, with no hidden layout/draw.
+    val retainOffScreen: (T) -> Boolean = { false },
 ) {
 
     @Composable
@@ -154,8 +157,8 @@ class SafeChildrenTransitionScope<T : Any, S>(
 
         val children by screenStateFlow.collectAsState()
 
-        children
-            .onScreen
+        // Правка форка: the Home root can keep its list composition between chat visits.
+        (children.onScreen + children.offScreen.filter { retainOffScreen(it.key.navTarget) })
             .filter { clazz.isInstance(it.key.navTarget) }
             .forEach { navElement ->
                 key(navElement.key.id) {
@@ -163,13 +166,13 @@ class SafeChildrenTransitionScope<T : Any, S>(
                         LocalNodeTargetVisibility provides
                             children.onScreenWithVisibleTargetState.contains(navElement)
                     ) {
-                        Child(
-                            navElement,
-                            saveableStateHolder,
-                            transitionParams,
-                            transitionHandler,
-                            block
-                        )
+                        if (retainOffScreen(navElement.key.navTarget)) {
+                            RetainedScreenContent(visible = navElement in children.onScreen) {
+                                Child(navElement, saveableStateHolder, transitionParams, transitionHandler, block)
+                            }
+                        } else {
+                            Child(navElement, saveableStateHolder, transitionParams, transitionHandler, block)
+                        }
 
                         ////////// MODIFIED ////////////
                         DisposableEffect(navElement.key) {
@@ -194,6 +197,7 @@ inline fun <reified NavTarget : Any, State> ParentNode<NavTarget>.SafeChildren(
     transitionHandler: TransitionHandler<NavTarget, State> = remember { JumpToEndTransitionHandler() },
     withSharedElementTransition: Boolean = false,
     withMovableContent: Boolean = false,
+    noinline retainOffScreen: (NavTarget) -> Boolean = { false },
     noinline block: @Composable SafeChildrenTransitionScope<NavTarget, State>.() -> Unit = {
         children<NavTarget> { child ->
             child()
@@ -227,7 +231,8 @@ inline fun <reified NavTarget : Any, State> ParentNode<NavTarget>.SafeChildren(
                     SafeChildrenTransitionScope(
                         transitionHandler = transitionHandler,
                         transitionParams = transitionParams,
-                        navModel = navModel
+                        navModel = navModel,
+                        retainOffScreen = retainOffScreen,
                     )
                 )
             }
@@ -248,7 +253,8 @@ inline fun <reified NavTarget : Any, State> ParentNode<NavTarget>.SafeChildren(
                     SafeChildrenTransitionScope(
                         transitionHandler = transitionHandler,
                         transitionParams = transitionParams,
-                        navModel = navModel
+                        navModel = navModel,
+                        retainOffScreen = retainOffScreen,
                     )
                 )
             }

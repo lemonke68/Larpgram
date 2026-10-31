@@ -11,6 +11,7 @@ package io.element.android.features.home.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -81,6 +82,8 @@ import io.element.android.features.home.impl.spacefilters.availableFilters
 import io.element.android.features.home.impl.spacefilters.rememberSpaceFolderPagerState
 import io.element.android.features.home.impl.spacefilters.selectedFilter
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
+import io.element.android.libraries.architecture.LocalScreenContentVisible
+import io.element.android.libraries.architecture.ScreenContentRetention
 import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
 import io.element.android.libraries.designsystem.components.glass.tgGlassSource
@@ -128,11 +131,13 @@ fun TgHomeView(
     musicMiniPlayer: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val state: RoomListState = homeState.roomListState
+    // Правка форка: retained list content must not host dialogs or media windows under a room.
+    val contentVisible = LocalScreenContentVisible.current
     val coroutineScope = rememberCoroutineScope()
     val firstThrottler = remember { FirstThrottler(300, coroutineScope) }
     Box(modifier) {
         // Без рендерера превью (превью-композиции, тесты) — прежняя шторка действий.
-        if (state.contextMenu is RoomListState.ContextMenu.Shown && chatPreview == null) {
+        if (contentVisible && state.contextMenu is RoomListState.ContextMenu.Shown && chatPreview == null) {
             RoomListContextMenu(
                 contextMenu = state.contextMenu,
                 canReportRoom = state.canReportRoom,
@@ -141,7 +146,7 @@ fun TgHomeView(
                 onReportRoomClick = onReportRoomClick,
             )
         }
-        if (state.declineInviteMenu is RoomListState.DeclineInviteMenu.Shown) {
+        if (contentVisible && state.declineInviteMenu is RoomListState.DeclineInviteMenu.Shown) {
             RoomListDeclineInviteMenu(
                 menu = state.declineInviteMenu,
                 canReportRoom = state.canReportRoom,
@@ -150,7 +155,7 @@ fun TgHomeView(
             )
         }
 
-        leaveRoomView()
+        if (contentVisible) leaveRoomView()
 
         HomeScaffold(
             state = homeState,
@@ -189,11 +194,11 @@ fun TgHomeView(
             )
         }
 
-        acceptDeclineInviteView()
+        if (contentVisible) acceptDeclineInviteView()
 
         // Правка форка: превью чата по долгому нажатию, как в Telegram. Верхним слоем на весь экран.
         val contextMenu = state.contextMenu
-        if (contextMenu is RoomListState.ContextMenu.Shown && chatPreview != null) {
+        if (contentVisible && contextMenu is RoomListState.ContextMenu.Shown && chatPreview != null) {
             TgChatPreviewOverlay(
                 contextMenu = contextMenu,
                 canReportRoom = state.canReportRoom,
@@ -228,13 +233,22 @@ private fun HomeScaffold(
     var currentItem by rememberSaveable { mutableStateOf(initialTab) }
     var showAccountSwitcher by remember { mutableStateOf(false) }
     val isChatsTab = currentItem == TgHomeTab.Chats
+    val tabTransition = updateTransition(currentItem, label = "homeTabs")
     // Бар видим на списке чатов и на корне профиля. На вложенных экранах настроек прячем,
     // иначе плавающая плашка перекрывает контент.
     val isBottomBarVisible = isChatsTab || profileTabAtRoot
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val roomListState: RoomListState = state.roomListState
+    val contentVisible = LocalScreenContentVisible.current
+    ScreenContentRetention(
+        eligible = isChatsTab && tabTransition.currentState == tabTransition.targetState && !tabTransition.isRunning &&
+            !showAccountSwitcher &&
+            !roomListState.globalSearchState.isSearchActive && !roomListState.searchState.isSearchActive &&
+            roomListState.contextMenu is RoomListState.ContextMenu.Hidden &&
+            roomListState.declineInviteMenu is RoomListState.DeclineInviteMenu.Hidden,
+    )
 
-    BackHandler(enabled = !isChatsTab || state.roomListState.spaceFiltersState is SpaceFiltersState.Selected) {
+    BackHandler(enabled = contentVisible && (!isChatsTab || state.roomListState.spaceFiltersState is SpaceFiltersState.Selected)) {
         if (!isChatsTab) {
             currentItem = TgHomeTab.Chats
         } else {
@@ -255,8 +269,7 @@ private fun HomeScaffold(
         Box(modifier = modifier.fillMaxSize()) {
             // Plan 9.3: the tabs cross-fade with a 24 dp shift towards the tab being opened.
             val tabShiftPx = with(LocalDensity.current) { TAB_SHIFT.roundToPx() }
-            AnimatedContent(
-                targetState = currentItem,
+            tabTransition.AnimatedContent(
                 transitionSpec = {
                     val toRight = targetState.ordinal > initialState.ordinal
                     val enterFrom = if (toRight) tabShiftPx else -tabShiftPx
@@ -268,7 +281,6 @@ private fun HomeScaffold(
                             slideOutHorizontally(TgMotion.tween(TgMotion.TAB_MS)) { -enterFrom }
                         )
                 },
-                label = "homeTabs",
             ) { tab ->
                 when (tab) {
                     TgHomeTab.Chats -> ChatsTab(
@@ -280,34 +292,36 @@ private fun HomeScaffold(
                         onRoomClick = onRoomClick,
                         onStartChatClick = onStartChatClick,
                         onMenuActionClick = onMenuActionClick,
-                        musicMiniPlayer = musicMiniPlayer,
+                        musicMiniPlayer = musicMiniPlayer.takeIf { contentVisible },
                         folderPageCache = folderPageCache,
                     )
                     // The Profile tab renders the merged profile + settings screen, hosted as a child
                     // node by HomeFlowNode (persistent bottom bar, Telegram-style in-place switch).
                     TgHomeTab.Profile -> HomeTabContent(
-                        content = profileContent,
+                        content = profileContent.takeIf { contentVisible },
                         placeholderLabel = stringResource(TgHomeTab.Profile.labelRes),
                         modifier = Modifier.tgGlassSource(state = hazeState),
                     )
                 }
             }
 
-            TgAccountSwitcher(
-                isVisible = showAccountSwitcher,
-                accounts = accounts,
-                hazeState = hazeState,
-                onAccountClick = { sessionId ->
-                    showAccountSwitcher = false
-                    state.eventSink(HomeEvent.DismissSwipeAvatarAnnouncement)
-                    onSwitchToAccount(sessionId)
-                },
-                onAddAccountClick = {
-                    showAccountSwitcher = false
-                    onAddAccountClick()
-                },
-                onDismiss = { showAccountSwitcher = false },
-            )
+            if (contentVisible) {
+                TgAccountSwitcher(
+                    isVisible = showAccountSwitcher,
+                    accounts = accounts,
+                    hazeState = hazeState,
+                    onAccountClick = { sessionId ->
+                        showAccountSwitcher = false
+                        state.eventSink(HomeEvent.DismissSwipeAvatarAnnouncement)
+                        onSwitchToAccount(sessionId)
+                    },
+                    onAddAccountClick = {
+                        showAccountSwitcher = false
+                        onAddAccountClick()
+                    },
+                    onDismiss = { showAccountSwitcher = false },
+                )
+            }
 
             if (isBottomBarVisible) {
                 TgHomeTabBar(

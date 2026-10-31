@@ -35,6 +35,7 @@ import dev.chrisbanes.haze.hazeSource
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.LarpgramColors
 import io.element.android.compound.tokens.larpgramColors
+import io.element.android.libraries.architecture.LocalScreenContentVisible
 
 /**
  * Правка форка: «жидкое стекло» Larpgram (редизайн V1 final, `tokens.json` → `glass`). Под панелью
@@ -116,6 +117,8 @@ private fun LarpgramColors.tint(tint: TgGlassTint): Color = when (tint) {
  */
 @Composable
 fun rememberGlassBlurEnabled(): Boolean {
+    // Правка форка: a retained hidden screen must not keep Haze layers or frame jobs alive.
+    if (!LocalScreenContentVisible.current) return false
     if (LocalInspectionMode.current) return false
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
     val context = LocalContext.current

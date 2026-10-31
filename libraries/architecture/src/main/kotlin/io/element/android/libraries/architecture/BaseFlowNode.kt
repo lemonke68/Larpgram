@@ -64,11 +64,14 @@ inline fun <reified NavTarget : Any> BaseFlowNode<NavTarget>.BackstackView(
     transitionHandler: TransitionHandler<NavTarget, BackStack.State> = rememberBackstackSlider(
         transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
     ),
+    // Правка форка: opt-in retention for a bounded root screen, never the entire room stack.
+    noinline retainOffScreen: (NavTarget) -> Boolean = { false },
 ) {
     SafeChildren(
         navModel = backstack,
         modifier = modifier,
         transitionHandler = transitionHandler,
+        retainOffScreen = retainOffScreen,
     )
 }
 

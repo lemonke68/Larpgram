@@ -15,6 +15,8 @@ plugins {
 
 android {
     namespace = "io.element.android.libraries.architecture"
+    // Правка форка: navigation retention tests use real Compose activity/resources.
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 setupDependencyInjection()
@@ -27,5 +29,6 @@ dependencies {
     api(libs.androidx.lifecycle.runtime)
     api(libs.molecule.runtime)
 
-    testCommonDependencies(libs)
+    testCommonDependencies(libs, includeTestComposeView = true)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
 }
