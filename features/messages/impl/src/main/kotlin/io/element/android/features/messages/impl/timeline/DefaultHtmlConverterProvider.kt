@@ -38,7 +38,9 @@ class DefaultHtmlConverterProvider(
     override fun Update() {
         val isInEditMode = LocalInspectionMode.current
         val mentionDetector = remember(isInEditMode) {
-            if (isInEditMode) null else newMentionDetector()
+            // Правка форка: plain messages need no native detector. HTML parsing in the
+            // background timeline factory initializes it only when it encounters a link.
+            lazy { if (isInEditMode) null else newMentionDetector() }
         }
 
         val editorStyle = ElementRichTextEditorStyle.textStyle()
@@ -64,7 +66,7 @@ class DefaultHtmlConverterProvider(
                 },
                 isEditor = false,
                 isMention = { _, url ->
-                    mentionDetector?.isMention(url).orFalse()
+                    mentionDetector.value?.isMention(url).orFalse()
                 }
             ).apply {
                 configureWith(editorStyle)

@@ -51,4 +51,14 @@ class DefaultHtmlConverterProviderTest : RobolectricTest() {
 
         assertThat(htmlConverter).isNotNull()
     }
+
+    // Правка форка: normal rendering must not load the unavailable native detector before any HTML link is parsed.
+    @Test
+    fun `plain rendering initializes converter without a native mention detector`() = runComposeUiTest {
+        setContent {
+            provider.Update()
+        }
+
+        assertThat(provider.provide()).isNotNull()
+    }
 }
