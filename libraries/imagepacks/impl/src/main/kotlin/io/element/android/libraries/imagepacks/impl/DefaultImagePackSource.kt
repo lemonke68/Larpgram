@@ -44,12 +44,14 @@ class DefaultImagePackSource(
         val raw = matrixClient.getAccountData(ImagePackEventTypes.USER_EMOTES).getOrNull() ?: return emptyList()
         // Личный пак ровно один, но наружу отдаём списком: пикеру всё равно склеивать
         // его с паками комнат.
-        return listOfNotNull(parser.parse(raw, ImagePackId.User))
+        return withContext(coroutineDispatchers.computation) {
+            listOfNotNull(parser.parse(raw, ImagePackId.User))
+        }
     }
 
     override suspend fun getEmoteRooms(): List<Pair<String, String>> {
         val raw = matrixClient.getAccountData(ImagePackEventTypes.EMOTE_ROOMS).getOrNull() ?: return emptyList()
-        return parser.parseEmoteRooms(raw)
+        return withContext(coroutineDispatchers.computation) { parser.parseEmoteRooms(raw) }
     }
 
     override suspend fun getRoomPack(roomId: String, stateKey: String): ImagePack? {
@@ -76,12 +78,13 @@ class DefaultImagePackSource(
                 }
             }.getOrNull()
         } ?: return null
-        return parser.parse(body, ImagePackId.Room(roomId, stateKey))
+        return withContext(coroutineDispatchers.computation) { parser.parse(body, ImagePackId.Room(roomId, stateKey)) }
     }
 
     override suspend fun getSavedPacks(): List<ImagePack> {
         val raw = matrixClient.getAccountData(ImagePackEventTypes.SAVED_PACKS).getOrNull() ?: return emptyList()
-        return parser.parseSavedPacks(raw)
+        // This snapshot can contain every image of every imported pack and is read on chat entry.
+        return withContext(coroutineDispatchers.computation) { parser.parseSavedPacks(raw) }
     }
 
     override suspend fun savePack(pack: ImagePack): Boolean {
@@ -89,8 +92,9 @@ class DefaultImagePackSource(
         // Читаем-меняем-пишем целиком: account data не умеет частичных обновлений.
         val current = getSavedPacks().filterNot { (it.id as? ImagePackId.Saved)?.slug == slug }
         val updated = current + pack
+        val serialized = withContext(coroutineDispatchers.computation) { parser.serializeSavedPacks(updated) }
         return matrixClient
-            .setAccountData(ImagePackEventTypes.SAVED_PACKS, parser.serializeSavedPacks(updated))
+            .setAccountData(ImagePackEventTypes.SAVED_PACKS, serialized)
             .isSuccess
     }
 
@@ -98,8 +102,9 @@ class DefaultImagePackSource(
         val current = getSavedPacks()
         val updated = current.filterNot { (it.id as? ImagePackId.Saved)?.slug == slug }
         if (updated.size == current.size) return false
+        val serialized = withContext(coroutineDispatchers.computation) { parser.serializeSavedPacks(updated) }
         return matrixClient
-            .setAccountData(ImagePackEventTypes.SAVED_PACKS, parser.serializeSavedPacks(updated))
+            .setAccountData(ImagePackEventTypes.SAVED_PACKS, serialized)
             .isSuccess
     }
 
