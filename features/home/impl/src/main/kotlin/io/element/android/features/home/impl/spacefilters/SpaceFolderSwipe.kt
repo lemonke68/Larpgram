@@ -24,6 +24,7 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -158,10 +159,6 @@ class SpaceFolderPagerState {
     var freshIndex: Int? by mutableStateOf(null)
         internal set
 
-    /** True only until the selected folder's response arrives or its bounded wait expires. */
-    var isContentPending: Boolean by mutableStateOf(false)
-        internal set
-
     /**
      * Where the strip is, in folder indices (0 = «Все»), fractional while the pages move. Null
      * without a pager. Read it in the layout or draw phase: it changes every frame of a swipe.
@@ -198,7 +195,8 @@ fun rememberSpaceFolderPagerState(): SpaceFolderPagerState = remember { SpaceFol
  * @param contentKey changes when the list content changes, null while the list is not there yet
  * (loading, or the empty list a folder switch goes through); tells when the new folder's list has
  * arrived.
- * @param cachedPage draws the remembered page of a folder, for the indices [hasCachedPage] accepts.
+ * @param pageContent draws each folder at one stable composition key; true selects live data,
+ * false selects that folder's cached data. Switching between them must keep the same list node.
  */
 @Composable
 fun SpaceFolderSwipe(
@@ -207,7 +205,7 @@ fun SpaceFolderSwipe(
     pagerState: SpaceFolderPagerState = rememberSpaceFolderPagerState(),
     contentKey: Any? = null,
     hasCachedPage: (Int) -> Boolean = { false },
-    cachedPage: @Composable (Int) -> Unit = {},
+    pageContent: @Composable (Int, Boolean) -> Unit,
     content: @Composable () -> Unit,
 ) {
     val latest = rememberUpdatedState(state)
@@ -218,7 +216,6 @@ fun SpaceFolderSwipe(
             pagerState.positionProvider = null
             pagerState.request = null
             pagerState.freshIndex = state.currentTabIndex()
-            pagerState.isContentPending = false
         }
         Box(modifier) { content() }
         return
@@ -235,6 +232,7 @@ fun SpaceFolderSwipe(
     var dragging by remember { mutableStateOf(false) }
     // Folder of the page being left (the only page at rest).
     var base by remember { mutableIntStateOf(state.currentTabIndex()) }
+    var previousBase by remember { mutableIntStateOf(state.currentTabIndex()) }
     // Folder coming in next to it, and whether its remembered page is the one shown.
     var target by remember { mutableStateOf<Int?>(null) }
     var targetCached by remember { mutableStateOf(false) }
@@ -279,7 +277,6 @@ fun SpaceFolderSwipe(
         val keyBefore = latestKey.value
         val token = ++switchToken
         liveReady = false
-        pagerState.isContentPending = true
         pagerState.freshIndex = null
         requested = index
         selectSpaceFilterIndex(latest.value, index)
@@ -291,7 +288,6 @@ fun SpaceFolderSwipe(
             } != null
             if (token == switchToken) {
                 liveReady = true
-                pagerState.isContentPending = false
                 if (arrived && selected() == index) pagerState.freshIndex = index
             }
         }
@@ -328,6 +324,7 @@ fun SpaceFolderSwipe(
 
     // The strip has arrived on [to]: from now on it is the page at rest.
     suspend fun commit(to: Int) {
+        previousBase = base
         // The new neighbours are composed only once the strip has rested: composing one now would
         // stall the frames right after the move.
         warmNeighbours = false
@@ -513,55 +510,58 @@ fun SpaceFolderSwipe(
                 },
             ),
     ) {
-        // Positions are worked out in the draw phase from the same state as the offset: computed in
-        // composition they lag a frame behind, and that frame showed the page off-screen.
+        // Keep one list node per folder, including the live page. A cached target becomes live
+        // in place, rather than being replaced by another LazyColumn that remeasures its rows.
         fun moveDir(): Int = target?.let { sign((it - base).toFloat()).toInt() } ?: 0
+        fun isLivePage(index: Int): Boolean {
+            val selected = latest.value.currentTabIndex()
+            return liveReady && selected == index && (
+                (index == base && snapshot == null && !cachedAsBase) ||
+                    (index == target && selected != base && !targetCached)
+                )
+        }
         val t = target
-        // Remembered pages: the neighbours are composed off-screen once the strip has been at rest
-        // for a moment (composing a long list takes a few frames on old phones), the target of a
-        // move is composed when the move starts.
         val pages = buildList {
+            add(base)
             if (warmNeighbours) {
                 add(base - 1)
                 add(base + 1)
+            } else if (abs(previousBase - base) == 1) {
+                // The outgoing neighbour is already measured. Keep it through the warm-up delay.
+                add(previousBase)
             }
             if (t != null) add(t)
-            if (cachedAsBase) add(base)
-        }.distinct().filter { it in 0..lastIndex() && hasCachedPage(it) }.sorted()
+        }.distinct().filter { it in 0..lastIndex() && (it == base || it == t || hasCachedPage(it)) }.sorted()
         pages.forEach { index ->
             key(index) {
                 Box(
-                    Modifier.graphicsLayer {
-                        val side = sign((index - base).toFloat())
-                        val visible = when {
-                            index == base -> cachedAsBase
-                            target == null -> true
-                            side.toInt() == moveDir() -> index == target && targetCached
-                            else -> true
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val side = sign((index - base).toFloat())
+                            val live = isLivePage(index)
+                            val cached = latestHasCached.value(index)
+                            val visible = when {
+                                index == base -> live || (cachedAsBase && cached)
+                                index == target -> live || (targetCached && cached)
+                                target == null -> cached
+                                else -> cached && side.toInt() != moveDir()
+                            }
+                            translationX = currentOffset() + side * size.width
+                            alpha = if (visible) 1f else 0f
                         }
-                        translationX = currentOffset() + side * size.width
-                        alpha = if (visible) 1f else 0f
-                    }
+                        .drawWithContent {
+                            if (isLivePage(index)) {
+                                layer.record { this@drawWithContent.drawContent() }
+                                drawLayer(layer)
+                            } else {
+                                drawContent()
+                            }
+                        }
                 ) {
-                    cachedPage(index)
+                    pageContent(index, isLivePage(index))
                 }
             }
-        }
-        Box(
-            Modifier
-                .graphicsLayer {
-                    val sel = latest.value.currentTabIndex()
-                    val liveIsBase = sel == base && snapshot == null && !cachedAsBase
-                    val liveIsTarget = target != null && sel == target && sel != base && !targetCached
-                    translationX = currentOffset() + if (liveIsTarget) moveDir() * size.width else 0f
-                    alpha = if (liveReady && (liveIsBase || liveIsTarget)) 1f else 0f
-                }
-                .drawWithContent {
-                    layer.record { this@drawWithContent.drawContent() }
-                    drawLayer(layer)
-                }
-        ) {
-            content()
         }
         if (snapshot != null && !cachedAsBase) {
             Spacer(

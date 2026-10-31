@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
@@ -70,7 +71,6 @@ import io.element.android.features.home.impl.roomlist.RoomListDeclineInviteMenu
 import io.element.android.features.home.impl.roomlist.RoomListEvent
 import io.element.android.features.home.impl.roomlist.RoomListState
 import io.element.android.features.home.impl.roomlist.TgChatPreviewOverlay
-import io.element.android.features.home.impl.roomlist.roomListContentDuringFolderSwitch
 import io.element.android.features.home.impl.search.GlobalSearchEvent
 import io.element.android.features.home.impl.search.GlobalSearchView
 import io.element.android.features.home.impl.search.RoomListSearchView
@@ -413,19 +413,10 @@ private fun ChatsTab(
             lazyListState.scrollToItem(0)
         }
     }
-    val livePageContent = roomListContentDuringFolderSwitch(
-        live = roomListState.contentState,
-        cached = folderPageCache[selectedFolderKey],
-        isContentPending = folderPager.isContentPending,
-    )
     LaunchedEffect(roomListState.contentState, freshFolder) {
         val content = roomListState.contentState
         val key = freshFolder?.let(folderKeys::getOrNull) ?: return@LaunchedEffect
         if (content is RoomListContentState.Rooms || content is RoomListContentState.Empty) folderPageCache[key] = content
-    }
-    // A remembered page must not tell the presenter which rooms are on screen: that is the live list's job.
-    val cachedPageEventSink = remember(roomListState.eventSink) {
-        { event: RoomListEvent -> if (event !is RoomListEvent.UpdateVisibleRange) roomListState.eventSink(event) }
     }
     Box(Modifier.fillMaxSize()) {
         SpaceFolderSwipe(
@@ -434,16 +425,25 @@ private fun ChatsTab(
             // A folder switch goes through an empty list first: only a list with rooms counts.
             contentKey = (roomListState.contentState as? RoomListContentState.Rooms)?.summaries?.takeIf { it.isNotEmpty() },
             hasCachedPage = { index -> folderKeys.getOrNull(index)?.let { it in folderPageCache } == true },
-            cachedPage = { index ->
+            pageContent = { index, isLive ->
                 val cached = folderKeys.getOrNull(index)?.let { folderPageCache[it] }
-                if (cached != null) {
+                val page = if (isLive) roomListState.contentState else cached
+                val cachedListState = rememberLazyListState()
+                val livePage = rememberUpdatedState(isLive)
+                val latestEventSink = rememberUpdatedState(roomListState.eventSink)
+                val pageEventSink = remember {
+                    { event: RoomListEvent ->
+                        if (event !is RoomListEvent.UpdateVisibleRange || livePage.value) latestEventSink.value(event)
+                    }
+                }
+                if (page != null) {
                     RoomListContentView(
-                        contentState = cached,
+                        contentState = page,
                         filtersState = roomListState.filtersState,
                         spaceFiltersState = spaceFiltersState,
-                        lazyListState = rememberLazyListState(),
+                        lazyListState = if (isLive) lazyListState else cachedListState,
                         hideInvitesAvatars = roomListState.hideInvitesAvatars,
-                        eventSink = cachedPageEventSink,
+                        eventSink = pageEventSink,
                         onSetUpRecoveryClick = onSetUpRecoveryClick,
                         onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
                         onRoomClick = { room -> onRoomClick(room.roomId) },
@@ -459,7 +459,7 @@ private fun ChatsTab(
                 .tgGlowBackground(),
         ) {
             RoomListContentView(
-                contentState = livePageContent,
+                contentState = roomListState.contentState,
                 filtersState = roomListState.filtersState,
                 spaceFiltersState = roomListState.spaceFiltersState,
                 lazyListState = lazyListState,
