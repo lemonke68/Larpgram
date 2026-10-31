@@ -54,7 +54,6 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.home.impl.components.RoomListContentView
@@ -84,6 +83,7 @@ import io.element.android.features.home.impl.spacefilters.selectedFilter
 import io.element.android.libraries.androidutils.throttler.FirstThrottler
 import io.element.android.libraries.designsystem.animation.TgMotion
 import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
+import io.element.android.libraries.designsystem.components.glass.tgGlassSource
 import io.element.android.libraries.designsystem.components.glass.tgGlowBackground
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -288,7 +288,7 @@ private fun HomeScaffold(
                     TgHomeTab.Profile -> HomeTabContent(
                         content = profileContent,
                         placeholderLabel = stringResource(TgHomeTab.Profile.labelRes),
-                        modifier = Modifier.hazeSource(state = hazeState),
+                        modifier = Modifier.tgGlassSource(state = hazeState),
                     )
                 }
             }
@@ -455,7 +455,7 @@ private fun ChatsTab(
             },
             modifier = Modifier
                 .fillMaxSize()
-                .hazeSource(state = hazeState)
+                .tgGlassSource(state = hazeState)
                 .tgGlowBackground(),
         ) {
             RoomListContentView(

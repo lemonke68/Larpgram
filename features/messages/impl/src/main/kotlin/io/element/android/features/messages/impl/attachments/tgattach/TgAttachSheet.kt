@@ -110,7 +110,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import androidx.lifecycle.Lifecycle
-import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -118,6 +117,7 @@ import io.element.android.features.messages.impl.R
 import io.element.android.libraries.androidutils.system.openAppSettingsPage
 import io.element.android.libraries.designsystem.components.glass.LocalChatGlassState
 import io.element.android.libraries.designsystem.components.glass.tgGlass
+import io.element.android.libraries.designsystem.components.glass.tgGlassSource
 import io.element.android.libraries.designsystem.theme.components.Button
 import io.element.android.libraries.designsystem.theme.components.ButtonSize
 import io.element.android.libraries.designsystem.theme.components.DropdownMenu
@@ -406,7 +406,7 @@ private fun TgAttachSheetContent(
                 },
                 modifier = Modifier
                     .weight(1f)
-                    .hazeSource(sheetHaze),
+                    .tgGlassSource(sheetHaze),
             )
         }
 

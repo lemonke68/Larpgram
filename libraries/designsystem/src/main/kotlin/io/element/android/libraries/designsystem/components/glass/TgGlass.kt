@@ -31,6 +31,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.LarpgramColors
 import io.element.android.compound.tokens.larpgramColors
@@ -122,6 +123,14 @@ fun rememberGlassBlurEnabled(): Boolean {
         val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         power?.isPowerSaveMode != true
     }
+}
+
+/** Skip the offscreen capture layer as well when none of our glass effects can use it. */
+@Composable
+fun Modifier.tgGlassSource(state: HazeState?): Modifier = if (state != null && rememberGlassBlurEnabled()) {
+    hazeSource(state)
+} else {
+    this
 }
 
 /**
