@@ -97,7 +97,6 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
 import io.element.android.features.messages.impl.timeline.model.event.ensureActiveLiveLocation
 import io.element.android.features.messages.impl.timeline.model.event.isBubbleless
-import io.element.android.features.messages.impl.timeline.model.event.isEmojiOnly
 import io.element.android.features.messages.impl.timeline.model.event.isLarpgramCircle
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.messages.impl.timeline.protection.mustBeProtected

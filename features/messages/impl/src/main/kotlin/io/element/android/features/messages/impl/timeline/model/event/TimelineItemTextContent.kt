@@ -21,4 +21,7 @@ data class TimelineItemTextContent(
 ) : TimelineItemTextBasedContent {
     override val type: String = "TimelineItemTextContent"
     override val plainText: String = htmlDocument?.toPlainText() ?: body
+
+    // Правка форка: do not parse emoji data during composition or repeat it for each bubble consumer.
+    override val isEmojiOnly: Boolean = computeIsEmojiOnly()
 }

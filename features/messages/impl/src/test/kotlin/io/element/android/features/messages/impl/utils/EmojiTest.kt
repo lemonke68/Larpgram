@@ -8,11 +8,33 @@
 
 package io.element.android.features.messages.impl.utils
 
+import com.sigpwned.emoji4j.core.data.GraphemeEntry
+import com.sigpwned.emoji4j.core.util.Graphemes
 import org.junit.Assert
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EmojiTest {
+    @Test
+    fun `prefix check accepts every registered emoji sequence`() {
+        Graphemes.getGraphemeData().graphemes
+            .filter { it.type == GraphemeEntry.EMOJI_TYPE }
+            .forEach { entry ->
+                val sequences = listOf(entry.canonicalCodePointSequence) + entry.alternativeCodePointSequences.orEmpty()
+                sequences.forEach { points ->
+                    val text = String(points, 0, points.size)
+                    assertTrue("${entry.name}: $text", text.containsOnlyEmojis())
+                }
+            }
+    }
+
+    @Test
+    fun `ordinary text is not emoji only`() {
+        listOf("пинг", "Hello", "Γεια", "你好", "こんにちは", "한글", "é", "1", "#", "*", "\n", "x😀", "😀x").forEach {
+            Assert.assertFalse(it, it.containsOnlyEmojis())
+        }
+    }
+
     @Test
     fun validEmojis() {
         // Simple single/multiple single-codepoint emojis per string

@@ -21,4 +21,7 @@ data class TimelineItemNoticeContent(
 ) : TimelineItemTextBasedContent {
     override val type: String = "TimelineItemNoticeContent"
     override val plainText: String = htmlDocument?.toPlainText() ?: body
+
+    // Правка форка: classify on content creation, before composition.
+    override val isEmojiOnly: Boolean = computeIsEmojiOnly()
 }

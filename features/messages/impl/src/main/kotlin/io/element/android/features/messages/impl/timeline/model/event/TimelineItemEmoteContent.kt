@@ -21,4 +21,7 @@ data class TimelineItemEmoteContent(
 ) : TimelineItemTextBasedContent {
     override val type: String = "TimelineItemEmoteContent"
     override val plainText: String = htmlDocument?.toPlainText() ?: body
+
+    // Правка форка: classify on content creation, before composition.
+    override val isEmojiOnly: Boolean = computeIsEmojiOnly()
 }

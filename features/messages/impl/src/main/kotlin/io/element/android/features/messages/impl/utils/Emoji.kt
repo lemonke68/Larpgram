@@ -17,6 +17,12 @@ import com.sigpwned.emoji4j.core.GraphemeMatcher
  * Returns true if the string consists exclusively of "emoji or pictographic graphemes".
  */
 internal fun String.containsOnlyEmojis(): Boolean {
+    // Правка форка: avoid loading emoji4j's JSON trie for ordinary text. This deliberately
+    // broad prefix check only rejects impossible starts; the matcher still validates sequences.
+    when (firstOrNull()) {
+        '#', '*', '©', '®', in '0'..'9', in '\u2000'..'\u33FF', in '\uD800'..'\uDBFF' -> Unit
+        else -> return false
+    }
     val matcher = GraphemeMatcher(this)
     var m: GraphemeMatchResult? = null
     var contiguous = true

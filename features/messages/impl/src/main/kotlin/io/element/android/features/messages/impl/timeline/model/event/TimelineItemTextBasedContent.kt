@@ -38,6 +38,9 @@ sealed interface TimelineItemTextBasedContent :
     /** The plain text version of the event body. This is the Markdown version without actual Markdown formatting. */
     val plainText: String
 
+    // Правка форка: computed when the background timeline factory builds the content, before UI reads it.
+    val isEmojiOnly: Boolean
+
     /** The raw HTML body of the event. */
     val htmlBody: String?
         get() = htmlDocument?.body()?.html()
