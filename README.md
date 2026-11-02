@@ -14,9 +14,15 @@ Matrix-сервере. Стикеры, гифки, кружочки, работ�
 - **Кружочки.** Круглые видеосообщения, как в Telegram (в работе).
 - **Уведомления** идут через свой push-шлюз, а не через matrix.org.
 
+## Работа с устройствами и аудио
+
+Ветка `preweb-device-audio`, инструкция и критерии: [старт работы](docs/larpgram/README.md).
+
 ## Сборка
 
-Нужны JDK 21 и Android SDK.
+Нужны JDK 21, Android SDK и собственный локальный SDK AAR. Перед первой сборкой
+выполнить [подготовку SDK](tools/larpgram/rust-sdk/README.md); для встроенного
+Element Call нужны Node.js 24 и pnpm 11.
 
 ```
 export JAVA_HOME=/path/to/jdk-21
