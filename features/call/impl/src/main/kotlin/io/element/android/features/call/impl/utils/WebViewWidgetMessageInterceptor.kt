@@ -9,6 +9,7 @@
 package io.element.android.features.call.impl.utils
 
 import android.graphics.Bitmap
+import android.net.Uri
 import android.net.http.SslError
 import android.webkit.JavascriptInterface
 import android.webkit.SslErrorHandler
@@ -24,6 +25,7 @@ import androidx.webkit.WebViewFeature
 import io.element.android.features.call.impl.BuildConfig
 import kotlinx.coroutines.flow.MutableSharedFlow
 import timber.log.Timber
+import java.io.ByteArrayInputStream
 
 class WebViewWidgetMessageInterceptor(
     private val webView: WebView,
@@ -44,6 +46,17 @@ class WebViewWidgetMessageInterceptor(
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(webView.context))
             .build()
+
+        fun interceptAsset(url: Uri): WebResourceResponse? {
+            val response = assetLoader.shouldInterceptRequest(url) ?: return null
+            // Правка форка: только наш встроенный origin; удалённым страницам данные камер не отдаём.
+            if (url.host == "appassets.androidplatform.net" && url.path == "/element-call/config.json") {
+                val original = response.data.bufferedReader().use { it.readText() }
+                val config = larpgramCallConfig(webView.context, original)
+                return WebResourceResponse("application/json", "UTF-8", ByteArrayInputStream(config.toByteArray(Charsets.UTF_8)))
+            }
+            return response
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
@@ -153,12 +166,12 @@ class WebViewWidgetMessageInterceptor(
             }
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest): WebResourceResponse? {
-                return assetLoader.shouldInterceptRequest(request.url)
+                return interceptAsset(request.url)
             }
 
             @Suppress("OVERRIDE_DEPRECATION")
             override fun shouldInterceptRequest(view: WebView?, url: String): WebResourceResponse? {
-                return assetLoader.shouldInterceptRequest(url.toUri())
+                return interceptAsset(url.toUri())
             }
         }
 

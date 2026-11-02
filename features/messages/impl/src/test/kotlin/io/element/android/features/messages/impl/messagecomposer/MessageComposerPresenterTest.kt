@@ -690,6 +690,91 @@ class MessageComposerPresenterTest : RobolectricTest() {
     }
 
     @Test
+    fun `attachment caption starts with the chat draft and cancellation returns edits`() = runTest {
+        val presenter = createPresenter(isRichTextEditorEnabled = false)
+        val links = FakePermalinkBuilder()
+        presenter.test {
+            val state = awaitFirstItem()
+            state.textEditorState.setMarkdown("draft from chat")
+            state.eventSink(MessageComposerEvent.AddAttachment)
+            val sheet = awaitItem()
+            assertThat(sheet.attachmentCaption).isEqualTo("draft from chat")
+            sheet.eventSink(MessageComposerEvent.UpdateAttachmentCaption("edited caption"))
+            assertThat(awaitItem().attachmentCaption).isEqualTo("edited caption")
+            sheet.eventSink(MessageComposerEvent.DismissAttachmentMenu)
+            val closed = awaitItem()
+            advanceUntilIdle()
+            assertThat(closed.showAttachmentSourcePicker).isFalse()
+            assertThat(closed.textEditorState.messageMarkdown(links)).isEqualTo("edited caption")
+        }
+    }
+
+    @Test
+    fun `failed gallery upload keeps the original chat draft`() = runTest {
+        val presenter = createPresenter(isRichTextEditorEnabled = false)
+        mediaPreProcessor.givenResult(Result.failure(IllegalStateException("test upload failure")))
+        presenter.test {
+            val state = awaitFirstItem()
+            state.textEditorState.setMarkdown("keep this draft")
+            state.eventSink(MessageComposerEvent.AddAttachment)
+            val sheet = awaitItem()
+            sheet.eventSink(MessageComposerEvent.SendGalleryMedia(listOf(aGalleryMedia(1)), "keep this draft", true))
+            val closed = awaitItem()
+            advanceUntilIdle()
+            assertThat(closed.textEditorState.messageMarkdown(FakePermalinkBuilder())).isEqualTo("keep this draft")
+        }
+    }
+
+    @Test
+    fun `failed gallery upload returns the edited caption to the unchanged composer`() = runTest {
+        val presenter = createPresenter(isRichTextEditorEnabled = false)
+        mediaPreProcessor.givenResult(Result.failure(IllegalStateException("test upload failure")))
+        presenter.test {
+            val state = awaitFirstItem()
+            state.textEditorState.setMarkdown("original draft")
+            state.eventSink(MessageComposerEvent.AddAttachment)
+            val sheet = awaitItem()
+            sheet.eventSink(MessageComposerEvent.SendGalleryMedia(listOf(aGalleryMedia(1)), "edited caption", true))
+            val closed = awaitItem()
+            advanceUntilIdle()
+            assertThat(closed.textEditorState.messageMarkdown(FakePermalinkBuilder())).isEqualTo("edited caption")
+        }
+    }
+
+    @Test
+    fun `failed gallery upload restores markdown formatting in the rich composer`() = runTest {
+        val presenter = createPresenter(isRichTextEditorEnabled = true)
+        mediaPreProcessor.givenResult(Result.failure(IllegalStateException("test upload failure")))
+        presenter.test {
+            val state = awaitFirstItem()
+            state.textEditorState.setMarkdown("original draft")
+            state.eventSink(MessageComposerEvent.AddAttachment)
+            val sheet = awaitItem()
+            sheet.eventSink(MessageComposerEvent.SendGalleryMedia(listOf(aGalleryMedia(1)), "**edited caption**", true))
+            val closed = awaitItem()
+            advanceUntilIdle()
+            assertThat(closed.textEditorState.messageMarkdown(FakePermalinkBuilder())).isEqualTo("**edited caption**")
+        }
+    }
+
+    @Test
+    fun `failed gallery upload never replaces text typed while uploading`() = runTest {
+        val presenter = createPresenter(isRichTextEditorEnabled = false)
+        mediaPreProcessor.givenResult(Result.failure(IllegalStateException("test upload failure")))
+        presenter.test {
+            val state = awaitFirstItem()
+            state.textEditorState.setMarkdown("original draft")
+            state.eventSink(MessageComposerEvent.AddAttachment)
+            val sheet = awaitItem()
+            sheet.eventSink(MessageComposerEvent.SendGalleryMedia(listOf(aGalleryMedia(1)), "edited caption", true))
+            val closed = awaitItem()
+            closed.textEditorState.setMarkdown("new text while sending")
+            advanceUntilIdle()
+            assertThat(closed.textEditorState.messageMarkdown(FakePermalinkBuilder())).isEqualTo("new text while sending")
+        }
+    }
+
+    @Test
     fun `present - Dismiss attachments menu`() = runTest {
         val presenter = createPresenter()
         presenter.test {
@@ -1810,7 +1895,6 @@ class MessageComposerPresenterTest : RobolectricTest() {
                     }
                 )
             },
-            mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
             snackbarDispatcher = snackbarDispatcher,
             draftPreviews = draftPreviews,
             attachSheetMemory = TgAttachSheetMemory(),

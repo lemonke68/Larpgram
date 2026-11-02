@@ -25,6 +25,16 @@ class TgAttachSheetMemoryTest {
     }
 
     @Test
+    fun `caption follows the user from the sheet through the preview and back`() {
+        val memory = TgAttachSheetMemory()
+        memory.onOpenPreview(restore)
+        assertThat(memory.previewCaption).isEqualTo("hi")
+        memory.onPreviewCancelled("edited")
+        assertThat(memory.restore.value?.caption).isEqualTo("edited")
+        assertThat(memory.previewCaption).isNull()
+    }
+
+    @Test
     fun `sending from the preview forgets the sheet and resets the composer mode`() {
         val memory = TgAttachSheetMemory()
         memory.onOpenPreview(restore)
@@ -32,6 +42,25 @@ class TgAttachSheetMemoryTest {
         memory.onPreviewCancelled()
         assertThat(memory.restore.value).isNull()
         assertThat(memory.resetComposerMode.value).isTrue()
+    }
+
+    @Test
+    fun `preview preserves the chosen quality when returning to the sheet`() {
+        val memory = TgAttachSheetMemory()
+        memory.onOpenPreview(restore.copy(highQuality = true))
+        assertThat(memory.previewHighQuality).isTrue()
+        memory.onPreviewCancelled("new caption")
+        assertThat(memory.restore.value?.highQuality).isTrue()
+        assertThat(memory.restore.value?.caption).isEqualTo("new caption")
+    }
+
+    @Test
+    fun `quality changed in the preview follows the user back to the sheet`() {
+        val memory = TgAttachSheetMemory()
+        memory.onOpenPreview(restore)
+        memory.onPreviewCancelled("edited", highQuality = true)
+        assertThat(memory.restore.value?.highQuality).isTrue()
+        assertThat(memory.restore.value?.caption).isEqualTo("edited")
     }
 
     @Test

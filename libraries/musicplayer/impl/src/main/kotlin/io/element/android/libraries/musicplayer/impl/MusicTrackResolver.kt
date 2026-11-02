@@ -59,6 +59,20 @@ class MusicTrackResolver(
 
     suspend fun resolve(track: MusicTrack): File = start(track).await()
 
+    /** A separate media handle keeps an export alive even when playback evicts its own file. */
+    suspend fun copyForExport(track: MusicTrack, destination: File): File = kotlinx.coroutines.withContext(dispatchers.io) {
+        destination.parentFile?.mkdirs()
+        val offline = offlineStore.fileFor(track.mediaKey)
+        if (offline != null) {
+            offline.copyTo(destination, overwrite = false)
+        } else {
+            val client = matrixClientProvider.getOrRestore(track.sessionId).getOrThrow()
+            client.matrixMediaLoader.downloadMediaFile(track.mediaSource, track.mimeType, track.filename).getOrThrow().use { media ->
+                File(media.path()).copyTo(destination, overwrite = false)
+            }
+        }
+    }
+
     private fun start(track: MusicTrack): Deferred<File> = synchronized(lock) {
         files[track.id]?.let { mediaFile ->
             val file = File(mediaFile.path())

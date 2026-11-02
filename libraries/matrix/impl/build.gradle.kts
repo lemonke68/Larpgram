@@ -28,15 +28,20 @@ val elementCallVersion: String = providers.gradleProperty("elementCallLocalVersi
 
 val usesLocalRustSdk = file("${rootDir.path}/libraries/rustsdk/matrix-rust-sdk.aar").exists()
 
+check(usesLocalRustSdk) {
+    "Larpgram requires the pinned media-cache SDK. Build it with tools/larpgram/rust-sdk/build.py first."
+}
+
 if (usesLocalRustSdk) {
+    // Правка форка: release и debug используют один SDK с API медиакэша.
     // element-call-matrix declares the Rust SDK as an ordinary Maven dependency, so with the local
     // AAR in place a debug classpath would carry two copies of org.matrix.rustcomponents.sdk.
     // Point the library's dependency at the same local AAR the app is using.
-    configurations.matching { it.name.startsWith("debug") }.configureEach {
+    configurations.configureEach {
         resolutionStrategy.dependencySubstitution {
             substitute(module("org.matrix.rustcomponents:sdk-android"))
                 .using(project(":libraries:rustsdk"))
-                .because("the local Rust SDK AAR replaces the published one on debug builds")
+                .because("the local Rust SDK AAR replaces the published one on all builds")
         }
     }
 }
@@ -44,7 +49,9 @@ if (usesLocalRustSdk) {
 dependencies {
     // Правка форка (Larpgram): JoinedRustRoom builds custom event JSON (Element dropped this dep in v26.10).
     implementation(libs.serialization.json)
-    releaseImplementation(libs.matrix.sdk)
+    implementation(platform(libs.network.okhttp.bom))
+    implementation(libs.network.okhttp)
+    releaseImplementation(projects.libraries.rustsdk)
     if (usesLocalRustSdk) {
         println(
             "\nNote: Using local binary of the Rust SDK." +

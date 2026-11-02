@@ -32,6 +32,8 @@ data class MediaViewerState(
     val eventSink: (MediaViewerEvent) -> Unit,
     // Правка форка (Larpgram): общий плеер для страниц с музыкой; null — свой плеер на странице.
     val musicPlayer: MusicPlayer?,
+    val shareData: MediaViewerPageData.MediaViewerData? = null,
+    val copyAllowed: Boolean = true,
 )
 
 @Immutable

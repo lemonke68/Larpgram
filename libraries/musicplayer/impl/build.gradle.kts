@@ -38,6 +38,7 @@ dependencies {
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.di)
     implementation(projects.libraries.matrix.api)
+    implementation(projects.libraries.matrixui)
     implementation(projects.libraries.uiStrings)
 
     testCommonDependencies(libs)

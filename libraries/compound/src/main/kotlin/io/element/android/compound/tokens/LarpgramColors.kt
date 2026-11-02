@@ -195,11 +195,31 @@ val larpgramExtraColorsDark = LarpgramColors(
     glassFallback = Color(0xFF24202F),
 )
 
+/** Правка форка: Black меняет фон и стекло; акценты и пользовательские обои не переписываются. */
+val larpgramExtraColorsBlack = larpgramExtraColorsDark.copy(
+    background = Color.Black,
+    backgroundGlow = List(3) { Color.Transparent },
+    wallpaperStops = listOf(0f to Color.Black, 1f to Color.Black),
+    wallpaperGlow = List(2) { Color.Transparent },
+    wallpaperDots = Color.Transparent,
+    glassSurface = Color(0xCC101010),
+    glassSurfaceStrong = Color(0xE6101010),
+    glassCard = Color(0xCC101010),
+    glassMenu = Color(0xF21A1A1A),
+    glassFallback = Color(0xFF101010),
+    headerFadeTop = Color.Black,
+    headerFadeBottom = Color.Black,
+)
+
 /** Larpgram-only tokens for the current theme. */
 val larpgramColors: LarpgramColors
     @Composable
     @ReadOnlyComposable
-    get() = if (ElementTheme.isLightTheme) larpgramExtraColorsLight else larpgramExtraColorsDark
+    get() = when {
+        ElementTheme.isLightTheme -> larpgramExtraColorsLight
+        ElementTheme.isBlackTheme -> larpgramExtraColorsBlack
+        else -> larpgramExtraColorsDark
+    }
 
 val larpgramColorsLight: SemanticColors = compoundColorsLight.copy(
     bgAccentRest = LarpgramPalette.accentLight,

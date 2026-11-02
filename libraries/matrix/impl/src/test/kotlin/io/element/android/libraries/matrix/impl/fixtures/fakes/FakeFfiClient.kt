@@ -26,6 +26,7 @@ import org.matrix.rustcomponents.sdk.HomeserverCapabilities
 import org.matrix.rustcomponents.sdk.HomeserverLoginDetails
 import org.matrix.rustcomponents.sdk.IgnoredUsersListener
 import org.matrix.rustcomponents.sdk.LoginWithQrCodeHandler
+import org.matrix.rustcomponents.sdk.MediaCacheUsage
 import org.matrix.rustcomponents.sdk.MediaSource
 import org.matrix.rustcomponents.sdk.NoHandle
 import org.matrix.rustcomponents.sdk.NotificationClient
@@ -63,6 +64,8 @@ class FakeFfiClient(
     private val homeserverLoginDetailsResult: () -> HomeserverLoginDetails = { lambdaError() },
     private val loginResult: (String, String) -> Unit = { _, _ -> lambdaError() },
     private val newLoginWithQrCodeHandlerResult: () -> LoginWithQrCodeHandler = { lambdaError() },
+    private val mediaCacheUsageResult: () -> MediaCacheUsage = { lambdaError() },
+    private val clearMediaCacheResult: () -> ULong = { lambdaError() },
     private val getStoreSizesResult: () -> StoreSizes = { lambdaError() },
     private val createRoomResult: (CreateRoomParameters) -> String = { lambdaError() },
     private val homeserverCapabilities: HomeserverCapabilities = FakeFfiHomeserverCapabilities(),
@@ -148,6 +151,10 @@ class FakeFfiClient(
     }
 
     override suspend fun setMediaRetentionPolicy(policy: MediaRetentionPolicy) {}
+
+    override suspend fun mediaCacheUsage(): MediaCacheUsage = mediaCacheUsageResult()
+
+    override suspend fun clearMediaCache(): ULong = clearMediaCacheResult()
 
     override suspend fun getStoreSizes(): StoreSizes {
         return getStoreSizesResult()

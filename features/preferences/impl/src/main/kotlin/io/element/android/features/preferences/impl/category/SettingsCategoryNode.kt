@@ -38,6 +38,8 @@ class SettingsCategoryNode(
     private val presenter: PreferencesRootPresenter,
     private val advancedSettingsPresenter: AdvancedSettingsPresenter,
     private val chatAppearancePresenter: ChatAppearancePresenter,
+    private val mediaStoragePresenter: MediaStoragePresenter,
+    private val forwardingPrivacyPresenter: ForwardingPrivacyPresenter,
 ) : Node(buildContext, plugins = plugins) {
     data class Inputs(val category: SettingsCategory) : NodeInputs
 
@@ -83,6 +85,8 @@ class SettingsCategoryNode(
         val isDark = ElementTheme.isLightTheme.not()
         SettingsCategoryView(
             category = inputs.category,
+            forwardingPrivacyState = if (inputs.category == SettingsCategory.Privacy) forwardingPrivacyPresenter.present() else null,
+            mediaStorageState = if (inputs.category == SettingsCategory.Data) mediaStoragePresenter.present() else null,
             state = state,
             advancedSettingsState = advancedSettingsState,
             chatAppearanceState = chatAppearanceState,

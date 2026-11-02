@@ -44,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -83,20 +85,53 @@ class TgMediaPanelController internal constructor(initialKeyboardHeightPx: Int) 
      * Открыт диалог поверх панели (добавление стикерпака). Клавиатура поднимается ради его поля,
      * поэтому панель не сжимается и не закрывается, пока он открыт.
      */
-    var isDialogOpen by mutableStateOf(false)
+    private var dialogOpenState by mutableStateOf(false)
+    var isDialogOpen: Boolean
+        get() = dialogOpenState
+        set(value) {
+            if (dialogOpenState && !value) isForeignKeyboardClosing = true
+            dialogOpenState = value
+        }
 
     /** Клавиатура поднята не ради поля ввода чата — панель на неё не реагирует. */
-    internal val isKeyboardForeign: Boolean get() = isSearchFocused || isDialogOpen
+    internal val isKeyboardForeign: Boolean get() = isSearchFocused || isDialogOpen || isForeignKeyboardClosing
+
+    internal var isForeignKeyboardClosing by mutableStateOf(false)
+        private set
+    private var imeWentDown = false
 
     internal var keyboardHeightPx by mutableIntStateOf(initialKeyboardHeightPx)
 
     internal fun open() {
+        imeWentDown = false
         isVisible = true
+    }
+
+    internal fun selectTab(selected: TgMediaPanelTab) {
+        // Исчезновение поиска при смене вкладки ещё не означает фокус в композере.
+        // До закрытия его IME сохраняем принадлежность клавиатуры панели.
+        isForeignKeyboardClosing = isForeignKeyboardClosing || isSearchFocused
+        tab = selected
+        isSearchFocused = false
+    }
+
+    internal fun onImeChanged(ime: Int) {
+        if (!isVisible) return
+        if (isForeignKeyboardClosing && ime < keyboardHeightPx / 2) isForeignKeyboardClosing = false
+        if (isKeyboardForeign) {
+            imeWentDown = true
+        } else if (ime < keyboardHeightPx / 2) {
+            imeWentDown = true
+        } else if (imeWentDown && ime >= keyboardHeightPx * 9 / 10) {
+            close()
+        }
     }
 
     fun close() {
         isVisible = false
         isSearchFocused = false
+        isForeignKeyboardClosing = false
+        imeWentDown = false
     }
 }
 
@@ -143,19 +178,8 @@ fun rememberTgMediaPanelController(): TgMediaPanelController {
     val imeInsets = WindowInsets.ime
     LaunchedEffect(controller.isVisible) {
         if (!controller.isVisible) return@LaunchedEffect
-        var wentDown = false
-        snapshotFlow { imeInsets.getBottom(density) to controller.isKeyboardForeign }.collect { (ime, isKeyboardForeign) ->
-            if (isKeyboardForeign) {
-                // Клавиатура поднялась ради поиска или диалога; когда их отпустят, закрывать по ней можно.
-                wentDown = true
-                return@collect
-            }
-            val keyboard = controller.keyboardHeightPx
-            if (ime < keyboard / 2) {
-                wentDown = true
-            } else if (wentDown && ime >= keyboard * 9 / 10) {
-                controller.close()
-            }
+        snapshotFlow { imeInsets.getBottom(density) to controller.isKeyboardForeign }.collect { (ime, _) ->
+            controller.onImeChanged(ime)
         }
     }
 
@@ -168,8 +192,13 @@ fun rememberTgMediaPanelController(): TgMediaPanelController {
 fun TgMediaPanelController.visibleHeight(): Dp {
     if (!isVisible) return 0.dp
     val density = LocalDensity.current
-    if (isKeyboardForeign) return with(density) { keyboardHeightPx.toDp() }
     val ime = WindowInsets.ime.getBottom(density)
+    if (isKeyboardForeign) {
+        return with(density) {
+            val fullHeight = keyboardHeightPx.toDp()
+            if ((isSearchFocused || isForeignKeyboardClosing) && ime > 0) minOf(fullHeight, 160.dp) else fullHeight
+        }
+    }
     return with(density) { (keyboardHeightPx - ime).coerceAtLeast(0).toDp() }
 }
 
@@ -187,6 +216,8 @@ fun TgMediaPanel(
     stickerContent: (@Composable (Modifier) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val height = controller.visibleHeight()
     if (height <= 0.dp) return
     val isLight = ElementTheme.isLightTheme
@@ -235,8 +266,9 @@ fun TgMediaPanel(
                             .clip(CircleShape)
                             .background(if (isSelected) (if (isLight) Color.White else Color(0x28FFFFFF)) else Color.Transparent)
                             .clickable {
-                                controller.tab = tab
-                                controller.isSearchFocused = false
+                                controller.selectTab(tab)
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
                             }
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                         text = tab.titleRes?.let { stringResource(it) } ?: tab.fixedTitle.orEmpty(),

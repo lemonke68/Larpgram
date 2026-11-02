@@ -12,6 +12,10 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.MirrorMode
 import androidx.camera.core.Preview
@@ -68,6 +72,7 @@ class CircleRecorder(
      * экономия: идущая запись привязана к конкретному `VideoCapture`, и если пересоздать
      * его при смене камеры, запись оборвётся.
      */
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
     suspend fun bind(lifecycleOwner: LifecycleOwner, frontCamera: Boolean): Preview {
         val provider = cameraProvider ?: context.awaitCameraProvider().also { cameraProvider = it }
         // Превью маленькое: на экране это круг ~300 dp, а полное разрешение камеры на
@@ -116,15 +121,27 @@ class CircleRecorder(
             )
             .build()
 
-        val selector = CameraSelector.Builder()
-            .requireLensFacing(
-                // Кружочки почти всегда снимают себя, поэтому по умолчанию фронталка.
-                if (frontCamera) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
-            )
+        val facing = if (frontCamera) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+        val defaultSelector = CameraSelector.Builder().requireLensFacing(facing).build()
+        // Правка форка: выбираем наибольший угол обзора среди камер той же стороны.
+        // Номер Camera2 не говорит об угле; сравниваем фокусное расстояние с шириной сенсора.
+        // CameraX сохраняет исходный порядок CameraInternal: сортировки списка недостаточно,
+        // фильтр должен оставить только выбранный объектив.
+        val wideSelector = CameraSelector.Builder()
+            .requireLensFacing(facing)
+            .addCameraFilter { cameras -> cameras.minByOrNull(::relativeFocalLength)?.let(::listOf).orEmpty() }
             .build()
-
         provider.unbindAll()
-        provider.bindToLifecycle(lifecycleOwner, selector, useCaseGroup)
+        val camera = try {
+            provider.bindToLifecycle(lifecycleOwner, wideSelector, useCaseGroup)
+        } catch (error: IllegalArgumentException) {
+            // Отдельный широкий объектив может не поддерживать квадратную видеозапись.
+            Timber.w(error, "Широкоугольная камера недоступна для кружочка, используем обычную")
+            provider.unbindAll()
+            provider.bindToLifecycle(lifecycleOwner, defaultSelector, useCaseGroup)
+        }
+        // У логической камеры широкий объектив может открываться через zoom < 1x.
+        camera.cameraInfo.zoomState.value?.minZoomRatio?.let { camera.cameraControl.setZoomRatio(it) }
         return preview
     }
 
@@ -190,6 +207,14 @@ class CircleRecorder(
         previewUseCase = null
         videoCapture = null
     }
+
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
+    private fun relativeFocalLength(info: CameraInfo): Float = runCatching {
+        val camera = Camera2CameraInfo.from(info)
+        val width = camera.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)?.width
+        val focal = camera.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)?.minOrNull()
+        if (width != null && width > 0f && focal != null) focal / width else Float.MAX_VALUE
+    }.getOrDefault(Float.MAX_VALUE)
 
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED

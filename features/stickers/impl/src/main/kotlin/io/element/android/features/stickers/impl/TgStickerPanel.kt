@@ -49,6 +49,7 @@ import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.imagepacks.api.ImagePackImage
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrixmedia.api.MediaRequestData
+import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.coroutines.launch
 
 /**
@@ -90,8 +91,9 @@ private fun StickerSections(
     onStickerClick: (ImagePackImage) -> Unit,
 ) {
     val packs = state.packs
-    val sectionStarts = remember(packs) {
-        var index = 0
+    val recent = state.recentStickers
+    val sectionStarts = remember(packs, recent) {
+        var index = if (recent.isEmpty()) 0 else recent.size + 1
         packs.map { pack ->
             val start = index
             index += 1 + pack.stickers.size
@@ -103,7 +105,7 @@ private fun StickerSections(
     val currentSection by remember(sectionStarts) {
         derivedStateOf {
             val first = gridState.firstVisibleItemIndex
-            sectionStarts.indexOfLast { it <= first }.coerceAtLeast(0)
+            sectionStarts.indexOfLast { it <= first }
         }
     }
     val accent = ElementTheme.colors.iconAccentPrimary
@@ -117,6 +119,25 @@ private fun StickerSections(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (recent.isNotEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (currentSection < 0) accent.copy(alpha = 0.15f) else Color.Transparent)
+                            .clickable { coroutineScope.launch { gridState.scrollToItem(0) } },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            resourceId = io.element.android.compound.R.drawable.ic_compound_history,
+                            contentDescription = stringResource(CommonStrings.larpgram_recent_chats),
+                            tint = if (currentSection < 0) accent else ElementTheme.colors.iconTertiary,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+            }
             itemsIndexed(packs) { index, pack ->
                 val isSelected = index == currentSection
                 Box(
@@ -158,6 +179,30 @@ private fun StickerSections(
             columns = GridCells.Adaptive(minSize = 72.dp),
             contentPadding = PaddingValues(start = 6.dp, end = 6.dp, bottom = 8.dp),
         ) {
+            if (recent.isNotEmpty()) {
+                item(key = "recent_header", span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 6.dp),
+                        text = stringResource(CommonStrings.larpgram_recent_chats),
+                        style = ElementTheme.typography.fontBodySmMedium,
+                        color = ElementTheme.colors.textSecondary,
+                    )
+                }
+                items(count = recent.size, key = { "recent_${recent[it].url}" }) { index ->
+                    val sticker = recent[index]
+                    StickerImage(
+                        sticker = sticker,
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .padding(4.dp)
+                            .clickable {
+                                val packIndex = packs.indexOfFirst { pack -> pack.stickers.any { it.url == sticker.url } }
+                                if (packIndex >= 0) state.eventSink(StickerPickerEvents.SelectPack(packIndex))
+                                onStickerClick(sticker)
+                            },
+                    )
+                }
+            }
             packs.forEachIndexed { index, pack ->
                 item(
                     key = "header_$index",
@@ -182,7 +227,10 @@ private fun StickerSections(
                         modifier = Modifier
                             .aspectRatio(1f)
                             .padding(4.dp)
-                            .clickable { onStickerClick(sticker) },
+                            .clickable {
+                                state.eventSink(StickerPickerEvents.SelectPack(index))
+                                onStickerClick(sticker)
+                            },
                     )
                 }
             }

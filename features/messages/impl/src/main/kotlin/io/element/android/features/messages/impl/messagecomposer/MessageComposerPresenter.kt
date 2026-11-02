@@ -216,15 +216,25 @@ class MessageComposerPresenter(
             mutableStateOf(false)
         }
         var showAttachmentSourcePicker: Boolean by remember { mutableStateOf(false) }
+        var attachmentCaption by remember { mutableStateOf("") }
         // Правка форка: «Назад» с предпросмотра возвращает меню вложений Telegram; отправка оттуда
         // тратит ответ, начатый до меню (TgAttachSheetMemory).
+        var draftLoaded by remember { mutableStateOf(false) }
         val attachRestore by forkActions.attachSheetMemory.restore.collectAsState()
         LaunchedEffect(attachRestore) {
-            if (attachRestore != null) showAttachmentSourcePicker = true
+            attachRestore?.let {
+                attachmentCaption = it.caption
+                showAttachmentSourcePicker = true
+            }
         }
         val resetModeAfterPreview by forkActions.attachSheetMemory.resetComposerMode.collectAsState()
-        LaunchedEffect(resetModeAfterPreview) {
-            if (resetModeAfterPreview) {
+        LaunchedEffect(resetModeAfterPreview, draftLoaded) {
+            if (resetModeAfterPreview && draftLoaded) {
+                val sentDraft = forkActions.attachSheetMemory.sentComposerDraft
+                val currentDraft = currentComposerMessage(markdownTextEditorState, richTextEditorState, withMentions = false).markdown
+                if (!messageComposerContext.composerMode.isEditing && sentDraft != null && currentDraft == sentDraft) {
+                    setText("", markdownTextEditorState, richTextEditorState)
+                }
                 resetComposerModeAfterAttaching()
                 forkActions.attachSheetMemory.onComposerModeReset()
             }
@@ -278,6 +288,7 @@ class MessageComposerPresenter(
             if (draft != null) {
                 applyDraft(draft, markdownTextEditorState, richTextEditorState)
             }
+            draftLoaded = true
         }
 
         fun handleEvent(event: MessageComposerEvent) {
@@ -318,9 +329,20 @@ class MessageComposerPresenter(
                     localCoroutineScope.setMode(event.composerMode, markdownTextEditorState, richTextEditorState)
                 }
                 MessageComposerEvent.AddAttachment -> localCoroutineScope.launch {
+                    val draft = currentComposerMessage(markdownTextEditorState, richTextEditorState, withMentions = false).markdown
+                        .takeUnless { messageComposerContext.composerMode.isEditing }
+                    forkActions.attachSheetMemory.onSheetOpened(draft)
+                    attachmentCaption = draft.orEmpty()
                     showAttachmentSourcePicker = true
                 }
-                MessageComposerEvent.DismissAttachmentMenu -> showAttachmentSourcePicker = false
+                is MessageComposerEvent.UpdateAttachmentCaption -> attachmentCaption = event.caption
+                MessageComposerEvent.DismissAttachmentMenu -> {
+                    showAttachmentSourcePicker = false
+                    val original = forkActions.attachSheetMemory.composerDraft
+                    if (original != null && attachmentCaption != original && !messageComposerContext.composerMode.isEditing) {
+                        localCoroutineScope.launch { textEditorState.setMarkdown(attachmentCaption) }
+                    }
+                }
                 MessageComposerEvent.PickAttachmentSource.FromGallery -> localCoroutineScope.launch {
                     showAttachmentSourcePicker = false
                     if (isSendGalleryMessagesEnabled) {
@@ -367,15 +389,36 @@ class MessageComposerPresenter(
                     // Правка форка: отправка из меню вложений Telegram без экрана предпросмотра.
                     showAttachmentSourcePicker = false
                     val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
+                    val original = forkActions.attachSheetMemory.composerDraft
                     sessionCoroutineScope.launch {
-                        forkActions.sendGalleryMedia(event.media, event.caption, event.compress, inReplyToEventId, timelineController.mainTimelineMode())
+                        val sent = forkActions.sendGalleryMedia(
+                            event.media,
+                            event.caption,
+                            event.compress,
+                            inReplyToEventId,
+                            timelineController.mainTimelineMode()
+                        )
+                        val current = currentComposerMessage(markdownTextEditorState, richTextEditorState, withMentions = false).markdown
+                        if (original != null && current == original && !messageComposerContext.composerMode.isEditing) {
+                            // Ошибка отправки не должна терять правки подписи или затирать новый текст чата.
+                            if (sent) {
+                                setText("", markdownTextEditorState, richTextEditorState)
+                            } else if (event.caption != null && event.caption != original) {
+                                textEditorState.setMarkdown(event.caption)
+                            }
+                        }
                     }
                     resetComposerModeAfterAttaching()
                 }
                 is MessageComposerEvent.PreviewGalleryMedia -> {
                     showAttachmentSourcePicker = false
                     forkActions.attachSheetMemory.onOpenPreview(
-                        TgAttachRestore(selection = event.restoreSelection, caption = event.caption, isExpanded = event.isSheetExpanded)
+                        TgAttachRestore(
+                            selection = event.restoreSelection,
+                            caption = event.caption,
+                            isExpanded = event.isSheetExpanded,
+                            highQuality = event.highQuality,
+                        )
                     )
                     // Ответ не сбрасываем: после «Назад» он ещё нужен, сбросит отправка с предпросмотра.
                     localCoroutineScope.handlePickedMediaList(event.media.map { it.uri }, resetComposerMode = false)
@@ -462,6 +505,7 @@ class MessageComposerPresenter(
             mode = messageComposerContext.composerMode,
             isInThreadTimeline = isInThread,
             showAttachmentSourcePicker = showAttachmentSourcePicker,
+            attachmentCaption = attachmentCaption,
             showTextFormatting = showTextFormatting,
             canShareLocation = canShareLocation,
             suggestions = suggestions.toImmutableList(),

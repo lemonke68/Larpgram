@@ -26,7 +26,6 @@ import io.element.android.features.preferences.impl.advanced.AdvancedSettingsSta
 import io.element.android.features.preferences.impl.advanced.AppearanceThemeItem
 import io.element.android.features.preferences.impl.advanced.ChatAppearanceSection
 import io.element.android.features.preferences.impl.advanced.ChatAppearanceState
-import io.element.android.features.preferences.impl.advanced.MediaUploadSection
 import io.element.android.features.preferences.impl.advanced.ModerationAndSafetySection
 import io.element.android.features.preferences.impl.advanced.SharePresenceItem
 import io.element.android.features.preferences.impl.root.PreferencesRootState
@@ -63,6 +62,8 @@ fun SettingsCategoryView(
     onSignOutClick: () -> Unit,
     onDeactivateClick: () -> Unit,
     modifier: Modifier = Modifier,
+    mediaStorageState: MediaStorageState? = null,
+    forwardingPrivacyState: ForwardingPrivacyState? = null,
 ) {
     PreferencePage(
         modifier = modifier,
@@ -81,6 +82,7 @@ fun SettingsCategoryView(
                 onDeactivateClick = onDeactivateClick,
             )
             SettingsCategory.Privacy -> PrivacyCategory(
+                forwardingPrivacyState = forwardingPrivacyState,
                 state = state,
                 advancedSettingsState = advancedSettingsState,
                 onOpenBlockedUsers = onOpenBlockedUsers,
@@ -99,7 +101,7 @@ fun SettingsCategoryView(
                 chatAppearanceState = chatAppearanceState,
                 onOpenChatThemeSettings = onOpenChatThemeSettings,
             )
-            SettingsCategory.Data -> DataCategory(advancedSettingsState = advancedSettingsState)
+            SettingsCategory.Data -> MediaStorageView(mediaStorageState)
             // Категории без бэкенда в Element — заглушка «скоро». Наполнение придёт
             // с TG-фичами (обои/размер текста, папки, энергосбережение, язык), пишем с нуля позже.
             SettingsCategory.Folders,
@@ -173,6 +175,7 @@ private fun ColumnScope.AccountCategory(
 @Composable
 private fun ColumnScope.PrivacyCategory(
     state: PreferencesRootState,
+    forwardingPrivacyState: ForwardingPrivacyState?,
     advancedSettingsState: AdvancedSettingsState,
     onOpenBlockedUsers: () -> Unit,
     onSecureBackupClick: () -> Unit,
@@ -226,6 +229,7 @@ private fun ColumnScope.PrivacyCategory(
         }
     }
     // Реальные тумблеры Element: присутствие + модерация (перенесены из «Дополнительно»).
+    ForwardingPrivacyView(forwardingPrivacyState)
     SharePresenceItem(advancedSettingsState)
     ModerationAndSafetySection(advancedSettingsState)
 }
@@ -241,12 +245,6 @@ private fun ColumnScope.ChatsCategory(
     // Larpgram: размер текста, углы, обои + переход на экран «Настройки темы» (пресеты/акцент/пузырь).
     ChatAppearanceSection(chatAppearanceState, onOpenChatThemeSettings = onOpenChatThemeSettings)
     // Ещё открыто (TG-фичи без бэкенда): цвет имени, стиль списка чатов, иконка приложения.
-}
-
-@Composable
-private fun ColumnScope.DataCategory(advancedSettingsState: AdvancedSettingsState) {
-    // Сжатие и качество загрузки медиа (перенесено из «Дополнительно»).
-    MediaUploadSection(advancedSettingsState)
 }
 
 @Composable

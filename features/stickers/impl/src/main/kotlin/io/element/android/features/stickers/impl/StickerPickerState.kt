@@ -11,6 +11,7 @@ package io.element.android.features.stickers.impl
 import io.element.android.libraries.imagepacks.api.ImagePack
 import io.element.android.libraries.imagepacks.api.ImagePackImage
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * @param packs паки, в которых есть хотя бы один стикер.
@@ -25,6 +26,7 @@ data class StickerPickerState(
     val importState: ImportState,
     val sendError: StickerSendError?,
     val eventSink: (StickerPickerEvents) -> Unit,
+    val recentStickers: ImmutableList<ImagePackImage> = persistentListOf(),
 ) {
     /** Стикеры выбранного пака, пустой список если паков нет. */
     val visibleStickers: List<ImagePackImage>

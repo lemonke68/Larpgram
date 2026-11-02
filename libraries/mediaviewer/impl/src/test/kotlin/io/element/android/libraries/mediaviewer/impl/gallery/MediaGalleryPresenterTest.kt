@@ -527,6 +527,7 @@ class MediaGalleryPresenterTest {
         ),
     ): MediaGalleryPresenter {
         return MediaGalleryPresenter(
+            copyProtection = io.element.android.libraries.matrix.ui.protection.RoomCopyProtection(io.element.android.libraries.matrix.test.FakeMatrixClient()),
             navigator = navigator,
             room = room,
             mediaGalleryDataSource = mediaGalleryDataSource,

@@ -28,6 +28,7 @@ import extension.testCommonDependencies
 import org.sonarqube.gradle.SonarResolverTask
 import java.util.Locale
 import java.util.Properties
+import java.util.zip.ZipFile
 
 // Правка форка: релизная подпись Larpgram. Секреты и сам keystore в git не лежат —
 // keystore.properties и app/signature/larpgram.keystore добавлены в .gitignore. Юзер
@@ -57,6 +58,21 @@ plugins {
     // alias(libs.plugins.gms.google.services)
 }
 
+// Правка форка: не выпускать APK для ABI, которого нет в собственном SDK.
+val larpgramSdkFile = rootProject.file("libraries/rustsdk/matrix-rust-sdk.aar")
+val larpgramSdkAbis = if (larpgramSdkFile.exists()) {
+    ZipFile(larpgramSdkFile).use { archive ->
+        archive.entries().asSequence()
+            .map { it.name }
+            .filter { it.matches(Regex("jni/[^/]+/libmatrix_sdk_ffi\\.so")) }
+            .map { it.split('/')[1] }
+            .toList()
+            .also { check(it.isNotEmpty()) { "The local Rust SDK AAR has no native libraries" } }
+    }
+} else {
+    listOf("armeabi-v7a", "x86", "arm64-v8a", "x86_64")
+}
+
 android {
     namespace = "io.element.android.x"
 
@@ -68,7 +84,7 @@ android {
 
         // Keep abiFilter for the universalApk
         ndk {
-            abiFilters += listOf("armeabi-v7a", "x86", "arm64-v8a", "x86_64")
+            abiFilters += larpgramSdkAbis
         }
 
         // Ref: https://developer.android.com/studio/build/configure-apk-splits.html#configure-abi-split
@@ -87,7 +103,7 @@ android {
 
                 if (!buildingAppBundle) {
                     // Specifies a list of ABIs that Gradle should create APKs for.
-                    include("armeabi-v7a", "x86", "arm64-v8a", "x86_64")
+                    include(*larpgramSdkAbis.toTypedArray())
                     // Generate a universal APK that includes all ABIs, so user who installs from CI tool can use this one by default.
                     isUniversalApk = true
                 }

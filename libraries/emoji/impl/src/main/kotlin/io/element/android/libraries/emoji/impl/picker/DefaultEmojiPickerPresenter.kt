@@ -96,6 +96,7 @@ class DefaultEmojiPickerPresenter(
                 emojiResults = SearchBarResultState.Initial
                 return@LaunchedEffect
             }
+            emojiResults = SearchBarResultState.Initial
             delay(100.milliseconds)
             val lowercaseQuery = searchQuery.lowercase()
             val results = withContext(coroutineDispatchers.computation) {

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,10 +48,8 @@ import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.attachments.preview.error.sendAttachmentError
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.AttachmentImageEditorView
-import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorEvent
-import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorState
+import io.element.android.features.messages.impl.attachments.tgattach.TgMediaQualitySelector
 import io.element.android.features.messages.impl.attachments.video.VideoUploadEstimation
-import io.element.android.libraries.core.bool.orFalse
 import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeVideo
 import io.element.android.libraries.designsystem.components.ProgressDialog
 import io.element.android.libraries.designsystem.components.ProgressDialogType
@@ -61,7 +58,6 @@ import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
 import io.element.android.libraries.designsystem.components.dialogs.ListDialog
 import io.element.android.libraries.designsystem.components.dialogs.RetryDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
-import io.element.android.libraries.designsystem.modifiers.niceClickable
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
@@ -70,7 +66,6 @@ import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.ListItem
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Surface
-import io.element.android.libraries.designsystem.theme.components.Switch
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.designsystem.theme.floatingDateBadgeBackground
@@ -345,10 +340,13 @@ private fun AttachmentPreviewContent(
             }
         }
         val mediaInfo = (state.attachments[state.currentIndex] as? Attachment.Media)?.localMedia?.info
-        if (mediaInfo?.isImageAttachment() == true) {
-            ImageOptimizationSelector(state.mediaOptimizationSelectorState)
-        } else if (mediaInfo?.mimeType?.isMimeTypeVideo() == true) {
-            VideoPresetSelector(state = state.mediaOptimizationSelectorState)
+        if ((state.attachments[state.currentIndex] as? Attachment.Media)?.sendAsFile != true &&
+            (mediaInfo?.isImageAttachment() == true || mediaInfo?.mimeType?.isMimeTypeVideo() == true)
+        ) {
+            TgMediaQualitySelector(
+                highQuality = state.highQuality,
+                onSelect = { state.eventSink(AttachmentsPreviewEvent.SelectHighQuality(it)) },
+            )
         }
 
         val sizeFormatter = rememberFileSizeFormatter()
@@ -372,84 +370,6 @@ private fun AttachmentPreviewContent(
                 .background(ElementTheme.colors.bgCanvasDefault)
                 .height(IntrinsicSize.Min)
                 .imePadding(),
-        )
-    }
-}
-
-@Composable
-private fun ImageOptimizationSelector(state: MediaOptimizationSelectorState) {
-    if (state.displayMediaSelectorViews == true) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .niceClickable {
-                    state.isImageOptimizationEnabled?.let { value ->
-                        state.eventSink(MediaOptimizationSelectorEvent.SelectImageOptimization(!value))
-                    }
-                }
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-        ) {
-            Text(
-                modifier = Modifier
-                    .weight(1f)
-                    .align(Alignment.CenterVertically),
-                text = stringResource(R.string.screen_media_upload_preview_optimize_image_quality_title),
-                style = ElementTheme.typography.fontBodyLgRegular,
-            )
-            Switch(
-                modifier = Modifier.height(32.dp),
-                checked = state.isImageOptimizationEnabled.orFalse(),
-                onCheckedChange = { value -> state.eventSink(MediaOptimizationSelectorEvent.SelectImageOptimization(value)) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun VideoPresetSelector(
-    state: MediaOptimizationSelectorState,
-) {
-    val videoPresets = state.videoSizeEstimations.dataOrNull()
-    var selectedPreset by remember(state.selectedVideoPreset) { mutableStateOf(state.selectedVideoPreset) }
-
-    val displayDialog = state.displayVideoPresetSelectorDialog
-
-    val sizeFormatter = rememberFileSizeFormatter()
-
-    if (state.displayMediaSelectorViews == true && videoPresets != null && state.selectedVideoPreset != null) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .niceClickable { state.eventSink(MediaOptimizationSelectorEvent.OpenVideoPresetSelectorDialog) }
-        ) {
-            val estimation = videoPresets.find { it.preset == selectedPreset }
-            val estimationMb = estimation?.sizeInBytes?.let { sizeFormatter.format(it, true) }
-            val title = buildString {
-                append(state.selectedVideoPreset.title())
-                if (estimationMb != null) {
-                    append(" ($estimationMb)")
-                }
-            }
-            Text(text = title, style = ElementTheme.typography.fontBodyLgMedium)
-            Text(
-                text = stringResource(R.string.screen_media_upload_preview_change_video_quality_prompt),
-                style = ElementTheme.typography.fontBodyLgMedium,
-                color = ElementTheme.colors.textSecondary,
-            )
-        }
-    }
-
-    if (displayDialog) {
-        VideoQualitySelectorDialog(
-            selectedPreset = selectedPreset ?: VideoCompressionPreset.STANDARD,
-            videoSizeEstimations = videoPresets ?: persistentListOf(),
-            maxFileUploadSize = state.maxUploadSize.dataOrNull(),
-            onSubmit = { preset ->
-                selectedPreset = preset
-                state.eventSink(MediaOptimizationSelectorEvent.SelectVideoPreset(preset))
-            },
-            onDismiss = { state.eventSink(MediaOptimizationSelectorEvent.DismissVideoPresetSelectorDialog) }
         )
     }
 }

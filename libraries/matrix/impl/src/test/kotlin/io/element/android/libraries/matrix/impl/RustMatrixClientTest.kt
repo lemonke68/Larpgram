@@ -44,6 +44,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Test
 import org.matrix.rustcomponents.sdk.Client
 import org.matrix.rustcomponents.sdk.CreateRoomParameters
@@ -281,6 +283,69 @@ class RustMatrixClientTest {
     }
 
     @Test
+    fun `media cache usage keeps removable protected and database bytes separate`() = runTest {
+        val client = createRustMatrixClient(
+            client = FakeFfiClient(mediaCacheUsageResult = {
+                org.matrix.rustcomponents.sdk.MediaCacheUsage(
+                    images = 10uL,
+                    videos = 20uL,
+                    audio = 30uL,
+                    other = 40uL,
+                    thumbnails = 5uL,
+                    `protected` = 50uL,
+                    databaseBytes = 200uL,
+                )
+            })
+        )
+        val usage = client.getMediaCacheUsage().getOrThrow()
+        assertThat(usage.removableBytes).isEqualTo(105)
+        assertThat(usage.protectedBytes).isEqualTo(50)
+        assertThat(usage.databaseBytes).isEqualTo(200)
+        assertThat(usage.databaseOverheadBytes).isEqualTo(45)
+        client.destroy()
+    }
+
+    @Test
+    fun `clear media cache does not reset SDK session or destroy client`() = runTest {
+        var cleared = 0
+        var closed = false
+        val client = createRustMatrixClient(
+            client = FakeFfiClient(
+                clearMediaCacheResult = {
+                    cleared++
+                    123uL
+                },
+                clearCachesResult = { error("Full cache reset must not be called") },
+                closeResult = { closed = true },
+            )
+        )
+        assertThat(client.clearMediaCache().isSuccess).isTrue()
+        assertThat(cleared).isEqualTo(1)
+        assertThat(closed).isFalse()
+        assertThat(client.isShuttingDown).isFalse()
+        assertThat(client.sessionId).isEqualTo(A_USER_ID)
+        client.destroy()
+    }
+
+    @Test
+    fun `media cache errors remain failures without a destructive fallback`() = runTest {
+        val error = IllegalStateException("store unavailable")
+        val client = createRustMatrixClient(
+            client = FakeFfiClient(
+                mediaCacheUsageResult = { throw error },
+                clearMediaCacheResult = { throw error },
+                clearCachesResult = { throw AssertionError("Full cache reset must not be called") },
+            )
+        )
+        listOf(client.getMediaCacheUsage(), client.clearMediaCache()).forEach { result ->
+            assertThat(result.exceptionOrNull()).isInstanceOf(IllegalStateException::class.java)
+            assertThat(result.exceptionOrNull()).hasMessageThat().isEqualTo("store unavailable")
+        }
+        assertThat(client.isShuttingDown).isFalse()
+        client.destroy()
+    }
+
+    @Test
     fun `createDM overrides room history visibility to invited`() = runTest {
         var createParameters: CreateRoomParameters? = null
         val createRoomLambda = lambdaRecorder<CreateRoomParameters, String> {
@@ -372,12 +437,57 @@ class RustMatrixClientTest {
         runCurrent()
     }
 
+    @Test
+    fun `copy restrictions are read only for private channels and not for public channels or groups`() = runTest {
+        val cases = listOf(Triple(true, 50L, false), Triple(false, 0L, false), Triple(false, 50L, true))
+        cases.forEach { (isPublic, eventsDefault, shouldReadState) ->
+            var reads = 0
+            val http = okhttp3.OkHttpClient.Builder().addInterceptor { chain ->
+                reads++
+                okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1).code(200).message("OK")
+                    .body("{\"enabled\":true}".toResponseBody("application/json".toMediaType())).build()
+            }.build()
+            val info = io.element.android.libraries.matrix.impl.fixtures.factories.aRustRoomInfo(
+                isPublic = isPublic,
+                roomPowerLevels = io.element.android.libraries.matrix.impl.fixtures.fakes.FakeFfiRoomPowerLevels(
+                    values = io.element.android.libraries.matrix.impl.fixtures.fakes.defaultFfiRoomPowerLevelValues().copy(eventsDefault = eventsDefault)
+                ),
+            )
+            val rooms = io.element.android.libraries.matrix.impl.fixtures.fakes.FakeFfiRoomListService {
+                io.element.android.libraries.matrix.impl.fixtures.fakes.FakeFfiRoom(roomInfo = info)
+            }
+            val client =
+                createRustMatrixClient(
+                    client = FakeFfiClient(homeserver = "https://hs.test"),
+                    roomListService = rooms,
+                    sharingApi = io.element.android.libraries.matrix.impl.forward.LarpgramSharingApi(http)
+                )
+            assertThat(client.getRoomCopyProtection(A_ROOM_ID).getOrThrow()).isEqualTo(shouldReadState)
+            assertThat(reads).isEqualTo(if (shouldReadState) 1 else 0)
+        }
+    }
+
+    @Test
+    fun `copy policy fails closed when private room permissions are unavailable`() = runTest {
+        val info = io.element.android.libraries.matrix.impl.fixtures.factories.aRustRoomInfo().copy(powerLevels = null)
+        val rooms = io.element.android.libraries.matrix.impl.fixtures.fakes.FakeFfiRoomListService {
+            io.element.android.libraries.matrix.impl.fixtures.fakes.FakeFfiRoom(roomInfo = info)
+        }
+        val client = createRustMatrixClient(roomListService = rooms)
+        assertThat(client.getRoomCopyProtection(A_ROOM_ID).isFailure).isTrue()
+    }
+
     private fun TestScope.createRustMatrixClient(
         client: Client = FakeFfiClient(),
+        roomListService: org.matrix.rustcomponents.sdk.RoomListService = io.element.android.libraries.matrix.impl.fixtures.fakes.FakeFfiRoomListService(),
+        sharingApi: io.element.android.libraries.matrix.impl.forward.LarpgramSharingApi = io.element.android.libraries.matrix.impl.forward.LarpgramSharingApi(
+            okhttp3.OkHttpClient()
+        ),
         sessionStore: SessionStore = InMemorySessionStore(
             updateUserProfileResult = { _, _, _, _ -> },
         ),
     ) = RustMatrixClient(
+        sharingApi = sharingApi,
         innerClient = client,
         sessionPaths = SessionPaths(fileDirectory = File("files"), cacheDirectory = File("cache")),
         sessionStore = sessionStore,
@@ -385,7 +495,7 @@ class RustMatrixClientTest {
         sessionDelegate = aRustClientSessionDelegate(
             sessionStore = sessionStore,
         ),
-        innerSyncService = FakeFfiSyncService(),
+        innerSyncService = FakeFfiSyncService(roomListService),
         dispatchers = testCoroutineDispatchers(),
         baseCacheDirectory = File(""),
         clock = FakeSystemClock(),

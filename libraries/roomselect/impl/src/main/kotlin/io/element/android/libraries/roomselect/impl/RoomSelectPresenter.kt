@@ -70,6 +70,7 @@ class RoomSelectPresenter(
         var selectedRooms by remember { mutableStateOf(persistentListOf<SelectRoomInfo>()) }
         val queryState = rememberTextFieldState()
         var isAccountListExpanded by remember { mutableStateOf(false) }
+        var hideForwardAuthor by remember { mutableStateOf(false) }
         // Null until the sessions are loaded
         val sessions by remember { sessionStore.sessionsFlow() }.collectAsState(initial = null)
         var selectedSessionId by remember { mutableStateOf(initialSessionId) }
@@ -197,6 +198,7 @@ class RoomSelectPresenter(
 
         fun handleEvent(event: RoomSelectEvent) {
             when (event) {
+                RoomSelectEvent.ToggleHideForwardAuthor -> hideForwardAuthor = !hideForwardAuthor
                 is RoomSelectEvent.ToggleSelectedRoom -> {
                     val index = selectedRooms.indexOfFirst { it.roomId == event.room.roomId }
                     selectedRooms = if (index >= 0) {
@@ -219,6 +221,7 @@ class RoomSelectPresenter(
         }
 
         return RoomSelectState(
+            hideForwardAuthor = hideForwardAuthor,
             mode = mode,
             maxNumberOfRooms = maxNumberOfRooms,
             resultState = searchResults,

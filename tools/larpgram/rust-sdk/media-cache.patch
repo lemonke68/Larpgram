@@ -1,0 +1,696 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 7c0f10c..057a107 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -3039,6 +3039,12 @@ dependencies = [
+  "rustversion",
+ ]
+ 
++[[package]]
++name = "infer"
++version = "0.19.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a588916bfdfd92e71cacef98a63d9b1f0d74d6599980d11894290e7ddefffcf7"
++
+ [[package]]
+ name = "inout"
+ version = "0.2.2"
+@@ -3986,6 +3992,7 @@ dependencies = [
+  "deadpool 0.13.0",
+  "deadpool-sync",
+  "glob",
++ "infer",
+  "itertools 0.15.0",
+  "matrix-sdk-base",
+  "matrix-sdk-common",
+diff --git a/bindings/matrix-sdk-ffi/src/client.rs b/bindings/matrix-sdk-ffi/src/client.rs
+index a0aebd0..78bdd23 100644
+--- a/bindings/matrix-sdk-ffi/src/client.rs
++++ b/bindings/matrix-sdk-ffi/src/client.rs
+@@ -1161,6 +1161,40 @@ impl Client {
+         Ok(self.inner.reset_well_known().await?)
+     }
+ 
++    /// Larpgram: stored cache entries; uploads are accounted separately and retained.
++    pub async fn media_cache_usage(&self) -> Result<MediaCacheUsage, ClientError> {
++        let store = self.inner.media_store().lock().await.map_err(ClientError::from_err)?;
++        let usage =
++            store.media_cache_usage().await.map_err(ClientError::from_err)?.ok_or_else(|| {
++                ClientError::Generic {
++                    msg: "Media cache accounting is not supported by this store".to_owned(),
++                    details: None,
++                }
++            })?;
++        let database_bytes =
++            store.get_size().await.map_err(ClientError::from_err)?.map(|bytes| bytes as u64);
++        Ok(MediaCacheUsage {
++            images: usage.images,
++            videos: usage.videos,
++            audio: usage.audio,
++            other: usage.other,
++            thumbnails: usage.thumbnails,
++            protected: usage.protected,
++            database_bytes,
++        })
++    }
++
++    /// Larpgram: delete only redownloadable cached media without destroying the client.
++    pub async fn clear_media_cache(&self) -> Result<u64, ClientError> {
++        let store = self.inner.media_store().lock().await.map_err(ClientError::from_err)?;
++        store.clear_media_cache().await.map_err(ClientError::from_err)?.ok_or_else(|| {
++            ClientError::Generic {
++                msg: "Media cache clearing is not supported by this store".to_owned(),
++                details: None,
++            }
++        })
++    }
++
+     /// Retrieves a media file from the media source
+     ///
+     /// Not available on Wasm platforms, due to lack of accessible file system.
+@@ -3427,6 +3461,19 @@ fn gen_transaction_id() -> String {
+     TransactionId::new().to_string()
+ }
+ 
++/// Larpgram: all fields are encoded media-value bytes, except database_bytes.
++/// The latter includes database allocation, free pages, indexes and bookkeeping.
++#[derive(Debug, uniffi::Record)]
++pub struct MediaCacheUsage {
++    pub images: u64,
++    pub videos: u64,
++    pub audio: u64,
++    pub other: u64,
++    pub thumbnails: u64,
++    pub protected: u64,
++    pub database_bytes: Option<u64>,
++}
++
+ /// A file handle that takes ownership of a media file on disk. When the handle
+ /// is dropped, the file will be removed from the disk.
+ #[derive(uniffi::Object)]
+diff --git a/crates/matrix-sdk-base/src/media/store/mod.rs b/crates/matrix-sdk-base/src/media/store/mod.rs
+index 98267a2..0603555 100644
+--- a/crates/matrix-sdk-base/src/media/store/mod.rs
++++ b/crates/matrix-sdk-base/src/media/store/mod.rs
+@@ -46,6 +46,24 @@ pub use self::{
+     memory_store::MemoryMediaStore,
+ };
+ 
++/// Larpgram: stored bytes for removable media, separate from protected uploads.
++/// Categories count encoded database values, not total database allocation.
++#[derive(Clone, Debug, Default, PartialEq, Eq)]
++pub struct MediaCacheUsage {
++    /// Image originals.
++    pub images: u64,
++    /// Video originals.
++    pub videos: u64,
++    /// Audio originals.
++    pub audio: u64,
++    /// Other files, unknown types and entries written by older clients.
++    pub other: u64,
++    /// Requested thumbnails, separate from originals.
++    pub thumbnails: u64,
++    /// Media protected by the send queue or another retention exemption.
++    pub protected: u64,
++}
++
+ /// Media store specific error type.
+ #[derive(Debug, thiserror::Error)]
+ pub enum MediaStoreError {
+diff --git a/crates/matrix-sdk-base/src/media/store/traits.rs b/crates/matrix-sdk-base/src/media/store/traits.rs
+index e387259..55d3c80 100644
+--- a/crates/matrix-sdk-base/src/media/store/traits.rs
++++ b/crates/matrix-sdk-base/src/media/store/traits.rs
+@@ -24,7 +24,7 @@ use ruma::{MxcUri, time::SystemTime};
+ use crate::media::store::MediaService;
+ use crate::media::{
+     MediaRequestParameters,
+-    store::{IgnoreMediaRetentionPolicy, MediaRetentionPolicy, MediaStoreError},
++    store::{IgnoreMediaRetentionPolicy, MediaCacheUsage, MediaRetentionPolicy, MediaStoreError},
+ };
+ 
+ /// An abstract trait that can be used to implement different store backends for
+@@ -166,6 +166,35 @@ pub trait MediaStore: AsyncTraitDeps {
+     #[doc(hidden)]
+     async fn optimize(&self) -> Result<(), Self::Error>;
+ 
++    /// Larpgram: refine cached-file accounting when an event provides a MIME type.
++    async fn set_media_content_type(
++        &self,
++        _request: &MediaRequestParameters,
++        _mime_type: &str,
++    ) -> Result<(), Self::Error> {
++        Ok(())
++    }
++
++    /// Larpgram: label a thumbnail cached under a File key by the upload queue.
++    async fn mark_media_thumbnail(
++        &self,
++        _request: &MediaRequestParameters,
++    ) -> Result<(), Self::Error> {
++        Ok(())
++    }
++
++    /// Larpgram: precise removable-media accounting, if supported by this backend.
++    async fn media_cache_usage(&self) -> Result<Option<MediaCacheUsage>, Self::Error> {
++        Ok(None)
++    }
++
++    /// Larpgram: immediately remove only retention-unprotected, redownloadable media.
++    /// No policy changes, session resets or deletion of pending uploads.
++    /// Returns removed encoded bytes, or None if unsupported.
++    async fn clear_media_cache(&self) -> Result<Option<u64>, Self::Error> {
++        Ok(None)
++    }
++
+     /// Returns the size of the store in bytes, if known.
+     async fn get_size(&self) -> Result<Option<usize>, Self::Error>;
+ }
+@@ -371,6 +400,29 @@ impl<T: MediaStore> MediaStore for EraseMediaStoreError<T> {
+         self.0.optimize().await.map_err(Into::into)
+     }
+ 
++    async fn set_media_content_type(
++        &self,
++        request: &MediaRequestParameters,
++        mime_type: &str,
++    ) -> Result<(), Self::Error> {
++        self.0.set_media_content_type(request, mime_type).await.map_err(Into::into)
++    }
++
++    async fn mark_media_thumbnail(
++        &self,
++        request: &MediaRequestParameters,
++    ) -> Result<(), Self::Error> {
++        self.0.mark_media_thumbnail(request).await.map_err(Into::into)
++    }
++
++    async fn media_cache_usage(&self) -> Result<Option<MediaCacheUsage>, Self::Error> {
++        self.0.media_cache_usage().await.map_err(Into::into)
++    }
++
++    async fn clear_media_cache(&self) -> Result<Option<u64>, Self::Error> {
++        self.0.clear_media_cache().await.map_err(Into::into)
++    }
++
+     async fn get_size(&self) -> Result<Option<usize>, Self::Error> {
+         self.0.get_size().await.map_err(Into::into)
+     }
+diff --git a/crates/matrix-sdk-sqlite/Cargo.toml b/crates/matrix-sdk-sqlite/Cargo.toml
+index fa6ea2a..93ec2f8 100644
+--- a/crates/matrix-sdk-sqlite/Cargo.toml
++++ b/crates/matrix-sdk-sqlite/Cargo.toml
+@@ -17,7 +17,7 @@ testing = ["matrix-sdk-crypto?/testing"]
+ bundled = ["rusqlite/bundled"]
+ crypto-store = ["dep:matrix-sdk-base", "dep:matrix-sdk-crypto"]
+ event-cache-store = ["dep:matrix-sdk-base"]
+-media-store = ["dep:matrix-sdk-base"]
++media-store = ["dep:matrix-sdk-base", "dep:infer"]
+ state-store = ["dep:matrix-sdk-base"]
+ uniffi = ["dep:uniffi"]
+ 
+@@ -35,6 +35,7 @@ base64.workspace = true
+ deadpool = { version = "0.13", default-features = false, features = ["managed", "rt_tokio_1"] }
+ deadpool-sync = { version = "0.2", default-features = false }
+ itertools.workspace = true
++infer = { version = "0.19.0", default-features = false, optional = true }
+ matrix-sdk-base = { workspace = true, optional = true }
+ matrix-sdk-crypto = { workspace = true, optional = true }
+ matrix-sdk-store-encryption.workspace = true
+diff --git a/crates/matrix-sdk-sqlite/src/media_store.rs b/crates/matrix-sdk-sqlite/src/media_store.rs
+index 3d1c9e2..4e81553 100644
+--- a/crates/matrix-sdk-sqlite/src/media_store.rs
++++ b/crates/matrix-sdk-sqlite/src/media_store.rs
+@@ -25,10 +25,10 @@ use deadpool::managed::PoolConfig;
+ use matrix_sdk_base::{
+     cross_process_lock::CrossProcessLockGeneration,
+     media::{
+-        MediaRequestParameters, UniqueKey,
++        MediaFormat, MediaRequestParameters, UniqueKey,
+         store::{
+-            IgnoreMediaRetentionPolicy, MediaRetentionPolicy, MediaService, MediaStore,
+-            MediaStoreInner,
++            IgnoreMediaRetentionPolicy, MediaCacheUsage, MediaRetentionPolicy, MediaService,
++            MediaStore, MediaStoreInner,
+         },
+     },
+     timer,
+@@ -297,9 +297,34 @@ async fn run_migrations(conn: &SqliteAsyncConn, version: u8) -> Result<()> {
+         .await?;
+     }
+ 
++    if version < 3 {
++        conn.with_transaction(|txn| {
++            txn.execute_batch(include_str!(
++                "../migrations/media_store/003_larpgram_media_kind.sql"
++            ))?;
++            txn.set_db_version(3)
++        })
++        .await?;
++    }
++
+     Ok(())
+ }
+ 
++// Larpgram: classify only recognized content before store encryption. Unknown formats,
++// ambiguous containers and legacy rows are deliberately reported as Other.
++fn media_kind(request: &MediaRequestParameters, data: &[u8]) -> i64 {
++    if matches!(request.format, MediaFormat::Thumbnail(_)) {
++        return 4;
++    }
++    match infer::get(data).map(|kind| kind.mime_type()) {
++        Some(mime) if mime.starts_with("image/") => 1,
++        Some("video/mp4" | "video/webm" | "audio/ogg") => 0,
++        Some(mime) if mime.starts_with("video/") => 2,
++        Some(mime) if mime.starts_with("audio/") => 3,
++        _ => 0,
++    }
++}
++
+ #[async_trait]
+ impl MediaStore for SqliteMediaStore {
+     type Error = Error;
+@@ -377,8 +402,8 @@ impl MediaStore for SqliteMediaStore {
+ 
+         let conn = self.write().await?;
+         conn.execute(
+-            r#"UPDATE media SET uri = ?, format = ? WHERE uri = ? AND format = ?"#,
+-            (new_uri, new_format, prev_uri, prev_format),
++            r#"UPDATE media SET uri = ?, format = ?, larpgram_kind = CASE WHEN ? THEN 4 ELSE larpgram_kind END WHERE uri = ? AND format = ?"#,
++            (new_uri, new_format, matches!(to.format, MediaFormat::Thumbnail(_)), prev_uri, prev_format),
+         )
+         .await?;
+ 
+@@ -464,6 +489,96 @@ impl MediaStore for SqliteMediaStore {
+         Ok(self.vacuum().await?)
+     }
+ 
++    async fn set_media_content_type(
++        &self,
++        request: &MediaRequestParameters,
++        mime_type: &str,
++    ) -> Result<(), Self::Error> {
++        if !matches!(request.format, MediaFormat::File) {
++            return Ok(());
++        }
++        // A fallback application/octet-stream must not erase a recognized content type.
++        let kind = match mime_type.split('/').next() {
++            Some("image") => 1,
++            Some("video") => 2,
++            Some("audio") => 3,
++            _ => return Ok(()),
++        };
++        let uri = self.encode_key(keys::MEDIA, request.source.unique_key());
++        let format = self.encode_key(keys::MEDIA, request.format.unique_key());
++        self.write()
++            .await?
++            .execute(
++                "UPDATE media SET larpgram_kind = CASE WHEN larpgram_kind = 4 THEN 4 ELSE ? END WHERE uri = ? AND format = ?",
++                (kind, uri, format),
++            )
++            .await?;
++        Ok(())
++    }
++
++    async fn mark_media_thumbnail(
++        &self,
++        request: &MediaRequestParameters,
++    ) -> Result<(), Self::Error> {
++        let uri = self.encode_key(keys::MEDIA, request.source.unique_key());
++        let format = self.encode_key(keys::MEDIA, request.format.unique_key());
++        self.write()
++            .await?
++            .execute(
++                "UPDATE media SET larpgram_kind = 4 WHERE uri = ? AND format = ?",
++                (uri, format),
++            )
++            .await?;
++        Ok(())
++    }
++
++    async fn media_cache_usage(&self) -> Result<Option<MediaCacheUsage>, Self::Error> {
++        let conn = self.read().await?;
++        let usage = conn.prepare(
++            "SELECT larpgram_kind, ignore_policy, sum(length(data)) FROM media GROUP BY larpgram_kind, ignore_policy",
++            |mut stmt| {
++                let mut usage = MediaCacheUsage::default();
++                let mut rows = stmt.query(())?;
++                while let Some(row) = rows.next()? {
++                    let kind: i64 = row.get(0)?;
++                    let protected: bool = row.get(1)?;
++                    let bytes: u64 = row.get(2)?;
++                    if protected {
++                        usage.protected += bytes;
++                    } else {
++                        match kind {
++                            1 => usage.images += bytes,
++                            2 => usage.videos += bytes,
++                            3 => usage.audio += bytes,
++                            4 => usage.thumbnails += bytes,
++                            _ => usage.other += bytes,
++                        }
++                    }
++                }
++                Ok(usage)
++            },
++        ).await?;
++        Ok(Some(usage))
++    }
++
++    async fn clear_media_cache(&self) -> Result<Option<u64>, Self::Error> {
++        // The outer MediaStoreLock serializes against send-queue upload transitions;
++        // the write transaction also serializes against concurrent database writers.
++        let conn = self.write().await?;
++        let removed = conn
++            .with_transaction::<_, rusqlite::Error, _>(|txn| {
++                let bytes = txn.query_row(
++                    "SELECT coalesce(sum(length(data)), 0) FROM media WHERE ignore_policy IS FALSE",
++                    (),
++                    |row| row.get::<_, u64>(0),
++                )?;
++                txn.execute("DELETE FROM media WHERE ignore_policy IS FALSE", ())?;
++                Ok(bytes)
++            })
++            .await?;
++        Ok(Some(removed))
++    }
++
+     async fn get_size(&self) -> Result<Option<usize>, Self::Error> {
+         self.get_db_size().await
+     }
+@@ -499,6 +614,7 @@ impl MediaStoreInner for SqliteMediaStore {
+         ignore_policy: IgnoreMediaRetentionPolicy,
+     ) -> Result<(), Self::Error> {
+         let ignore_policy = ignore_policy.is_yes();
++        let kind = media_kind(request, &data);
+         let data = self.encode_value(data)?;
+ 
+         if !ignore_policy && policy.exceeds_max_file_size(data.len() as u64) {
+@@ -511,8 +627,8 @@ impl MediaStoreInner for SqliteMediaStore {
+ 
+         let conn = self.write().await?;
+         conn.execute(
+-            "INSERT OR REPLACE INTO media (uri, format, data, last_access, ignore_policy) VALUES (?, ?, ?, ?, ?)",
+-            (uri, format, data, timestamp, ignore_policy),
++            "INSERT OR REPLACE INTO media (uri, format, data, last_access, ignore_policy, larpgram_kind) VALUES (?, ?, ?, ?, ?, ?)",
++            (uri, format, data, timestamp, ignore_policy, kind),
+         )
+         .await?;
+ 
+@@ -1081,6 +1197,14 @@ mod close_reopen_tests {
+ 
+ #[cfg(test)]
+ mod encrypted_tests {
++    use crate::utils::SqliteAsyncConnExt;
++    use matrix_sdk_base::media::{
++        MediaFormat, MediaRequestParameters, MediaThumbnailSettings,
++        store::{IgnoreMediaRetentionPolicy, MediaStore},
++    };
++    use matrix_sdk_test::async_test;
++    use ruma::{events::room::MediaSource, mxc_uri, uint};
++
+     use std::sync::{
+         LazyLock,
+         atomic::{AtomicU32, Ordering::SeqCst},
+@@ -1111,4 +1235,182 @@ mod encrypted_tests {
+     media_store_integration_tests!();
+     media_store_integration_tests_time!();
+     media_store_inner_integration_tests!();
++    #[async_test]
++    async fn test_larpgram_cache_clear_preserves_uploads_and_policy() {
++        // Exercise the same encrypted-at-rest store configuration used on Android.
++        let dir = tempdir().unwrap();
++        let store = SqliteMediaStore::open(dir.path(), Some("test-passphrase")).await.unwrap();
++        let request = |name: &str| MediaRequestParameters {
++            source: MediaSource::Plain(format!("mxc://example.org/{name}").try_into().unwrap()),
++            format: MediaFormat::File,
++        };
++        let image = request("image");
++        let upload = request("pending-upload");
++        let other = request("unknown");
++        let thumb = MediaRequestParameters {
++            source: image.source.clone(),
++            format: MediaFormat::Thumbnail(MediaThumbnailSettings::new(uint!(100), uint!(100))),
++        };
++        let image_data = b"\x89PNG\r\n\x1a\nimage-data".to_vec();
++        store
++            .add_media_content(&image, image_data.clone(), IgnoreMediaRetentionPolicy::No)
++            .await
++            .unwrap();
++        store
++            .add_media_content(&thumb, image_data.clone(), IgnoreMediaRetentionPolicy::No)
++            .await
++            .unwrap();
++        store
++            .add_media_content(&other, b"unknown-format".to_vec(), IgnoreMediaRetentionPolicy::No)
++            .await
++            .unwrap();
++        store
++            .add_media_content(
++                &upload,
++                b"pending-voice-recording".to_vec(),
++                IgnoreMediaRetentionPolicy::Yes,
++            )
++            .await
++            .unwrap();
++        let policy = store.media_retention_policy();
++        let before = store.media_cache_usage().await.unwrap().unwrap();
++        assert!(before.images > 0);
++        assert!(before.thumbnails > 0);
++        assert!(before.other > 0);
++        assert!(before.protected > 0);
++        assert_eq!(before.videos + before.audio, 0);
++        let removable = before.images + before.thumbnails + before.other;
++        assert_eq!(store.clear_media_cache().await.unwrap(), Some(removable));
++        assert_eq!(store.media_retention_policy(), policy);
++        assert_eq!(
++            store.get_media_content(&upload).await.unwrap().unwrap(),
++            b"pending-voice-recording"
++        );
++        assert_eq!(store.get_media_content(&image).await.unwrap(), None);
++        let after = store.media_cache_usage().await.unwrap().unwrap();
++        assert_eq!(after.protected, before.protected);
++        assert_eq!(after.images + after.videos + after.audio + after.other + after.thumbnails, 0);
++        assert_eq!(store.clear_media_cache().await.unwrap(), Some(0));
++        // Re-fetching/re-caching media works on the same live client/store.
++        store
++            .add_media_content(&image, image_data.clone(), IgnoreMediaRetentionPolicy::No)
++            .await
++            .unwrap();
++        assert_eq!(store.get_media_content(&image).await.unwrap().unwrap(), image_data);
++        store.close().await.unwrap();
++        let reopened = SqliteMediaStore::open(dir.path(), Some("test-passphrase")).await.unwrap();
++        assert_eq!(
++            reopened.media_cache_usage().await.unwrap().unwrap().protected,
++            before.protected
++        );
++        assert_eq!(
++            reopened.get_media_content(&upload).await.unwrap().unwrap(),
++            b"pending-voice-recording"
++        );
++    }
++
++    #[async_test]
++    async fn test_larpgram_migration_and_old_writer_remain_compatible() {
++        use crate::utils::SqliteKeyValueStoreConnExt;
++        let dir = tempdir().unwrap();
++        let store = SqliteMediaStore::open(dir.path(), None).await.unwrap();
++        let request = MediaRequestParameters {
++            source: MediaSource::Plain(mxc_uri!("mxc://example.org/legacy").to_owned()),
++            format: MediaFormat::File,
++        };
++        let data = b"\x89PNG\r\n\x1a\nold-image".to_vec();
++        store
++            .add_media_content(&request, data.clone(), IgnoreMediaRetentionPolicy::No)
++            .await
++            .unwrap();
++        {
++            let conn = store.write().await.unwrap();
++            conn.with_transaction(|txn| {
++                txn.execute_batch("ALTER TABLE media DROP COLUMN larpgram_kind;")?;
++                txn.set_db_version(2)
++            })
++            .await
++            .unwrap();
++        }
++        store.close().await.unwrap();
++        let store = SqliteMediaStore::open(dir.path(), None).await.unwrap();
++        assert_eq!(store.get_media_content(&request).await.unwrap().unwrap(), data);
++        let usage = store.media_cache_usage().await.unwrap().unwrap();
++        // No fabricated type assignment for old records.
++        assert_eq!(usage.images, 0);
++        assert!(usage.other > 0);
++        store.set_media_content_type(&request, "image/png").await.unwrap();
++        assert!(store.media_cache_usage().await.unwrap().unwrap().images > 0);
++        store.set_media_content_type(&request, "application/octet-stream").await.unwrap();
++        assert!(store.media_cache_usage().await.unwrap().unwrap().images > 0);
++        // An old client can still INSERT with the original set of columns.
++        store.write().await.unwrap().execute(
++            "INSERT INTO media (uri, format, data, last_access, ignore_policy) VALUES (?, ?, ?, ?, ?)",
++            (b"legacy-writer".as_slice(), b"file".as_slice(), b"data".as_slice(), 0, true),
++        ).await.unwrap();
++        assert_eq!(store.media_cache_usage().await.unwrap().unwrap().protected, 4);
++        store.clear_media_cache().await.unwrap();
++        assert_eq!(store.media_cache_usage().await.unwrap().unwrap().protected, 4);
++    }
++
++    #[test]
++    fn test_larpgram_content_classification() {
++        let request = MediaRequestParameters {
++            source: MediaSource::Plain(mxc_uri!("mxc://example.org/file").to_owned()),
++            format: MediaFormat::File,
++        };
++        assert_eq!(super::media_kind(&request, b"\x89PNG\r\n\x1a\nimage"), 1);
++        assert_eq!(super::media_kind(&request, b"ID3\x04\0\0\0\0\0\0audio"), 3);
++        assert_eq!(super::media_kind(&request, b"\0\0\0\x18ftypisom\0\0\0\0isommp42"), 0);
++        assert_eq!(super::media_kind(&request, b"not a known media format"), 0);
++    }
++    #[async_test]
++    async fn test_larpgram_upload_metadata_survives_remote_key_replacement() {
++        let dir = tempdir().unwrap();
++        let store = SqliteMediaStore::open(dir.path(), None).await.unwrap();
++        let request = |uri: &str| MediaRequestParameters {
++            source: MediaSource::Plain(uri.try_into().unwrap()),
++            format: MediaFormat::File,
++        };
++        let pending = request("mxc://sendqueue.local/video");
++        let thumb = request("mxc://sendqueue.local/thumbnail");
++        store
++            .add_media_content(
++                &pending,
++                b"ambiguous-container".to_vec(),
++                IgnoreMediaRetentionPolicy::Yes,
++            )
++            .await
++            .unwrap();
++        store.set_media_content_type(&pending, "video/mp4").await.unwrap();
++        store
++            .add_media_content(&thumb, b"image-thumbnail".to_vec(), IgnoreMediaRetentionPolicy::Yes)
++            .await
++            .unwrap();
++        store.mark_media_thumbnail(&thumb).await.unwrap();
++        let before = store.media_cache_usage().await.unwrap().unwrap();
++        assert!(before.protected > 0);
++        assert_eq!(store.clear_media_cache().await.unwrap(), Some(0));
++        let remote = request("mxc://example.org/video");
++        let remote_thumb = request("mxc://example.org/thumbnail");
++        store
++            .set_ignore_media_retention_policy(&pending, IgnoreMediaRetentionPolicy::No)
++            .await
++            .unwrap();
++        store.replace_media_key(&pending, &remote).await.unwrap();
++        store
++            .set_ignore_media_retention_policy(&thumb, IgnoreMediaRetentionPolicy::No)
++            .await
++            .unwrap();
++        store.replace_media_key(&thumb, &remote_thumb).await.unwrap();
++        store.set_media_content_type(&remote_thumb, "image/jpeg").await.unwrap();
++        let usage = store.media_cache_usage().await.unwrap().unwrap();
++        assert!(usage.videos > 0);
++        assert!(usage.thumbnails > 0);
++        assert_eq!(usage.images + usage.audio + usage.other + usage.protected, 0);
++        store.set_media_content_type(&remote, "audio/ogg").await.unwrap();
++        let usage = store.media_cache_usage().await.unwrap().unwrap();
++        assert!(usage.audio > 0);
++        assert_eq!(usage.videos, 0);
++    }
+ }
+diff --git a/crates/matrix-sdk/src/media.rs b/crates/matrix-sdk/src/media.rs
+index cc357ef..6ecf6ff 100644
+--- a/crates/matrix-sdk/src/media.rs
++++ b/crates/matrix-sdk/src/media.rs
+@@ -374,6 +374,16 @@ impl Media {
+     ) -> Result<MediaFileHandle> {
+         let data = self.get_media_content(request, use_cache).await?;
+ 
++        // Larpgram: record known event MIME without changing the key or media content.
++        if use_cache {
++            self.client
++                .media_store()
++                .lock()
++                .await?
++                .set_media_content_type(request, content_type.essence_str())
++                .await?;
++        }
++
+         let inferred_extension = mime2ext::mime2ext(content_type);
+ 
+         let filename_as_path = filename.as_ref().map(Path::new);
+diff --git a/crates/matrix-sdk/src/send_queue/upload.rs b/crates/matrix-sdk/src/send_queue/upload.rs
+index 3bf2896..49e3912 100644
+--- a/crates/matrix-sdk/src/send_queue/upload.rs
++++ b/crates/matrix-sdk/src/send_queue/upload.rs
+@@ -300,8 +300,14 @@ impl RoomSendQueue {
+         let file_media_request = Media::make_local_file_media_request(&upload_file_txn);
+ 
+         let MediaCacheResult { upload_thumbnail_txn, event_thumbnail_info, queue_thumbnail_info } =
+-            RoomSendQueue::cache_media(&room, data, config.thumbnail.take(), &file_media_request)
+-                .await?;
++            RoomSendQueue::cache_media(
++                &room,
++                data,
++                config.thumbnail.take(),
++                &file_media_request,
++                &content_type,
++            )
++            .await?;
+ 
+         // Create the content for the media event.
+         let event_content = room
+@@ -435,8 +441,14 @@ impl RoomSendQueue {
+                 upload_thumbnail_txn,
+                 event_thumbnail_info,
+                 queue_thumbnail_info,
+-            } = RoomSendQueue::cache_media(&room, data, item_info.thumbnail, &file_media_request)
+-                .await?;
++            } = RoomSendQueue::cache_media(
++                &room,
++                data,
++                item_info.thumbnail,
++                &file_media_request,
++                &content_type,
++            )
++            .await?;
+ 
+             item_types.push(Room::make_gallery_item_type(
+                 &content_type,
+@@ -520,6 +532,7 @@ impl RoomSendQueue {
+         data: Vec<u8>,
+         thumbnail: Option<Thumbnail>,
+         file_media_request: &MediaRequestParameters,
++        content_type: &Mime,
+     ) -> Result<MediaCacheResult, RoomSendQueueError> {
+         let client = room.client();
+         let media_store =
+@@ -536,6 +549,12 @@ impl RoomSendQueue {
+             .await
+             .map_err(RoomSendQueueStorageError::MediaStoreError)?;
+ 
++        // Larpgram: use the known upload MIME rather than guessing an MP4/WebM container.
++        media_store
++            .set_media_content_type(file_media_request, content_type.essence_str())
++            .await
++            .map_err(RoomSendQueueStorageError::MediaStoreError)?;
++
+         // Process the thumbnail, if it's been provided.
+         if let Some(thumbnail) = thumbnail {
+             let txn = TransactionId::new();
+@@ -561,6 +580,12 @@ impl RoomSendQueue {
+                 .await
+                 .map_err(RoomSendQueueStorageError::MediaStoreError)?;
+ 
++            // Upload thumbnails use File keys. Retain that distinction after remote-key replacement.
++            media_store
++                .mark_media_thumbnail(&thumbnail_media_request)
++                .await
++                .map_err(RoomSendQueueStorageError::MediaStoreError)?;
++
+             Ok(MediaCacheResult {
+                 upload_thumbnail_txn: Some(txn.clone()),
+                 event_thumbnail_info: Some((
+--- /dev/null
++++ b/crates/matrix-sdk-sqlite/migrations/media_store/003_larpgram_media_kind.sql
+@@ -0,0 +1,3 @@
++-- Additive: old clients omit this column and safely write the default unknown kind.
++-- Old rows stay unknown; no attempt to invent their original MIME type.
++ALTER TABLE media ADD COLUMN larpgram_kind INTEGER NOT NULL DEFAULT 0;

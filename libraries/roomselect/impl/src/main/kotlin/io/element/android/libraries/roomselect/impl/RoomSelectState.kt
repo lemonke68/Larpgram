@@ -31,6 +31,7 @@ data class RoomSelectState(
     val otherAccounts: ImmutableList<MatrixUser>,
     val isAccountListExpanded: Boolean,
     val eventSink: (RoomSelectEvent) -> Unit,
+    val hideForwardAuthor: Boolean = false,
 ) {
     val canSelectMoreRooms = selectedRooms.size < maxNumberOfRooms
 

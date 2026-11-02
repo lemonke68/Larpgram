@@ -79,16 +79,23 @@ class DefaultSavedMessages(
     override val roomId: StateFlow<RoomId?> = _roomId.asStateFlow()
 
     private val mutex = Mutex()
+    private var pendingCreatedRoomId: RoomId? = null
 
     init {
-        sessionScope.launch { _roomId.value = storedRoomId() }
+        sessionScope.launch {
+            mutex.withLock {
+                runCatching { storedRoomId() }
+                    .onSuccess { _roomId.value = it }
+                    .onFailure { Timber.w(it, "Не удалось прочитать «Избранное»") }
+            }
+        }
     }
 
     override suspend fun getOrCreate(): Result<RoomId> = withContext(dispatchers.io) {
         mutex.withLock {
             runCatching {
                 storedRoomId()?.let { return@runCatching it }
-                val roomId = client.createRoom(
+                val roomId = pendingCreatedRoomId ?: client.createRoom(
                     CreateRoomParameters(
                         name = NAME,
                         isEncrypted = true,
@@ -97,8 +104,9 @@ class DefaultSavedMessages(
                         preset = RoomPreset.PRIVATE_CHAT,
                         historyVisibilityOverride = RoomHistoryVisibility.Shared,
                     )
-                ).getOrThrow()
+                ).getOrThrow().also { pendingCreatedRoomId = it }
                 client.setAccountData(EVENT_TYPE, JSONObject().put(KEY_ROOM_ID, roomId.value).toString()).getOrThrow()
+                pendingCreatedRoomId = null
                 client.getJoinedRoom(roomId)?.use { room ->
                     room.updateAvatar("image/png", SavedMessagesAvatar.png())
                         .onFailure { Timber.w(it, "Не удалось поставить аватар «Избранного»") }
@@ -111,10 +119,12 @@ class DefaultSavedMessages(
 
     /** Id из account data, если комната ещё наша (не вышли и не удалили). */
     private suspend fun storedRoomId(): RoomId? {
-        val raw = client.getAccountData(EVENT_TYPE).getOrNull() ?: return null
+        val raw = client.getAccountData(EVENT_TYPE).getOrThrow() ?: return null
         val roomId = runCatching { RoomId(JSONObject(raw).getString(KEY_ROOM_ID)) }.getOrNull() ?: return null
-        val isJoined = client.getRoom(roomId)?.use { it.info().currentUserMembership == CurrentUserMembership.JOINED } == true
-        return roomId.takeIf { isJoined }
+        // Отсутствующий ещё в локальном списке room — не доказательство выхода из него.
+        // Иначе при старте/синхронизации создаётся второе «Избранное».
+        val membership = client.getRoom(roomId)?.use { it.info().currentUserMembership }
+        return roomId.takeUnless { membership == CurrentUserMembership.LEFT || membership == CurrentUserMembership.BANNED }
     }
 
     companion object {

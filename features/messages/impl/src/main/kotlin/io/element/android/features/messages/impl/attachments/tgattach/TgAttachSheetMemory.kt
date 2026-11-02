@@ -21,6 +21,7 @@ data class TgAttachRestore(
     val selection: List<GalleryMedia>,
     val caption: String,
     val isExpanded: Boolean,
+    val highQuality: Boolean = false,
 )
 
 /**
@@ -34,6 +35,17 @@ data class TgAttachRestore(
 @Inject
 class TgAttachSheetMemory {
     private var waiting: TgAttachRestore? = null
+
+    /** Черновик чата, скопированный в подпись; null при редактировании старого сообщения. */
+    var composerDraft: String? = null
+        private set
+    var sentComposerDraft: String? = null
+        private set
+
+    fun onSheetOpened(draft: String?) {
+        composerDraft = draft
+        sentComposerDraft = null
+    }
     private val restoreFlow = MutableStateFlow<TgAttachRestore?>(null)
     private val resetComposerModeFlow = MutableStateFlow(false)
 
@@ -48,14 +60,23 @@ class TgAttachSheetMemory {
         restoreFlow.value = null
     }
 
-    /** «Назад» на предпросмотре. Если туда пришли из меню вложений, меню откроется снова. */
-    fun onPreviewCancelled() {
-        restoreFlow.value = waiting
+    /** Подпись, введённая в шторке до открытия предпросмотра. */
+    val previewCaption: String? get() = waiting?.caption
+    val previewHighQuality: Boolean get() = waiting?.highQuality == true
+
+    /** «Назад» сохраняет изменения подписи и возвращает прежний выбор вложений. */
+    fun onPreviewCancelled(caption: String? = null, highQuality: Boolean? = null) {
+        restoreFlow.value = waiting?.let { restore ->
+            restore.copy(caption = caption ?: restore.caption, highQuality = highQuality ?: restore.highQuality)
+        }
         waiting = null
     }
 
     fun onPreviewSent() {
-        if (waiting != null) resetComposerModeFlow.value = true
+        if (waiting != null) {
+            sentComposerDraft = composerDraft
+            resetComposerModeFlow.value = true
+        }
         waiting = null
     }
 
@@ -65,5 +86,6 @@ class TgAttachSheetMemory {
 
     fun onComposerModeReset() {
         resetComposerModeFlow.value = false
+        sentComposerDraft = null
     }
 }

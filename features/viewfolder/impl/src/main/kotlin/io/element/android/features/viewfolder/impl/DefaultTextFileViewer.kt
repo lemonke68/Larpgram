@@ -9,16 +9,21 @@
 package io.element.android.features.viewfolder.impl
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.features.viewfolder.api.LocalTextFileCopyAllowed
+import io.element.android.features.viewfolder.api.LocalTextFileCopyGate
 import io.element.android.features.viewfolder.api.TextFileViewer
 import io.element.android.features.viewfolder.impl.file.ColorationMode
 import io.element.android.features.viewfolder.impl.file.FileContent
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.androidutils.toast.ToastHelper
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.launch
 
 @ContributesBinding(AppScope::class)
 class DefaultTextFileViewer(
@@ -30,15 +35,28 @@ class DefaultTextFileViewer(
         lines: ImmutableList<String>,
         modifier: Modifier
     ) {
+        val allowed = LocalTextFileCopyAllowed.current
+        val gate = LocalTextFileCopyGate.current
+        val scope = rememberCoroutineScope()
         FileContent(
             lines = lines,
             colorationMode = ColorationMode.None,
-            onLineClick = { line ->
-                clipboardHelper.copyPlainText(line) {
-                    toastHelper.show(CommonStrings.common_line_copied_to_clipboard)
-                }
+            onLineClick = if (allowed) {
+                ({ line ->
+                scope.launch { copyLine(line, gate) }
+                Unit
+            })
+            } else {
+                null
             },
             modifier = modifier
         )
+    }
+
+    internal suspend fun copyLine(line: String, gate: suspend () -> Boolean) {
+        if (!runCatchingExceptions { gate() }.getOrDefault(false)) return
+        clipboardHelper.copyPlainText(line) {
+            toastHelper.show(CommonStrings.common_line_copied_to_clipboard)
+        }
     }
 }

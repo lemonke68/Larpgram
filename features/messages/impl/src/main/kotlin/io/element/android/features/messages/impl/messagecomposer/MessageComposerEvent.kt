@@ -22,6 +22,7 @@ sealed interface MessageComposerEvent {
     data class SetMode(val composerMode: MessageComposerMode) : MessageComposerEvent
     data object AddAttachment : MessageComposerEvent
     data object DismissAttachmentMenu : MessageComposerEvent
+    data class UpdateAttachmentCaption(val caption: String) : MessageComposerEvent
     sealed interface PickAttachmentSource : MessageComposerEvent {
         data object FromGallery : PickAttachmentSource
         data object FromFiles : PickAttachmentSource
@@ -39,6 +40,7 @@ sealed interface MessageComposerEvent {
         val restoreSelection: List<GalleryMedia> = media,
         val caption: String = "",
         val isSheetExpanded: Boolean = false,
+        val highQuality: Boolean = false,
     ) : MessageComposerEvent
 
     data class ToggleTextFormatting(val enabled: Boolean) : MessageComposerEvent

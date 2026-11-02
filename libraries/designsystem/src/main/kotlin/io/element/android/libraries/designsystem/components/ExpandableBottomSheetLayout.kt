@@ -99,7 +99,9 @@ fun ExpandableBottomSheetLayout(
         content()
         Column(
             modifier = Modifier
-                .clip(sheetShape)
+                // Правка форка: плавающий композер рисует круг записи выше своих bounds.
+                // Прямоугольная шторка обрезала верх круга; форматирование по-прежнему клиппим.
+                .then(if (contentUnderSheet && sheetShape == RectangleShape) Modifier else Modifier.clip(sheetShape))
                 .background(backgroundColor)
                 .run {
                     if (isSwipeGestureEnabled) {

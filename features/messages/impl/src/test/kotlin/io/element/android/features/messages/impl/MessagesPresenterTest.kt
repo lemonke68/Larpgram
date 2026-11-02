@@ -1613,6 +1613,7 @@ class MessagesPresenterTest {
         matrixClient: MatrixClient = FakeMatrixClient(),
     ): MessagesPresenter {
         return MessagesPresenter(
+        copyProtection = io.element.android.libraries.matrix.ui.protection.RoomCopyProtection(io.element.android.libraries.matrix.test.FakeMatrixClient()),
             navigator = navigator,
             room = joinedRoom,
             composerPresenter = messageComposerPresenter,

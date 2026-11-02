@@ -49,6 +49,7 @@ fun SearchUserBar(
     onUserSelect: (MatrixUser) -> Unit,
     onUserDeselect: (MatrixUser) -> Unit,
     modifier: Modifier = Modifier,
+    homeserverName: String = "",
     showBackButton: Boolean = true,
     placeHolderTitle: String = stringResource(CommonStrings.common_search_for_someone),
 ) {
@@ -119,6 +120,7 @@ fun SearchUserBar(
                 } else {
                     itemsIndexed(users) { index, searchResult ->
                         SearchSingleUserResultItem(
+                            homeserverName = homeserverName,
                             modifier = Modifier.fillMaxWidth(),
                             searchResult = searchResult,
                             onClick = { onUserSelect(searchResult.matrixUser) }

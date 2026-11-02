@@ -31,6 +31,8 @@ class MediaGalleryNode(
     @Assisted plugins: List<Plugin>,
     presenterFactory: MediaGalleryPresenter.Factory,
     private val mediaItemPresenterFactories: MediaItemPresenterFactories,
+    private val room: io.element.android.libraries.matrix.api.room.BaseRoom,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
 ) : Node(buildContext, plugins = plugins),
     MediaGalleryNavigator {
     private val presenter = presenterFactory.create(
@@ -56,7 +58,10 @@ class MediaGalleryNode(
 
     @Composable
     override fun View(modifier: Modifier) {
+        val copyAllowed = io.element.android.libraries.matrix.ui.protection.rememberRoomCopyAllowed(copyProtection, room)
+        io.element.android.libraries.matrix.ui.protection.ProtectedRoomWindow(!copyAllowed)
         CompositionLocalProvider(
+            io.element.android.libraries.matrix.ui.protection.LocalRoomCopyAllowed provides copyAllowed,
             LocalMediaItemPresenterFactories provides mediaItemPresenterFactories,
         ) {
             val state = presenter.present()

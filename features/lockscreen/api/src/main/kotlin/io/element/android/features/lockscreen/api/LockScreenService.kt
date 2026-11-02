@@ -9,9 +9,9 @@
 package io.element.android.features.lockscreen.api
 
 import android.os.Build
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import io.element.android.libraries.androidutils.window.SecureWindowReasons
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -49,14 +49,7 @@ fun LockScreenService.handleSecureFlag(activity: ComponentActivity) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 activity.setRecentsScreenshotEnabled(!isPinSetup)
             } else {
-                if (isPinSetup) {
-                    activity.window.setFlags(
-                        WindowManager.LayoutParams.FLAG_SECURE,
-                        WindowManager.LayoutParams.FLAG_SECURE
-                    )
-                } else {
-                    activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                }
+                SecureWindowReasons.set(activity.window, SecureWindowReasons.appLock, isPinSetup)
             }
         }
         .launchIn(activity.lifecycleScope)

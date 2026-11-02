@@ -76,7 +76,6 @@ fun TgAdvancedSettingsView(
         }
     ) {
         // Правка форка: экран разбит на секции (оформление, медиа, модерация) в отдельных функциях.
-        AppearanceThemeItem(state)
         ListItem(
             content = {
                 Text(text = stringResource(id = CommonStrings.action_view_source))
@@ -89,10 +88,7 @@ fun TgAdvancedSettingsView(
             ),
             onClick = { state.eventSink(AdvancedSettingsEvent.SetDeveloperModeEnabled(!state.isDeveloperModeEnabled)) }
         )
-        SharePresenceItem(state)
-        MediaUploadSection(state)
-
-        ModerationAndSafetySection(state)
+        // Правка форка: тема, присутствие и модерация находятся в своих разделах настроек.
         if (state.liveLocationMinimumDistanceUpdate != null) {
             LiveLocationUpdatesSection(
                 value = state.liveLocationMinimumDistanceUpdate,

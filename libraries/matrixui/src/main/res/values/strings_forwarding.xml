@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="larpgram_forwarded_from">Forwarded from</string>
+    <string name="larpgram_forwarded_author_unknown">Author</string>
+    <string name="larpgram_forwarded_channel_unknown">Channel</string>
+    <string name="larpgram_forward_hide_author">Hide author</string>
+    <string name="larpgram_share_title">Share</string>
+    <string name="larpgram_share_choose">Choose chats</string>
+    <string name="larpgram_share_saved">Saved Messages</string>
+    <string name="larpgram_share_selected">%1$d selected</string>
+    <string name="larpgram_share_search">Search chats</string>
+    <string name="larpgram_share_external">Share to another app</string>
+    <string name="larpgram_share_caption">Add a caption…</string>
+    <string name="larpgram_share_send">Send %1$d</string>
+    <string name="larpgram_share_cancel">Cancel</string>
+    <string name="larpgram_share_failed">Could not send to every selected chat. Retry for the remaining chats.</string>
+    <string name="larpgram_share_show_in_chat">Show in Chat</string>
+    <string name="larpgram_share_save">Save media</string>
+    <string name="larpgram_copy_protection_title">Restrict copying</string>
+    <string name="larpgram_copy_protection_note">Larpgram restricts forwarding, copying, saving and screenshots in this private channel. Other Matrix clients can bypass these restrictions.</string>
+    <string name="larpgram_copy_protection_retry">Could not update the setting. Retry</string>
+</resources>

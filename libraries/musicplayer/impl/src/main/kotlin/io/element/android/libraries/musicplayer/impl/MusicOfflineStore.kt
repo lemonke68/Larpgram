@@ -89,12 +89,18 @@ class MusicOfflineStore(
         val result = runCatching {
             dir.mkdirs()
             val client = matrixClientProvider.getOrRestore(track.sessionId).getOrThrow()
+            track.roomId?.let { roomId ->
+                check(!client.getRoomCopyProtection(roomId).getOrThrow()) { "Saving from this channel is restricted" }
+            }
             val mediaFile = client.matrixMediaLoader
                 .downloadMediaFile(source = track.mediaSource, mimeType = track.mimeType, filename = track.filename)
                 .getOrThrow()
             val name = fileNameFor(track)
             val target = File(dir, name)
-            val persisted = mediaFile.use { it.persist(target.absolutePath) }
+            val persisted = mediaFile.use {
+                track.roomId?.let { roomId -> check(!client.getRoomCopyProtection(roomId).getOrThrow()) }
+                it.persist(target.absolutePath)
+            }
             check(persisted && target.isFile) { "Could not persist the track" }
             name
         }

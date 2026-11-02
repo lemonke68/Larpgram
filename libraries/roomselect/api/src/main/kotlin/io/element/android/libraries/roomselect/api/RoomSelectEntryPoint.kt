@@ -40,6 +40,9 @@ interface RoomSelectEntryPoint : FeatureEntryPoint {
          * @param roomIds the selected rooms.
          */
         fun onRoomSelected(sessionId: SessionId, roomIds: List<RoomId>)
+
+        /** Called before onRoomSelected in Forward mode; external sharing has no attribution. */
+        fun onForwardOptionsChanged(options: io.element.android.libraries.matrix.api.forward.ForwardOptions) = Unit
         fun onCancel()
 
         /**

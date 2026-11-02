@@ -67,6 +67,10 @@ class ForwardMessagesNode(
 
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node {
         val callback = object : RoomSelectEntryPoint.Callback {
+            override fun onForwardOptionsChanged(options: io.element.android.libraries.matrix.api.forward.ForwardOptions) {
+                presenter.setForwardOptions(options)
+            }
+
             override fun onRoomSelected(sessionId: SessionId, roomIds: List<RoomId>) {
                 // In Forward mode, the session cannot be changed
                 presenter.onRoomSelected(roomIds)

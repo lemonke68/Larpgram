@@ -60,7 +60,12 @@ class RoomSelectNode(
         RoomSelectView(
             state = state,
             onDismiss = callback::onCancel,
-            onSubmit = { roomIds -> callback.onRoomSelected(state.selectedAccount.userId, roomIds) },
+            onSubmit = { roomIds ->
+                if (state.mode is io.element.android.libraries.roomselect.api.RoomSelectMode.Forward) {
+                    callback.onForwardOptionsChanged(io.element.android.libraries.matrix.api.forward.ForwardOptions(hideAuthor = state.hideForwardAuthor))
+                }
+                callback.onRoomSelected(state.selectedAccount.userId, roomIds)
+            },
             modifier = modifier
         )
     }

@@ -25,6 +25,7 @@ interface EmojiKeyboardRenderer {
     fun Render(
         state: EmojiPickerState,
         onSelectEmoji: (Emoji) -> Unit,
+        onSearchFocusChange: (Boolean) -> Unit,
         modifier: Modifier = Modifier,
     )
 }
@@ -34,6 +35,7 @@ object NoOpEmojiKeyboardRenderer : EmojiKeyboardRenderer {
     override fun Render(
         state: EmojiPickerState,
         onSelectEmoji: (Emoji) -> Unit,
+        onSearchFocusChange: (Boolean) -> Unit,
         modifier: Modifier,
     ) = Unit
 }

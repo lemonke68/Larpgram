@@ -323,7 +323,11 @@ interface Timeline : AutoCloseable {
      * @param eventIds the events whose content is forwarded.
      * @param roomIds the rooms to forward them to.
      */
-    suspend fun forwardEvents(eventIds: List<EventId>, roomIds: List<RoomId>): Result<Unit>
+    suspend fun forwardEvents(
+        eventIds: List<EventId>,
+        roomIds: List<RoomId>,
+        options: io.element.android.libraries.matrix.api.forward.ForwardOptions = io.element.android.libraries.matrix.api.forward.ForwardOptions(),
+    ): Result<Unit>
 
     /**
      * Cancels an event that is still waiting in the send queue, by redacting its local echo.

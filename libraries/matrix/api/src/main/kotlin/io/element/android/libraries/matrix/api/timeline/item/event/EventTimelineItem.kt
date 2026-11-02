@@ -43,6 +43,8 @@ data class EventTimelineItem(
     val forwarder: UserId?,
     /** If [forwarder] is set, the profile of the forwarding user, if it was cached at the time this `EventTimelineItem` was created. */
     val forwarderProfile: ProfileDetails?,
+    /** Copied-message attribution, independent from MSC4268 encryption-key forwarding. */
+    val forwardedMessageProvider: () -> io.element.android.libraries.matrix.api.forward.ForwardedMessage? = { null },
 ) {
     fun inReplyTo(): InReplyTo? {
         return (content as? MessageContent)?.inReplyTo

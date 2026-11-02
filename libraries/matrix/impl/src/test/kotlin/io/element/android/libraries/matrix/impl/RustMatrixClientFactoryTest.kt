@@ -138,6 +138,7 @@ private fun TestScope.createRustMatrixClientInnerFactory(
         sessionDelegate: RustClientSessionDelegate,
     ) = RustMatrixClient(
         sessionPaths = sessionPaths,
+        sharingApi = io.element.android.libraries.matrix.impl.forward.LarpgramSharingApi(okhttp3.OkHttpClient()),
         innerClient = innerClient,
         innerSyncService = innerSyncService,
         baseCacheDirectory = baseCacheDirectory,

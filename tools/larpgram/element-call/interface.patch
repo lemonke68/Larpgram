@@ -1,0 +1,1049 @@
+diff --git a/locales/en/app.json b/locales/en/app.json
+index f3d568b..01c6441 100644
+--- a/locales/en/app.json
++++ b/locales/en/app.json
+@@ -223,7 +223,11 @@
+       "microphone": "Microphone",
+       "microphone_numbered": "Microphone {{n}}",
+       "speaker": "Speaker",
+-      "speaker_numbered": "Speaker {{n}}"
++      "speaker_numbered": "Speaker {{n}}",
++      "front_camera": "Front camera",
++      "rear_camera": "Rear camera",
++      "standard_lens": "Standard",
++      "wide_lens": "Wide angle"
+     },
+     "echo_cancellation_label": "Echo cancellation",
+     "feedback_tab_body": "If you are experiencing issues or simply would like to provide some feedback, please send us a short description below.",
+diff --git a/src/components/MediaMuteAndSwitchButton.stories.tsx b/src/components/MediaMuteAndSwitchButton.stories.tsx
+index 21def40..8ef13c7 100644
+--- a/src/components/MediaMuteAndSwitchButton.stories.tsx
++++ b/src/components/MediaMuteAndSwitchButton.stories.tsx
+@@ -113,3 +113,40 @@ export const VideoUnmute: Story = {
+     selectedOption: "2",
+   },
+ };
++
++export const LarpgramCameraModes: Story = {
++  args: {
++    title: "Camera",
++    iconsAndLabels: "video",
++    enabled: true,
++    onMuteClick: fn(),
++    onSelect: fn(),
++    selectedOption: "wide",
++    options: [
++      {
++        id: "front",
++        label: {
++          type: "name",
++          name: "camera2 1, facing front",
++          camera: { side: "front", lens: "standard" },
++        },
++      },
++      {
++        id: "rear",
++        label: {
++          type: "name",
++          name: "camera2 0, facing back",
++          camera: { side: "rear", lens: "standard" },
++        },
++      },
++      {
++        id: "wide",
++        label: {
++          type: "name",
++          name: "camera2 2, facing back",
++          camera: { side: "rear", lens: "wide" },
++        },
++      },
++    ],
++  },
++};
+diff --git a/src/components/MediaMuteAndSwitchButton.tsx b/src/components/MediaMuteAndSwitchButton.tsx
+index 3e344dd..a41bad5 100644
+--- a/src/components/MediaMuteAndSwitchButton.tsx
++++ b/src/components/MediaMuteAndSwitchButton.tsx
+@@ -5,6 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+ Please see LICENSE in the repository root for full details.
+ */
+ 
++import { cameraChoices, cameraChoiceLabel } from "../state/CameraDeviceLabels";
+ import { type ComponentType, useState, type FC, useEffect } from "react";
+ import {
+   Button,
+@@ -142,6 +143,23 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
+       break;
+   }
+ 
++  const cameraOptions =
++    iconsAndLabels === "video"
++      ? cameraChoices(options ?? [], selectedOption)
++      : undefined;
++  const menuOptions =
++    cameraOptions?.map((choice) => ({
++      id: choice.id,
++      key: choice.key,
++      checked: choice.checked,
++      label: { type: "name" as const, name: cameraChoiceLabel(t, choice.kind) },
++    })) ??
++    options?.map((option) => ({
++      ...option,
++      key: option.id,
++      checked: option.id === selectedOption,
++    }));
++
+   return (
+     <div
+       className={classNames({
+@@ -171,7 +189,7 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
+           />
+         }
+       >
+-        {options?.map(({ label, id }) => {
++        {menuOptions?.map(({ label, id, key, checked }) => {
+           let labelText: string;
+           switch (label.type) {
+             case "name":
+@@ -197,15 +215,15 @@ export const MediaMuteAndSwitchButton: FC<MediaMuteAndSwitchButtonProps> = ({
+               }
+               onSelect={(e) => {
+                 e.preventDefault();
+-                if (id === selectedOption) return;
++                if (checked) return;
+                 setPlannedSelection(id);
+                 onSelect?.(id);
+               }}
+-              key={id}
++              key={key}
+               role="menuitemradio"
+-              aria-checked={selectedOption === id}
++              aria-checked={checked}
+             >
+-              {selectedOption === id && (
++              {checked && (
+                 <CheckIcon
+                   width={24}
+                   height={24}
+diff --git a/src/config/ConfigOptions.ts b/src/config/ConfigOptions.ts
+index 872e351..e0c309d 100644
+--- a/src/config/ConfigOptions.ts
++++ b/src/config/ConfigOptions.ts
+@@ -6,6 +6,8 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+ Please see LICENSE in the repository root for full details.
+ */
+ 
++import { type CameraMetadata } from "../state/CameraDeviceLabels";
++
+ /**
+  * The MatrixRTC mode determines how Element Call interacts with the
+  * MatrixRTC backend and other participants. Selectable via the Developer
+@@ -54,6 +56,8 @@ export interface DelayedLeaveTimings {
+ }
+ 
+ export interface ConfigOptions {
++  /** Larpgram: hardware camera capabilities supplied by the Android host. */
++  larpgram_camera_metadata?: CameraMetadata[];
+   /**
+    * The Posthog endpoint to which analytics data will be sent.
+    * This is only used in the full package of Element Call.
+diff --git a/src/main.tsx b/src/main.tsx
+index b2f79f3..b591522 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -18,6 +18,7 @@ import { logger } from "matrix-js-sdk/lib/logger";
+ 
+ import { App } from "./App";
+ import { init as initRageshake } from "./settings/rageshake";
++import { Config } from "./config/Config";
+ import { Initializer } from "./initializer";
+ import { AppViewModel } from "./state/AppViewModel";
+ import { globalScope } from "./state/ObservableScope";
+@@ -49,7 +50,10 @@ if (fatalError !== null) {
+ }
+ 
+ Initializer.initBeforeReact()
+-  .then((widget) => {
++  .then(async (widget) => {
++    // Larpgram: the embedded host supplies camera metadata in config.json.
++    // App normally initializes config after rendering, but device options need it first.
++    await Config.init();
+     const { controlledAudioDevices, callIntent } = getUrlParams();
+     root.render(
+       <StrictMode>
+@@ -58,6 +62,7 @@ Initializer.initBeforeReact()
+             new AppViewModel(globalScope, {
+               controlledAudioDevices,
+               callIntent,
++              cameraMetadata: Config.get().larpgram_camera_metadata,
+             })
+           }
+           widget={widget}
+diff --git a/src/reactions/RaisedHandIndicator.test.tsx b/src/reactions/RaisedHandIndicator.test.tsx
+index 62e3ffb..0df1aee 100644
+--- a/src/reactions/RaisedHandIndicator.test.tsx
++++ b/src/reactions/RaisedHandIndicator.test.tsx
+@@ -33,12 +33,14 @@ describe("RaisedHandIndicator", () => {
+     );
+     expect(container.firstChild).toMatchSnapshot();
+   });
+-  test("renders an indicator when a hand has been raised with the expected time", () => {
++  test("renders only the indicator even when the hand has been raised for a minute", () => {
+     const dateTime = new Date(new Date().getTime() - 60000);
+     const { container } = render(
+       <RaisedHandIndicator raisedHandTime={dateTime} showTimer />,
+     );
+     expect(container.firstChild).toMatchSnapshot();
++    expect(container.querySelector("p")).toBeNull();
++    expect(vi.getTimerCount()).toBe(0);
+   });
+   test("renders a smaller indicator when miniature is specified", () => {
+     const dateTime = new Date();
+diff --git a/src/reactions/RaisedHandIndicator.tsx b/src/reactions/RaisedHandIndicator.tsx
+index 67d9cf1..1c95b16 100644
+--- a/src/reactions/RaisedHandIndicator.tsx
++++ b/src/reactions/RaisedHandIndicator.tsx
+@@ -5,14 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+ Please see LICENSE in the repository root for full details.
+ */
+ 
+-import {
+-  type MouseEventHandler,
+-  type ReactNode,
+-  useCallback,
+-  useEffect,
+-  useState,
+-  useMemo,
+-} from "react";
++import { type MouseEventHandler, type ReactNode, useCallback } from "react";
+ import { useTranslation } from "react-i18next";
+ 
+ import { ReactionIndicator } from "./ReactionIndicator";
+@@ -20,7 +13,6 @@ import { ReactionIndicator } from "./ReactionIndicator";
+ export function RaisedHandIndicator({
+   raisedHandTime,
+   miniature,
+-  showTimer,
+   onClick,
+   tabIndex,
+ }: {
+@@ -31,19 +23,6 @@ export function RaisedHandIndicator({
+   tabIndex?: number;
+ }): ReactNode {
+   const { t } = useTranslation();
+-  const [raisedHandDuration, setRaisedHandDuration] = useState("");
+-
+-  const durationFormatter = useMemo(
+-    () =>
+-      new Intl.DurationFormat(undefined, {
+-        minutesDisplay: "always",
+-        secondsDisplay: "always",
+-        hoursDisplay: "auto",
+-        style: "digital",
+-      }),
+-    [],
+-  );
+-
+   const clickCallback = useCallback<MouseEventHandler<HTMLButtonElement>>(
+     (event) => {
+       if (!onClick) {
+@@ -55,37 +34,11 @@ export function RaisedHandIndicator({
+     [onClick],
+   );
+ 
+-  // This effect creates a simple timer effect.
+-  useEffect(() => {
+-    if (!raisedHandTime || !showTimer) {
+-      return;
+-    }
+-
+-    const calculateTime = (): void => {
+-      const totalSeconds = Math.ceil(
+-        (new Date().getTime() - raisedHandTime.getTime()) / 1000,
+-      );
+-      setRaisedHandDuration(
+-        durationFormatter.format({
+-          seconds: totalSeconds % 60,
+-          minutes: Math.floor(totalSeconds / 60),
+-        }),
+-      );
+-    };
+-    calculateTime();
+-    const to = setInterval(calculateTime, 1000);
+-    return (): void => clearInterval(to);
+-  }, [setRaisedHandDuration, raisedHandTime, showTimer, durationFormatter]);
+-
+   if (!raisedHandTime) {
+     return;
+   }
+ 
+-  const content = (
+-    <ReactionIndicator emoji="✋" miniature={miniature}>
+-      {showTimer && <p>{raisedHandDuration}</p>}
+-    </ReactionIndicator>
+-  );
++  const content = <ReactionIndicator emoji="✋" miniature={miniature} />;
+ 
+   if (onClick) {
+     return (
+diff --git a/src/reactions/__snapshots__/RaisedHandIndicator.test.tsx.snap b/src/reactions/__snapshots__/RaisedHandIndicator.test.tsx.snap
+index ca8ecfb..f16f01b 100644
+--- a/src/reactions/__snapshots__/RaisedHandIndicator.test.tsx.snap
++++ b/src/reactions/__snapshots__/RaisedHandIndicator.test.tsx.snap
+@@ -14,9 +14,6 @@ exports[`RaisedHandIndicator > renders a smaller indicator when miniature is spe
+       ✋
+     </span>
+   </div>
+-  <p>
+-    00:00
+-  </p>
+ </div>
+ `;
+ 
+@@ -34,13 +31,10 @@ exports[`RaisedHandIndicator > renders an indicator when a hand has been raised
+       ✋
+     </span>
+   </div>
+-  <p>
+-    00:00
+-  </p>
+ </div>
+ `;
+ 
+-exports[`RaisedHandIndicator > renders an indicator when a hand has been raised with the expected time 1`] = `
++exports[`RaisedHandIndicator > renders only the indicator even when the hand has been raised for a minute 1`] = `
+ <div
+   class="_reactionIndicatorWidget_abd277 _reactionIndicatorWidgetLarge_abd277"
+ >
+@@ -54,8 +48,5 @@ exports[`RaisedHandIndicator > renders an indicator when a hand has been raised
+       ✋
+     </span>
+   </div>
+-  <p>
+-    01:00
+-  </p>
+ </div>
+ `;
+diff --git a/src/settings/DeviceSelection.tsx b/src/settings/DeviceSelection.tsx
+index 197046c..4f01f62 100644
+--- a/src/settings/DeviceSelection.tsx
++++ b/src/settings/DeviceSelection.tsx
+@@ -29,6 +29,7 @@ import {
+   type SelectedDevice,
+   type MediaDevice,
+ } from "../state/MediaDevices";
++import { cameraChoices, cameraChoiceLabel } from "../state/CameraDeviceLabels";
+ import styles from "./DeviceSelection.module.css";
+ 
+ interface Props {
+@@ -53,6 +54,11 @@ export const DeviceSelection: FC<Props> = ({
+     [device],
+   );
+ 
++  const cameraOptions = cameraChoices(
++    [...available].map(([id, label]) => ({ id, label: label as DeviceLabel })),
++    selectedId,
++  );
++
+   // There is no need to show the menu if there is no choice that can be made.
+   if (available.size <= 1) return null;
+ 
+@@ -69,55 +75,71 @@ export const DeviceSelection: FC<Props> = ({
+       </Heading>
+       <Separator className={styles.separator} />
+       <div className={styles.options}>
+-        {[...available].map(([id, label]) => {
+-          let labelText: ReactNode;
+-          switch (label.type) {
+-            case "name":
+-              labelText = label.name;
+-              break;
+-            case "number":
+-              labelText = numberedLabel(label.number);
+-              break;
+-            case "default":
+-              labelText =
+-                label.name === null ? (
+-                  t("settings.devices.default")
+-                ) : (
+-                  <Trans
+-                    i18nKey="settings.devices.default_named"
+-                    name={label.name}
+-                  >
+-                    Default{" "}
+-                    <span className={styles.secondary}>
+-                      ({{ name: label.name } as unknown as ReactElement})
+-                    </span>
+-                  </Trans>
+-                );
+-              break;
+-            case "speaker":
+-              labelText = t("settings.devices.loudspeaker");
+-              break;
+-            case "earpiece":
+-              labelText = t("settings.devices.handset");
+-              break;
+-          }
+-
+-          return (
+-            <InlineField
+-              key={id}
+-              name={groupId}
+-              control={
+-                <RadioControl
+-                  checked={id === selectedId}
+-                  onChange={onChange}
+-                  value={id}
+-                />
++        {cameraOptions
++          ? cameraOptions.map((choice) => (
++              <InlineField
++                key={choice.key}
++                name={`${groupId}-${choice.kind === "front" || choice.kind === "rear" ? "side" : "lens"}`}
++                control={
++                  <RadioControl
++                    checked={choice.checked}
++                    onChange={() => device.select(choice.id)}
++                    value={choice.id}
++                  />
++                }
++              >
++                <Label>{cameraChoiceLabel(t, choice.kind)}</Label>
++              </InlineField>
++            ))
++          : [...available].map(([id, label]) => {
++              let labelText: ReactNode;
++              switch (label.type) {
++                case "name":
++                  labelText = label.name;
++                  break;
++                case "number":
++                  labelText = numberedLabel(label.number);
++                  break;
++                case "default":
++                  labelText =
++                    label.name === null ? (
++                      t("settings.devices.default")
++                    ) : (
++                      <Trans
++                        i18nKey="settings.devices.default_named"
++                        name={label.name}
++                      >
++                        Default{" "}
++                        <span className={styles.secondary}>
++                          ({{ name: label.name } as unknown as ReactElement})
++                        </span>
++                      </Trans>
++                    );
++                  break;
++                case "speaker":
++                  labelText = t("settings.devices.loudspeaker");
++                  break;
++                case "earpiece":
++                  labelText = t("settings.devices.handset");
++                  break;
+               }
+-            >
+-              <Label>{labelText}</Label>
+-            </InlineField>
+-          );
+-        })}
++
++              return (
++                <InlineField
++                  key={id}
++                  name={groupId}
++                  control={
++                    <RadioControl
++                      checked={id === selectedId}
++                      onChange={onChange}
++                      value={id}
++                    />
++                  }
++                >
++                  <Label>{labelText}</Label>
++                </InlineField>
++              );
++            })}
+       </div>
+     </div>
+   );
+diff --git a/src/state/MediaDevices.ts b/src/state/MediaDevices.ts
+index 8ab20ac..f4f23c5 100644
+--- a/src/state/MediaDevices.ts
++++ b/src/state/MediaDevices.ts
+@@ -24,6 +24,7 @@ import {
+   audioOutput as audioOutputSetting,
+   videoInput as videoInputSetting,
+ } from "../settings/settings";
++import { cameraDeviceLabels, type CameraMetadata } from "./CameraDeviceLabels";
+ import { type ObservableScope } from "./ObservableScope";
+ import { availableOutputDevices$ as controlledAvailableOutputDevices$ } from "../controls";
+ import { platform } from "../Platform";
+@@ -32,9 +33,10 @@ import { type Behavior, constant } from "./Behavior";
+ import { AndroidControlledAudioOutput } from "./AndroidControlledAudioOutput.ts";
+ import { IOSControlledAudioOutput } from "./IOSControlledAudioOutput.ts";
+ 
+-export type DeviceLabel =
++export type DeviceLabel = (
+   | { type: "name"; name: string }
+-  | { type: "number"; number: number };
++  | { type: "number"; number: number }
++) & { camera?: { side: "front" | "rear"; lens: "standard" | "wide" } };
+ 
+ export type AudioOutputDeviceLabel =
+   | DeviceLabel
+@@ -323,7 +325,15 @@ class VideoInput implements MediaDevice<DeviceLabel, SelectedDevice> {
+       this.usingNames$,
+       this.scope,
+       this.logger,
+-    ).pipe(map(buildDeviceMap)),
++    ).pipe(
++      map((devices) =>
++        cameraDeviceLabels(
++          devices,
++          this.cameraMetadata,
++          buildDeviceMap(devices),
++        ),
++      ),
++    ),
+   );
+   public readonly selected$ = this.scope.behavior(
+     selectDevice$(this.available$, videoInputSetting.value$).pipe(
+@@ -337,6 +347,7 @@ class VideoInput implements MediaDevice<DeviceLabel, SelectedDevice> {
+   public constructor(
+     private readonly usingNames$: Behavior<boolean>,
+     private readonly scope: ObservableScope,
++    private readonly cameraMetadata: CameraMetadata[],
+   ) {
+     // This also has the purpose of subscribing to the available devices
+     this.available$.subscribe((available) => {
+@@ -354,6 +365,7 @@ export interface AudioOutputOptions {
+    * Call, through the global JS controls, rather than by the browser.
+    */
+   controlledAudioDevices: boolean;
++  cameraMetadata?: CameraMetadata[];
+   /**
+    * The kind of call being placed, which decides the initial output route when
+    * the host controls the devices.
+@@ -407,7 +419,11 @@ export class MediaDevices {
+     : new AudioOutput(this.usingNames$, this.scope);
+ 
+   public readonly videoInput: MediaDevice<DeviceLabel, SelectedDevice> =
+-    new VideoInput(this.usingNames$, this.scope);
++    new VideoInput(
++      this.usingNames$,
++      this.scope,
++      this.audioOutputOptions.cameraMetadata ?? [],
++    );
+ 
+   // Note: both parameters are read by the field initializers above, which is
+   // safe because TypeScript assigns parameter properties before running them.
+diff --git a/playwright/larpgram-camera-controls.config.ts b/playwright/larpgram-camera-controls.config.ts
+new file mode 100644
+index 0000000..731481e
+--- /dev/null
++++ b/playwright/larpgram-camera-controls.config.ts
+@@ -0,0 +1,24 @@
++/*
++Copyright 2026 Element Creations Ltd.
++
++SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
++Please see LICENSE in the repository root for full details.
++*/
++
++import { defineConfig } from "@playwright/test";
++import { fileURLToPath } from "node:url";
++
++process.env.LARPGRAM_STORYBOOK_URL ??= "http://localhost:6006";
++export default defineConfig({
++  testDir: ".",
++  testMatch: "larpgram-camera-controls.spec.ts",
++  outputDir: "../test-results/larpgram-controls",
++  use: { browserName: "chromium", viewport: { width: 390, height: 844 } },
++  webServer: {
++    command: "pnpm exec storybook dev --ci --no-open -p 6006",
++    cwd: fileURLToPath(new URL("..", import.meta.url)),
++    url: "http://localhost:6006",
++    timeout: 90000,
++    reuseExistingServer: true,
++  },
++});
+diff --git a/playwright/larpgram-camera-controls.spec.ts b/playwright/larpgram-camera-controls.spec.ts
+new file mode 100644
+index 0000000..39c2133
+--- /dev/null
++++ b/playwright/larpgram-camera-controls.spec.ts
+@@ -0,0 +1,45 @@
++/*
++Copyright 2026 Element Creations Ltd.
++
++SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
++Please see LICENSE in the repository root for full details.
++*/
++
++import { expect, test } from "@playwright/test";
++
++// The local component harness needs no Synapse and never places a real call.
++const storybook = process.env.LARPGRAM_STORYBOOK_URL;
++test.skip(
++  !storybook,
++  "Set LARPGRAM_STORYBOOK_URL to the local Storybook server",
++);
++
++test("camera side and wide angle controls work without technical device names", async ({
++  page,
++}) => {
++  await page.goto(
++    `${storybook}/iframe.html?id=larpgram-camera-selection--mobile&viewMode=story`,
++  );
++  await expect(page.getByLabel("Rear camera")).toBeChecked();
++  await page.getByLabel("Wide angle").check();
++  await expect(page.getByLabel("Wide angle")).toBeChecked();
++  await expect(page.getByLabel("Rear camera")).toBeChecked();
++  await page.getByLabel("Front camera").check();
++  await expect(page.getByLabel("Wide angle")).toHaveCount(0);
++  await page.getByLabel("Rear camera").check();
++  await expect(page.getByLabel("Standard")).toBeChecked();
++  await expect(page.getByText(/camera2/)).toHaveCount(0);
++});
++
++test("raised hand has an accessible action and no elapsed time", async ({
++  page,
++}) => {
++  await page.goto(
++    `${storybook}/iframe.html?id=larpgram-raised-hand--miniature&viewMode=story`,
++  );
++  await expect(page.getByRole("button", { name: "Lower hand" })).toBeVisible();
++  await expect(
++    page.getByRole("button", { name: "Lower hand" }).locator("p"),
++  ).toHaveCount(0);
++  await page.getByRole("button", { name: "Lower hand" }).click();
++});
+diff --git a/src/main.test.tsx b/src/main.test.tsx
+new file mode 100644
+index 0000000..cb6caef
+--- /dev/null
++++ b/src/main.test.tsx
+@@ -0,0 +1,71 @@
++/*
++Copyright 2026 Element Creations Ltd.
++
++SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
++Please see LICENSE in the repository root for full details.
++*/
++
++import { expect, test, vi } from "vitest";
++
++const bootstrap = vi.hoisted(() => ({
++  ready: false,
++  render: vi.fn(),
++  options: vi.fn(),
++  metadata: [{ cameraId: "0", side: "rear", relativeFocalLength: 0.6 }],
++}));
++vi.mock("react-dom/client", () => ({
++  createRoot: () => ({ render: bootstrap.render }),
++}));
++vi.mock("./index.css", () => ({}));
++vi.mock("./App", () => ({ App: () => null }));
++vi.mock("./settings/rageshake", () => ({
++  init: async () => {
++    await Promise.resolve();
++  },
++}));
++vi.mock("./initializer", () => ({
++  Initializer: {
++    initBeforeReact: async () => {
++      await Promise.resolve();
++    },
++  },
++}));
++vi.mock("./config/Config", () => ({
++  Config: {
++    init: async () => {
++      await Promise.resolve();
++      bootstrap.ready = true;
++    },
++    get: () => {
++      if (!bootstrap.ready)
++        throw new Error("Config read before initialization");
++      return { larpgram_camera_metadata: bootstrap.metadata };
++    },
++  },
++}));
++vi.mock("./state/AppViewModel", () => ({
++  AppViewModel: class {
++    constructor(_scope: unknown, options: unknown) {
++      bootstrap.options(options);
++    }
++  },
++}));
++
++test("cold embedded startup loads config before constructing camera options", async () => {
++  vi.stubGlobal("isSecureContext", true);
++  vi.stubGlobal("navigator", {
++    mediaDevices: {},
++    userAgent: navigator.userAgent,
++  });
++  try {
++    await import("./main");
++    await vi.waitFor(() =>
++      expect(bootstrap.options).toHaveBeenCalledWith(
++        expect.objectContaining({ cameraMetadata: bootstrap.metadata }),
++      ),
++    );
++    expect(bootstrap.render).toHaveBeenCalledOnce();
++  } finally {
++    vi.unstubAllGlobals();
++  }
++});
+diff --git a/src/reactions/RaisedHandIndicator.stories.tsx b/src/reactions/RaisedHandIndicator.stories.tsx
+new file mode 100644
+index 0000000..da0a803
+--- /dev/null
++++ b/src/reactions/RaisedHandIndicator.stories.tsx
+@@ -0,0 +1,33 @@
++/*
++Copyright 2026 Element Creations Ltd.
++
++SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
++Please see LICENSE in the repository root for full details.
++*/
++
++import { type Meta, type StoryObj } from "@storybook/react-vite";
++import { expect, fn, userEvent, within } from "storybook/test";
++
++import { RaisedHandIndicator } from "./RaisedHandIndicator";
++
++const meta = {
++  title: "Larpgram/Raised hand",
++  component: RaisedHandIndicator,
++  args: {
++    raisedHandTime: new Date("2026-11-01T10:00:00Z"),
++    showTimer: true,
++    onClick: fn(),
++  },
++} satisfies Meta<typeof RaisedHandIndicator>;
++export default meta;
++type Story = StoryObj<typeof meta>;
++
++export const Raised: Story = {
++  play: async ({ canvasElement, args }) => {
++    const canvas = within(canvasElement);
++    await expect(canvasElement.querySelector("p")).toBeNull();
++    await userEvent.click(canvas.getByRole("button", { name: "Lower hand" }));
++    await expect(args.onClick).toHaveBeenCalled();
++  },
++};
++export const Miniature: Story = { args: { miniature: true } };
+diff --git a/src/settings/DeviceSelection.stories.tsx b/src/settings/DeviceSelection.stories.tsx
+new file mode 100644
+index 0000000..7fe8471
+--- /dev/null
++++ b/src/settings/DeviceSelection.stories.tsx
+@@ -0,0 +1,83 @@
++/*
++Copyright 2026 Element Creations Ltd.
++
++SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
++Please see LICENSE in the repository root for full details.
++*/
++
++import { type Meta, type StoryObj } from "@storybook/react-vite";
++import { expect, userEvent, within } from "storybook/test";
++import { useMemo } from "react";
++import { BehaviorSubject } from "rxjs";
++
++import { Root as Form } from "@vector-im/compound-web";
++import { DeviceSelection } from "./DeviceSelection";
++import { constant } from "../state/Behavior";
++import { type DeviceLabel } from "../state/MediaDevices";
++
++const meta = {
++  title: "Larpgram/Camera selection",
++  component: CameraSelectionStory,
++  args: { wideAngle: true },
++} satisfies Meta<typeof CameraSelectionStory>;
++export default meta;
++type Story = StoryObj<typeof meta>;
++
++export const NormalAndWide: Story = {
++  play: async ({ canvasElement }) => {
++    const canvas = within(canvasElement);
++    await expect(canvas.getByLabelText("Rear camera")).toBeChecked();
++    await userEvent.click(canvas.getByLabelText("Wide angle"));
++    await expect(canvas.getByLabelText("Wide angle")).toBeChecked();
++    await expect(canvas.getByLabelText("Rear camera")).toBeChecked();
++    await userEvent.click(canvas.getByLabelText("Front camera"));
++    await expect(canvas.getByLabelText("Front camera")).toBeChecked();
++    await expect(canvas.queryByLabelText("Wide angle")).not.toBeInTheDocument();
++  },
++};
++export const NoWideLens: Story = { args: { wideAngle: false } };
++export const Mobile: Story = { globals: { viewport: { value: "mobile2" } } };
++
++function CameraSelectionStory({ wideAngle }: { wideAngle: boolean }) {
++  const device = useMemo(() => {
++    const selected = new BehaviorSubject({ id: "rear" });
++    const labels = new Map<string, DeviceLabel>([
++      [
++        "front",
++        {
++          type: "name",
++          name: "camera2 1, facing front",
++          camera: { side: "front", lens: "standard" },
++        },
++      ],
++      [
++        "rear",
++        {
++          type: "name",
++          name: "camera2 0, facing back",
++          camera: { side: "rear", lens: "standard" },
++        },
++      ],
++    ]);
++    if (wideAngle)
++      labels.set("wide", {
++        type: "name",
++        name: "camera2 2, facing back",
++        camera: { side: "rear", lens: "wide" },
++      });
++    return {
++      available$: constant(labels),
++      selected$: selected,
++      select: (id: string) => selected.next({ id }),
++    };
++  }, [wideAngle]);
++  return (
++    <Form>
++      <DeviceSelection
++        device={device}
++        title="Camera"
++        numberedLabel={(n) => `Camera ${n}`}
++      />
++    </Form>
++  );
++}
+diff --git a/src/state/CameraDeviceLabels.test.ts b/src/state/CameraDeviceLabels.test.ts
+new file mode 100644
+index 0000000..2ca2b39
+--- /dev/null
++++ b/src/state/CameraDeviceLabels.test.ts
+@@ -0,0 +1,90 @@
++/*
++Copyright 2026 Element Creations Ltd.
++
++SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
++Please see LICENSE in the repository root for full details.
++*/
++
++import { describe, expect, test } from "vitest";
++
++import { cameraChoices, cameraDeviceLabels } from "./CameraDeviceLabels";
++
++describe("Larpgram camera selection", () => {
++  test("groups sides and identifies wide angle from optics, excluding telephoto", () => {
++    const devices = [
++      camera("0", "back"),
++      camera("1", "front"),
++      camera("2", "back"),
++      camera("3", "back"),
++    ];
++    const labels = cameraDeviceLabels(
++      devices,
++      [
++        { cameraId: "0", side: "rear", relativeFocalLength: 0.7 },
++        { cameraId: "1", side: "front", relativeFocalLength: 0.9 },
++        { cameraId: "2", side: "rear", relativeFocalLength: 0.35 },
++        { cameraId: "3", side: "rear", relativeFocalLength: 1.4 },
++      ],
++      new Map(),
++    );
++    expect([...labels.keys()]).toEqual(["device-1", "device-0", "device-2"]);
++    expect(labels.get("device-2")?.camera).toEqual({
++      side: "rear",
++      lens: "wide",
++    });
++    const choices = cameraChoices(
++      [...labels].map(([id, label]) => ({ id, label })),
++      "device-2",
++    )!;
++    expect(choices.filter((c) => c.checked).map((c) => c.kind)).toEqual([
++      "rear",
++      "wide",
++    ]);
++    expect(new Set(choices.map((c) => c.key)).size).toBe(choices.length);
++  });
++
++  test("does not invent a wide angle mode when capabilities are unknown", () => {
++    const labels = cameraDeviceLabels(
++      [camera("0", "back"), camera("1", "front"), camera("2", "back")],
++      [],
++      new Map(),
++    );
++    expect(
++      [...labels.values()].some((label) => label.camera?.lens === "wide"),
++    ).toBe(false);
++    expect(
++      cameraChoices(
++        [...labels].map(([id, label]) => ({ id, label })),
++        "device-0",
++      ),
++    ).toHaveLength(2);
++  });
++
++  test("keeps named desktop cameras without Android metadata unchanged", () => {
++    const labels = new Map([
++      ["webcam", { type: "name" as const, name: "USB webcam" }],
++    ]);
++    expect(
++      cameraDeviceLabels(
++        [{ deviceId: "webcam", label: "USB webcam" } as MediaDeviceInfo],
++        [],
++        labels,
++      ),
++    ).toBe(labels);
++    expect(
++      cameraChoices(
++        [...labels].map(([id, label]) => ({ id, label })),
++        "webcam",
++      ),
++    ).toBeUndefined();
++  });
++});
++
++function camera(id: string, facing: "front" | "back"): MediaDeviceInfo {
++  return {
++    deviceId: `device-${id}`,
++    label: `camera2 ${id}, facing ${facing}`,
++    kind: "videoinput",
++    groupId: "",
++  } as MediaDeviceInfo;
++}
+diff --git a/src/state/CameraDeviceLabels.ts b/src/state/CameraDeviceLabels.ts
+new file mode 100644
+index 0000000..0e09097
+--- /dev/null
++++ b/src/state/CameraDeviceLabels.ts
+@@ -0,0 +1,120 @@
++/*
++Copyright 2026 Element Creations Ltd.
++
++SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
++Please see LICENSE in the repository root for full details.
++*/
++
++import { type TFunction } from "i18next";
++
++import { type DeviceLabel } from "./MediaDevices";
++
++export interface CameraMetadata {
++  cameraId: string;
++  side: "front" | "rear";
++  relativeFocalLength: number;
++}
++
++export type CameraKind = "front" | "rear" | "standard" | "wide";
++export interface CameraChoice {
++  key: string;
++  id: string;
++  kind: CameraKind;
++  checked: boolean;
++}
++
++/** Larpgram: physical lenses become a side and a supported lens mode, not numbered cameras. */
++export function cameraDeviceLabels(
++  devices: MediaDeviceInfo[],
++  metadata: CameraMetadata[],
++  fallback: Map<string, DeviceLabel>,
++): Map<string, DeviceLabel> {
++  const result = new Map<string, DeviceLabel>();
++  for (const side of ["front", "rear"] as const) {
++    const candidates = devices.flatMap((device) => {
++      const match = /^camera2?\s+([^\s,]+).*facing\s+(front|back)/i.exec(
++        device.label,
++      );
++      if (!match) return [];
++      const info = metadata.find((m) => m.cameraId === match[1]);
++      const deviceSide =
++        info?.side ?? (match[2] === "front" ? "front" : "rear");
++      return deviceSide === side ? [{ device, info }] : [];
++    });
++    const standard = candidates[0];
++    if (!standard) continue;
++    result.set(standard.device.deviceId, {
++      type: "name",
++      name: standard.device.label,
++      camera: { side, lens: "standard" },
++    });
++    const focal = standard.info?.relativeFocalLength;
++    if (focal === undefined || focal <= 0) continue;
++    const wide = candidates
++      .filter(
++        (candidate) =>
++          candidate.info &&
++          candidate.info.relativeFocalLength > 0 &&
++          candidate.info.relativeFocalLength < focal * 0.85,
++      )
++      .sort(
++        (a, b) => a.info!.relativeFocalLength - b.info!.relativeFocalLength,
++      )[0];
++    if (wide) {
++      result.set(wide.device.deviceId, {
++        type: "name",
++        name: wide.device.label,
++        camera: { side, lens: "wide" },
++      });
++    }
++  }
++  return result.size > 0 ? result : fallback;
++}
++
++export function cameraChoices(
++  devices: { id: string; label: DeviceLabel }[],
++  selectedId: string | undefined,
++): CameraChoice[] | undefined {
++  if (!devices.some((d) => d.label.camera)) return undefined;
++  const current = devices.find((d) => d.id === selectedId)?.label.camera;
++  const choices: CameraChoice[] = [];
++  for (const side of ["front", "rear"] as const) {
++    const standard = devices.find(
++      (d) =>
++        d.label.camera?.side === side && d.label.camera.lens === "standard",
++    );
++    if (standard)
++      choices.push({
++        key: side,
++        id: standard.id,
++        kind: side,
++        checked: current?.side === side,
++      });
++  }
++  const lenses = devices.filter((d) => d.label.camera?.side === current?.side);
++  if (lenses.some((d) => d.label.camera?.lens === "wide")) {
++    for (const device of lenses) {
++      const lens = device.label.camera!.lens;
++      choices.push({
++        key: lens,
++        id: device.id,
++        kind: lens,
++        checked: device.id === selectedId,
++      });
++    }
++  }
++  return choices;
++}
++
++export function cameraChoiceLabel(t: TFunction, kind: CameraKind): string {
++  switch (kind) {
++    case "front":
++      return t("settings.devices.front_camera");
++    case "rear":
++      return t("settings.devices.rear_camera");
++    case "standard":
++      return t("settings.devices.standard_lens");
++    case "wide":
++      return t("settings.devices.wide_lens");
++  }
++}

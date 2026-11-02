@@ -24,7 +24,6 @@ import io.element.android.features.messages.impl.attachments.preview.imageeditor
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.assertIsSimilarTo
 import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorState
-import io.element.android.features.messages.impl.attachments.video.VideoCompressionPresetSelector
 import io.element.android.features.messages.impl.attachments.video.VideoUploadEstimation
 import io.element.android.features.messages.impl.fixtures.aMediaAttachment
 import io.element.android.features.messages.test.attachments.video.FakeMediaOptimizationSelectorPresenterFactory
@@ -97,6 +96,26 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             skipItems(1)
             val initialState = awaitItem()
             assertThat(initialState.sendActionState).isEqualTo(SendActionState.Idle)
+        }
+    }
+
+    @Test
+    fun `changing SD to HD discards prepared media and uses the selected quality`() = runTest {
+        val processor = FakeMediaPreProcessor()
+        val presenter = createAttachmentsPreviewPresenter(mediaPreProcessor = processor)
+        presenter.test {
+            val sd = consumeItemsUntilPredicate { it.sendActionState is SendActionState.Sending.ReadyToUpload }.last()
+            assertThat(processor.lastMediaOptimizationConfig?.compressImages).isTrue()
+            assertThat(processor.lastMediaOptimizationConfig?.videoCompressionPreset).isEqualTo(VideoCompressionPreset.STANDARD)
+            sd.eventSink(AttachmentsPreviewEvent.SelectHighQuality(true))
+            val hd = consumeItemsUntilPredicate { it.highQuality && it.sendActionState is SendActionState.Sending.ReadyToUpload }.last()
+            assertThat(processor.processCallCount).isEqualTo(2)
+            assertThat(processor.lastMediaOptimizationConfig?.compressImages).isFalse()
+            assertThat(processor.lastMediaOptimizationConfig?.videoCompressionPreset).isEqualTo(VideoCompressionPreset.HIGH)
+            hd.eventSink(AttachmentsPreviewEvent.SelectHighQuality(false))
+            consumeItemsUntilPredicate { !it.highQuality && it.sendActionState is SendActionState.Sending.ReadyToUpload }
+            assertThat(processor.processCallCount).isEqualTo(3)
+            assertThat(processor.lastMediaOptimizationConfig?.compressImages).isTrue()
         }
     }
 
@@ -838,7 +857,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
     }
 
     @Test
-    fun `present - sendAsFile video is pre-processed with best fitting preset`() = runTest {
+    fun `present - sendAsFile video preserves document passthrough despite compression estimates`() = runTest {
         val mediaPreProcessor = FakeMediaPreProcessor()
         val presenter = createAttachmentsPreviewPresenter(
             attachments = listOf(
@@ -881,7 +900,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             assertThat(mediaPreProcessor.lastMediaOptimizationConfig).isEqualTo(
                 MediaOptimizationConfig(
                     compressImages = false,
-                    videoCompressionPreset = VideoCompressionPreset.STANDARD,
+                    videoCompressionPreset = VideoCompressionPreset.HIGH,
                     sendAsFile = true,
                 )
             )
@@ -980,7 +999,6 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
                 Result.failure(IllegalStateException("Check test values"))
             }
         },
-        videoCompressionPresetSelector: VideoCompressionPresetSelector = VideoCompressionPresetSelector(),
     ): AttachmentsPreviewPresenter {
         return AttachmentsPreviewPresenter(
             attachments = attachments.toImmutableList(),
@@ -990,9 +1008,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
                     preProcessor = mediaPreProcessor,
                     room = room,
                     timelineMode = timelineMode,
-                    mediaOptimizationConfigProvider = {
-                        MediaOptimizationConfig(compressImages = true, videoCompressionPreset = VideoCompressionPreset.STANDARD)
-                    }
+                    mediaOptimizationConfigProvider = mediaOptimizationConfigProvider
                 )
             },
             permalinkBuilder = permalinkBuilder,
@@ -1001,10 +1017,8 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             sessionCoroutineScope = this,
             dispatchers = testCoroutineDispatchers(),
             mediaOptimizationSelectorPresenterFactory = mediaOptimizationSelectorPresenterFactory,
-            videoCompressionPresetSelector = videoCompressionPresetSelector,
             timelineMode = timelineMode,
             inReplyToEventId = null,
-            mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
             room = room,
             matrixClient = FakeMatrixClient(),
             attachSheetMemory = TgAttachSheetMemory(),

@@ -201,7 +201,7 @@ fun TgMessagesView(
     // Правка форка (фаза 3): рендерер пикера эмодзи для инлайн-разворота по «+» в оверлее.
     emojiPickerRenderer: EmojiPickerRenderer,
     // Правка форка: клавиатура эмодзи для панели Telegram под полем ввода (модификатор, вставка).
-    emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)? = null,
+    emojiKeyboard: (@Composable (Modifier, (String) -> Unit, (Boolean) -> Unit) -> Unit)? = null,
     // Правка форка: «в сети / был(а)» собеседника ЛС для шапки Telegram.
     dmPresence: UserPresence? = null,
     // Правка форка: ⋮ → «Поиск» (ChatSearchNode).
@@ -505,6 +505,8 @@ fun TgMessagesView(
     TgAttachSheet(
         isVisible = showAttachSheet,
         restore = state.tg.attachRestore,
+        initialCaption = state.composerState.attachmentCaption,
+        onCaptionChanged = { state.composerState.eventSink(MessageComposerEvent.UpdateAttachmentCaption(it)) },
         onRestored = { state.tg.eventSink(TgChatEvent.AttachRestored) },
         canShareLocation = state.composerState.canShareLocation,
         enableTextFormatting = state.enableTextFormatting,
@@ -519,6 +521,7 @@ fun TgMessagesView(
                         restoreSelection = action.restoreSelection,
                         caption = action.caption,
                         isSheetExpanded = action.isExpanded,
+                        highQuality = action.highQuality,
                     )
                 )
                 TgAttachAction.CameraPhoto -> composerSink(MessageComposerEvent.PickAttachmentSource.PhotoFromCamera)
@@ -856,7 +859,7 @@ private fun MessagesViewComposerBottomSheetContents(
     onRoomSuccessorClick: (RoomId) -> Unit,
     onLinkClick: (String, Boolean) -> Unit,
     mediaPanel: TgMediaPanelController,
-    emojiKeyboard: (@Composable (Modifier, (String) -> Unit) -> Unit)?,
+    emojiKeyboard: (@Composable (Modifier, (String) -> Unit, (Boolean) -> Unit) -> Unit)?,
 ) {
     val contentPadding = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
 
@@ -969,7 +972,11 @@ private fun MessagesViewComposerBottomSheetContents(
                     controller = mediaPanel,
                     onBackspace = { markdownState?.deleteBeforeCursor() },
                     emojiContent = { modifier ->
-                        emojiKeyboard?.invoke(modifier) { emoji -> markdownState?.insertAtCursor(emoji) }
+                        emojiKeyboard?.invoke(
+                            modifier,
+                            { emoji -> markdownState?.insertAtCursor(emoji) },
+                            { focused -> mediaPanel.isSearchFocused = focused },
+                        )
                     },
                     gifContent = gifPickerState?.let { gifState ->
                         @Composable { modifier ->

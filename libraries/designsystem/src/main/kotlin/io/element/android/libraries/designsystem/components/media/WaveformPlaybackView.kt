@@ -38,17 +38,23 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.RequestDisallowInterceptTouchEvent
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 private const val DEFAULT_GRAPHICS_LAYER_ALPHA: Float = 0.99F
@@ -82,6 +88,7 @@ fun WaveformPlaybackView(
     durationMs: Long = 0L,
     playbackSpeed: Float = 1f,
     seekEnabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
     brush: Brush = SolidColor(ElementTheme.colors.iconQuaternary),
     progressBrush: Brush = SolidColor(ElementTheme.colors.iconSecondary),
     cursorBrush: Brush = SolidColor(ElementTheme.colors.iconAccentTertiary),
@@ -136,15 +143,47 @@ fun WaveformPlaybackView(
     }
 
     val requestDisallowInterceptTouchEvent = remember { RequestDisallowInterceptTouchEvent() }
+    val viewConfiguration = LocalViewConfiguration.current
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
+    var longPressJob by remember { mutableStateOf<Job?>(null) }
+    var longPressTriggered by remember { mutableStateOf(false) }
+    var downPosition by remember { mutableStateOf(Offset.Zero) }
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
+            .onSizeChanged { newSize ->
+                canvasSizePx = newSize.toSize()
+                canvasSize = with(density) { canvasSizePx.toDpSize() }
+            }
             .graphicsLayer(alpha = DEFAULT_GRAPHICS_LAYER_ALPHA)
             .let {
                 if (!seekEnabled) return@let it
                 it.pointerInteropFilter(requestDisallowInterceptTouchEvent = requestDisallowInterceptTouchEvent) { e ->
+                    when (e.actionMasked) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            longPressTriggered = false
+                            downPosition = Offset(e.x, e.y)
+                            longPressJob?.cancel()
+                            if (currentOnLongClick != null && seekProgressFromPointerX(e.x, waveformWidthPx) != null) {
+                                longPressJob = coroutineScope.launch {
+                                    delay(viewConfiguration.longPressTimeoutMillis)
+                                    longPressTriggered = true
+                                    seekProgress.value = null
+                                    requestDisallowInterceptTouchEvent.invoke(false)
+                                    currentOnLongClick?.invoke()
+                                }
+                            }
+                        }
+                        android.view.MotionEvent.ACTION_MOVE -> {
+                            if (hypot(e.x - downPosition.x, e.y - downPosition.y) > viewConfiguration.touchSlop) {
+                                longPressJob?.cancel()
+                            }
+                        }
+                        android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> longPressJob?.cancel()
+                    }
+                    if (longPressTriggered) return@pointerInteropFilter true
                     handleWaveformPointerEvent(
-                        action = e.action,
+                        action = e.actionMasked,
                         x = e.x,
                         waveformWidthPx = waveformWidthPx,
                         currentSeekProgress = seekProgress.value,
@@ -163,8 +202,6 @@ fun WaveformPlaybackView(
             }
             .then(modifier)
     ) {
-        canvasSize = size.toDpSize()
-        canvasSizePx = size
         val cornerRadius = lineWidth / 2
         // Calculate the size of the waveform by summing the width of all the lines and paddings
         drawWaveform(

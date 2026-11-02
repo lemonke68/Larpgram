@@ -7,6 +7,8 @@
 
 package io.element.android.features.messages.impl.topbars
 
+import android.os.Build
+import android.view.View
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,16 +26,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCompositionContext
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -41,6 +49,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.LarpgramType
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -50,13 +59,13 @@ import io.element.android.features.messages.impl.R
 import io.element.android.features.messages.impl.TgChatEvent
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupDialog
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupDialogType
-import io.element.android.features.messages.impl.chatcleanup.ChatKind
 import io.element.android.features.messages.impl.chatcleanup.titleRes
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
+import io.element.android.libraries.designsystem.components.avatar.LocalAvatarHardwareBitmaps
 import io.element.android.libraries.designsystem.components.glass.tgGlass
 import io.element.android.libraries.designsystem.components.glass.tgTopFade
 import io.element.android.libraries.designsystem.theme.components.Icon
@@ -83,8 +92,57 @@ internal fun TgChatHeader(
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        TgChatHeaderContent(state, dmPresence, onBackClick, onRoomDetailsClick, onJoinCallClick, onThreadsListClick, onSearchClick, modifier)
+        return
+    }
+    // On Honor / Android 10, retained text and icons disappear during IME resize.
+    // Keep only this small, blur-free surface in a software View layer, with the same Compose
+    // content and inherited theme. The timeline, composer and modern Haze remain accelerated.
+    val parentComposition = rememberCompositionContext()
+    val parentInsets = WindowInsets.safeDrawing
+    val content by rememberUpdatedState<@Composable () -> Unit> {
+        CompositionLocalProvider(LocalAvatarHardwareBitmaps provides false) {
+            TgChatHeaderContent(
+                state,
+                dmPresence,
+                onBackClick,
+                onRoomDetailsClick,
+                onJoinCallClick,
+                onThreadsListClick,
+                onSearchClick,
+                headerInsets = parentInsets,
+            )
+        }
+    }
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            ComposeView(context).apply {
+                setParentCompositionContext(parentComposition)
+                setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+                setContent { content() }
+            }
+        },
+        onRelease = { it.disposeComposition() },
+    )
+}
+
+@Composable
+private fun TgChatHeaderContent(
+    state: MessagesState,
+    dmPresence: UserPresence?,
+    onBackClick: () -> Unit,
+    onRoomDetailsClick: () -> Unit,
+    onJoinCallClick: (isAudioCall: Boolean) -> Unit,
+    onThreadsListClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    headerInsets: WindowInsets = WindowInsets.safeDrawing,
+) {
     val subtitle = headerSubtitle(state = state, dmPresence = dmPresence)
     var cleanupDialog by remember { mutableStateOf<ChatCleanupDialogType?>(null) }
+    var showCleanupChoices by remember { mutableStateOf(false) }
     val cleanupState = state.tg.chatCleanupState
     val dialogType = cleanupDialog
     if (cleanupState != null && dialogType != null) {
@@ -96,6 +154,40 @@ internal fun TgChatHeader(
             onChatDeleted = onBackClick,
         )
     }
+    // Правка форка: одно действие меню, затем выбор операции и её прежнее подтверждение.
+    if (showCleanupChoices && cleanupState != null) {
+        AlertDialog(
+            onDismissRequest = { showCleanupChoices = false },
+            title = { Text(stringResource(R.string.larpgram_chat_cleanup_options)) },
+            text = {
+                Column {
+                    if (cleanupState.canClearHistory) {
+                        TextButton(onClick = {
+                            showCleanupChoices = false
+                            cleanupDialog = ChatCleanupDialogType.ClearHistory
+                        }) {
+                            Text(stringResource(ChatCleanupDialogType.ClearHistory.titleRes(cleanupState.chatKind)))
+                        }
+                    }
+                    if (cleanupState.canDeleteChat) {
+                        TextButton(onClick = {
+                            showCleanupChoices = false
+                            cleanupDialog = ChatCleanupDialogType.DeleteChat
+                        }) {
+                            Text(
+                                stringResource(ChatCleanupDialogType.DeleteChat.titleRes(cleanupState.chatKind)),
+                                color = ElementTheme.colors.textCriticalPrimary,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showCleanupChoices = false }) { Text(stringResource(CommonStrings.action_cancel)) }
+            },
+        )
+    }
     val pillShape = RoundedCornerShape(HEADER_HEIGHT / 2)
     val iconTint = ElementTheme.colors.iconPrimary
     // Под статус-баром и шапкой — размытая подложка, сходящая на нет книзу, чтобы лента,
@@ -104,7 +196,7 @@ internal fun TgChatHeader(
         modifier = modifier
             .fillMaxWidth()
             .tgTopFade()
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(headerInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -201,7 +293,7 @@ internal fun TgChatHeader(
                 onThreadsListClick = onThreadsListClick,
                 onRoomDetailsClick = onRoomDetailsClick,
                 onSearchClick = onSearchClick,
-                onCleanupClick = { cleanupDialog = it },
+                onCleanupClick = { showCleanupChoices = true },
             )
         }
     }
@@ -214,7 +306,7 @@ private fun HeaderMenu(
     onThreadsListClick: () -> Unit,
     onRoomDetailsClick: () -> Unit,
     onSearchClick: () -> Unit,
-    onCleanupClick: (ChatCleanupDialogType) -> Unit,
+    onCleanupClick: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -232,7 +324,7 @@ private fun HeaderMenu(
             containerColor = ElementTheme.colors.bgCanvasDefault,
         ) {
             val callState = state.roomCallState
-            if (callState is RoomCallState.StandBy && callState.canStartCall) {
+            if (state.tg.dmUserId == null && callState is RoomCallState.StandBy && callState.canStartCall) {
                 HeaderMenuItem(
                     icon = CompoundIcons.VideoCall(),
                     text = stringResource(R.string.larpgram_header_menu_video_call),
@@ -270,33 +362,25 @@ private fun HeaderMenu(
                     },
                 )
             }
-            HeaderMenuItem(
-                icon = CompoundIcons.Info(),
-                text = stringResource(R.string.larpgram_header_menu_info),
-                onClick = {
-                    expanded = false
-                    onRoomDetailsClick()
-                },
-            )
-            val cleanupState = state.tg.chatCleanupState
-            if (cleanupState?.canClearHistory == true) {
+            if (state.tg.dmUserId == null) {
                 HeaderMenuItem(
-                    icon = CompoundIcons.History(),
-                    text = stringResource(ChatCleanupDialogType.ClearHistory.titleRes(cleanupState.chatKind)),
+                    icon = CompoundIcons.Info(),
+                    text = stringResource(R.string.larpgram_header_menu_info),
                     onClick = {
                         expanded = false
-                        onCleanupClick(ChatCleanupDialogType.ClearHistory)
+                        onRoomDetailsClick()
                     },
                 )
             }
-            if (cleanupState?.canDeleteChat == true) {
+            val cleanupState = state.tg.chatCleanupState
+            if (cleanupState?.canClearHistory == true || cleanupState?.canDeleteChat == true) {
                 HeaderMenuItem(
-                    icon = if (cleanupState.chatKind == ChatKind.Dm) CompoundIcons.Delete() else CompoundIcons.Leave(),
-                    text = stringResource(ChatCleanupDialogType.DeleteChat.titleRes(cleanupState.chatKind)),
+                    icon = CompoundIcons.Delete(),
+                    text = stringResource(R.string.larpgram_chat_cleanup_options),
                     isDestructive = true,
                     onClick = {
                         expanded = false
-                        onCleanupClick(ChatCleanupDialogType.DeleteChat)
+                        onCleanupClick()
                     },
                 )
             }

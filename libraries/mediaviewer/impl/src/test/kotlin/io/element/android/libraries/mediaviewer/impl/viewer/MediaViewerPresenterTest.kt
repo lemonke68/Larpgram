@@ -404,6 +404,7 @@ class MediaViewerPresenterTest {
                     )
                 )
             )
+            assertThat(awaitItem().shareData?.mediaSource).isEqualTo(MediaSource(aUrl))
         }
     }
 
@@ -1056,6 +1057,7 @@ internal fun TestScope.createMediaViewerPresenter(
         is MediaViewerEntryPoint.Params.RoomMedia -> actualInputs.mode
     }
     return MediaViewerPresenter(
+        copyProtection = io.element.android.libraries.matrix.ui.protection.RoomCopyProtection(io.element.android.libraries.matrix.test.FakeMatrixClient()),
         inputs = actualInputs,
         navigator = mediaViewerNavigator,
         dataSource = MediaViewerDataSource(

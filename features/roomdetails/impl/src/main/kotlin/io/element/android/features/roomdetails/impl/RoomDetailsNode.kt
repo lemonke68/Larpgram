@@ -50,6 +50,7 @@ class RoomDetailsNode(
     @Assisted plugins: List<Plugin>,
     presenterFactory: RoomDetailsPresenter.Factory,
     private val room: BaseRoom,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
     private val analyticsService: AnalyticsService,
     private val leaveRoomRenderer: LeaveRoomRenderer,
     // Правка форка: TG-профиль — вкладки общих медиа и присутствие собеседника ЛС.
@@ -135,7 +136,11 @@ class RoomDetailsNode(
         val sharedMedia = profileSharedMedia.rememberSection(onOpenMedia = callback::navigateToSharedMedia)
         val dmUserId = (state.roomType as? RoomDetailsType.Dm)?.otherMember?.userId
         val savedMessagesRoomId by savedMessages.roomId.collectAsState()
+        val copyAllowed = io.element.android.libraries.matrix.ui.protection.rememberRoomCopyAllowed(copyProtection, room)
+        io.element.android.libraries.matrix.ui.protection.ProtectedRoomWindow(!copyAllowed)
+        androidx.compose.runtime.CompositionLocalProvider(io.element.android.libraries.matrix.ui.protection.LocalRoomCopyAllowed provides copyAllowed) {
         TgRoomDetailsView(
+            contentProtection = { io.element.android.libraries.matrix.ui.protection.ChannelCopyProtectionSetting(copyProtection, room) },
             state = state,
             isSavedMessages = state.roomId == savedMessagesRoomId,
             sharedMedia = sharedMedia,
@@ -165,6 +170,7 @@ class RoomDetailsNode(
                 )
             }
         )
+        }
     }
 
     override fun onDone() {

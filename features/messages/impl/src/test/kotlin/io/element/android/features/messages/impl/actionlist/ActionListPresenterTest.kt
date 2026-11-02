@@ -1600,6 +1600,7 @@ private fun createActionListPresenter(
 ): ActionListPresenter {
     val preferencesStore = InMemoryAppPreferencesStore(isDeveloperModeEnabled = isDeveloperModeEnabled)
     return DefaultActionListPresenter(
+        copyProtection = io.element.android.libraries.matrix.ui.protection.RoomCopyProtection(io.element.android.libraries.matrix.test.FakeMatrixClient()),
         postProcessor = TimelineItemActionPostProcessor.Default,
         appPreferencesStore = preferencesStore,
         room = room,

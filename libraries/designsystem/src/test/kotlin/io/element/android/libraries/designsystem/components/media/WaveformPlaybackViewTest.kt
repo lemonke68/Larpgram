@@ -9,23 +9,61 @@
 
 package io.element.android.libraries.designsystem.components.media
 
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.AndroidComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runAndroidComposeUiTest
 import androidx.compose.ui.unit.dp
+import com.google.common.truth.Truth.assertThat
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import io.element.android.tests.testutils.setSafeContent
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import org.junit.Test
+import org.robolectric.Shadows.shadowOf
+import java.time.Duration
 
 class WaveformPlaybackViewTest : RobolectricTest() {
+    @Test
+    fun `holding the waveform opens the message menu without seeking`() = runAndroidComposeUiTest {
+        var longPresses = 0
+        var seeks = 0
+        setSafeContent {
+            ElementTheme {
+                WaveformPlaybackView(
+                    playbackProgress = 0.5f,
+                    showCursor = false,
+                    waveform = WaveFormSamples.realisticWaveForm,
+                    onSeek = { seeks++ },
+                    onLongClick = { longPresses++ },
+                    modifier = Modifier.fillMaxWidth().height(34.dp).testTag("waveform"),
+                )
+            }
+        }
+        onNodeWithTag("waveform").captureToImage()
+        waitForIdle()
+        mainClock.autoAdvance = false
+        onNodeWithTag("waveform").performTouchInput { down(Offset(10f, center.y)) }
+        runOnIdle { }
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        mainClock.advanceTimeBy(1000)
+        onNodeWithTag("waveform").performTouchInput { up() }
+        waitForIdle()
+        assertThat(longPresses to seeks).isEqualTo(1 to 0)
+        assertThat(seeks).isEqualTo(0)
+    }
+
     @Test
     fun `seeking can be disabled`() = runAndroidComposeUiTest {
         setWaveformPlaybackView(seekEnabled = false)

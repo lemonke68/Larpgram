@@ -30,4 +30,6 @@ data class MessageComposerState(
     val resolveAtRoomMentionDisplay: () -> TextDisplay,
     val slashCommandAction: AsyncAction<Unit>,
     val eventSink: (MessageComposerEvent) -> Unit,
+    // Правка форка: снимок черновика для подписи при открытии шторки.
+    val attachmentCaption: String = "",
 )

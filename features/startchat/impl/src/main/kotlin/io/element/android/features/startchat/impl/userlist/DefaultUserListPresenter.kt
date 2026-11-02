@@ -102,6 +102,7 @@ class DefaultUserListPresenter(
             selectionMode = args.selectionMode,
             recentDirectRooms = recentDirectRooms.toImmutableList(),
             eventSink = ::handleEvent,
+            homeserverName = matrixClient.userIdServerName(),
         )
     }
 }

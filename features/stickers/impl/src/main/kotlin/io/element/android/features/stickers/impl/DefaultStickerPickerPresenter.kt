@@ -41,11 +41,13 @@ class DefaultStickerPickerPresenter(
     private val room: JoinedRoom,
     private val matrixClient: MatrixClient,
     private val importer: StickerPackImporter,
+    private val recentStickersStore: RecentStickersStore,
 ) : Presenter<StickerPickerState> {
     @Composable
     override fun present(): StickerPickerState {
         val coroutineScope = rememberCoroutineScope()
         var packs by remember { mutableStateOf<ImmutableList<ImagePack>>(persistentListOf()) }
+        var recentUrls by remember { mutableStateOf<List<String>>(emptyList()) }
         var selectedPackIndex by remember { mutableIntStateOf(0) }
         var isLoading by remember { mutableStateOf(true) }
         var importState by remember { mutableStateOf<ImportState>(ImportState.Hidden) }
@@ -53,6 +55,7 @@ class DefaultStickerPickerPresenter(
 
         suspend fun load() {
             isLoading = true
+            recentUrls = recentStickersStore.getRecent()
             // Паки без стикеров в пикере не нужны: они могут состоять из одних эмодзи.
             packs = imagePackSource.getAllPacks()
                 .filter { it.stickers.isNotEmpty() }
@@ -94,6 +97,10 @@ class DefaultStickerPickerPresenter(
                         size = image.size,
                         extraContent = extraContent,
                     ).onSuccess {
+                        runCatchingExceptions {
+                            recentStickersStore.remember(image.url)
+                            recentUrls = recentStickersStore.getRecent()
+                        }.onFailure { Timber.w(it, "не удалось сохранить недавний стикер") }
                         runCatchingExceptions {
                             ChannelPostMirror.mirrorLastPost(
                                 room = room,
@@ -140,6 +147,11 @@ class DefaultStickerPickerPresenter(
             }
         }
 
+        val recentStickers = remember(packs, recentUrls) {
+            val available = packs.flatMap { it.stickers }.associateBy { it.url }
+            recentUrls.mapNotNull { available[it] }.toImmutableList()
+        }
+
         return StickerPickerState(
             packs = packs,
             selectedPackIndex = selectedPackIndex,
@@ -147,6 +159,7 @@ class DefaultStickerPickerPresenter(
             importState = importState,
             sendError = sendError,
             eventSink = ::handleEvent,
+            recentStickers = recentStickers,
         )
     }
 }

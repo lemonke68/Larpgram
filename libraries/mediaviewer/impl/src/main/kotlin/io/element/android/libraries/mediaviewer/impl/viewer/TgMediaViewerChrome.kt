@@ -101,11 +101,12 @@ internal fun TgMediaViewerTopBar(
     // Правка форка: пункты меню TG «Показать в чате» и «Переслать» (аудит A-019); null — скрыть.
     onShowInChatClick: (() -> Unit)? = null,
     onForwardClick: (() -> Unit)? = null,
+    copyAllowed: Boolean = true,
 ) {
     val downloadedMedia by data.downloadedMedia
     val actionsEnabled = downloadedMedia.isSuccess()
     val senderName = data.mediaInfo.senderName
-    val dateSent = data.mediaInfo.dateSent
+    val dateSent = data.mediaInfo.dateSentFull ?: data.mediaInfo.dateSent
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -179,6 +180,7 @@ internal fun TgMediaViewerTopBar(
                             },
                         )
                     }
+                    if (copyAllowed) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.larpgram_viewer_save)) },
                         leadingIcon = { Icon(CompoundIcons.Download(), contentDescription = null) },
@@ -197,6 +199,7 @@ internal fun TgMediaViewerTopBar(
                             onShareClick()
                         },
                     )
+                    }
                     if (canShowInfo) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.larpgram_viewer_info)) },

@@ -16,6 +16,7 @@ import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.musicplayer.api.ProfileMusic
 import io.element.android.libraries.musicplayer.api.ProfileMusicTrack
+import io.element.android.libraries.musicplayer.impl.MusicCopyPolicy
 import io.element.android.libraries.musicplayer.impl.MusicOfflineStore
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -56,6 +57,7 @@ class DefaultProfileMusic(
     okHttpClient: OkHttpClient,
     private val offlineStore: MusicOfflineStore,
     private val dispatchers: CoroutineDispatchers,
+    private val copyPolicy: MusicCopyPolicy,
 ) : ProfileMusic {
     // Загрузка файла в десятки мегабайт не укладывается в обычные тайм-ауты.
     private val httpClient = okHttpClient.newBuilder()
@@ -84,6 +86,7 @@ class DefaultProfileMusic(
 
     override suspend fun add(track: MusicTrack, title: String, artist: String?): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
+            copyPolicy.requireAllowed(track)
             val entry = if (track.roomId == null && track.mediaSource.json == null) {
                 // Трек чужого профиля: файл уже открытый, копировать нечего.
                 ProfileMusicTrack(
@@ -168,13 +171,14 @@ class DefaultProfileMusic(
     /** Расшифровать трек (или взять сохранённую на устройстве копию) и загрузить открытым файлом. */
     private suspend fun uploadOpenCopy(track: MusicTrack): String {
         offlineStore.fileFor(track.mediaKey)?.let { return upload(it, track) }
-        val mediaFile = matrixClient.matrixMediaLoader
+        val mediaFile = copyPolicy.sourceClient(track).matrixMediaLoader
             .downloadMediaFile(source = track.mediaSource, mimeType = track.mimeType, filename = track.filename)
             .getOrElse { throw IOException("Download failed", it) }
         return mediaFile.use { upload(File(it.path()), track) }
     }
 
     private suspend fun upload(file: File, track: MusicTrack): String {
+        copyPolicy.requireAllowed(track)
         val maxSize = matrixClient.getMaxFileUploadSize().getOrNull()
         if (maxSize != null && maxSize > 0 && file.length() > maxSize) throw IOException("The file is too big for the server")
         val token = matrixClient.getAccessToken().getOrThrow()

@@ -32,10 +32,10 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.gifs.impl.R
+import io.element.android.libraries.designsystem.components.tg.TgSearchField
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
-import io.element.android.libraries.designsystem.theme.components.TextField
 
 /** Поиск гифок и сетка результатов. */
 @Composable
@@ -50,11 +50,10 @@ fun GifPickerView(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         val contentModifier = if (fillHeight) Modifier.weight(1f) else Modifier.height(PICKER_HEIGHT)
-        TextField(
+        TgSearchField(
             value = state.query,
             onValueChange = { state.eventSink(GifPickerEvents.QueryChanged(it)) },
             placeholder = stringResource(R.string.larpgram_gifs_search),
-            singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)

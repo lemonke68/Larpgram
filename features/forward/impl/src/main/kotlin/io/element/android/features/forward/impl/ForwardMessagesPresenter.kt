@@ -40,8 +40,16 @@ class ForwardMessagesPresenter(
 
     private val forwardingActionState: MutableState<AsyncAction<List<RoomId>>> = mutableStateOf(AsyncAction.Uninitialized)
 
+    private var forwardOptions = io.element.android.libraries.matrix.api.forward.ForwardOptions()
+
+    fun setForwardOptions(options: io.element.android.libraries.matrix.api.forward.ForwardOptions) {
+        forwardOptions = options
+    }
+
     fun onRoomSelected(roomIds: List<RoomId>) {
-        sessionCoroutineScope.forwardEvents(eventIds, roomIds)
+        if (forwardingActionState.value is AsyncAction.Loading) return
+        forwardingActionState.value = AsyncAction.Loading
+        sessionCoroutineScope.forwardEvents(eventIds, roomIds, forwardOptions)
     }
 
     @Composable
@@ -61,9 +69,10 @@ class ForwardMessagesPresenter(
     private fun CoroutineScope.forwardEvents(
         eventIds: List<EventId>,
         roomIds: List<RoomId>,
+        options: io.element.android.libraries.matrix.api.forward.ForwardOptions,
     ) = launch {
         suspend {
-            timelineProvider.getActiveTimeline().forwardEvents(eventIds, roomIds)
+            timelineProvider.getActiveTimeline().forwardEvents(eventIds, roomIds, options)
                 .onFailure {
                     Timber.e(it, "Error while forwarding events")
                 }

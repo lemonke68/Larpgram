@@ -55,6 +55,8 @@ sealed interface RoomListEvent {
      * Правка форка (роумлесс), свайпы по типу.
      * Ф2: свой пин чата поверх списка (account data), нативного пина в Matrix нет.
      */
+    data class SetRoomIsArchived(val roomId: RoomId, val isArchived: Boolean) : ContextMenuEvent
+
     data class SetRoomIsPinned(val roomId: RoomId, val isPinned: Boolean) : ContextMenuEvent
 
     /** Ф3: удалить чат у себя = leave + forget (уходит из списка). */

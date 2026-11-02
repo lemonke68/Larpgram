@@ -34,6 +34,8 @@ data class MusicSheetState(
     /** Своя «музыка профиля»: треки можно убирать из списка. */
     val canRemoveTracks: Boolean,
     val eventSink: (MusicSheetEvent) -> Unit,
+    val shareTrack: io.element.android.libraries.musicplayer.api.MusicTrack? = null,
+    val canShare: Boolean = true,
 )
 
 @Immutable
@@ -62,5 +64,6 @@ sealed interface MusicSheetEvent {
     data object ToggleProfile : MusicSheetEvent
     data class RemoveFromProfile(val trackId: String) : MusicSheetEvent
     data object Share : MusicSheetEvent
+    data object DismissShare : MusicSheetEvent
     data object ClearProfileAction : MusicSheetEvent
 }

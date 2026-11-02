@@ -1062,6 +1062,7 @@ class RoomListPresenterTest {
                 client = client,
                 sessionCoroutineScope = backgroundScope,
             ),
+            archivedChatsStore = ArchivedChatsStore(client, backgroundScope, io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher()),
             chatCleanupService = chatCleanupService,
             draftPreviews = draftPreviews,
             typingTracker = RoomListTypingTracker(client),

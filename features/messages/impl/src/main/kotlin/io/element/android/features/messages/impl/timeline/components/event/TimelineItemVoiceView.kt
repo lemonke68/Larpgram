@@ -65,6 +65,7 @@ fun TimelineItemVoiceView(
     content: TimelineItemVoiceContent,
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
     contentValidationValue: ContentValidationValue,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     fun playPause() {
@@ -146,6 +147,7 @@ fun TimelineItemVoiceView(
             durationMs = state.durationMs,
             playbackSpeed = state.playbackSpeed,
             seekEnabled = !isTalkbackActive(),
+            onLongClick = onLongClick,
             onSeek = { state.eventSink(VoiceMessageEvent.Seek(it)) },
         )
     }

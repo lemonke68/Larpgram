@@ -13,7 +13,7 @@ package io.element.android.features.messages.impl.messagecomposer
 import dev.zacsweers.metro.Inject
 import io.element.android.features.messages.impl.attachments.tgattach.GalleryMedia
 import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
-import io.element.android.features.messages.impl.attachments.tgattach.UncompressedMediaConfig
+import io.element.android.features.messages.impl.attachments.tgattach.mediaQualityConfig
 import io.element.android.features.messages.impl.attachments.tgattach.sendGalleryMediaNow
 import io.element.android.libraries.channelcomments.ChannelDiscussion
 import io.element.android.libraries.channelcomments.ChannelPostMirror
@@ -26,7 +26,6 @@ import io.element.android.libraries.matrix.api.room.draft.ComposerDraft
 import io.element.android.libraries.matrix.api.room.draft.ComposerDraftType
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.ui.drafts.DraftPreviews
-import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
 import io.element.android.libraries.mediaupload.api.MediaSenderFactory
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 
@@ -35,7 +34,6 @@ class ComposerForkActions(
     private val room: JoinedRoom,
     private val matrixClient: MatrixClient,
     private val mediaSenderFactory: MediaSenderFactory,
-    private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val draftPreviews: DraftPreviews,
     /** Меню вложений, из которого ушли на предпросмотр: «Назад» открывает его снова. */
@@ -52,7 +50,7 @@ class ComposerForkActions(
         media = media,
         caption = caption,
         inReplyToEventId = inReplyToEventId,
-        mediaOptimizationConfig = if (compress) mediaOptimizationConfigProvider.get() else UncompressedMediaConfig,
+        mediaOptimizationConfig = mediaQualityConfig(highQuality = !compress),
         mediaSender = mediaSenderFactory.create(timelineMode = timelineMode),
         room = room,
         matrixClient = matrixClient,

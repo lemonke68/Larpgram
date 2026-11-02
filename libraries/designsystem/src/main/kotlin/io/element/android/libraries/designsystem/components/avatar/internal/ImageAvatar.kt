@@ -20,10 +20,14 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
+import io.element.android.libraries.designsystem.components.avatar.LocalAvatarHardwareBitmaps
 import timber.log.Timber
 import kotlin.io.encoding.Base64
 
@@ -40,7 +44,7 @@ internal fun ImageAvatar(
         avatarData.thumbnail?.let { runCatchingExceptions { Base64.decode(it) }.getOrNull() }
     }
     SubcomposeAsyncImage(
-        model = avatarData,
+        model = softwareCompatibleAvatarModel(avatarData),
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
         modifier = modifier
@@ -96,7 +100,7 @@ private fun ThumbnailOrInitialLetterAvatar(
         )
     } else {
         SubcomposeAsyncImage(
-            model = thumbnailBytes,
+            model = softwareCompatibleAvatarModel(thumbnailBytes),
             contentDescription = contentDescription,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -114,5 +118,14 @@ private fun ThumbnailOrInitialLetterAvatar(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun softwareCompatibleAvatarModel(data: Any): Any {
+    val allowHardware = LocalAvatarHardwareBitmaps.current
+    val context = LocalPlatformContext.current
+    return remember(data, allowHardware, context) {
+        if (allowHardware) data else ImageRequest.Builder(context).data(data).allowHardware(false).build()
     }
 }

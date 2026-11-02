@@ -60,14 +60,12 @@ import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.ui.model.getAvatarData
-import io.element.android.libraries.ui.strings.CommonStrings
 
 /** Bar sizes from `tokens.json` → `sizes`. */
 internal object TgHomeBarDefaults {
     val barHeight = 64.dp
     val tabWidth = 96.dp
     val tabHeight = 56.dp
-    val searchSize = 64.dp
     val gap = 10.dp
     val tabGap = 2.dp
     val navPadding = 4.dp
@@ -96,7 +94,6 @@ internal fun TgHomeTabBar(
     isProfilePressed: Boolean,
     onItemClick: (TgHomeTab) -> Unit,
     onProfileLongClick: (() -> Unit)?,
-    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -120,7 +117,6 @@ internal fun TgHomeTabBar(
                 onProfileLongClick = onProfileLongClick,
             )
         }
-        TgSearchButton(onClick = onSearchClick)
     }
 }
 
@@ -295,31 +291,6 @@ private fun TabBadge(
             style = LarpgramType.badge.copy(fontSize = LarpgramType.badge.fontSize * (10f / 12f)),
             color = Color.White,
             maxLines = 1,
-        )
-    }
-}
-
-@Composable
-private fun TgSearchButton(
-    onClick: () -> Unit,
-) {
-    val colors = larpgramColors
-    Box(
-        modifier = Modifier
-            .size(TgHomeBarDefaults.searchSize)
-            .tgGlass(
-                shape = CircleShape,
-                overrideTint = colors.searchButton,
-                borderColor = colors.searchButtonBorder,
-                elevation = 10.dp,
-            )
-            .combinedClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = CompoundIcons.Search(),
-            contentDescription = stringResource(CommonStrings.action_search),
-            tint = Color.White,
         )
     }
 }

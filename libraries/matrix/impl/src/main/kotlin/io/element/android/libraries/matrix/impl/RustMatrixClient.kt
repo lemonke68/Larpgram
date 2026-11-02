@@ -36,6 +36,7 @@ import io.element.android.libraries.matrix.api.createroom.RoomPreset
 import io.element.android.libraries.matrix.api.linknewdevice.LinkDesktopHandler
 import io.element.android.libraries.matrix.api.linknewdevice.LinkMobileHandler
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
+import io.element.android.libraries.matrix.api.media.MediaCacheUsage
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.paths.SessionPaths
@@ -177,6 +178,7 @@ class RustMatrixClient(
     private val analyticsService: AnalyticsService,
     private val workManagerScheduler: WorkManagerScheduler,
     private val searchBackfillServiceFactory: RustSearchBackfillService.Factory,
+    private val sharingApi: io.element.android.libraries.matrix.impl.forward.LarpgramSharingApi,
 ) : MatrixClient {
     @AssistedFactory
     interface Factory {
@@ -281,7 +283,12 @@ class RustMatrixClient(
         sessionCoroutineScope = sessionCoroutineScope,
         dispatchers = dispatchers,
         systemClock = clock,
-        roomContentForwarder = RoomContentForwarder(innerRoomListService),
+        roomContentForwarder = RoomContentForwarder(
+            roomListService = innerRoomListService,
+            sourceInfo = { getRoomInfo(it).getOrThrow() ?: error("Room information unavailable") },
+            profileLinkAllowed = { getForwardingProfileLink(it).getOrDefault(false) },
+            copyProtected = { getRoomCopyProtection(it).getOrThrow() },
+        ),
         roomSyncSubscriber = roomSyncSubscriber,
         timelineEventFilterFactory = timelineEventFilterFactory,
         roomMembershipObserver = roomMembershipObserver,
@@ -544,6 +551,28 @@ class RustMatrixClient(
         return createRoom(createRoomParams)
     }
 
+    override suspend fun getForwardingProfileLink(userId: UserId): Result<Boolean> = withContext(sessionDispatcher) {
+        runCatchingExceptions { sharingApi.profileLink(homeserverUrl, getAccessToken().getOrThrow(), userId.value) }
+    }
+
+    override suspend fun setForwardingProfileLink(allowed: Boolean): Result<Unit> = withContext(sessionDispatcher) {
+        runCatchingExceptions { sharingApi.setProfileLink(homeserverUrl, getAccessToken().getOrThrow(), sessionId.value, allowed) }
+    }
+
+    override suspend fun getRoomCopyProtection(roomId: RoomId): Result<Boolean> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val info = getRoomInfo(roomId).getOrThrow() ?: error("Room information unavailable")
+            if (info.isPublic == true) return@runCatchingExceptions false
+            val levels = info.roomPowerLevels ?: error("Room permissions unavailable")
+            val channel = levels.values.eventsDefault > 0L
+            if (!channel) {
+                false
+            } else {
+                sharingApi.copyProtection(homeserverUrl, getAccessToken().getOrThrow(), roomId.value)
+            }
+        }
+    }
+
     override suspend fun getProfile(userId: UserId): Result<MatrixUser> = withContext(sessionDispatcher) {
         runCatchingExceptions {
             innerClient.getProfile(userId.value).map()
@@ -773,6 +802,28 @@ class RustMatrixClient(
                 searchIndex = searchIndex?.bytes,
             )
         }
+    }
+
+    // Правка форка: отдельные SDK API, без clearCaches/destroy и удаления cacheDir.
+    override suspend fun getMediaCacheUsage(): Result<MediaCacheUsage> = runCatchingExceptions {
+        withContext(sessionDispatcher) {
+            innerClient.mediaCacheUsage().run {
+                MediaCacheUsage(
+                    images = images.toLong(),
+                    videos = videos.toLong(),
+                    audio = audio.toLong(),
+                    other = other.toLong(),
+                    thumbnails = thumbnails.toLong(),
+                    protectedBytes = `protected`.toLong(),
+                    databaseBytes = databaseBytes?.toLong(),
+                )
+            }
+        }
+    }
+
+    override suspend fun clearMediaCache(): Result<Unit> = runCatchingExceptions {
+        withContext(sessionDispatcher) { innerClient.clearMediaCache() }
+        Unit
     }
 
     override suspend fun clearCache() {

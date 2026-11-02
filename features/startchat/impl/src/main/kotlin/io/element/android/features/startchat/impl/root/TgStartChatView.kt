@@ -52,6 +52,7 @@ import io.element.android.libraries.designsystem.utils.scaffoldScrollableContent
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.ui.components.CreateDmConfirmationBottomSheet
 import io.element.android.libraries.matrix.ui.components.MatrixUserRow
+import io.element.android.libraries.matrix.ui.model.tgHandle
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
@@ -208,6 +209,7 @@ private fun CreateRoomActionButtonsList(
                             }
                         ),
                         matrixUser = recentDirectRoom.matrixUser,
+                        subtext = recentDirectRoom.matrixUser.userId.tgHandle(state.userListState.homeserverName),
                     )
                 }
             }

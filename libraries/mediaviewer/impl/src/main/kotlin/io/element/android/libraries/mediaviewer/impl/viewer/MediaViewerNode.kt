@@ -59,6 +59,12 @@ class MediaViewerNode(
     private val textFileViewer: TextFileViewer,
     private val audioFocus: AudioFocus,
     private val sessionId: SessionId,
+    private val client: io.element.android.libraries.matrix.api.MatrixClient,
+    private val room: io.element.android.libraries.matrix.api.room.JoinedRoom,
+    private val savedMessages: io.element.android.libraries.matrix.ui.saved.SavedMessages,
+    private val mediaCopySender: MediaCopySender,
+    private val localMediaActions: io.element.android.libraries.mediaviewer.impl.local.LocalMediaActions,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
     private val enterpriseService: EnterpriseService,
     private val contentScannerService: ContentScannerService,
     private val contentValidationCache: EventContentValidationCache,
@@ -161,8 +167,36 @@ class MediaViewerNode(
         ForcedDarkElementTheme(
             colors = colors,
         ) {
-            val state = presenter.present()
+            val copyAllowed = io.element.android.libraries.matrix.ui.protection.rememberRoomCopyAllowed(copyProtection, room)
+            val state = presenter.present().copy(copyAllowed = copyAllowed)
+            io.element.android.libraries.matrix.ui.protection.ProtectedRoomWindow(!state.copyAllowed)
+            state.shareData?.takeIf { copyAllowed }?.let { data ->
+                io.element.android.libraries.matrix.ui.share.TgShareSheet(
+                    client = client,
+                    savedMessages = savedMessages,
+                    onDismiss = { state.eventSink(MediaViewerEvent.DismissShare) },
+                    onSend = { ids, caption -> mediaCopySender.send(room.roomId, data, ids, caption) },
+                    onShareExternally = {
+                        io.element.android.libraries.core.extensions.runCatchingExceptions {
+                            copyProtection.requireAllowed(room.roomId)
+                            val media = data.downloadedMedia.value as? io.element.android.libraries.architecture.AsyncData.Success
+                                ?: error("Media is not downloaded")
+                            localMediaActions.share(media.data).getOrThrow()
+                        }
+                    },
+                    secondaryAction = androidx.compose.ui.res.stringResource(io.element.android.libraries.matrix.ui.R.string.larpgram_share_save),
+                    onSecondaryAction = {
+                        state.eventSink(MediaViewerEvent.DismissShare)
+                        state.eventSink(MediaViewerEvent.SaveOnDisk(data))
+                    },
+                )
+            }
             // Правка форка: просмотр медиа Telegram, элементовский оставлен как в апстриме (C-009).
+            androidx.compose.runtime.CompositionLocalProvider(
+                io.element.android.libraries.matrix.ui.protection.LocalRoomCopyAllowed provides copyAllowed,
+                io.element.android.features.viewfolder.api.LocalTextFileCopyAllowed provides copyAllowed,
+                io.element.android.features.viewfolder.api.LocalTextFileCopyGate provides { copyProtection.isAllowed(room.roomId) },
+            ) {
             TgMediaViewerView(
                 state = state,
                 textFileViewer = textFileViewer,
@@ -170,6 +204,7 @@ class MediaViewerNode(
                 audioFocus = audioFocus,
                 onBackClick = callback::onDone,
             )
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ import io.element.android.libraries.matrix.ui.components.MatrixUserRow
 import io.element.android.libraries.matrix.ui.components.UnresolvedUserRow
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 import io.element.android.libraries.matrix.ui.model.getAvatarData
+import io.element.android.libraries.matrix.ui.model.tgHandle
 import io.element.android.libraries.usersearch.api.UserSearchResult
 
 @Composable
@@ -27,6 +28,7 @@ fun SearchSingleUserResultItem(
     searchResult: UserSearchResult,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    homeserverName: String = "",
 ) {
     if (searchResult.isUnresolved) {
         UnresolvedUserRow(
@@ -39,6 +41,7 @@ fun SearchSingleUserResultItem(
             modifier = modifier.clickable(onClick = onClick),
             matrixUser = searchResult.matrixUser,
             avatarSize = AvatarSize.UserListItem,
+            subtext = searchResult.matrixUser.userId.tgHandle(homeserverName),
         )
     }
 }

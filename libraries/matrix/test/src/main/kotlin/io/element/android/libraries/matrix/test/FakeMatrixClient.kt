@@ -23,6 +23,7 @@ import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.linknewdevice.LinkDesktopHandler
 import io.element.android.libraries.matrix.api.linknewdevice.LinkMobileHandler
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
+import io.element.android.libraries.matrix.api.media.MediaCacheUsage
 import io.element.android.libraries.matrix.api.media.MediaPreviewService
 import io.element.android.libraries.matrix.api.notification.NotificationService
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
@@ -139,6 +140,8 @@ class FakeMatrixClient(
     private val markAllRoomsAsReadResult: () -> Result<Unit> = { Result.success(Unit) },
     private val performDatabaseVacuumLambda: () -> Result<Unit> = { lambdaError() },
     override val searchBackfillService: SearchBackfillService = FakeSearchBackfillService(),
+    private val getMediaCacheUsageLambda: () -> Result<MediaCacheUsage> = { lambdaError() },
+    private val clearMediaCacheLambda: () -> Result<Unit> = { lambdaError() },
     private val getDatabaseSizesLambda: () -> Result<SdkStoreSizes> = { lambdaError() },
     private val resetWellKnownConfigLambda: () -> Result<Unit> = { lambdaError() },
     private val enableAutomaticCallStatusLambda: (Boolean) -> Unit = { },
@@ -226,6 +229,13 @@ class FakeMatrixClient(
         return createDmResult(userId, isEncrypted)
     }
 
+    var getForwardingProfileLinkLambda: suspend (UserId) -> Result<Boolean> = { Result.success(true) }
+    override suspend fun getForwardingProfileLink(userId: UserId) = getForwardingProfileLinkLambda(userId)
+    var setForwardingProfileLinkLambda: suspend (Boolean) -> Result<Unit> = { Result.success(Unit) }
+    override suspend fun setForwardingProfileLink(allowed: Boolean) = setForwardingProfileLinkLambda(allowed)
+    var getRoomCopyProtectionLambda: suspend (RoomId) -> Result<Boolean> = { Result.success(false) }
+    override suspend fun getRoomCopyProtection(roomId: RoomId) = getRoomCopyProtectionLambda(roomId)
+
     override suspend fun getProfile(userId: UserId): Result<MatrixUser> {
         return getProfileResults[userId] ?: Result.failure(IllegalStateException("No profile found for $userId"))
     }
@@ -237,6 +247,10 @@ class FakeMatrixClient(
     override suspend fun getCacheSize(): Long {
         return 0
     }
+
+    override suspend fun getMediaCacheUsage(): Result<MediaCacheUsage> = getMediaCacheUsageLambda()
+
+    override suspend fun clearMediaCache(): Result<Unit> = clearMediaCacheLambda()
 
     override suspend fun getDatabaseSizes(): Result<SdkStoreSizes> {
         return getDatabaseSizesLambda()

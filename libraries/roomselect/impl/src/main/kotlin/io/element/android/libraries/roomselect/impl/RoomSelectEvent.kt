@@ -12,6 +12,8 @@ import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.ui.model.SelectRoomInfo
 
 sealed interface RoomSelectEvent {
+    data object ToggleHideForwardAuthor : RoomSelectEvent
+
     data class ToggleSelectedRoom(val room: SelectRoomInfo) : RoomSelectEvent
     data class UpdateVisibleRange(val range: IntRange) : RoomSelectEvent
     data object ToggleAccountListExpanded : RoomSelectEvent

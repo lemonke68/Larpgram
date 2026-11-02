@@ -94,7 +94,12 @@ internal fun LazyListScope.musicList(
     } else if (shown.isNotEmpty()) {
         val allSaved = shown.all { offline[it.mediaKey] != null }
         item(key = "shared_music_save_all") {
-            SaveAllRow(allSaved = allSaved, onClick = { musicPlayer.setSavedOnDevice(shown, save = true) })
+            if (io.element.android.libraries.matrix.ui.protection.LocalRoomCopyAllowed.current) {
+                SaveAllRow(
+                    allSaved = allSaved,
+                    onClick = { musicPlayer.setSavedOnDevice(shown, save = true) }
+                )
+            }
         }
     }
     shown.forEachIndexed { index, track ->
@@ -198,7 +203,12 @@ private fun MusicRow(
             )
         }
         // «Сохранить на устройстве»: повторный тап убирает копию (или отменяет сохранение).
-        IconButton(onClick = { musicPlayer.setSavedOnDevice(listOf(track), save = offlineStatus == null) }) {
+        if (offlineStatus != null ||
+            io.element.android.libraries.matrix.ui.protection.LocalRoomCopyAllowed.current) {
+                IconButton(onClick = {
+                    musicPlayer.setSavedOnDevice(listOf(track), save =
+                offlineStatus == null)
+                }) {
             when (offlineStatus) {
                 null -> Icon(
                     imageVector = Icons.Outlined.Download,
@@ -213,5 +223,6 @@ private fun MusicRow(
                 )
             }
         }
+            }
     }
 }

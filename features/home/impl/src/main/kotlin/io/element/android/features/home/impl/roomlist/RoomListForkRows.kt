@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 class RoomListForkRows(
     private val client: MatrixClient,
     private val pinnedChatsStore: PinnedChatsStore,
+    private val archivedChatsStore: ArchivedChatsStore,
     private val chatCleanupService: ChatCleanupService,
     private val draftPreviews: DraftPreviews,
     private val typingTracker: RoomListTypingTracker,
@@ -46,6 +47,8 @@ class RoomListForkRows(
     private val savedMessages: SavedMessages,
     private val dispatchers: CoroutineDispatchers,
 ) {
+    val archivedRoomIds = archivedChatsStore.archived
+
     /**
      * Готовый список SDK поверх наших данных. Сортировкой SDK и diff-кэшем не рулим —
      * переставляем уже готовый список.
@@ -55,10 +58,11 @@ class RoomListForkRows(
         pinnedChatsStore.pinnedFlow.combine(chatCleanupService.clearedHistory, ::Pair),
         draftPreviews.drafts,
         typingTracker.typing,
-        savedMessages.roomId,
-    ) { rows, (pinnedIds, clearedHistory), drafts, typing, savedRoomId ->
+        savedMessages.roomId.combine(archivedChatsStore.archived, ::Pair),
+    ) { rows, (pinnedIds, clearedHistory), drafts, typing, (savedRoomId, archivedIds) ->
         // «Избранное» всегда закреплено сверху (план, ф4.5), остальные пины — под ним.
         applyPins(rows, listOfNotNull(savedRoomId) + pinnedIds.filterNot { it == savedRoomId })
+            .map { it.copy(isArchived = it.roomId in archivedIds) }
             .map { it.withDraftAndTyping(drafts[it.roomId], typing[it.roomId]) }
             // «Избранное»: «Вы присоединились к комнате» — шум создания, строку оставляем пустой.
             .map { if (it.roomId == savedRoomId && it.isLatestEventService) it.copy(latestEvent = LatestEvent.None) else it }
@@ -71,6 +75,12 @@ class RoomListForkRows(
         // Промежуточные списки, которые UI не успел бы показать, пропускаем.
         .flowOn(dispatchers.computation)
         .conflate()
+
+    /** Правка форка: «Избранное» доступно без посещения настроек, после загрузки списка. */
+    suspend fun ensureSavedMessages() {
+        runCatching { archivedChatsStore.load() }
+        savedMessages.getOrCreate()
+    }
 
     /** «Печатает…» слушаем только у видимых строк. */
     suspend fun trackTypingOfVisibleRows(scope: CoroutineScope, visibleRange: Flow<IntRange>, rows: Flow<List<RoomListRoomSummary>>) {
@@ -85,6 +95,7 @@ class RoomListForkRows(
     fun handleEvent(event: RoomListEvent, scope: CoroutineScope) {
         when (event) {
             is RoomListEvent.SetRoomIsMuted -> scope.setRoomIsMuted(event.roomId, event.isMuted)
+            is RoomListEvent.SetRoomIsArchived -> archivedChatsStore.setArchived(event.roomId, event.isArchived)
             is RoomListEvent.SetRoomIsPinned -> pinnedChatsStore.setPinned(event.roomId, event.isPinned)
             is RoomListEvent.DeleteRoom -> chatCleanupService.deleteChat(event.roomId)
             is RoomListEvent.DeleteRoomForBoth -> chatCleanupService.deleteChatForBoth(event.roomId)

@@ -75,6 +75,7 @@ class DefaultActionListPresenter(
     private val timelineMode: Timeline.Mode,
     private val appPreferencesStore: AppPreferencesStore,
     private val room: BaseRoom,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
     private val userSendFailureFactory: VerifiedUserSendFailureFactory,
     private val dateFormatter: DateFormatter,
     private val featureFlagService: FeatureFlagService,
@@ -140,6 +141,7 @@ class DefaultActionListPresenter(
     ) = launch {
         target.value = ActionListState.Target.Loading(timelineItem)
 
+        val copyAllowed = copyProtection.isAllowed(room.roomId)
         val actions = buildActions(
             timelineItem = timelineItem,
             usersEventPermissions = usersEventPermissions,
@@ -162,7 +164,7 @@ class DefaultActionListPresenter(
                 ),
                 displayEmojiReactions = displayEmojiReactions,
                 verifiedUserSendFailure = verifiedUserSendFailure,
-                actions = actions.toImmutableList(),
+                actions = actions.filter { copyAllowed || !it.isContentExport() }.toImmutableList(),
                 // Merge suggested and recent emojis, removing duplicates and returning at most 100
                 recentEmojis = (suggestedEmojis + recentEmojis).distinct()
                     .take(100)
@@ -269,3 +271,12 @@ private fun Iterable<TimelineItemAction>.postFilter(content: TimelineItemEventCo
         }
     }
 }
+
+/** Debug source/link actions can also expose protected message contents. */
+internal fun TimelineItemAction.isContentExport(): Boolean = this in setOf(
+    TimelineItemAction.CopyText,
+    TimelineItemAction.CopyCaption,
+    TimelineItemAction.CopyLink,
+    TimelineItemAction.Forward,
+    TimelineItemAction.ViewSource,
+)

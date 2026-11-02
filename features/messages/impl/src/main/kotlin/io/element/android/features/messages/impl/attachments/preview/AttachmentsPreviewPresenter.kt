@@ -28,9 +28,8 @@ import io.element.android.features.messages.impl.attachments.preview.imageeditor
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.AttachmentImageEditorState
 import io.element.android.features.messages.impl.attachments.preview.imageeditor.AttachmentImageEdits
 import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
+import io.element.android.features.messages.impl.attachments.tgattach.mediaQualityConfig
 import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorPresenter
-import io.element.android.features.messages.impl.attachments.video.MediaOptimizationSelectorState
-import io.element.android.features.messages.impl.attachments.video.VideoCompressionPresetSelector
 import io.element.android.libraries.androidutils.file.TemporaryUriDeleter
 import io.element.android.libraries.androidutils.file.safeDelete
 import io.element.android.libraries.androidutils.hash.hash
@@ -47,11 +46,9 @@ import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfig
-import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
 import io.element.android.libraries.mediaupload.api.MediaSenderFactory
 import io.element.android.libraries.mediaupload.api.MediaUploadInfo
 import io.element.android.libraries.mediaupload.api.allFiles
-import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.textcomposer.model.rememberMarkdownTextEditorState
 import kotlinx.collections.immutable.ImmutableList
@@ -59,6 +56,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -75,10 +73,8 @@ class AttachmentsPreviewPresenter(
     private val temporaryUriDeleter: TemporaryUriDeleter,
     private val attachmentImageEditor: AttachmentImageEditor,
     private val mediaOptimizationSelectorPresenterFactory: MediaOptimizationSelectorPresenter.Factory,
-    private val videoCompressionPresetSelector: VideoCompressionPresetSelector,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     private val dispatchers: CoroutineDispatchers,
-    private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
     // Larpgram: needed to mirror a channel image post into its discussion group for comments.
     private val room: JoinedRoom,
     private val matrixClient: MatrixClient,
@@ -115,7 +111,7 @@ class AttachmentsPreviewPresenter(
         var displayImageEditError by remember { mutableStateOf(false) }
         var editedTempFiles by remember { mutableStateOf<Map<Int, File>>(emptyMap()) }
 
-        val markdownTextEditorState = rememberMarkdownTextEditorState(initialText = null, initialFocus = false)
+        val markdownTextEditorState = rememberMarkdownTextEditorState(initialText = attachSheetMemory.previewCaption, initialFocus = false)
         val textEditorState by rememberUpdatedState(
             TextEditorState.Markdown(markdownTextEditorState, isRoomEncrypted = null)
         )
@@ -123,6 +119,7 @@ class AttachmentsPreviewPresenter(
         val ongoingSendAttachmentJob = remember { mutableStateOf<Job?>(null) }
 
         var currentIndex by remember { mutableIntStateOf(0) }
+        var highQuality by remember { mutableStateOf(attachSheetMemory.previewHighQuality) }
 
         var attachmentsAndEdits by remember {
             mutableStateOf(
@@ -163,6 +160,7 @@ class AttachmentsPreviewPresenter(
 
         LaunchedEffect(
             mediaOptimizationSelectorStates,
+            highQuality,
             imageEditorState,
             isApplyingImageEdits,
             editedAttachments,
@@ -177,11 +175,8 @@ class AttachmentsPreviewPresenter(
             // If the media optimization selector is not displayed, we can pre-process the media
             // to prepare it for sending. This is done to avoid blocking the UI thread when the
             // user clicks on the send button.
-            val configs = mediaOptimizationSelectorStates.mapIndexed { index, mediaOptimizationSelectorState ->
-                getAutoPreprocessMediaOptimizationConfig(
-                    mediaAttachment = editedAttachments[index] as Attachment.Media,
-                    mediaOptimizationSelectorState = mediaOptimizationSelectorState,
-                )
+            val configs = editedAttachments.map {
+                mediaQualityConfig(highQuality, sendAsFile = (it as? Attachment.Media)?.sendAsFile == true)
             }
             preprocessMediaJob?.cancel()
             preprocessMediaJob = coroutineScope.launch(dispatchers.io) {
@@ -236,18 +231,19 @@ class AttachmentsPreviewPresenter(
 
         fun handleEvent(event: AttachmentsPreviewEvent) {
             when (event) {
+                is AttachmentsPreviewEvent.SelectHighQuality -> {
+                    coroutineScope.launch {
+                        preprocessMediaJob?.cancelAndJoin()
+                        preprocessMediaJob = null
+                        resetPreparedMedia(sendActionState)
+                        highQuality = event.highQuality
+                    }
+                }
                 is AttachmentsPreviewEvent.SendAttachment -> {
                     ongoingSendAttachmentJob.value = coroutineScope.launch {
                         if (preprocessMediaJob?.isActive != true && sendActionState.value !is SendActionState.Sending.ReadyToUpload) {
-                            val configs = mediaOptimizationSelectorStates.mapIndexed { index, it ->
-                                MediaOptimizationConfig(
-                                    compressImages = it.isImageOptimizationEnabled
-                                        ?: mediaOptimizationConfigProvider.get().compressImages,
-                                    videoCompressionPreset = it.selectedVideoPreset
-                                        ?: mediaOptimizationConfigProvider.get().videoCompressionPreset,
-                                    // Правка форка: из «Файла» — документом (m.file).
-                                    sendAsFile = (editedAttachments.getOrNull(index) as? Attachment.Media)?.sendAsFile == true,
-                                )
+                            val configs = editedAttachments.map {
+                                mediaQualityConfig(highQuality, sendAsFile = (it as? Attachment.Media)?.sendAsFile == true)
                             }
                             preprocessMediaJob = coroutineScope.launch(dispatchers.io) {
                                 preProcessAttachments(
@@ -311,7 +307,7 @@ class AttachmentsPreviewPresenter(
                     ongoingSendAttachmentJob.value?.cancel()
 
                     // Dismiss the screen
-                    attachSheetMemory.onPreviewCancelled()
+                    attachSheetMemory.onPreviewCancelled(markdownTextEditorState.text.value().toString(), highQuality)
                     dismiss(
                         attachments = editedAttachments,
                         sendActionState = sendActionState,
@@ -445,35 +441,9 @@ class AttachmentsPreviewPresenter(
             mediaOptimizationSelectorState = mediaOptimizationSelectorStates[currentIndex],
             displayFileTooLargeError = displayFileTooLargeError,
             currentIndex = currentIndex,
+            highQuality = highQuality,
             eventSink = ::handleEvent,
         )
-    }
-
-    private suspend fun getAutoPreprocessMediaOptimizationConfig(
-        mediaAttachment: Attachment.Media,
-        mediaOptimizationSelectorState: MediaOptimizationSelectorState,
-    ): MediaOptimizationConfig {
-        return if (mediaAttachment.sendAsFile) {
-            // If we're sending the media as a file, we can skip image compression and we should select the highest video compression preset that still fits
-            // the upload limit (if the estimations are available)
-            val videoCompressionPreset = videoCompressionPresetSelector.selectBestVideoPreset(
-                expectedVideoPreset = VideoCompressionPreset.HIGH,
-                videoSizeEstimations = mediaOptimizationSelectorState.videoSizeEstimations,
-            ).dataOrNull() ?: VideoCompressionPreset.HIGH
-
-            MediaOptimizationConfig(
-                compressImages = false,
-                videoCompressionPreset = videoCompressionPreset,
-                sendAsFile = true,
-            )
-        } else {
-            MediaOptimizationConfig(
-                compressImages = mediaOptimizationSelectorState.isImageOptimizationEnabled
-                    ?: mediaOptimizationConfigProvider.get().compressImages,
-                videoCompressionPreset = mediaOptimizationSelectorState.selectedVideoPreset
-                    ?: mediaOptimizationConfigProvider.get().videoCompressionPreset,
-            )
-        }
     }
 
     private suspend fun preProcessAttachments(

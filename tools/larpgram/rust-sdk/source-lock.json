@@ -1,0 +1,20 @@
+{
+  "sdk_revision": "8de215a0aa0026afa5754ae5f05a6d168d1a1d60",
+  "components_revision": "917946f48c904750a6ab4b2a9d66f94513db0c99",
+  "published_sdk": "26.10.23",
+  "rust_version": "1.99.0",
+  "cargo_ndk_version": "4.1.2",
+  "ndk_version": "28.2.13676358",
+  "patch_sha256": "64c362510482b42790fd6b4fb7760ba81d0c3f6720e05b1418694fc8f6ebf62b",
+  "patched_files": {
+    "Cargo.lock": "53d494c777b7c346c5f8c7d56faf1a5bd3a2d4a4de381743ed200de1e50338a8",
+    "bindings/matrix-sdk-ffi/src/client.rs": "3807e7c67538b08d5b424816399c89a2bd859c048556874e5e19e24f4c30edb4",
+    "crates/matrix-sdk-base/src/media/store/mod.rs": "7a09d3f2870d61e6014ae94c7f58f7e33879ff77b887249ceeadd8a38784e2c7",
+    "crates/matrix-sdk-base/src/media/store/traits.rs": "370cc86a7d3f60a957cf411138af46de032d9e910d865862a25cf4f764b8bc65",
+    "crates/matrix-sdk-sqlite/Cargo.toml": "7e4f377460cb8c958686854be5852cd522950d1b40f0e2559a5879c1d731c9ca",
+    "crates/matrix-sdk-sqlite/src/media_store.rs": "8dff05e119510b69bb95a168decb7af50a352b2d88b96f2b312de31fa0d433e9",
+    "crates/matrix-sdk/src/media.rs": "80c0c86301879d6d77460fb4e901b1423a2e1e57c7af6fb2150de8d031344b9d",
+    "crates/matrix-sdk/src/send_queue/upload.rs": "4b7ae247eab62c0b69f0d3a2808d63f866bffb9fbdad555ede4d4b5383db5144",
+    "crates/matrix-sdk-sqlite/migrations/media_store/003_larpgram_media_kind.sql": "c098943813131546fdbfd9111c2390e75587c9cd3b87aa3bd110c88c64ad519b"
+  }
+}

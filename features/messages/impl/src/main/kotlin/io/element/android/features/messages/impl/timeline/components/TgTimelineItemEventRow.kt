@@ -120,6 +120,7 @@ import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.forward.ForwardedMessage
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.EmbeddedEventInfo
 import io.element.android.libraries.matrix.api.timeline.item.ThreadSummary
@@ -133,6 +134,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.getDisplayNam
 import io.element.android.libraries.matrix.api.timeline.item.event.mediaSources
 import io.element.android.libraries.matrix.api.timeline.item.event.toMatrixUser
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.ui.forward.ForwardedMessageHeader
 import io.element.android.libraries.matrix.ui.media.contentvalidation.collectOverallState
 import io.element.android.libraries.matrix.ui.media.contentvalidation.rememberEventContentValidationState
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
@@ -229,6 +231,11 @@ fun TgTimelineItemEventRow(
         onUserDataClick(sender)
     }
 
+    fun onForwardedAuthorClick(source: ForwardedMessage) {
+        val id = if (source.isChannel) source.roomId else source.userId
+        if (id != null) onLinkClick(Link("https://matrix.to/#/${android.net.Uri.encode(id)}", source.name.orEmpty()))
+    }
+
     fun inReplyToClick() {
         val inReplyToEventId = event.inReplyTo?.eventId() ?: return
         inReplyToClick(inReplyToEventId)
@@ -288,6 +295,7 @@ fun TgTimelineItemEventRow(
                         onLongClick = onLongClick,
                         inReplyToClick = ::inReplyToClick,
                         onUserDataClick = ::onUserDataClick,
+                        onForwardedAuthorClick = ::onForwardedAuthorClick,
                         onReactionClick = { emoji -> onReactionClick(emoji, event) },
                         onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
                         onMoreReactionsClick = { onMoreReactionsClick(event) },
@@ -322,6 +330,7 @@ fun TgTimelineItemEventRow(
                 onLongClick = onLongClick,
                 inReplyToClick = ::inReplyToClick,
                 onUserDataClick = ::onUserDataClick,
+                        onForwardedAuthorClick = ::onForwardedAuthorClick,
                 onReactionClick = { emoji -> onReactionClick(emoji, event) },
                 onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
@@ -485,6 +494,7 @@ private fun TimelineItemEventRowContent(
     onLongClick: () -> Unit,
     inReplyToClick: () -> Unit,
     onUserDataClick: () -> Unit,
+    onForwardedAuthorClick: (ForwardedMessage) -> Unit,
     onReactionClick: (emoji: String) -> Unit,
     onReactionLongClick: (emoji: String) -> Unit,
     onMoreReactionsClick: (event: TimelineItem.Event) -> Unit,
@@ -647,6 +657,7 @@ private fun TimelineItemEventRowContent(
                     !timelineRoomInfo.isChannel &&
                     !event.content.isBubbleless,
                 onSenderNameClick = onUserDataClick,
+                onForwardedAuthorClick = onForwardedAuthorClick,
                 isChannel = timelineRoomInfo.isChannel,
                 // Чип-футер только для постов с пузырём; на безпузырном контенте (стикеры/кружочки)
                 // карточки нет — влить некуда, поэтому не показываем.
@@ -761,6 +772,7 @@ private fun MessageEventBubbleContent(
     // Правка форка: имя отправителя рисуется внутри пузыря, первой строкой.
     showSenderName: Boolean,
     onSenderNameClick: () -> Unit,
+    onForwardedAuthorClick: (ForwardedMessage) -> Unit,
     @SuppressLint("ModifierParameter")
     // need to rename this modifier to prevent linter false positives
     @Suppress("ModifierNaming")
@@ -1034,6 +1046,13 @@ private fun MessageEventBubbleContent(
                     senderAvatar = event.senderAvatar,
                     onClick = onSenderNameClick,
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp),
+                )
+            }
+            event.forwardedMessage?.let { source ->
+                ForwardedMessageHeader(
+                    source = source,
+                    onAuthorClick = onForwardedAuthorClick,
+                    color = LocalOutgoingBubbleContentColor.current ?: ElementTheme.colors.textActionAccent,
                 )
             }
         }

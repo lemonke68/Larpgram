@@ -146,6 +146,7 @@ internal sealed interface TgAttachAction {
         val restoreSelection: List<GalleryMedia> = emptyList(),
         val caption: String = "",
         val isExpanded: Boolean = false,
+        val highQuality: Boolean = false,
     ) : TgAttachAction
     data object CameraPhoto : TgAttachAction
     data object CameraVideo : TgAttachAction
@@ -175,6 +176,8 @@ internal fun TgAttachSheet(
     modifier: Modifier = Modifier,
     restore: TgAttachRestore? = null,
     onRestored: () -> Unit = {},
+    initialCaption: String = "",
+    onCaptionChanged: (String) -> Unit = {},
 ) {
     var isShown by remember { mutableStateOf(false) }
     LaunchedEffect(isVisible) {
@@ -190,6 +193,8 @@ internal fun TgAttachSheet(
         modifier = modifier,
         restore = restore,
         onRestored = onRestored,
+        initialCaption = initialCaption,
+        onCaptionChanged = onCaptionChanged,
     )
 }
 
@@ -203,6 +208,8 @@ private fun TgAttachSheetContent(
     modifier: Modifier = Modifier,
     restore: TgAttachRestore? = null,
     onRestored: () -> Unit = {},
+    initialCaption: String = "",
+    onCaptionChanged: (String) -> Unit = {},
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -254,7 +261,8 @@ private fun TgAttachSheetContent(
 
     // После «Назад» с предпросмотра меню открывается с тем же выбором и подписью, как в TG.
     val selection = remember { mutableStateListOf<GalleryMedia>().apply { restore?.let { addAll(it.selection) } } }
-    var caption by remember { mutableStateOf(restore?.caption.orEmpty()) }
+    var caption by remember { mutableStateOf(restore?.caption ?: initialCaption) }
+    var highQuality by remember { mutableStateOf(restore?.highQuality == true) }
     val restoreExpanded = remember { restore?.isExpanded == true }
     LaunchedEffect(Unit) {
         if (restore != null) onRestored()
@@ -365,7 +373,7 @@ private fun TgAttachSheetContent(
         val expandFraction = (1f - sheetTop / max(statusBarTop, 1f)).coerceIn(0f, 1f)
         val cornerRadius = lerp(SHEET_RADIUS.value, 0f, expandFraction).dp
         val headerTopPaddingPx = (statusBarTop - sheetTop).coerceAtLeast(0f)
-        val barHeight = TAB_BAR_HEIGHT + 16.dp
+        val barHeight = TAB_BAR_HEIGHT + 16.dp + if (selection.isEmpty()) 0.dp else 48.dp
         val navBarBottom = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
 
         Column(
@@ -387,7 +395,7 @@ private fun TgAttachSheetContent(
                 onClose = { close(notify = true) },
                 onPreviewSelection = {
                     val picked = selection.toList()
-                    onAction(TgAttachAction.Preview(picked, restoreSelection = picked, caption = caption, isExpanded = isExpanded))
+                    onAction(TgAttachAction.Preview(picked, restoreSelection = picked, caption = caption, isExpanded = isExpanded, highQuality = highQuality))
                 },
                 onSendUncompressed = {
                     onAction(TgAttachAction.Send(selection.toList(), caption.trim().ifEmpty { null }, compress = false))
@@ -402,7 +410,9 @@ private fun TgAttachSheetContent(
                 onRequestAccess = ::requestAccess,
                 onAction = { action ->
                     // Одиночный тап открывает предпросмотр; после «Назад» — то же меню без выбора.
-                    onAction(if (action is TgAttachAction.Preview) action.copy(caption = caption, isExpanded = isExpanded) else action)
+                    onAction(
+                        if (action is TgAttachAction.Preview) action.copy(caption = caption, isExpanded = isExpanded, highQuality = highQuality) else action
+                    )
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -431,14 +441,20 @@ private fun TgAttachSheetContent(
                             onAction = onAction,
                         )
                     } else {
-                        CaptionBar(
+                        Column {
+                            TgMediaQualitySelector(highQuality = highQuality, onSelect = { highQuality = it })
+                            CaptionBar(
                             caption = caption,
-                            onCaptionChange = { caption = it },
+                            onCaptionChange = {
+                                caption = it
+                                onCaptionChanged(it)
+                            },
                             count = selection.size,
                             onSend = {
-                                onAction(TgAttachAction.Send(selection.toList(), caption.trim().ifEmpty { null }, compress = true))
+                                onAction(TgAttachAction.Send(selection.toList(), caption.trim().ifEmpty { null }, compress = !highQuality))
                             },
                         )
+                        }
                     }
                 }
             }

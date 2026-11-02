@@ -64,6 +64,7 @@ data class RoomListRoomSummary(
     // Правка форка: «удалить у обоих» — только ЛС с человеком с нашего сервера (серверный purge
     // чужой сервер не достаёт). Проставляет пресентер.
     val canDeleteForBoth: Boolean = false,
+    val isArchived: Boolean = false,
 ) {
     val isMuted = userDefinedNotificationMode == RoomNotificationMode.MUTE
 

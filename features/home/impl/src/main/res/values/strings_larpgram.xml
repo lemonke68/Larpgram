@@ -41,4 +41,10 @@
     <string name="larpgram_banner_history_message">So your chats open on a new device</string>
     <!-- Account switcher on the Profile tab. -->
     <string name="larpgram_add_account">Add account</string>
+    <string name="larpgram_archive_title">Archived chats</string>
+    <string name="larpgram_archive_back">Back to chats</string>
+    <string name="larpgram_archive_chat">Archive chat</string>
+    <string name="larpgram_unarchive_chat">Unarchive chat</string>
+    <string name="larpgram_archive_error">Could not save the archive. Try again.</string>
+    <string name="larpgram_archive_empty">No archived chats. New messages stay in the archive; notification settings are unchanged.</string>
 </resources>

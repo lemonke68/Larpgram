@@ -322,7 +322,6 @@ class MessageComposerPresenterSlashCommandTest {
             room = room,
             matrixClient = FakeMatrixClient(),
             mediaSenderFactory = { error("not used") },
-            mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
             snackbarDispatcher = snackbarDispatcher,
             draftPreviews = NoOpDraftPreviews(),
             attachSheetMemory = TgAttachSheetMemory(),

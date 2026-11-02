@@ -75,6 +75,8 @@ import io.element.android.libraries.matrix.api.room.alias.matches
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.TimelineProvider
 import io.element.android.libraries.matrix.api.timeline.item.TimelineItemDebugInfo
+import io.element.android.libraries.matrix.ui.forward.ForwardingPrivacy
+import io.element.android.libraries.matrix.ui.forward.LocalForwardingPrivacy
 import io.element.android.libraries.matrix.ui.media.contentvalidation.EventContentValidationCache
 import io.element.android.libraries.matrix.ui.media.contentvalidation.LocalEventContentValidationState
 import io.element.android.libraries.matrix.ui.model.getBestName
@@ -101,6 +103,7 @@ class MessagesNode(
     @ApplicationContext private val context: Context,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     private val room: JoinedRoom,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
     private val analyticsService: AnalyticsService,
     messageComposerPresenterFactory: MessageComposerPresenter.Factory,
     timelinePresenterFactory: TimelinePresenter.Factory,
@@ -123,6 +126,7 @@ class MessagesNode(
     private val dispatchers: CoroutineDispatchers,
     // Правка форка (Larpgram): полоса «сейчас играет» под шапкой чата.
     private val musicPlayerUi: MusicPlayerUi,
+    private val forwardingPrivacy: ForwardingPrivacy,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator, TimelineSelectionOwner {
     data class Inputs(
         val focusedEventId: EventId?,
@@ -302,9 +306,12 @@ class MessagesNode(
     @Composable
     override fun View(modifier: Modifier) {
         val activity = requireNotNull(LocalActivity.current)
+        val copyAllowed = io.element.android.libraries.matrix.ui.protection.rememberRoomCopyAllowed(copyProtection, room)
+        io.element.android.libraries.matrix.ui.protection.ProtectedRoomWindow(!copyAllowed)
         val isDark = ElementTheme.isLightTheme.not()
         val canUseOverlay = !isTalkbackActive() && !hasExternalKeyboard()
         CompositionLocalProvider(
+            LocalForwardingPrivacy provides forwardingPrivacy,
             LocalTimelineItemPresenterFactories provides timelineItemPresenterFactories,
             LocalEventContentValidationState provides eventContentValidationCache,
         ) {
@@ -384,10 +391,11 @@ class MessagesNode(
                 emojiPickerRenderer = emojiPickerRenderer,
                 dmPresence = userPresenceFetcher.rememberPresence(state.tg.dmUserId),
                 musicMiniPlayer = { musicModifier -> musicPlayerUi.NowPlayingBar(musicModifier) },
-                emojiKeyboard = { keyboardModifier, onEmoji ->
+                emojiKeyboard = { keyboardModifier, onEmoji, onSearchFocusChange ->
                     val emojiKeyboardState = emojiKeyboardPresenter.present()
                     emojiKeyboardRenderer.Render(
                         state = emojiKeyboardState,
+                        onSearchFocusChange = onSearchFocusChange,
                         onSelectEmoji = { emoji ->
                             onEmoji(emoji.unicode)
                             sessionCoroutineScope.launch { addRecentEmoji(emoji.unicode) }

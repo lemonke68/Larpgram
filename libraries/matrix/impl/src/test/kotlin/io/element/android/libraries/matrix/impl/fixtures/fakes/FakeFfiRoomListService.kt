@@ -9,6 +9,7 @@
 package io.element.android.libraries.matrix.impl.fixtures.fakes
 
 import org.matrix.rustcomponents.sdk.NoHandle
+import org.matrix.rustcomponents.sdk.Room
 import org.matrix.rustcomponents.sdk.RoomList
 import org.matrix.rustcomponents.sdk.RoomListService
 import org.matrix.rustcomponents.sdk.RoomListServiceStateListener
@@ -16,7 +17,11 @@ import org.matrix.rustcomponents.sdk.RoomListServiceSyncIndicator
 import org.matrix.rustcomponents.sdk.RoomListServiceSyncIndicatorListener
 import org.matrix.rustcomponents.sdk.TaskHandle
 
-class FakeFfiRoomListService : RoomListService(NoHandle) {
+class FakeFfiRoomListService(
+    private val roomResult: (String) -> Room = { throw IllegalStateException("Room not present in fixture") },
+) : RoomListService(NoHandle) {
+    override fun room(roomId: String): Room = roomResult(roomId)
+
     override suspend fun allRooms(): RoomList {
         return FakeFfiRoomList()
     }

@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026 Larpgram.
  * Copyright (c) 2025 Element Creations Ltd.
  * Copyright 2023-2025 New Vector Ltd.
  *
@@ -12,64 +13,110 @@ import io.element.android.libraries.core.coroutine.parallelMap
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.forward.ForwardOptions
+import io.element.android.libraries.matrix.api.forward.ForwardedMessage
 import io.element.android.libraries.matrix.api.room.ForwardEventException
+import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.impl.roomlist.roomOrNull
 import kotlinx.coroutines.withTimeout
+import org.matrix.rustcomponents.sdk.MessageContent
+import org.matrix.rustcomponents.sdk.MessageType
 import org.matrix.rustcomponents.sdk.MsgLikeKind
+import org.matrix.rustcomponents.sdk.ProfileDetails
 import org.matrix.rustcomponents.sdk.RoomListService
 import org.matrix.rustcomponents.sdk.Timeline
 import org.matrix.rustcomponents.sdk.TimelineItemContent
 import org.matrix.rustcomponents.sdk.contentWithoutRelationFromMessage
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * Helper to forward event contents from a room to a set of other rooms.
- * @param roomListService the [RoomListService] to fetch room instances to forward the event to
- */
+/** Copies normal Matrix messages through the SDK send queue, with optional Larpgram attribution. */
 class RoomContentForwarder(
     private val roomListService: RoomListService,
+    private val sourceInfo: suspend (RoomId) -> RoomInfo = { error("No source information provider") },
+    private val profileLinkAllowed: suspend (UserId) -> Boolean = { false },
+    private val copyProtected: suspend (RoomId) -> Boolean = { error("No content protection provider") },
 ) {
-    /**
-     * Forwards the events with the given [eventIds] from the [fromTimeline] to the given [toRoomIds].
-     * The events are sent to each room in the order they are provided in [eventIds], it is up to the caller to sort them.
-     * @param fromTimeline the room to forward the events from
-     * @param eventIds the ids of the events to forward, in the order they must be sent
-     * @param toRoomIds the ids of the rooms to forward the events to
-     * @param timeoutMs the maximum time in milliseconds to wait for an event to be sent to a room
-     */
     suspend fun forward(
         fromTimeline: Timeline,
+        fromRoomId: RoomId,
         eventIds: List<EventId>,
         toRoomIds: List<RoomId>,
-        timeoutMs: Long = 5000L
+        options: ForwardOptions = ForwardOptions(),
+        timeoutMs: Long = 5000L,
     ) {
+        if (eventIds.isEmpty() || toRoomIds.isEmpty()) return
+        // A hidden UI action is not sufficient: every export checks the fresh source policy.
+        check(!copyProtected(fromRoomId)) { "Copying from this channel is restricted" }
+        val source = sourceInfo(fromRoomId)
+        val channel = (source.roomPowerLevels?.values?.eventsDefault ?: 0L) > 0L
+        val profileLinks = mutableMapOf<String, Boolean>()
         val contents = eventIds.map { eventId ->
-            val timelineEvent = fromTimeline.getEventTimelineItemByEventId(eventId.value)
-            val content = timelineEvent.content as? TimelineItemContent.MsgLike ?: throw ForwardEventException(toRoomIds)
+            val event = fromTimeline.getEventTimelineItemByEventId(eventId.value)
+            val content = event.content as? TimelineItemContent.MsgLike ?: throw ForwardEventException(toRoomIds)
             val message = content.content.kind as? MsgLikeKind.Message ?: throw ForwardEventException(toRoomIds)
-            contentWithoutRelationFromMessage(message.content)
+            val attribution = if (options.hideAuthor || options.mediaOnly) {
+                null
+            } else {
+                val previous = ForwardedMessage.fromEventJson(event.lazyProvider.latestJson())
+                val profile = event.senderProfile as? ProfileDetails.Ready
+                val original = previous ?: if (channel) {
+                    ForwardedMessage(
+                        name = source.name,
+                        roomId = fromRoomId.value,
+                        eventId = eventId.value,
+                        avatarUrl = source.avatarUrl,
+                        isChannel = true,
+                    )
+                } else {
+                    ForwardedMessage(
+                        name = profile?.displayName,
+                        userId = event.sender,
+                        roomId = fromRoomId.value,
+                        eventId = eventId.value,
+                        avatarUrl = profile?.avatarUrl,
+                    )
+                }
+                val userId = original.userId
+                if (userId != null && !profileLinks.getOrPut(userId) { profileLinkAllowed(UserId(userId)) }) {
+                    original.withoutProfileLink()
+                } else {
+                    original
+                }
+            }
+            val copiedMessage = if (options.mediaOnly || options.caption != null) {
+                message.content.withMediaCaption(options.caption?.takeIf(String::isNotBlank))
+            } else {
+                message.content.copy(mentions = null)
+            }
+            contentWithoutRelationFromMessage(copiedMessage) to attribution?.let(ForwardedMessage::extraContent)
         }
-        val targetRooms = toRoomIds.toSet().mapNotNull { roomId -> roomListService.roomOrNull(roomId) }
-        val failedForwardingTo = mutableSetOf<RoomId>()
-        targetRooms.parallelMap { room ->
-            room.use { targetRoom ->
+        // Return failures from each child instead of concurrently mutating a shared set. Missing
+        // target rooms are failures too; silently dropping them would report a successful export.
+        val failed = toRoomIds.distinct().parallelMap { roomId ->
+            val room = roomListService.roomOrNull(roomId) ?: return@parallelMap roomId
+            room.use { target ->
                 runCatchingExceptions {
-                    targetRoom.timeline().use { timeline ->
-                        // Send the contents sequentially, so that they are received in the same order
-                        contents.forEach { content ->
-                            withTimeout(timeoutMs.milliseconds) {
-                                timeline.send(content)
-                            }
+                    target.timeline().use { timeline ->
+                        contents.forEach { (message, extra) ->
+                            withTimeout(timeoutMs.milliseconds) { timeline.sendWithExtraContent(message, extra) }
                         }
                     }
                 }
-            }.onFailure {
-                failedForwardingTo.add(RoomId(room.id()))
-            }
-        }
-
-        if (failedForwardingTo.isNotEmpty()) {
-            throw ForwardEventException(failedForwardingTo.toList())
-        }
+            }.exceptionOrNull()?.let { roomId }
+        }.filterNotNull()
+        if (failed.isNotEmpty()) throw ForwardEventException(failed)
     }
+}
+
+/** Preserve encrypted media sources and technical metadata, replacing only the media caption. */
+internal fun MessageContent.withMediaCaption(caption: String?): MessageContent {
+    val type = when (val type = msgType) {
+        is MessageType.Image -> MessageType.Image(type.content.copy(caption = caption, formattedCaption = null))
+        is MessageType.Video -> MessageType.Video(type.content.copy(caption = caption, formattedCaption = null))
+        is MessageType.Audio -> MessageType.Audio(type.content.copy(caption = caption, formattedCaption = null))
+        is MessageType.File -> MessageType.File(type.content.copy(caption = caption, formattedCaption = null))
+        else -> error("This event is not a media file")
+    }
+    return copy(msgType = type, mentions = null)
 }

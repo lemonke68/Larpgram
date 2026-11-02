@@ -89,4 +89,6 @@
     <!-- Message menu (V1 final): who read the user's message. -->
     <string name="larpgram_message_read_by">Прочитали: %1$d</string>
     <string name="larpgram_message_read_by_of">Прочитали %1$d из %2$d</string>
+    <string name="larpgram_chat_cleanup_options">Очистить или удалить чат</string>
+    <string name="larpgram_media_quality">Качество медиа</string>
 </resources>

@@ -279,6 +279,11 @@ private fun PreviewMenu(
             onClick = { onAction { eventSink(RoomListEvent.SetRoomIsPinned(roomId, !contextMenu.isPinned)) } },
         )
         TgPopupMenuItem(
+            text = stringResource(if (contextMenu.isArchived) R.string.larpgram_unarchive_chat else R.string.larpgram_archive_chat),
+            icon = CompoundIcons.Folder(),
+            onClick = { onAction { eventSink(RoomListEvent.SetRoomIsArchived(roomId, !contextMenu.isArchived)) } },
+        )
+        TgPopupMenuItem(
             text = stringResource(if (contextMenu.isMuted) R.string.screen_roomlist_unmute else R.string.screen_roomlist_mute),
             icon = if (contextMenu.isMuted) CompoundIcons.Notifications() else CompoundIcons.NotificationsOffSolid(),
             onClick = { onAction { eventSink(RoomListEvent.SetRoomIsMuted(roomId, !contextMenu.isMuted)) } },

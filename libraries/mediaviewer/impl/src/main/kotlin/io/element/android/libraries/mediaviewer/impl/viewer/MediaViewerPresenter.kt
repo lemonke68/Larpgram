@@ -68,6 +68,7 @@ class MediaViewerPresenter(
     @Assisted private val navigator: MediaViewerNavigator,
     @Assisted private val dataSource: MediaViewerDataSource,
     private val room: JoinedRoom,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
     private val localMediaActions: LocalMediaActions,
     private val htmlConverterProvider: HtmlConverterProvider,
     private val permalinkParser: PermalinkParser,
@@ -133,6 +134,7 @@ class MediaViewerPresenter(
             perms.mediaPermissions()
         }
         var mediaBottomSheetState by remember { mutableStateOf<MediaBottomSheetState>(MediaBottomSheetState.Hidden) }
+        var shareData by remember { mutableStateOf<MediaViewerPageData.MediaViewerData?>(null) }
 
         DisposableEffect(Unit) {
             dataSource.setup(coroutineScope)
@@ -165,8 +167,15 @@ class MediaViewerPresenter(
                 }
                 is MediaViewerEvent.Share -> {
                     mediaBottomSheetState = MediaBottomSheetState.Hidden
-                    coroutineScope.share(event.data.downloadedMedia.value)
+                    coroutineScope.launch {
+                        if (copyProtection.isAllowed(room.roomId)) {
+                            shareData = event.data
+                        } else {
+                            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+                        }
+                    }
                 }
+                MediaViewerEvent.DismissShare -> shareData = null
                 is MediaViewerEvent.OpenWith -> {
                     mediaBottomSheetState = MediaBottomSheetState.Hidden
                     coroutineScope.open(event.data.downloadedMedia.value)
@@ -239,6 +248,7 @@ class MediaViewerPresenter(
 
         return MediaViewerState(
             initiallySelectedEventId = eventId,
+            shareData = shareData,
             listData = data.value,
             currentIndex = currentIndex.intValue,
             snackbarMessage = snackbarMessage,
@@ -325,6 +335,10 @@ class MediaViewerPresenter(
     }
 
     private fun CoroutineScope.saveOnDisk(localMedia: AsyncData<LocalMedia>) = launch {
+        if (!copyProtection.isAllowed(room.roomId)) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+            return@launch
+        }
         if (localMedia is AsyncData.Success) {
             localMediaActions.saveOnDisk(localMedia.data)
                 .onSuccess {
@@ -350,6 +364,10 @@ class MediaViewerPresenter(
     }
 
     private fun CoroutineScope.share(localMedia: AsyncData<LocalMedia>) = launch {
+        if (!copyProtection.isAllowed(room.roomId)) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+            return@launch
+        }
         if (localMedia is AsyncData.Success) {
             localMediaActions.share(localMedia.data)
                 .onFailure {
@@ -360,6 +378,10 @@ class MediaViewerPresenter(
     }
 
     private fun CoroutineScope.open(localMedia: AsyncData<LocalMedia>) = launch {
+        if (!copyProtection.isAllowed(room.roomId)) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+            return@launch
+        }
         if (localMedia is AsyncData.Success) {
             localMediaActions.open(localMedia.data)
                 .onFailure {

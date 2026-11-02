@@ -360,8 +360,14 @@ class FakeTimeline(
 
     var forwardEventsLambda: (eventIds: List<EventId>, roomIds: List<RoomId>) -> Result<Unit> = { _, _ -> lambdaError() }
 
-    override suspend fun forwardEvents(eventIds: List<EventId>, roomIds: List<RoomId>): Result<Unit> = simulateLongTask {
-        forwardEventsLambda(eventIds, roomIds)
+    var forwardEventsWithOptionsLambda: ((List<EventId>, List<RoomId>, io.element.android.libraries.matrix.api.forward.ForwardOptions) -> Result<Unit>)? = null
+
+    override suspend fun forwardEvents(
+        eventIds: List<EventId>,
+        roomIds: List<RoomId>,
+        options: io.element.android.libraries.matrix.api.forward.ForwardOptions,
+    ): Result<Unit> = simulateLongTask {
+        forwardEventsWithOptionsLambda?.invoke(eventIds, roomIds, options) ?: forwardEventsLambda(eventIds, roomIds)
     }
 
     var createPollLambda: (

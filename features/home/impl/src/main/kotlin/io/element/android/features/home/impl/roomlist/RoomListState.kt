@@ -40,6 +40,7 @@ data class RoomListState(
     val hideInvitesAvatars: Boolean,
     val canReportRoom: Boolean,
     val eventSink: (RoomListEvent) -> Unit,
+    val archivedRoomIds: Set<RoomId> = emptySet(),
 ) {
     val displayFilters = contentState is RoomListContentState.Rooms
 
@@ -58,6 +59,7 @@ data class RoomListState(
             val hasNewContent: Boolean,
             // Правка форка: превью чата по долгому нажатию — шапка окна и пункт «звук».
             val isMuted: Boolean = false,
+            val isArchived: Boolean = false,
             val avatarData: AvatarData? = null,
             val heroes: ImmutableList<AvatarData> = persistentListOf(),
         ) : ContextMenu

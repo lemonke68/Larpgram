@@ -23,6 +23,7 @@ import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.linknewdevice.LinkDesktopHandler
 import io.element.android.libraries.matrix.api.linknewdevice.LinkMobileHandler
 import io.element.android.libraries.matrix.api.media.MatrixMediaLoader
+import io.element.android.libraries.matrix.api.media.MediaCacheUsage
 import io.element.android.libraries.matrix.api.media.MediaPreviewService
 import io.element.android.libraries.matrix.api.notification.NotificationService
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
@@ -235,6 +236,14 @@ interface MatrixClient : ClientUrlContentFetcher {
      */
     suspend fun getProfile(userId: UserId): Result<MatrixUser>
 
+    /** Public forwarding preference. An absent field permits a profile link; errors are not consent. */
+    suspend fun getForwardingProfileLink(userId: UserId): Result<Boolean>
+
+    suspend fun setForwardingProfileLink(allowed: Boolean): Result<Unit>
+
+    /** Only applies to private broadcast channels. Read fresh before exporting their content. */
+    suspend fun getRoomCopyProtection(roomId: RoomId): Result<Boolean>
+
     /**
      * Searches the homeserver's user directory.
      *
@@ -319,6 +328,12 @@ interface MatrixClient : ClientUrlContentFetcher {
 
     /** Returns the size of each individual store the SDK maintains for this session, as reported by the SDK. */
     suspend fun getDatabaseSizes(): Result<SdkStoreSizes>
+
+    /** Правка форка: только медиа; аккаунт, история и ключи не затрагиваются. */
+    suspend fun getMediaCacheUsage(): Result<MediaCacheUsage>
+
+    /** Удаляет повторно загружаемые медиа; защищённые файлы очереди отправок остаются. */
+    suspend fun clearMediaCache(): Result<Unit>
 
     /**
      * Deletes the cached data of this session and destroys the client.

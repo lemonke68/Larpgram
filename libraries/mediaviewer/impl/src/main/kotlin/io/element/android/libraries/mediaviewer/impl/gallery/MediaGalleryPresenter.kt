@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 class MediaGalleryPresenter(
     @Assisted private val navigator: MediaGalleryNavigator,
     private val room: BaseRoom,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
     private val mediaGalleryDataSource: MediaGalleryDataSource,
     private val localMediaFactory: LocalMediaFactory,
     private val mediaLoader: MatrixMediaLoader,
@@ -137,7 +138,13 @@ class MediaGalleryPresenter(
                 }
                 is MediaGalleryEvent.Forward -> {
                     mediaBottomSheetState = MediaBottomSheetState.Hidden
-                    navigator.onForwardClick(event.eventId)
+                    coroutineScope.launch {
+                        if (copyProtection.isAllowed(room.roomId)) {
+                            navigator.onForwardClick(event.eventId)
+                        } else {
+                            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+                        }
+                    }
                 }
                 is MediaGalleryEvent.ViewInTimeline -> {
                     mediaBottomSheetState = MediaBottomSheetState.Hidden
@@ -200,9 +207,14 @@ class MediaGalleryPresenter(
     }
 
     private suspend fun saveOnDisk(mediaItem: MediaItem.Event) {
+        if (!copyProtection.isAllowed(room.roomId)) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+            return
+        }
         downloadMedia(mediaItem)
             .mapCatchingExceptions { localMedia ->
-                localMediaActions.saveOnDisk(localMedia)
+                copyProtection.requireAllowed(room.roomId)
+                localMediaActions.saveOnDisk(localMedia).getOrThrow()
             }
             .onSuccess {
                 val snackbarMessage = SnackbarMessage(CommonStrings.common_file_saved_on_disk_android)
@@ -215,9 +227,14 @@ class MediaGalleryPresenter(
     }
 
     private suspend fun share(mediaItem: MediaItem.Event) {
+        if (!copyProtection.isAllowed(room.roomId)) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+            return
+        }
         downloadMedia(mediaItem)
             .mapCatchingExceptions { localMedia ->
-                localMediaActions.share(localMedia)
+                copyProtection.requireAllowed(room.roomId)
+                localMediaActions.share(localMedia).getOrThrow()
             }
             .onFailure {
                 val snackbarMessage = SnackbarMessage(mediaActionsError(it))
@@ -226,9 +243,14 @@ class MediaGalleryPresenter(
     }
 
     private suspend fun openWith(mediaItem: MediaItem.Event) {
+        if (!copyProtection.isAllowed(room.roomId)) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+            return
+        }
         downloadMedia(mediaItem)
             .mapCatchingExceptions { localMedia ->
-                localMediaActions.open(localMedia)
+                copyProtection.requireAllowed(room.roomId)
+                localMediaActions.open(localMedia).getOrThrow()
             }
             .onFailure {
                 val snackbarMessage = SnackbarMessage(mediaActionsError(it))

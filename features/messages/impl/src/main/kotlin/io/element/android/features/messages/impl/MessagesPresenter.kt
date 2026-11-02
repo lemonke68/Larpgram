@@ -31,6 +31,7 @@ import io.element.android.features.location.api.live.isCurrentlySharing
 import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.MessagesState.Threads
 import io.element.android.features.messages.impl.actionlist.ActionListState
+import io.element.android.features.messages.impl.actionlist.isContentExport
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.link.LinkState
@@ -127,6 +128,7 @@ class MessagesPresenter(
     // Правка форка: состояние экрана чата Telegram (пикеры, каналы, блок, меню ⋮).
     private val tgChatPresenter: Presenter<TgChatState>,
     private val snackbarDispatcher: SnackbarDispatcher,
+    private val copyProtection: io.element.android.libraries.matrix.ui.protection.RoomCopyProtection,
     private val dispatchers: CoroutineDispatchers,
     private val clipboardHelper: ClipboardHelper,
     private val htmlConverterProvider: HtmlConverterProvider,
@@ -410,6 +412,10 @@ class MessagesPresenter(
         timelineState: TimelineState,
         redactEventAction: MutableState<AsyncAction<Unit>>,
     ) = launch {
+        if (action.isContentExport() && !copyProtection.isAllowed(room.roomId)) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.error_unknown))
+            return@launch
+        }
         when (action) {
             TimelineItemAction.CopyText -> handleCopyContents(targetEvent)
             TimelineItemAction.CopyCaption -> handleCopyCaption(targetEvent)

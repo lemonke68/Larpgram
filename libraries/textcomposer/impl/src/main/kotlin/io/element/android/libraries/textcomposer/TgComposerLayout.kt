@@ -82,7 +82,6 @@ import io.element.android.libraries.ui.strings.CommonStrings
 internal fun TgStandardLayout(
     composerMode: MessageComposerMode,
     voiceMessageState: VoiceMessageState,
-    isTextEmpty: Boolean,
     textInput: @Composable () -> Unit,
     voiceRecording: @Composable () -> Unit,
     endButtonParams: TgEndButtonParams,
@@ -129,7 +128,9 @@ internal fun TgStandardLayout(
             ) {
                 // Слева: эмодзи/стикеры, а во время записи голосового — корзина.
                 // To avoid loosing keyboard focus, the IconButton has to be always enabled.
-                if (voiceMessageState is VoiceMessageState.Idle) {
+                if (composerMode is MessageComposerMode.Attachment) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                } else if (voiceMessageState is VoiceMessageState.Idle) {
                     TgComposerIconButton(
                         // Панель открыта — кнопка возвращает клавиатуру, как в Telegram.
                         imageVector = if (isMediaPanelOpen) CompoundIcons.Keyboard() else CompoundIcons.Reaction(),
@@ -176,10 +177,11 @@ internal fun TgStandardLayout(
                         }
                     }
                 }
-                // Справа в пилюле: скрепка. В TG уезжает, как только в поле появился текст
-                // (`ChatActivityEnterView.checkSendButton`, 100–150 мс). При правке её нет.
+                // Правка форка: вложение доступно и с черновиком — текст переносится в подпись.
+                // При редактировании старого сообщения и записи скрепка скрыта.
                 AnimatedVisibility(
-                    visible = isTextEmpty && voiceMessageState is VoiceMessageState.Idle && !composerMode.isEditing,
+                    visible = voiceMessageState is VoiceMessageState.Idle &&
+                        !composerMode.isEditing && composerMode !is MessageComposerMode.Attachment,
                     enter = fadeIn(tween(ATTACH_ANIMATION_MS)) + scaleIn(tween(ATTACH_ANIMATION_MS)) +
                         expandHorizontally(tween(ATTACH_ANIMATION_MS), expandFrom = Alignment.Start),
                     exit = fadeOut(tween(ATTACH_ANIMATION_MS)) + scaleOut(tween(ATTACH_ANIMATION_MS)) +

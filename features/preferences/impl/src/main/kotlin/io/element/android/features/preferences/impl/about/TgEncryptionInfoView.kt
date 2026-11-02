@@ -59,6 +59,7 @@ fun TgEncryptionInfoView(
                     R.string.larpgram_encryption_info_limits_server_recovery,
                     R.string.larpgram_encryption_info_limits_forgot_password,
                     R.string.larpgram_encryption_info_limits_metadata,
+                    R.string.larpgram_encryption_info_limits_copy_protection,
                 ),
             )
         }

@@ -43,6 +43,9 @@ class EventTimelineItemMapper(
     private val contentMapper: TimelineEventContentMapper = TimelineEventContentMapper(),
 ) {
     fun map(eventTimelineItem: RustEventTimelineItem): EventTimelineItem = eventTimelineItem.run {
+        val forwardedMessage by lazy {
+            io.element.android.libraries.matrix.api.forward.ForwardedMessage.fromEventJson(lazyProvider.latestJson())
+        }
         EventTimelineItem(
             eventId = eventOrTransactionId.eventId(),
             transactionId = eventOrTransactionId.transactionId(),
@@ -65,6 +68,7 @@ class EventTimelineItemMapper(
             sendHandleProvider = { lazyProvider.getSendHandle()?.let(::RustSendHandle) },
             forwarder = forwarder?.let { UserId(it) },
             forwarderProfile = forwarderProfile?.map(),
+            forwardedMessageProvider = { forwardedMessage },
         )
     }
 }

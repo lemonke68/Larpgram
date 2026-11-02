@@ -290,12 +290,14 @@ private fun PlayerPanel(state: MusicSheetState) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = { state.eventSink(MusicSheetEvent.Share) }) {
+            if (state.canShare) {
+                IconButton(onClick = { state.eventSink(MusicSheetEvent.Share) }) {
                 Icon(
                     imageVector = CompoundIcons.ShareAndroid(),
                     contentDescription = stringResource(R.string.larpgram_music_share),
                     tint = ElementTheme.colors.iconPrimary,
                 )
+            }
             }
         }
         SeekRow(state = state)
@@ -471,7 +473,7 @@ private fun ControlButton(
 
 @Composable
 private fun ProfileButtonView(state: MusicSheetState) {
-    if (state.profileButton == ProfileButton.Hidden) return
+    if (state.profileButton == ProfileButton.Hidden || (state.profileButton == ProfileButton.Add && !state.canShare)) return
     val isAdd = state.profileButton == ProfileButton.Add
     val isLoading = state.profileAction is AsyncAction.Loading
     val container = if (isAdd) ElementTheme.colors.bgAccentRest else ElementTheme.colors.bgSubtleSecondary

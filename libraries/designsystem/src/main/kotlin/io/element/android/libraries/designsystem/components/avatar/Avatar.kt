@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,6 +26,9 @@ import io.element.android.libraries.designsystem.preview.ElementThemedPreview
 import io.element.android.libraries.designsystem.preview.PreviewGroup
 import io.element.android.libraries.designsystem.utils.CommonDrawables
 import kotlinx.collections.immutable.persistentListOf
+
+/** Hardware-backed image buffers cannot be drawn by an explicitly software-rendered host. */
+val LocalAvatarHardwareBitmaps = staticCompositionLocalOf { true }
 
 @Composable
 fun Avatar(

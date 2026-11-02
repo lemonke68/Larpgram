@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="larpgram_forwarded_from">Переслано от</string>
+    <string name="larpgram_forwarded_author_unknown">Автор</string>
+    <string name="larpgram_forwarded_channel_unknown">Канал</string>
+    <string name="larpgram_forward_hide_author">Скрыть автора</string>
+    <string name="larpgram_share_title">Поделиться</string>
+    <string name="larpgram_share_choose">Выберите чаты</string>
+    <string name="larpgram_share_saved">Избранное</string>
+    <string name="larpgram_share_selected">Выбрано: %1$d</string>
+    <string name="larpgram_share_search">Поиск чатов</string>
+    <string name="larpgram_share_external">Поделиться в другом приложении</string>
+    <string name="larpgram_share_caption">Добавить подпись…</string>
+    <string name="larpgram_share_send">Отправить %1$d</string>
+    <string name="larpgram_share_cancel">Отмена</string>
+    <string name="larpgram_share_failed">Не удалось отправить во все выбранные чаты. Повторите для оставшихся.</string>
+    <string name="larpgram_share_show_in_chat">Показать в чате</string>
+    <string name="larpgram_share_save">Сохранить медиа</string>
+    <string name="larpgram_copy_protection_title">Запретить копирование</string>
+    <string name="larpgram_copy_protection_note">Ларпграм запрещает пересылку, копирование, сохранение и скриншоты в этом приватном канале. Другие Matrix-клиенты могут обойти ограничения.</string>
+    <string name="larpgram_copy_protection_retry">Не удалось обновить настройку. Повторить</string>
+</resources>

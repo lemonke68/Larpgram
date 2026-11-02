@@ -137,6 +137,7 @@ class LoggedInFlowNode(
     private val ftueService: FtueService,
     private val roomDirectoryEntryPoint: RoomDirectoryEntryPoint,
     private val matrixClient: MatrixClient,
+    private val musicNavigation: io.element.android.libraries.musicplayer.api.MusicNavigation,
     private val sendingQueue: SendQueues,
     private val nativeCallHost: NativeCallHost,
     private val incomingVerificationEntryPoint: IncomingVerificationEntryPoint,
@@ -198,6 +199,13 @@ class LoggedInFlowNode(
 
     override fun onBuilt() {
         super.onBuilt()
+        musicNavigation.requests.onEach { request ->
+            attachRoom(
+                roomIdOrAlias = request.roomId.toRoomIdOrAlias(),
+                initialElement = RoomNavigationTarget.Root(eventId = request.eventId),
+                clearBackstack = false,
+            )
+        }.launchIn(lifecycleScope)
         lifecycleScope.launch {
             sessionEnterpriseService.init()
             activeLiveLocationShareManager.setup()

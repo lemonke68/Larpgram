@@ -35,7 +35,7 @@ import kotlinx.collections.immutable.ImmutableList
 internal fun FileContent(
     lines: ImmutableList<String>,
     colorationMode: ColorationMode,
-    onLineClick: (String) -> Unit,
+    onLineClick: ((String) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -59,7 +59,7 @@ internal fun FileContent(
                     lineNumber = index + 1,
                     line = line,
                     colorationMode = colorationMode,
-                    onClick = { onLineClick(line) },
+                    onClick = onLineClick?.let { callback -> { callback(line) } },
                 )
             }
         }
@@ -71,12 +71,12 @@ private fun LineRow(
     lineNumber: Int,
     line: String,
     colorationMode: ColorationMode,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .then(onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
     ) {
         Text(
             modifier = Modifier

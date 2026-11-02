@@ -104,6 +104,7 @@ class RoomListPresenter(
     override fun present(): RoomListState {
         val coroutineScope = rememberCoroutineScope()
         val leaveRoomState = leaveRoomPresenter.present()
+        val archivedRoomIds by forkRows.archivedRoomIds.collectAsState()
         val filtersState = filtersPresenter.present()
         val searchState = searchPresenter.present()
         val spaceFiltersState = spaceFiltersPresenter.present()
@@ -180,6 +181,7 @@ class RoomListPresenter(
                 is RoomListEvent.SetRoomIsFavorite -> coroutineScope.setRoomIsFavorite(event.roomId, event.isFavorite)
                 is RoomListEvent.SetRoomIsMuted,
                 is RoomListEvent.SetRoomIsPinned,
+                is RoomListEvent.SetRoomIsArchived,
                 is RoomListEvent.DeleteRoom,
                 is RoomListEvent.DeleteRoomForBoth,
                 is RoomListEvent.BlockUser -> forkRows.handleEvent(event, coroutineScope)
@@ -228,6 +230,7 @@ class RoomListPresenter(
         )
 
         return RoomListState(
+            archivedRoomIds = archivedRoomIds,
             contextMenu = contextMenu.value,
             declineInviteMenu = declineInviteMenu.value,
             leaveRoomState = leaveRoomState,
@@ -338,6 +341,10 @@ class RoomListPresenter(
             forkRows.trackTypingOfVisibleRows(this, visibleRangeFlow, snapshotFlow { roomSummaries.dataOrNull().orEmpty() })
         }
         val loadingState by roomListDataSource.loadingState.collectAsState()
+        // Правка форка: не создаём комнату до начальной загрузки account data и списка SDK.
+        LaunchedEffect(loadingState is RoomList.LoadingState.Loaded) {
+            if (loadingState is RoomList.LoadingState.Loaded) forkRows.ensureSavedMessages()
+        }
         val showEmpty by remember {
             derivedStateOf {
                 (loadingState as? RoomList.LoadingState.Loaded)?.numberOfRooms == 0
@@ -393,6 +400,7 @@ class RoomListPresenter(
             isDm = event.roomSummary.isDm,
             chatType = event.roomSummary.chatType,
             isPinned = event.roomSummary.isPinned,
+            isArchived = event.roomSummary.isArchived,
             dmUserId = event.roomSummary.dmUserId,
             isFavorite = event.roomSummary.isFavorite,
             hasNewContent = event.roomSummary.hasNewContent,

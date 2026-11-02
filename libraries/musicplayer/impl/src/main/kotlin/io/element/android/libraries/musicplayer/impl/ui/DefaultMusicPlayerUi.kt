@@ -44,6 +44,11 @@ class DefaultMusicPlayerUi(
     private val musicPlayer: MusicPlayer,
     private val sheetPresenter: MusicSheetPresenter,
     private val profileMusic: ProfileMusic,
+    private val client: io.element.android.libraries.matrix.api.MatrixClient,
+    private val savedMessages: io.element.android.libraries.matrix.ui.saved.SavedMessages,
+    private val trackSender: MusicTrackSender,
+    private val sharer: MusicTrackSharer,
+    private val musicNavigation: io.element.android.libraries.musicplayer.api.MusicNavigation,
 ) : MusicPlayerUi {
     @Composable
     override fun NowPlayingBar(modifier: Modifier) {
@@ -92,6 +97,34 @@ class DefaultMusicPlayerUi(
             return
         }
         MusicSheet(state = state, onDismiss = onDismiss)
+        state.shareTrack?.let { track ->
+            val roomId = track.roomId
+            val eventId = track.eventId
+            val canShowInChat = roomId != null && eventId != null && track.sessionId == sessionId
+            io.element.android.libraries.matrix.ui.share.TgShareSheet(
+                client = client,
+                savedMessages = savedMessages,
+                onDismiss = { state.eventSink(MusicSheetEvent.DismissShare) },
+                onSend = { ids, caption -> trackSender.send(track, ids, caption) },
+                onShareExternally = { sharer.share(track) },
+                secondaryAction = if (canShowInChat) {
+                    androidx.compose.ui.res.stringResource(
+                    io.element.android.libraries.matrix.ui.R.string.larpgram_share_show_in_chat
+                )
+                } else {
+                    null
+                },
+                onSecondaryAction = if (canShowInChat) {
+                    ({
+                    state.eventSink(MusicSheetEvent.DismissShare)
+                    onDismiss()
+                    musicNavigation.showInChat(requireNotNull(roomId), requireNotNull(eventId))
+                })
+                } else {
+                    null
+                },
+            )
+        }
     }
 
     @Composable

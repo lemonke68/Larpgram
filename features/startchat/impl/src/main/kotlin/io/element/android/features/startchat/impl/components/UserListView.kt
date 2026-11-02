@@ -57,6 +57,7 @@ fun UserListView(
             modifier = Modifier.fillMaxWidth()
                 .padding(contentPaddingValues),
             queryState = state.searchQuery,
+            homeserverName = state.homeserverName,
             resultState = state.searchResults,
             selectedUsers = state.selectedUsers,
             active = state.isSearchActive,

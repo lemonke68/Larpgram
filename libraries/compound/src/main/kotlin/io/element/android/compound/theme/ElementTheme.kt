@@ -69,14 +69,20 @@ object ElementTheme {
      */
     val typography: TypographyTokens = TypographyTokens
 
-    /**
-     * Returns whether the theme version used is the light or the dark one.
-     */
+    /** Правка форка: дополнительные токены должны различать Dark и Black. */
+    val isBlackTheme: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalBlackTheme.current
+
+    /** Returns whether the theme version used is the light one. */
     val isLightTheme: Boolean
         @Composable
         @ReadOnlyComposable
         get() = LocalCompoundColors.current.isLight
 }
+
+private val LocalBlackTheme = staticCompositionLocalOf { false }
 
 // Global variables (application level)
 internal val LocalCompoundColors = staticCompositionLocalOf { larpgramColorsLight }
@@ -169,6 +175,7 @@ fun ElementTheme(
     }
     CompositionLocalProvider(
         LocalCompoundColors provides currentCompoundColor,
+        LocalBlackTheme provides (theme == Theme.Black),
         LocalContentColor provides colorScheme.onSurface,
         // Configure the keyboard focus style: Draw a blue inset ring around the focused component.
         // Ref: https://www.figma.com/design/hlbsmSekQorGRN1t2R9JEy/Accessibility-checks?node-id=271-42066

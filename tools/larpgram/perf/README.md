@@ -55,6 +55,14 @@ adb -s SBXDU19428000351 shell dumpsys package ru.mangokokos.larpgram.perf
 с metadata — разные условия. Профиль в APK сам по себе не доказывает немедленную AOT на
 первом запуске. [Методика Android](https://developer.android.com/topic/performance/baselineprofiles/manually-create-measure).
 
+Для других API выбирайте `.dm` по `baselineProfiles[].minApi/maxApi` в
+`app/build/outputs/apk/gplay/perf/output-metadata.json`, а не по номеру каталога.
+В текущем AGP каталог `1` содержит ART `010` для API 28–30, каталог `0` — ART
+`015` для API 31+. Передавайте metadata от того же APK/ABI. Новый ART может
+отвергнуть старый формат с предупреждением и оставить `verify / install-dm`;
+одной причины `install-dm` для успешной проверки недостаточно — нужен
+`status=speed-profile`. Проверка на новом эмуляторе не заменяет замеры Honor.
+
 ## Трассы и интерпретация
 
 На EMUI сообщения самой утилиты могут попасть в stdout и испортить бинарную трассу:

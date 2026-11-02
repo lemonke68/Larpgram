@@ -132,6 +132,7 @@ class DefaultProfileMusicTest : RobolectricTest() {
         okHttpClient = server.client,
         offlineStore = offlineStore,
         dispatchers = testCoroutineDispatchers(),
+        copyPolicy = io.element.android.libraries.musicplayer.impl.MusicCopyPolicy(FakeMatrixClientProvider()),
     )
 
     /** Трек «сохранён на устройстве» — так загрузка обходится без скачивания. */

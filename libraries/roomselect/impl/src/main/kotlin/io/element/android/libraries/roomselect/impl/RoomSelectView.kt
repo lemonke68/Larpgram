@@ -39,6 +39,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -76,6 +78,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.ListItem
 import io.element.android.libraries.designsystem.theme.components.ListSectionHeader
 import io.element.android.libraries.designsystem.theme.components.Scaffold
@@ -196,6 +199,9 @@ fun RoomSelectView(
                     )
                 },
                 actions = {
+                    if (state.mode is RoomSelectMode.Forward) {
+                        ForwardOptionsMenu(state)
+                    }
                     TextButton(
                         text = stringResource(CommonStrings.action_send),
                         enabled = state.selectedRooms.isNotEmpty(),
@@ -509,4 +515,26 @@ internal fun RoomSelectViewPreview(@PreviewParameter(RoomSelectStatePreviewParam
         onDismiss = {},
         onSubmit = {},
     )
+}
+
+@Composable
+private fun ForwardOptionsMenu(state: RoomSelectState) {
+    var expanded by remember { mutableStateOf(false) }
+    androidx.compose.foundation.layout.Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(CompoundIcons.OverflowVertical(), contentDescription = stringResource(CommonStrings.action_open_context_menu))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(io.element.android.libraries.matrix.ui.R.string.larpgram_forward_hide_author)) },
+                trailingIcon = {
+                    if (state.hideForwardAuthor) Icon(CompoundIcons.Check(), contentDescription = null)
+                },
+                onClick = {
+                    state.eventSink(RoomSelectEvent.ToggleHideForwardAuthor)
+                    expanded = false
+                },
+            )
+        }
+    }
 }

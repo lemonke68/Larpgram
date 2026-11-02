@@ -227,6 +227,7 @@ fun TimelineItemEventContentView(
                         content = content,
                         onContentLayoutChange = calculatedOnContentLayoutChange,
                         contentValidationValue = overallValidationState,
+                        onLongClick = onLongClick,
                     )
                 }
                 is TimelineItemRtcNotificationContent -> error("This shouldn't be rendered as the content of a bubble")

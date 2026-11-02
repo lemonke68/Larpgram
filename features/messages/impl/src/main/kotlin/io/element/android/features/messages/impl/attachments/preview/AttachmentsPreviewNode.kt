@@ -20,7 +20,9 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
 import io.element.android.compound.colors.SemanticColorsLightDark
+import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.theme.ForcedDarkElementTheme
+import io.element.android.compound.tokens.withLarpgramAccent
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.libraries.architecture.NodeInputs
@@ -66,8 +68,9 @@ class AttachmentsPreviewNode(
         val colors by remember {
             enterpriseService.semanticColorsFlow(sessionId = sessionId)
         }.collectAsState(SemanticColorsLightDark.default)
+        val currentAccent = ElementTheme.colors.bgAccentRest
         ForcedDarkElementTheme(
-            colors = colors,
+            colors = colors.copy(dark = colors.dark.withLarpgramAccent(currentAccent, isLight = false)),
         ) {
             val state = presenter.present()
             AttachmentsPreviewView(

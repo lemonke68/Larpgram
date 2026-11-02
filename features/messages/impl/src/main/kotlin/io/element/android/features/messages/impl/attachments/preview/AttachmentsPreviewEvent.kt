@@ -12,6 +12,7 @@ import io.element.android.features.messages.impl.attachments.preview.imageeditor
 
 sealed interface AttachmentsPreviewEvent {
     data object SendAttachment : AttachmentsPreviewEvent
+    data class SelectHighQuality(val highQuality: Boolean) : AttachmentsPreviewEvent
     data object CancelAndDismiss : AttachmentsPreviewEvent
     data object CancelAndClearSendState : AttachmentsPreviewEvent
     data object OpenImageEditor : AttachmentsPreviewEvent

@@ -177,10 +177,8 @@ fun TgTextComposer(
         stringResource(id = R.string.rich_text_editor_composer_placeholder)
     }
     val canSendTextMessage = markdown.isNotBlank() || composerMode is MessageComposerMode.Attachment
-    // Правка форка: полоса ввода Telegram (TgStandardLayout) везде, кроме подписи на экране
-    // предпросмотра вложения. Подпись к уже отправленному медиа — тоже TG-пилюля с плашкой
-    // «Изменение подписи»: у раскладки Element нет фона, и она рисовалась прямо поверх ленты.
-    val useTgLayout = composerMode !is MessageComposerMode.Attachment
+    // Подпись вложения использует ту же полосу, что и остальные режимы ввода.
+    val useTgLayout = true
     val sendButtonSize = if (useTgLayout) 44.dp else 36.dp
 
     val textInput: @Composable () -> Unit = when (state) {
@@ -488,7 +486,6 @@ fun TgTextComposer(
             TgStandardLayout(
                 composerMode = composerMode,
                 voiceMessageState = voiceMessageState,
-                isTextEmpty = markdown.isEmpty(),
                 modifier = layoutModifier,
                 textInput = textInput,
                 endButtonParams = endButtonParams,

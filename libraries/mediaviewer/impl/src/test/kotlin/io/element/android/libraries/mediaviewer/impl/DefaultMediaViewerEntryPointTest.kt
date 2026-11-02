@@ -53,6 +53,14 @@ class DefaultMediaViewerEntryPointTest {
         val localMediaFactory = FakeLocalMediaFactory(mockMediaUri)
         val parentNode = TestParentNode.create { buildContext, plugins ->
             MediaViewerNode(
+                client = io.element.android.libraries.matrix.test.FakeMatrixClient(),
+                room = io.element.android.libraries.matrix.test.room.FakeJoinedRoom(),
+                savedMessages = io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages(),
+                mediaCopySender = mockk(),
+                localMediaActions = mockk(),
+                copyProtection = io.element.android.libraries.matrix.ui.protection.RoomCopyProtection(
+                    io.element.android.libraries.matrix.test.FakeMatrixClient()
+                ),
                 buildContext = buildContext,
                 plugins = plugins,
                 presenterFactory = { _, _, _ ->
@@ -102,6 +110,14 @@ class DefaultMediaViewerEntryPointTest {
         val localMediaFactory = FakeLocalMediaFactory(mockMediaUri)
         val parentNode = TestParentNode.create { buildContext, plugins ->
             MediaViewerNode(
+                client = io.element.android.libraries.matrix.test.FakeMatrixClient(),
+                room = io.element.android.libraries.matrix.test.room.FakeJoinedRoom(),
+                savedMessages = io.element.android.libraries.matrix.ui.saved.NoOpSavedMessages(),
+                mediaCopySender = mockk(),
+                localMediaActions = mockk(),
+                copyProtection = io.element.android.libraries.matrix.ui.protection.RoomCopyProtection(
+                    io.element.android.libraries.matrix.test.FakeMatrixClient()
+                ),
                 buildContext = buildContext,
                 plugins = plugins,
                 presenterFactory = { _, _, _ ->

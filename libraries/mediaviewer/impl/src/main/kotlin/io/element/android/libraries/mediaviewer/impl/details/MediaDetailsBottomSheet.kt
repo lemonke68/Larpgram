@@ -67,6 +67,7 @@ fun MediaDetailsBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val copyAllowed = io.element.android.libraries.matrix.ui.protection.LocalRoomCopyAllowed.current
     ModalBottomSheet(
         modifier = modifier,
         onDismissRequest = onDismiss,
@@ -111,13 +112,15 @@ fun MediaDetailsBottomSheet(
                     MimeTypes.Apk -> stringResource(id = CommonStrings.common_install_apk_android)
                     else -> stringResource(id = CommonStrings.action_open_with)
                 }
-                ListItem(
+                if (copyAllowed) {
+                    ListItem(
                     leadingContent = icon,
                     content = { Text(wording) },
                     onClick = {
                         onOpenWith(state.eventId)
                     }
                 )
+                }
                 ListItem(
                     leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.VisibilityOn())),
                     content = { Text(stringResource(CommonStrings.action_view_in_timeline)) },
@@ -125,7 +128,7 @@ fun MediaDetailsBottomSheet(
                         onViewInTimeline(state.eventId)
                     }
                 )
-                if (state.fromGallery) {
+                if (state.fromGallery && copyAllowed) {
                     ListItem(
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ShareAndroid())),
                         content = { Text(stringResource(CommonStrings.action_share)) },
@@ -141,13 +144,15 @@ fun MediaDetailsBottomSheet(
                         }
                     )
                 }
-                ListItem(
+                if (copyAllowed) {
+                    ListItem(
                     leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Forward())),
                     content = { Text(stringResource(CommonStrings.action_forward)) },
                     onClick = {
                         onForward(state.eventId)
                     }
                 )
+                }
                 if (state.canDelete) {
                     HorizontalDivider()
                     ListItem(

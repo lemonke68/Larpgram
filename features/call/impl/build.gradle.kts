@@ -64,6 +64,31 @@ android {
 
 setupDependencyInjection()
 
+// Правка форка: камеры и поднятая рука меняются в исходниках встроенного Element Call.
+// Исходный AAR даёт Android metadata; assets пересобираются из закреплённой версии и патча.
+val upstreamEmbeddedCall by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+dependencies { add(upstreamEmbeddedCall.name, libs.element.call.embedded) }
+val larpgramCallAar = layout.buildDirectory.file("larpgram-call/element-call-embedded.aar")
+val callPatchDirectory = rootProject.layout.projectDirectory.dir("tools/larpgram/element-call")
+val callSourceCache = rootProject.layout.projectDirectory.dir(".gradle/larpgram-element-call")
+val prepareLarpgramCall by tasks.registering(Exec::class) {
+    group = "larpgram"
+    description = "Build the pinned Larpgram embedded call UI locally"
+    inputs.files(upstreamEmbeddedCall)
+    inputs.dir(callPatchDirectory)
+    outputs.file(larpgramCallAar)
+    commandLine(
+        "bash",
+        callPatchDirectory.file("build.sh").asFile.absolutePath,
+        upstreamEmbeddedCall.singleFile.absolutePath,
+        larpgramCallAar.get().asFile.absolutePath,
+        callSourceCache.asFile.absolutePath,
+    )
+}
+
 dependencies {
     implementation(projects.appconfig)
     implementation(projects.features.enterprise.api)
@@ -85,7 +110,7 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.coil.compose)
     implementation(libs.serialization.json)
-    implementation(libs.element.call.embedded)
+    implementation(files(larpgramCallAar).builtBy(prepareLarpgramCall))
     implementation(projects.features.callnative.api)
     api(projects.features.call.api)
 

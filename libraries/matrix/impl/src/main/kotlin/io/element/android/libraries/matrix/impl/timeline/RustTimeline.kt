@@ -490,9 +490,13 @@ class RustTimeline(
         }
     }
 
-    override suspend fun forwardEvents(eventIds: List<EventId>, roomIds: List<RoomId>): Result<Unit> = withContext(dispatcher) {
+    override suspend fun forwardEvents(
+        eventIds: List<EventId>,
+        roomIds: List<RoomId>,
+        options: io.element.android.libraries.matrix.api.forward.ForwardOptions,
+    ): Result<Unit> = withContext(dispatcher) {
         runCatchingExceptions {
-            roomContentForwarder.forward(fromTimeline = inner, eventIds = eventIds, toRoomIds = roomIds)
+            roomContentForwarder.forward(fromTimeline = inner, fromRoomId = joinedRoom.roomId, eventIds = eventIds, toRoomIds = roomIds, options = options)
         }.onFailure {
             Timber.tag(loggerTag).e(it)
         }

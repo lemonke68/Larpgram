@@ -83,8 +83,6 @@ import io.element.android.libraries.designsystem.components.glass.tgGlowBackgrou
 import io.element.android.libraries.designsystem.preview.ElementPreviewDark
 import io.element.android.libraries.designsystem.preview.ElementPreviewLight
 import io.element.android.libraries.designsystem.preview.PreviewWithLargeHeight
-import io.element.android.libraries.designsystem.theme.components.DropdownMenu
-import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -155,7 +153,6 @@ fun TgPreferencesRootView(
             ProfileTopButtons(
                 onBackClick = onBackClick,
                 onQrClick = { showQr = true },
-                onEditProfile = onEditProfile,
                 hasQr = extras.profileLink != null,
             )
             ProfileHeader(
@@ -289,10 +286,8 @@ private fun CardDivider() {
 private fun ProfileTopButtons(
     onBackClick: (() -> Unit)?,
     onQrClick: () -> Unit,
-    onEditProfile: () -> Unit,
     hasQr: Boolean,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -306,19 +301,6 @@ private fun ProfileTopButtons(
         Spacer(Modifier.weight(1f))
         if (hasQr) {
             RoundGlassButton(icon = CompoundIcons.QrCode(), contentDescription = stringResource(R.string.larpgram_profile_qr_title), onClick = onQrClick)
-        }
-        Box {
-            RoundGlassButton(icon = CompoundIcons.OverflowVertical(), contentDescription = null, onClick = { showMenu = true })
-            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.larpgram_profile_edit)) },
-                    leadingIcon = { Icon(imageVector = CompoundIcons.Edit(), contentDescription = null, tint = ElementTheme.colors.iconSecondary) },
-                    onClick = {
-                        showMenu = false
-                        onEditProfile()
-                    },
-                )
-            }
         }
     }
 }

@@ -91,7 +91,7 @@ fun MediaFileView(
                     overflow = TextOverflow.Ellipsis,
                     color = ElementTheme.colors.textPrimary
                 )
-                if (onOpenWith != null) {
+                if (onOpenWith != null && io.element.android.libraries.matrix.ui.protection.LocalRoomCopyAllowed.current) {
                     val (icon, textResId) = if (isApk) {
                         IconSource.Resource(R.drawable.ic_apk_install) to CommonStrings.common_install_apk_android
                     } else {

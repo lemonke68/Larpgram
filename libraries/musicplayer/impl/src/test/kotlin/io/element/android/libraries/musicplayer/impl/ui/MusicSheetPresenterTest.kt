@@ -143,6 +143,22 @@ class MusicSheetPresenterTest {
         }
     }
 
+    @Test
+    fun `sharing keeps the selected track when playback advances`() = runTest {
+        val player = playing(tracks, current = 0)
+        createPresenter(player).test {
+            val ready = awaitUntil { it.canShare }
+            ready.eventSink(MusicSheetEvent.Share)
+            assertThat(awaitUntil { it.shareTrack != null }.shareTrack).isEqualTo(tracks[0])
+            player.state.value = player.state.value.copy(currentIndex = 1)
+            val next = awaitUntil { it.current?.id == tracks[1].id }
+            assertThat(next.shareTrack).isEqualTo(tracks[0])
+            next.eventSink(MusicSheetEvent.DismissShare)
+            assertThat(awaitUntil { it.shareTrack == null }.current?.id).isEqualTo(tracks[1].id)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun playing(
         queue: List<MusicTrack>,
         current: Int,
@@ -159,7 +175,7 @@ class MusicSheetPresenterTest {
         sessionId = me,
         musicPlayer = player,
         profileMusic = profileMusic,
-        sharer = { Result.success(Unit) },
+        copyPolicy = io.element.android.libraries.musicplayer.impl.MusicCopyPolicy(io.element.android.libraries.matrix.test.FakeMatrixClientProvider()),
     )
 }
 

@@ -154,6 +154,7 @@ fun TgMediaViewerView(
                             data = currentData,
                             position = tgMediaPosition(state.listData, state.currentIndex),
                             canShowInfo = state.canShowInfo,
+                            copyAllowed = state.copyAllowed,
                             onBackClick = onBackClick,
                             onShareClick = {
                                 state.eventSink(MediaViewerEvent.Share(currentData))
@@ -167,7 +168,7 @@ fun TgMediaViewerView(
                             onShowInChatClick = currentData.eventId?.takeIf { state.canShowInfo }?.let { eventId ->
                                 { state.eventSink(MediaViewerEvent.ViewInTimeline(eventId)) }
                             },
-                            onForwardClick = currentData.eventId?.takeIf { state.canShowInfo }?.let { eventId ->
+                            onForwardClick = currentData.eventId?.takeIf { state.canShowInfo && state.copyAllowed }?.let { eventId ->
                                 { state.eventSink(MediaViewerEvent.Forward(eventId)) }
                             },
                         )

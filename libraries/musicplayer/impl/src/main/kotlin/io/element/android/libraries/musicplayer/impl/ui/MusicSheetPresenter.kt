@@ -34,7 +34,7 @@ class MusicSheetPresenter(
     private val sessionId: SessionId,
     private val musicPlayer: MusicPlayer,
     private val profileMusic: ProfileMusic,
-    private val sharer: MusicTrackSharer,
+    private val copyPolicy: io.element.android.libraries.musicplayer.impl.MusicCopyPolicy,
 ) : Presenter<MusicSheetState> {
     @Composable
     override fun present(): MusicSheetState {
@@ -50,6 +50,13 @@ class MusicSheetPresenter(
 
         val isOwnPlaylist = profileMusicOwner(player.queueId) == sessionId
         val currentTrack = player.currentTrack
+        var shareTrack by remember { mutableStateOf<MusicTrack?>(null) }
+        var canShare by remember(currentTrack) { mutableStateOf(currentTrack?.roomId == null) }
+        LaunchedEffect(currentTrack) {
+            canShare = currentTrack?.let { track ->
+                io.element.android.libraries.core.extensions.runCatchingExceptions { copyPolicy.requireAllowed(track) }.isSuccess
+            } == true
+        }
         val tracks = remember(player.queue, player.currentIndex, tags) {
             player.queue.mapIndexed { index, track -> track.toSheetTrack(tags[track.mediaKey], isCurrent = index == player.currentIndex) }
                 .toImmutableList()
@@ -100,13 +107,16 @@ class MusicSheetPresenter(
                 is MusicSheetEvent.RemoveFromProfile -> player.queue.firstOrNull { it.id == event.trackId }?.let {
                     changeProfile(it, add = false, dropFromQueue = isOwnPlaylist)
                 }
-                MusicSheetEvent.Share -> currentTrack?.let { track -> scope.launch { sharer.share(track) } }
+                MusicSheetEvent.Share -> if (canShare) shareTrack = currentTrack
+                MusicSheetEvent.DismissShare -> shareTrack = null
                 MusicSheetEvent.ClearProfileAction -> profileAction = AsyncAction.Uninitialized
             }
         }
 
         return MusicSheetState(
             title = player.queueTitle,
+            shareTrack = shareTrack,
+            canShare = canShare,
             tracks = tracks,
             current = tracks.getOrNull(player.currentIndex),
             isPlaying = player.isPlaying || player.isBuffering,

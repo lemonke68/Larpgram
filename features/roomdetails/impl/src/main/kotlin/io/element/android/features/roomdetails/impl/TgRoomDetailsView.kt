@@ -117,6 +117,7 @@ fun TgRoomDetailsView(
     // Правка форка: профиль «Избранного» в TG — только общие медиа, без участников и действий.
     isSavedMessages: Boolean = false,
     leaveRoomView: @Composable () -> Unit = {},
+    contentProtection: @Composable () -> Unit = {},
     // Правка форка (Larpgram): строка музыки профиля собеседника в личном чате.
     profileMusic: (@Composable (Modifier) -> Unit)? = null,
 ) {
@@ -218,6 +219,7 @@ fun TgRoomDetailsView(
                     onSecurityAndPrivacyClick = onSecurityAndPrivacyClick,
                 )
             }
+            if (!isSavedMessages) item(key = "content_protection") { contentProtection() }
             item(key = "tabs_gap") { Spacer(Modifier.height(TgProfileDefaults.cardGap - 8.dp)) }
             stickyHeader(key = "tabs") {
                 TgProfileTabs(

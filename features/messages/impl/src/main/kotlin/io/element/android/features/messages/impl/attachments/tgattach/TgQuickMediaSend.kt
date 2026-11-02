@@ -18,7 +18,6 @@ import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfig
 import io.element.android.libraries.mediaupload.api.MediaSender
 import io.element.android.libraries.mediaupload.api.MediaUploadInfo
-import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 
@@ -27,12 +26,6 @@ internal const val TG_ALBUM_MAX_ITEMS = 10
 
 /** Сколько можно выбрать за раз в меню вложений (как у системного пикера Element). */
 internal const val TG_ATTACH_MAX_SELECTION = 60
-
-/** Настройки сжатия для «Отправить без сжатия»: картинки как есть, видео в лучшем пресете. */
-internal val UncompressedMediaConfig = MediaOptimizationConfig(
-    compressImages = false,
-    videoCompressionPreset = VideoCompressionPreset.HIGH,
-)
 
 /**
  * Правка форка: отправка из меню вложений Telegram сразу, без экрана предпросмотра Element.
@@ -51,13 +44,13 @@ internal suspend fun sendGalleryMediaNow(
     room: JoinedRoom,
     matrixClient: MatrixClient,
     snackbarDispatcher: SnackbarDispatcher,
-) {
-    if (media.isEmpty()) return
+): Boolean {
+    if (media.isEmpty()) return false
     val isMediaOrGallery: (String?) -> Boolean = {
         ChannelPostMirror.isMirrorableMessage(it) || ChannelPostMirror.isGalleryEvent(it)
     }
     val preMediaIds = ChannelPostMirror.myPostIds(room, isMediaOrGallery)
-    runCatchingExceptions {
+    val result = runCatchingExceptions {
         val infos = media.map { item ->
             mediaSender.preProcessMedia(
                 uri = item.uri,
@@ -85,6 +78,7 @@ internal suspend fun sendGalleryMediaNow(
             .onFailure { Timber.w(it, "Failed to mirror channel media post") }
     }
     mediaSender.cleanUp()
+    return result.isSuccess
 }
 
 private suspend fun sendChunk(

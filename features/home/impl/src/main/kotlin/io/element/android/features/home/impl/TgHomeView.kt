@@ -98,6 +98,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @Composable
@@ -291,6 +292,14 @@ private fun HomeScaffold(
                         onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
                         onRoomClick = onRoomClick,
                         onStartChatClick = onStartChatClick,
+                        onSearchClick = {
+                        showAccountSwitcher = false
+                        if (roomListState.globalSearchState.isEnabled) {
+                            roomListState.globalSearchState.eventSink(GlobalSearchEvent.ToggleSearchVisibility)
+                        } else {
+                            roomListState.eventSink(RoomListEvent.ToggleSearchResults)
+                        }
+                    },
                         onMenuActionClick = onMenuActionClick,
                         musicMiniPlayer = musicMiniPlayer.takeIf { contentVisible },
                         folderPageCache = folderPageCache,
@@ -353,14 +362,6 @@ private fun HomeScaffold(
                     } else {
                         null
                     },
-                    onSearchClick = {
-                        showAccountSwitcher = false
-                        if (roomListState.globalSearchState.isEnabled) {
-                            roomListState.globalSearchState.eventSink(GlobalSearchEvent.ToggleSearchVisibility)
-                        } else {
-                            roomListState.eventSink(RoomListEvent.ToggleSearchResults)
-                        }
-                    },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
@@ -393,11 +394,20 @@ private fun ChatsTab(
     onConfirmRecoveryKeyClick: () -> Unit,
     onRoomClick: (RoomId) -> Unit,
     onStartChatClick: () -> Unit,
+    onSearchClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     musicMiniPlayer: (@Composable (Modifier) -> Unit)?,
     folderPageCache: SnapshotStateMap<String, RoomListContentState> = remember { mutableStateMapOf() },
 ) {
     val roomListState = state.roomListState
+    var showArchive by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = showArchive) { showArchive = false }
+    fun visibleContent(content: RoomListContentState): RoomListContentState = when (content) {
+        is RoomListContentState.Rooms -> content.copy(
+            summaries = content.summaries.filter { (it.roomId in roomListState.archivedRoomIds) == showArchive }.toImmutableList()
+        )
+        else -> content
+    }
     val density = LocalDensity.current
     var headerHeight by remember { mutableStateOf(140.dp) }
     val horizontal = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
@@ -434,7 +444,7 @@ private fun ChatsTab(
     }
     Box(Modifier.fillMaxSize()) {
         SpaceFolderSwipe(
-            state = spaceFiltersState,
+            state = if (showArchive) SpaceFiltersState.Disabled else spaceFiltersState,
             pagerState = folderPager,
             // A folder switch goes through an empty list first: only a list with rooms counts.
             contentKey = (roomListState.contentState as? RoomListContentState.Rooms)?.summaries?.takeIf { it.isNotEmpty() },
@@ -452,7 +462,7 @@ private fun ChatsTab(
                 }
                 if (page != null) {
                     RoomListContentView(
-                        contentState = page,
+                        contentState = visibleContent(page),
                         filtersState = roomListState.filtersState,
                         spaceFiltersState = spaceFiltersState,
                         lazyListState = if (isLive) lazyListState else cachedListState,
@@ -473,7 +483,7 @@ private fun ChatsTab(
                 .tgGlowBackground(),
         ) {
             RoomListContentView(
-                contentState = roomListState.contentState,
+                contentState = visibleContent(roomListState.contentState),
                 filtersState = roomListState.filtersState,
                 spaceFiltersState = roomListState.spaceFiltersState,
                 lazyListState = lazyListState,
@@ -487,6 +497,14 @@ private fun ChatsTab(
                 showBannersInList = false,
             )
         }
+        if (showArchive &&
+            (roomListState.contentState as? RoomListContentState.Rooms)?.summaries?.none { it.roomId in roomListState.archivedRoomIds } == true) {
+            Text(
+                text = stringResource(R.string.larpgram_archive_empty),
+                modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                color = ElementTheme.colors.textSecondary,
+            )
+        }
         Column(
             Modifier
                 .fillMaxWidth()
@@ -496,6 +514,14 @@ private fun ChatsTab(
                 spaceFiltersState = roomListState.spaceFiltersState,
                 allUnreadCount = state.totalUnreadCount,
                 onStartChatClick = onStartChatClick,
+                onSearchClick = onSearchClick,
+                isArchive = showArchive,
+                onArchiveClick = {
+                    if (!showArchive) {
+                        (spaceFiltersState as? SpaceFiltersState.Selected)?.eventSink?.invoke(SpaceFiltersEvent.Selected.ClearSelection)
+                    }
+                    showArchive = !showArchive
+                },
                 onMenuActionClick = onMenuActionClick,
                 canReportBug = state.canReportBug,
                 pagerState = folderPager,
