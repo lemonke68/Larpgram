@@ -9,7 +9,7 @@
 ```sh
 git clone --branch preweb-device-audio --single-branch https://github.com/lemonke68/Larpgram.git
 cd Larpgram
-git fetch origin interface-completion:refs/remotes/origin/interface-completion
+git fetch origin fork-base:refs/remotes/origin/fork-base
 git status --short
 git rev-parse HEAD
 ```
@@ -22,7 +22,7 @@ git switch --track origin/preweb-device-audio
 ```
 
 База кандидата: `9f106376d3` (0.4.1). Ветка друга наследует её и эту инструкцию.
-`fork-base` пока остаётся на 0.4.0; переключаться на неё для проверок не нужно.
+Кандидат уже интегрирован в `fork-base`; она служит основной веткой и базой PR.
 Работать и коммитить только в `preweb-device-audio`. Не мержить самостоятельно
 `fork-base` и не запускать публикацию/деплой. Отдельные рабочие ветки владельца
 не являются частью задания. Автор коммитов друга — его собственная Git-учётка.
@@ -82,13 +82,12 @@ Debug имеет отдельный пакет `ru.mangokokos.larpgram.debug`. �
    приватного содержимого. Не коммитить APK/AAR, ключи, полные bugreport и дампы аккаунта.
 5. Перед каждым push получить отдельное подтверждение владельца; затем отправлять
    только рабочую ветку, например `git push origin HEAD:refs/heads/preweb-device-audio`.
-6. Открыть PR **из `preweb-device-audio` в `interface-completion`**, описать
-   исправления, оборудование, проверки и ограничения. Если база к тому времени
-   интегрирована, владелец меняет target на `fork-base`. Мерж после проверки владельцем.
+6. Открыть PR **из `preweb-device-audio` в `fork-base`**, описать
+   исправления, оборудование, проверки и ограничения. Мерж после проверки владельцем.
 
 Для push в общий репозиторий нужен доступ Write. Если его нет, передать владельцу
 GitHub username для приглашения; до этого можно работать в своём fork и прислать PR
-с его ветки `preweb-device-audio` в `lemonke68/Larpgram:interface-completion`.
+с его ветки `preweb-device-audio` в `lemonke68/Larpgram:fork-base`.
 Наличие публичной ветки само по себе не выдаёт права записи.
 
 Не включать в PR посторонние оптимизации, смену SDK, релизный номер или серверные
