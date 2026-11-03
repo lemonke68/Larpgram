@@ -91,4 +91,7 @@
     <string name="larpgram_message_read_by_of">Прочитали %1$d из %2$d</string>
     <string name="larpgram_chat_cleanup_options">Очистить или удалить чат</string>
     <string name="larpgram_media_quality">Качество медиа</string>
+    <string name="larpgram_action_save_to_music">Сохранить в Музыку</string>
+    <string name="larpgram_saved_to_music">Сохранено в Музыка/Larpgram</string>
+    <string name="larpgram_save_to_music_failed">Не удалось сохранить трек</string>
 </resources>

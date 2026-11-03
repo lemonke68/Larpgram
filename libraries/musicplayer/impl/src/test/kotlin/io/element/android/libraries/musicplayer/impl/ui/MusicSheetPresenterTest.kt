@@ -11,6 +11,7 @@ import app.cash.turbine.ReceiveTurbine
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.musicplayer.api.MusicLibraryExporter
 import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicPlayerState
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
@@ -159,6 +160,40 @@ class MusicSheetPresenterTest {
         }
     }
 
+    @Test
+    fun `save to music exports the current track and reports the result`() = runTest {
+        // Без комнаты политика копирования не спрашивает клиента: трек как из профиля.
+        val own = tracks.map { it.copy(roomId = null) }
+        val exported = mutableListOf<MusicTrack>()
+        val presenter = createPresenter(
+            playing(own, current = 2),
+            libraryExporter = MusicLibraryExporter {
+                exported += it
+                Result.success(Unit)
+            },
+        )
+        presenter.test {
+            awaitUntil { it.canShare }.eventSink(MusicSheetEvent.SaveToMusic)
+            val done = awaitUntil { it.saveAction is AsyncAction.Success }
+            assertThat(exported.map { it.id }).containsExactly("c")
+            done.eventSink(MusicSheetEvent.ClearSaveAction)
+            awaitUntil { it.saveAction == AsyncAction.Uninitialized }
+        }
+    }
+
+    @Test
+    fun `a failed save is reported`() = runTest {
+        val own = tracks.map { it.copy(roomId = null) }
+        val presenter = createPresenter(
+            playing(own, current = 0),
+            libraryExporter = MusicLibraryExporter { Result.failure(java.io.IOException("disk full")) },
+        )
+        presenter.test {
+            awaitUntil { it.canShare }.eventSink(MusicSheetEvent.SaveToMusic)
+            awaitUntil { it.saveAction is AsyncAction.Failure }
+        }
+    }
+
     private fun playing(
         queue: List<MusicTrack>,
         current: Int,
@@ -171,11 +206,13 @@ class MusicSheetPresenterTest {
     private fun createPresenter(
         player: FakeMusicPlayer,
         profileMusic: FakeProfileMusic = FakeProfileMusic(ownUserId = me),
+        libraryExporter: MusicLibraryExporter = MusicLibraryExporter { Result.success(Unit) },
     ) = MusicSheetPresenter(
         sessionId = me,
         musicPlayer = player,
         profileMusic = profileMusic,
         copyPolicy = io.element.android.libraries.musicplayer.impl.MusicCopyPolicy(io.element.android.libraries.matrix.test.FakeMatrixClientProvider()),
+        libraryExporter = libraryExporter,
     )
 }
 

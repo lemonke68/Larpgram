@@ -20,4 +20,8 @@
     <string name="larpgram_music_removed_from_profile">Removed from your profile</string>
     <string name="larpgram_music_profile_failed">Could not update your profile music</string>
     <string name="larpgram_music_profile_playlist">%1$s’s playlist</string>
+    <string name="larpgram_music_save_to_music">Save to Music</string>
+    <string name="larpgram_music_saved_to_music">Saved to Music/Larpgram</string>
+    <string name="larpgram_music_save_failed">Could not save the track</string>
+    <string name="larpgram_music_save_no_permission">No access to storage</string>
 </resources>

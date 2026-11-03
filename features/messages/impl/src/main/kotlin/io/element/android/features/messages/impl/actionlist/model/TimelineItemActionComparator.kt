@@ -19,6 +19,8 @@ class TimelineItemActionComparator : Comparator<TimelineItemAction> {
         TimelineItemAction.Reply,
         TimelineItemAction.ReplyInThread,
         TimelineItemAction.Forward,
+        // Правка форка (Larpgram).
+        TimelineItemAction.SaveToMusic,
         TimelineItemAction.Edit,
         TimelineItemAction.EditPoll,
         TimelineItemAction.AddCaption,

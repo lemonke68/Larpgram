@@ -28,8 +28,10 @@ import io.element.android.features.messages.impl.crypto.sendfailure.VerifiedUser
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAttachmentsContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemAudioContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContentWithAttachment
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemGalleryContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
@@ -50,6 +52,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.musicplayer.api.MusicFiles
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -202,6 +205,10 @@ class DefaultActionListPresenter(
             if (timelineItem.isRemote && timelineItem.content.canBeForwarded()) {
                 add(TimelineItemAction.Forward)
             }
+            // Правка форка (Larpgram): трек (в том числе flac документом) можно сохранить в «Музыку».
+            if (timelineItem.isRemote && timelineItem.content.isMusicTrack()) {
+                add(TimelineItemAction.SaveToMusic)
+            }
             if (timelineItem.isEditable && usersEventPermissions.canSendMessage) {
                 if (timelineItem.content is TimelineItemEventContentWithAttachment ||
                     timelineItem.content is TimelineItemGalleryContent ||
@@ -278,5 +285,12 @@ internal fun TimelineItemAction.isContentExport(): Boolean = this in setOf(
     TimelineItemAction.CopyCaption,
     TimelineItemAction.CopyLink,
     TimelineItemAction.Forward,
+    TimelineItemAction.SaveToMusic,
     TimelineItemAction.ViewSource,
 )
+
+private fun TimelineItemEventContent.isMusicTrack(): Boolean = when (this) {
+    is TimelineItemAudioContent -> true
+    is TimelineItemFileContent -> MusicFiles.isPlayable(mimeType, filename)
+    else -> false
+}

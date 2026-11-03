@@ -20,4 +20,8 @@
     <string name="larpgram_music_removed_from_profile">Трек убран из профиля</string>
     <string name="larpgram_music_profile_failed">Не удалось изменить музыку профиля</string>
     <string name="larpgram_music_profile_playlist">%1$s — плейлист</string>
+    <string name="larpgram_music_save_to_music">Сохранить в Музыку</string>
+    <string name="larpgram_music_saved_to_music">Сохранено в Музыка/Larpgram</string>
+    <string name="larpgram_music_save_failed">Не удалось сохранить трек</string>
+    <string name="larpgram_music_save_no_permission">Нет доступа к памяти</string>
 </resources>

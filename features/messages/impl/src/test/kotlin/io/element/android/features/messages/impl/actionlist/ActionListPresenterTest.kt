@@ -23,6 +23,8 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.aLiveLocationMode
 import io.element.android.features.messages.impl.timeline.model.event.aStaticLocationMode
+import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemAudioContent
+import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemPollContent
@@ -66,6 +68,28 @@ class ActionListPresenterTest {
         presenter.test {
             val initialState = awaitItem()
             assertThat(initialState.target).isEqualTo(ActionListState.Target.None)
+        }
+    }
+
+    // Правка форка (Larpgram).
+    @Test
+    fun `present - an audio track and a flac sent as a file can be saved to Music`() = runTest {
+        val presenter = createActionListPresenter(isDeveloperModeEnabled = false)
+        presenter.test {
+            val initialState = awaitItem()
+            val audio = aMessageEvent(isMine = false, content = aTimelineItemAudioContent())
+            val flacFile = aMessageEvent(
+                isMine = false,
+                content = aTimelineItemFileContent(fileName = "demo.flac").copy(mimeType = "application/octet-stream"),
+            )
+            val pdf = aMessageEvent(isMine = false, content = aTimelineItemFileContent(fileName = "notes.pdf"))
+            val actions = listOf(audio, flacFile, pdf).map { event ->
+                initialState.eventSink(ActionListEvent.ComputeForMessage(event = event, userEventPermissions = aUserEventPermissions()))
+                (awaitItem().target as ActionListState.Target.Success).actions
+            }
+            assertThat(actions[0]).contains(TimelineItemAction.SaveToMusic)
+            assertThat(actions[1]).contains(TimelineItemAction.SaveToMusic)
+            assertThat(actions[2]).doesNotContain(TimelineItemAction.SaveToMusic)
         }
     }
 
