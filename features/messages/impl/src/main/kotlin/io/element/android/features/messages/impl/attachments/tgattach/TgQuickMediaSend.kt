@@ -49,7 +49,6 @@ internal suspend fun sendGalleryMediaNow(
     val isMediaOrGallery: (String?) -> Boolean = {
         ChannelPostMirror.isMirrorableMessage(it) || ChannelPostMirror.isGalleryEvent(it)
     }
-    val preMediaIds = ChannelPostMirror.myPostIds(room, isMediaOrGallery)
     val result = runCatchingExceptions {
         val infos = media.map { item ->
             mediaSender.preProcessMedia(
@@ -59,12 +58,15 @@ internal suspend fun sendGalleryMediaNow(
             ).getOrThrow()
         }
         infos.chunked(TG_ALBUM_MAX_ITEMS).forEachIndexed { index, chunk ->
+            val preMediaIds = ChannelPostMirror.myPostIds(room, isMediaOrGallery)
             sendChunk(
                 mediaSender = mediaSender,
                 chunk = chunk,
                 caption = caption.takeIf { index == 0 },
                 inReplyToEventId = inReplyToEventId.takeIf { index == 0 },
             )
+            runCatchingExceptions { ChannelPostMirror.mirrorLastPost(room, matrixClient, preMediaIds, matches = isMediaOrGallery) }
+                .onFailure { Timber.w(it, "Failed to mirror channel media post") }
         }
     }.onFailure { cause ->
         Timber.e(cause, "Failed to send gallery media")
@@ -73,9 +75,6 @@ internal suspend fun sendGalleryMediaNow(
             throw cause
         }
         snackbarDispatcher.post(SnackbarMessage(sendAttachmentError(cause)))
-    }.onSuccess {
-        runCatchingExceptions { ChannelPostMirror.mirrorLastPost(room, matrixClient, preMediaIds, matches = isMediaOrGallery) }
-            .onFailure { Timber.w(it, "Failed to mirror channel media post") }
     }
     mediaSender.cleanUp()
     return result.isSuccess

@@ -63,8 +63,6 @@ class DefaultUpdateInstaller(
 
     init {
         UpdateInstallReceiver.onResult = ::onInstallResult
-        // APK прошлых обновлений больше не нужны.
-        appCoroutineScope.launch(dispatchers.io) { updatesDir().deleteRecursively() }
     }
 
     override fun install(update: UpdateStatus.Available) {
@@ -80,6 +78,8 @@ class DefaultUpdateInstaller(
         job = appCoroutineScope.launch(dispatchers.io) {
             _state.value = UpdateInstallState.Downloading(progress = 0f)
             runCatching {
+                // Cleanup belongs to this job and completes before its download starts.
+                updatesDir().deleteRecursively()
                 val apk = download(update)
                 commitSession(apk)
             }.onSuccess {
@@ -135,17 +135,23 @@ class DefaultUpdateInstaller(
             setSize(apk.length())
         }
         val sessionId = installer.createSession(params)
-        installer.openSession(sessionId).use { session ->
-            session.openWrite("larpgram.apk", 0, apk.length()).use { output ->
-                apk.inputStream().use { it.copyTo(output) }
-                session.fsync(output)
+        try {
+            installer.openSession(sessionId).use { session ->
+                session.openWrite("larpgram.apk", 0, apk.length()).use { output ->
+                    apk.inputStream().use { it.copyTo(output) }
+                    session.fsync(output)
+                }
+                val callback = Intent(context, UpdateInstallReceiver::class.java).setPackage(context.packageName)
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    // PackageInstaller дописывает в интент статус — нужен изменяемый PendingIntent.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+                val pendingIntent = PendingIntent.getBroadcast(context, sessionId, callback, flags)
+                session.commit(pendingIntent.intentSender)
             }
-            val callback = Intent(context, UpdateInstallReceiver::class.java).setPackage(context.packageName)
-            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-                // PackageInstaller дописывает в интент статус — нужен изменяемый PendingIntent.
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-            val pendingIntent = PendingIntent.getBroadcast(context, sessionId, callback, flags)
-            session.commit(pendingIntent.intentSender)
+        } catch (error: Exception) {
+            runCatching { installer.abandonSession(sessionId) }
+                .onFailure { Timber.w(it, "Не удалось освободить install-сессию") }
+            throw error
         }
     }
 

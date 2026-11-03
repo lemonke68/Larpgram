@@ -16,14 +16,14 @@ const DAY = 24 * 60 * 60 * 1000;
 const b64 = (n) => crypto.randomBytes(n).toString('base64');
 const BLOB = { v: 1, kdf: 'argon2id', m: 65536, t: 3, p: 1, salt: b64(16), nonce: b64(12), ct: b64(64) };
 
-let server, base, clock, db, notices;
+let server, base, clock, db, notices, matrix;
 
 async function start(config = {}) {
   clock = { t: 10 * DAY };
   notices = [];
   db = openDb(':memory:');
   // Токен вида «token-of-<ник>-<устройство>» принадлежит @<ник>:example.org, прочие не годятся.
-  const matrix = {
+  matrix = {
     async whoami(token) {
       const m = /^token-of-(\w+)-(\w+)$/.exec(token);
       return m ? { userId: `@${m[1]}:example.org`, deviceId: m[2] } : null;
@@ -150,4 +150,31 @@ test('session key is issued once per device with a retry window', async () => {
   clock.t += 900_000;
   assert.equal((await call('GET', '/key/session', A2)).status, 403);
   assert.equal(notices.length, 1);
+});
+
+test('room delete: group rejected before room details or per-member admin calls', async () => {
+  matrix.getRoomMembers = async () => ['@alice:example.org', ...Array.from({ length: 6 }, (_, i) => `@member${i}:example.org`)];
+  matrix.getRoomDetails = async () => { assert.fail('group needs no room details'); };
+  matrix.getDirectRoomsOf = async () => { assert.fail('group needs no account data'); };
+  matrix.deleteRoom = async () => { assert.fail('must not delete group'); };
+  assert.deepEqual(await call('POST', '/room/delete', A1, { room_id: '!group:example.org' }), {
+    status: 409, body: { error: 'not-two-people' },
+  });
+});
+
+test('room delete: outsider rejected before participant checks', async () => {
+  matrix.getRoomMembers = async () => ['@bob:example.org', '@charlie:example.org'];
+  matrix.getRoomDetails = async () => { assert.fail('outsider needs no room details'); };
+  assert.equal((await call('POST', '/room/delete', A1, { room_id: '!dm:example.org' })).status, 403);
+});
+
+test('room delete: local mutual DM still passes all safety checks', async () => {
+  const roomId = '!dm:example.org';
+  matrix.getRoomMembers = async () => ['@alice:example.org', '@bob:example.org'];
+  matrix.getRoomDetails = async () => ({ roomId });
+  let directRequests = 0;
+  matrix.getDirectRoomsOf = async () => { directRequests++; return { peer: [roomId] }; };
+  matrix.deleteRoom = async (id) => { assert.equal(id, roomId); return true; };
+  assert.equal((await call('POST', '/room/delete', A1, { room_id: roomId })).status, 202);
+  assert.equal(directRequests, 2);
 });

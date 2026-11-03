@@ -95,6 +95,7 @@ class ConfigureRoomPresenter(
 
     private val cameraPermissionPresenter: PermissionsPresenter = permissionsPresenterFactory.create(android.Manifest.permission.CAMERA)
     private var pendingPermissionRequest = false
+    private val createdDiscussions = mutableMapOf<RoomId, RoomId>()
 
     @Composable
     override fun present(): ConfigureRoomState {
@@ -319,17 +320,17 @@ class ConfigureRoomPresenter(
 
             // Channel: raise the power level required to send messages so only admins (PL 100)
             // can post — everyone else reads. Regular members will still be able to comment via
-            // a linked discussion room (separate feature). Done after creation as CreateRoomParameters
+            // a linked discussion room. Done after creation as CreateRoomParameters
             // has no power-level override.
             if (isChannel) {
-                matrixClient.getJoinedRoom(roomId)?.use { room ->
+                val channel = matrixClient.getJoinedRoom(roomId) ?: error("Created channel is not joined yet")
+                channel.use { room ->
                     val currentValues = room.powerLevels().getOrThrow()
                     room.updatePowerLevels(currentValues.copy(eventsDefault = CHANNEL_POST_POWER_LEVEL)).getOrThrow()
                 }
                 // Create the linked discussion group (Telegram-style comments): a normal group
                 // where members can post; channel posts get mirrored here and replies are the
-                // comments. The link is kept in account data since custom room state is unreadable
-                // via the SDK (same wall as room sticker packs).
+                // comments. Publish the link in shared state and cache it in account data.
                 createLinkedDiscussionGroup(channelId = roomId, config = config, avatarUrl = avatarUrl)
             }
 
@@ -350,11 +351,11 @@ class ConfigureRoomPresenter(
     ) {
         // Idempotent on retry: if this channel already has a linked discussion group, don't create
         // a second one.
-        val existing = matrixClient.getAccountData(ChannelDiscussion.ACCOUNT_DATA_TYPE).getOrNull()
+        val existing = matrixClient.getAccountData(ChannelDiscussion.ACCOUNT_DATA_TYPE).getOrThrow()
         val currentMap = existing
-            ?.let { runCatching { channelDiscussionsJson.decodeFromString<Map<String, String>>(it) }.getOrNull() }
+            ?.let { channelDiscussionsJson.decodeFromString<Map<String, String>>(it) }
             .orEmpty()
-        if (currentMap.containsKey(channelId.value)) return
+        val existingDiscussion = currentMap[channelId.value]?.let(::RoomId)
         val discussionParams = CreateRoomParameters(
             name = config.roomName?.let { stringProvider.getString(R.string.larpgram_channel_discussion_name, it) },
             topic = null,
@@ -365,14 +366,22 @@ class ConfigureRoomPresenter(
             invite = config.invites.map { it.userId },
             avatar = avatarUrl,
         )
-        val discussionId = matrixClient.createRoom(discussionParams).getOrNull() ?: return
-        // Persist channel -> discussion link in account data (custom room state is unreadable via
-        // the SDK). The link is also duplicated into post content later so any member can find it.
+        val discussionId = existingDiscussion ?: createdDiscussions[channelId] ?: matrixClient.createRoom(discussionParams).getOrThrow()
+            .also { createdDiscussions[channelId] = it }
+        val channel = matrixClient.getJoinedRoom(channelId) ?: error("Created channel is not joined yet")
+        channel.use {
+            it.sendRawStateEvent(
+                ChannelDiscussion.DISCUSSION_STATE_TYPE,
+                "",
+                "{\"room\":" + channelDiscussionsJson.encodeToString(discussionId.value) + "}",
+            ).getOrThrow()
+        }
+        // Cache the shared link for the creator and legacy clients.
         val updated = currentMap + (channelId.value to discussionId.value)
         matrixClient.setAccountData(
             ChannelDiscussion.ACCOUNT_DATA_TYPE,
             channelDiscussionsJson.encodeToString(updated),
-        )
+        ).getOrThrow()
     }
 
     private suspend fun uploadAvatar(avatarUri: Uri): String {

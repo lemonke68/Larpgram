@@ -16,13 +16,17 @@ import io.element.android.libraries.matrix.api.MatrixClientProvider
 import io.element.android.libraries.matrix.api.media.MediaFile
 import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.musicplayer.api.MusicTrackTags
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.isActive
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
@@ -43,6 +47,7 @@ class MusicTrackResolver(
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
 ) {
     private val lock = Any()
+    private var generation = 0L
     private val files = LinkedHashMap<String, MediaFile>(MAX_OPEN_FILES, 0.75f, true)
     private val pending = HashMap<String, Deferred<File>>()
     private val knownTagKeys = HashSet<String>()
@@ -80,30 +85,37 @@ class MusicTrackResolver(
             files.remove(track.id)?.close()
         }
         pending[track.id]?.let { return@synchronized it }
-        appCoroutineScope.async(dispatchers.io) { download(track) }.also { pending[track.id] = it }
+        val startedGeneration = generation
+        appCoroutineScope.async(dispatchers.io, start = CoroutineStart.LAZY) { download(track, startedGeneration) }
+            .also { job ->
+                pending[track.id] = job
+                job.invokeOnCompletion { synchronized(lock) { if (pending[track.id] === job) pending.remove(track.id) } }
+                job.start()
+            }
     }
 
-    private suspend fun download(track: MusicTrack): File {
-        try {
-            // Сохранённый на устройстве трек играет без сети.
-            offlineStore.fileFor(track.mediaKey)?.let { saved ->
-                readTagsIfNeeded(track, saved)
-                return saved
-            }
-            val client = matrixClientProvider.getOrRestore(track.sessionId).getOrElse { throw IOException("No session", it) }
-            val mediaFile = client.matrixMediaLoader
-                .downloadMediaFile(source = track.mediaSource, mimeType = track.mimeType, filename = track.filename)
-                .getOrElse { throw IOException("Download failed", it) }
-            val evicted = synchronized(lock) {
-                files.put(track.id, mediaFile)?.takeIf { it !== mediaFile }?.let { listOf(it) }.orEmpty() + trim()
-            }
-            evicted.forEach { runCatching { it.close() } }
-            val file = File(mediaFile.path())
-            readTagsIfNeeded(track, file)
-            return file
-        } finally {
-            synchronized(lock) { pending.remove(track.id) }
+    private suspend fun download(track: MusicTrack, startedGeneration: Long): File {
+        // Сохранённый на устройстве трек играет без сети.
+        offlineStore.fileFor(track.mediaKey)?.let { saved ->
+            readTagsIfNeeded(track, saved)
+            return saved
         }
+        val client = matrixClientProvider.getOrRestore(track.sessionId).getOrElse { throw IOException("No session", it) }
+        val mediaFile = client.matrixMediaLoader
+            .downloadMediaFile(source = track.mediaSource, mimeType = track.mimeType, filename = track.filename)
+            .getOrElse { throw IOException("Download failed", it) }
+        val active = currentCoroutineContext().isActive
+        val evicted = synchronized(lock) {
+            if (generation != startedGeneration || !active) {
+                mediaFile.close()
+                throw CancellationException("Music playback released")
+            }
+            files.put(track.id, mediaFile)?.takeIf { it !== mediaFile }?.let { listOf(it) }.orEmpty() + trim()
+        }
+        evicted.forEach { runCatching { it.close() } }
+        val file = File(mediaFile.path())
+        readTagsIfNeeded(track, file)
+        return file
     }
 
     private fun trim(): List<MediaFile> {
@@ -126,6 +138,8 @@ class MusicTrackResolver(
 
     fun releaseAll() {
         val toClose = synchronized(lock) {
+            generation++
+            pending.values.toList().forEach { it.cancel() }
             pending.clear()
             files.values.toList().also { files.clear() }
         }

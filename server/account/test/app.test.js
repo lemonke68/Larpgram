@@ -33,7 +33,9 @@ function fakeMas() {
     },
     async findEmailOfUser(id) { return byId(id)?.email || null; },
     ended: [],
-    async removeEmails(id) { byId(id).email = null; },
+    async removeEmails(id, keepEmail) {
+      if (byId(id).email !== keepEmail) byId(id).email = null;
+    },
     async endDeviceSession(userId, deviceId) {
       if (deviceId === 'GHOST') return false;
       this.ended.push({ userId, deviceId });
@@ -432,4 +434,52 @@ test('password check: right, wrong, unauthorized, rate limited', async () => {
   assert.equal((await post('/password/check', { password: 'correct horse' })).status, 401);
   for (let i = 0; i < 7; i++) await post('/password/check', { password: 'nope' }, 'token-of-vasya');
   assert.equal((await post('/password/check', { password: 'correct horse' }, 'token-of-vasya')).status, 429);
+});
+
+test('register: retry after email upstream failure binds email before password', async () => {
+  const { body } = await post('/register/start', { username: 'vasya', email: 'vasya@example.com' });
+  const addEmail = mas.addEmail.bind(mas);
+  mas.addEmail = async () => { throw new Error('temporary failure'); };
+  const input = { ticket: body.ticket, code: lastCode(), password: 'correct horse' };
+  assert.equal((await post('/register/confirm', input)).status, 502);
+  assert.equal(mas.users.get('vasya').password, null);
+  mas.addEmail = addEmail;
+  assert.equal((await post('/register/confirm', input)).status, 200);
+  assert.equal(mas.users.get('vasya').email, 'vasya@example.com');
+});
+
+test('register: retry after ambiguous email response does not add twice', async () => {
+  const { body } = await post('/register/start', { username: 'vasya', email: 'vasya@example.com' });
+  const addEmail = mas.addEmail.bind(mas);
+  mas.addEmail = async (...args) => { await addEmail(...args); throw new Error('response lost'); };
+  const input = { ticket: body.ticket, code: lastCode(), password: 'correct horse' };
+  assert.equal((await post('/register/confirm', input)).status, 502);
+  mas.addEmail = async () => { assert.fail('email already belongs to this account'); };
+  assert.equal((await post('/register/confirm', input)).status, 200);
+});
+
+test('email: rejected or failed replacement preserves old address', async () => {
+  await mas.createUser('petya');
+  await mas.addEmail('U1', 'old@example.com');
+  const { body } = await post('/email/start', { email: 'new@example.com' }, 'token-of-petya');
+  const input = { ticket: body.ticket, code: lastCode() };
+  mas.addEmail = async () => { throw new Error('temporary failure'); };
+  assert.equal((await post('/email/confirm', input, 'token-of-petya')).status, 502);
+  assert.equal(mas.users.get('petya').email, 'old@example.com');
+  mas.addEmail = async () => false;
+  assert.equal((await post('/email/confirm', input, 'token-of-petya')).status, 409);
+  assert.equal(mas.users.get('petya').email, 'old@example.com');
+});
+
+test('email: retry after cleanup failure keeps newly bound address', async () => {
+  await mas.createUser('petya');
+  await mas.addEmail('U1', 'old@example.com');
+  const { body } = await post('/email/start', { email: 'new@example.com' }, 'token-of-petya');
+  const input = { ticket: body.ticket, code: lastCode() };
+  const removeEmails = mas.removeEmails.bind(mas);
+  mas.removeEmails = async () => { throw new Error('cleanup failed'); };
+  assert.equal((await post('/email/confirm', input, 'token-of-petya')).status, 502);
+  mas.removeEmails = removeEmails;
+  assert.equal((await post('/email/confirm', input, 'token-of-petya')).status, 200);
+  assert.equal(mas.users.get('petya').email, 'new@example.com');
 });

@@ -32,9 +32,11 @@ import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.io.File
@@ -199,6 +201,60 @@ class DefaultMediaSenderTest : RobolectricTest() {
         assertThat(originals.all { it.exists() }).isTrue()
         assertThat(dir.listFiles()!!.map { it.name }).containsExactly("photo1.jpg", "photo2.jpg", "photo3.jpg")
         dir.deleteRecursively()
+    }
+
+    @Test
+    fun `album failure waits for other uploads before deleting their files`() = runTest {
+        val dir = Files.createTempDirectory("album-failure").toFile()
+        val files = (1..2).map { File(dir, "$it.jpg").apply { writeText("x") } }
+        val finish = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val uploaded = mutableListOf<File>()
+        val timeline = FakeTimeline().apply {
+            sendImageLambda = { file, _, _, _, _, _ ->
+                val index = uploaded.size
+                uploaded += file
+                Result.success(object : io.element.android.libraries.matrix.api.media.MediaUploadHandler {
+                    override suspend fun await(): Result<Unit> {
+                        if (index == 0) return Result.failure(IllegalStateException("upload failed"))
+                        finish.await()
+                        assertThat(file.exists()).isTrue()
+                        return Result.success(Unit)
+                    }
+                    override fun cancel() {
+                        finish.complete(Unit)
+                    }
+                })
+            }
+        }
+        val send = async {
+            timeline.sendLarpgramAlbum(files.map { MediaUploadInfo.Image(it, anImageInfo(), null) }, null, null, null) { }
+        }
+        advanceTimeBy(100)
+        runCurrent()
+        assertThat(send.isCompleted).isFalse()
+        assertThat(uploaded.all { it.exists() }).isTrue()
+        finish.complete(Unit)
+        assertThat(send.await().isFailure).isTrue()
+        assertThat(uploaded.none { it.exists() }).isTrue()
+        assertThat(files.all { it.exists() }).isTrue()
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun `album cancel reaches every upload including one registered later`() = runTest {
+        var cancelled = 0
+        fun handler() = object : io.element.android.libraries.matrix.api.media.MediaUploadHandler {
+            override suspend fun await() = Result.success(Unit)
+            override fun cancel() {
+                cancelled++
+            }
+        }
+        val group = AlbumUploadGroup()
+        group.add(handler())
+        group.add(handler())
+        group.cancel()
+        group.add(handler())
+        assertThat(cancelled).isEqualTo(3)
     }
 
     private fun anImageInfo() = ImageInfo(

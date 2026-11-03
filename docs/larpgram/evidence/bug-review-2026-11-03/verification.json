@@ -1,0 +1,436 @@
+{
+  "date": "2026-11-03",
+  "base_commit": "5950f0df3a691aa5dc6cd1aa26a2acdeb73ad077",
+  "android": [
+    {
+      "module": "libraries/network",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.network.interceptors.FormattedJsonHttpLoggerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "libraries/channelcomments",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.channelcomments.ChannelDiscussionTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.channelcomments.ChannelPostMirrorTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "libraries/mediaupload/impl",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.mediaupload.impl.AndroidMediaPreProcessorTest",
+          "tests": 22,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 9
+        },
+        {
+          "name": "io.element.android.libraries.mediaupload.impl.DefaultMediaSenderTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.mediaupload.impl.LarpgramMetadataStripperTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.mediaupload.impl.VideoCompressorConfigFactoryTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 9
+    },
+    {
+      "module": "libraries/musicplayer/impl",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.DefaultMusicPlayerTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.MusicCopyPolicyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.MusicFocusArbiterTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.MusicOfflineStoreTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.MusicQueueTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.MusicTrackResolverTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.PositionPolicyTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.profile.DefaultProfileMusicTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.profile.ProfileMusicCodecTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.ui.MusicSheetPresenterTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.musicplayer.impl.ui.MusicTrackSenderTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 60,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "libraries/imagepacks/impl",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.imagepacks.impl.DefaultImagePackSourceTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.imagepacks.impl.ImagePackParserTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "libraries/keyescrow/impl",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.keyescrow.impl.DefaultKeyEscrowServiceTest",
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.keyescrow.impl.DefaultPairingKeyTransferTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.keyescrow.impl.DefaultRecoveryKeyAutoProvisionerTest",
+          "tests": 20,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.keyescrow.impl.RecoveryKeyLockTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 41,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "libraries/chatcleanup/impl",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.chatcleanup.impl.DefaultChatCleanupServiceTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "libraries/appupdate/impl",
+      "suites": [
+        {
+          "name": "io.element.android.libraries.appupdate.impl.DefaultUpdateCheckerTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.libraries.appupdate.impl.DefaultUpdateInstallerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "features/gifs/impl",
+      "suites": [
+        {
+          "name": "io.element.android.features.gifs.impl.DefaultGifPickerPresenterTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.features.gifs.impl.GifRepositoryTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.features.gifs.impl.GifSenderTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "features/circles/impl",
+      "suites": [
+        {
+          "name": "io.element.android.features.circles.impl.DefaultCircleRecorderPresenterTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "features/createroom/impl",
+      "suites": [
+        {
+          "name": "io.element.android.features.createroom.impl.ConfigureRoomPresenterTest",
+          "tests": 20,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.features.createroom.impl.DefaultCreateRoomEntryPointTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.features.createroom.impl.JoinRuleItemTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.features.createroom.impl.selectmembers.SelectMembersPresenterTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "features/messages/impl",
+      "suites": [
+        {
+          "name": "io.element.android.features.messages.impl.attachments.tgattach.TgQuickMediaSendTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.features.messages.impl.timeline.TimelineChannelCommentsTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "features/home/impl",
+      "suites": [
+        {
+          "name": "io.element.android.features.home.impl.roomlist.PinnedChatsStoreTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "module": "features/stickers/impl",
+      "suites": [
+        {
+          "name": "io.element.android.features.stickers.impl.DefaultStickerPickerPresenterTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "io.element.android.features.stickers.impl.RecentStickersStoreTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "node": {
+    "account": {
+      "tests": 39,
+      "failed": 0
+    },
+    "key_escrow": {
+      "tests": 30,
+      "failed": 0
+    }
+  },
+  "apk": {
+    "path": "app/build/outputs/apk/gplay/debug/app-gplay-arm64-v8a-debug.apk",
+    "sha256": "5fb59b901d6fdc7d51819e281a1936e87f8a4249eecc5b905f3f21eb2db0347b",
+    "bytes": 192870568,
+    "versionName": "0.4.1",
+    "versionCode": 202610012,
+    "kind": "gplay-arm64-debug"
+  },
+  "sdk_aar_sha256": "e87a4f2e8fbe1333a38e99a8ac52c8f3f6fc788e69cff44b4723064c9def32c1",
+  "notes": [
+    "Focused verification, not whole-repository tests.",
+    "9 existing mediaupload tests skipped.",
+    "No push or deployment."
+  ]
+}

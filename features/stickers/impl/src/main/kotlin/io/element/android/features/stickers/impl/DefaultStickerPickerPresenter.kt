@@ -56,6 +56,10 @@ class DefaultStickerPickerPresenter(
         suspend fun load() {
             isLoading = true
             recentUrls = recentStickersStore.getRecent()
+            // Saved/user packs are usable before slow room-state requests finish.
+            packs = (imagePackSource.getSavedPacks() + imagePackSource.getUserPacks())
+                .filter { it.stickers.isNotEmpty() }
+                .toImmutableList()
             // Паки без стикеров в пикере не нужны: они могут состоять из одних эмодзи.
             packs = imagePackSource.getAllPacks()
                 .filter { it.stickers.isNotEmpty() }
@@ -128,8 +132,12 @@ class DefaultStickerPickerPresenter(
                             // следующего импорта. Поэтому добавляем его в список оптимистично (дедуп по
                             // id) и показываем; на следующем открытии пикера load() всё сверит с сервером.
                             val pack = result.pack
-                            if (pack.stickers.isNotEmpty() && packs.none { it.id == pack.id }) {
-                                packs = (packs + pack).toImmutableList()
+                            if (pack.stickers.isNotEmpty()) {
+                                packs = if (packs.any { it.id == pack.id }) {
+                                    packs.map { if (it.id == pack.id) pack else it }.toImmutableList()
+                                } else {
+                                    (packs + pack).toImmutableList()
+                                }
                             }
                             selectedPackIndex = packs.indexOfFirst { it.id == pack.id }.coerceAtLeast(0)
                             ImportState.Done(

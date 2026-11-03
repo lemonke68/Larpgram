@@ -9,13 +9,22 @@
 package io.element.android.libraries.imagepacks.impl
 
 import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.imagepacks.api.ImagePack
 import io.element.android.libraries.imagepacks.api.ImagePackEventTypes
 import io.element.android.libraries.imagepacks.api.ImagePackId
 import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.MatrixClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -31,6 +40,7 @@ import java.net.URLEncoder
  * `MatrixClient.getUrl` для этого не подходит: проверено, он ходит без авторизации и
  * получает 401.
  */
+@SingleIn(SessionScope::class)
 @ContributesBinding(SessionScope::class)
 class DefaultImagePackSource(
     private val matrixClient: MatrixClient,
@@ -39,6 +49,8 @@ class DefaultImagePackSource(
 ) : ImagePackSource {
     // Парсер без состояния и без зависимостей, поэтому держим его тут, а не в графе DI.
     private val parser = ImagePackParser()
+    private val savedMutex = Mutex()
+    private val pendingSavedChanges = mutableMapOf<ImagePackId, ImagePack?>()
 
     override suspend fun getUserPacks(): List<ImagePack> {
         val raw = matrixClient.getAccountData(ImagePackEventTypes.USER_EMOTES).getOrNull() ?: return emptyList()
@@ -81,39 +93,64 @@ class DefaultImagePackSource(
         return withContext(coroutineDispatchers.computation) { parser.parse(body, ImagePackId.Room(roomId, stateKey)) }
     }
 
-    override suspend fun getSavedPacks(): List<ImagePack> {
-        val raw = matrixClient.getAccountData(ImagePackEventTypes.SAVED_PACKS).getOrNull() ?: return emptyList()
-        // This snapshot can contain every image of every imported pack and is read on chat entry.
-        return withContext(coroutineDispatchers.computation) { parser.parseSavedPacks(raw) }
+    override suspend fun getSavedPacks(): List<ImagePack> = savedMutex.withLock {
+        readSavedForMutation().orEmpty()
     }
 
-    override suspend fun savePack(pack: ImagePack): Boolean {
-        val slug = (pack.id as? ImagePackId.Saved)?.slug ?: return false
-        // Читаем-меняем-пишем целиком: account data не умеет частичных обновлений.
-        val current = getSavedPacks().filterNot { (it.id as? ImagePackId.Saved)?.slug == slug }
-        val updated = current + pack
-        val serialized = withContext(coroutineDispatchers.computation) { parser.serializeSavedPacks(updated) }
-        return matrixClient
-            .setAccountData(ImagePackEventTypes.SAVED_PACKS, serialized)
-            .isSuccess
-    }
-
-    override suspend fun removeSavedPack(slug: String): Boolean {
-        val current = getSavedPacks()
-        val updated = current.filterNot { (it.id as? ImagePackId.Saved)?.slug == slug }
-        if (updated.size == current.size) return false
-        val serialized = withContext(coroutineDispatchers.computation) { parser.serializeSavedPacks(updated) }
-        return matrixClient
-            .setAccountData(ImagePackEventTypes.SAVED_PACKS, serialized)
-            .isSuccess
-    }
-
-    override suspend fun getAllPacks(): List<ImagePack> {
-        val roomPacks = getEmoteRooms().mapNotNull { (roomId, stateKey) ->
-            getRoomPack(roomId, stateKey)
+    // Keep acknowledged local mutations until sync echoes them. A stale intermediate
+    // echo must not undo a later successful save, and remote additions are retained.
+    private suspend fun readSavedForMutation(): List<ImagePack>? {
+        val result = matrixClient.getAccountData(ImagePackEventTypes.SAVED_PACKS)
+        if (result.isFailure) return null
+        val raw = result.getOrNull()
+        val packs = withContext(coroutineDispatchers.computation) {
+            runCatchingExceptions {
+                raw?.let { parser.parseSavedPacks(it, strict = true) }.orEmpty()
+            }.getOrNull()
         }
-        // Сохранённые первыми: это то, что человек добавил сам, к ним он и тянется.
-        return getSavedPacks() + getUserPacks() + roomPacks
+        if (packs == null) return null
+        val merged = packs.associateBy { it.id }.toMutableMap()
+        val iterator = pendingSavedChanges.iterator()
+        while (iterator.hasNext()) {
+            val (id, desired) = iterator.next()
+            if (merged[id] == desired) {
+                iterator.remove()
+            } else if (desired == null) {
+                merged.remove(id)
+            } else {
+                merged[id] = desired
+            }
+        }
+        return merged.values.toList()
+    }
+
+    private suspend fun writeSaved(packs: List<ImagePack>): Boolean {
+        val serialized = withContext(coroutineDispatchers.computation) { parser.serializeSavedPacks(packs) }
+        val success = matrixClient.setAccountData(ImagePackEventTypes.SAVED_PACKS, serialized).isSuccess
+        return success
+    }
+
+    override suspend fun savePack(pack: ImagePack): Boolean = savedMutex.withLock {
+        val slug = (pack.id as? ImagePackId.Saved)?.slug ?: return@withLock false
+        val current = readSavedForMutation() ?: return@withLock false
+        writeSaved(current.filterNot { (it.id as? ImagePackId.Saved)?.slug == slug } + pack)
+            .also { if (it) pendingSavedChanges[pack.id] = pack }
+    }
+
+    override suspend fun removeSavedPack(slug: String): Boolean = savedMutex.withLock {
+        val current = readSavedForMutation() ?: return@withLock false
+        val updated = current.filterNot { (it.id as? ImagePackId.Saved)?.slug == slug }
+        if (updated.size == current.size) return@withLock false
+        writeSaved(updated).also { if (it) pendingSavedChanges[ImagePackId.Saved(slug)] = null }
+    }
+
+    override suspend fun getAllPacks(): List<ImagePack> = coroutineScope {
+        val own = async { getSavedPacks() + getUserPacks() }
+        val permits = Semaphore(4)
+        val rooms = getEmoteRooms().map { (roomId, stateKey) ->
+            async { permits.withPermit { getRoomPack(roomId, stateKey) } }
+        }
+        own.await() + rooms.awaitAll().filterNotNull()
     }
 
     override fun serializePackDescriptor(pack: ImagePack): String = parser.serializePackDescriptor(pack)

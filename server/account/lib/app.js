@@ -159,7 +159,13 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
       }
       userId = user.id;
       db.setUserId.run(userId, row.id);
-      if (!(await mas.addEmail(userId, row.email))) {
+    }
+
+    // Создание аккаунта и привязка почты — разные этапы. После сбоя ответа MAS
+    // проверяем фактическую привязку, прежде чем повторять запрос или ставить пароль.
+    const emailOwner = await mas.findUserIdByEmail(row.email);
+    if (emailOwner !== userId) {
+      if (emailOwner || !(await mas.addEmail(userId, row.email))) {
         // Почту заняли в те же минуты. Аккаунт без пароля остаётся пустышкой — в журнал.
         audit('register-orphan', { username: row.username });
         db.delete.run(row.id);
@@ -436,11 +442,14 @@ export function createApp({ mas, mailer, db, matrix, now = Date.now, config = {}
     if (ticket && ticket.username !== localpartOf(req.userId)) return fail(res, 410, 'code_expired');
     const row = redeem(req, res, 'email');
     if (!row) return;
-    await mas.removeEmails(row.user_id);
-    if (!(await mas.addEmail(row.user_id, row.email))) {
+    const emailOwner = await mas.findUserIdByEmail(row.email);
+    if (emailOwner !== row.user_id && (emailOwner || !(await mas.addEmail(row.user_id, row.email)))) {
       db.delete.run(row.id);
       return fail(res, 409, 'email_taken');
     }
+    // Новый адрес уже привязан. При сбое уборки остаётся хотя бы один адрес,
+    // а повтор заявки продолжит уборку, не добавляя новый адрес второй раз.
+    await mas.removeEmails(row.user_id, row.email);
     db.delete.run(row.id);
     audit('email-done', { username: row.username });
     res.json({ email: row.email });

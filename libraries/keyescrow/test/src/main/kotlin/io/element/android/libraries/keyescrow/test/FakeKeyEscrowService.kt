@@ -46,6 +46,7 @@ class FakeKeyEscrowService(
 
     /** Сервер недоступен: [remoteState] отвечает `null`, запись не проходит. */
     var unavailable = false
+    var failServerKeySync = false
     var lockedKey: LockedRecoveryKey? = null
     var serverKey: String? = null
     var serverKeyOptIn = false
@@ -74,14 +75,14 @@ class FakeKeyEscrowService(
     }
 
     override suspend fun enableServerKey(recoveryKey: String): Boolean {
-        if (unavailable) return false
+        if (unavailable || failServerKeySync) return false
         serverKey = recoveryKey
         serverKeyOptIn = true
         return true
     }
 
     override suspend fun disableServerKey(): Boolean {
-        if (unavailable) return false
+        if (unavailable || failServerKeySync) return false
         serverKey = null
         serverKeyOptIn = false
         return true

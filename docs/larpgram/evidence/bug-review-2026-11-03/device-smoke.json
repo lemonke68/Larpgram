@@ -1,0 +1,12 @@
+{
+  "device": "Honor MAR-LX1M / Android 10",
+  "package": "ru.mangokokos.larpgram.debug",
+  "versionName": "0.4.1",
+  "versionCode": 202610012,
+  "install": "adb install -r: Success",
+  "launch": "am start -W: Status ok",
+  "pid": "20677",
+  "resumed": true,
+  "fatal_exception_in_current_pid_crash_buffer": false,
+  "scope": "Install and startup smoke only; no message sending, account changes, recovery or camera acceptance."
+}

@@ -144,6 +144,36 @@ class DefaultChatCleanupServiceTest {
         assertThat(deleted).isEmpty()
     }
 
+    @Test
+    fun `same marker retries failed persistence and survives service recreation`() = runTest {
+        var stored: String? = null
+        var failWrite = true
+        var writes = 0
+        val client = FakeMatrixClient(
+            getAccountDataLambda = { Result.success(stored) },
+            setAccountDataLambda = { _, content ->
+                writes++
+                if (failWrite) {
+                    Result.failure(IllegalStateException("offline"))
+                } else {
+                    stored = content
+                    Result.success(Unit)
+                }
+            },
+        )
+        val service = createService(client = client)
+        runCurrent()
+        service.onClearMarkerSeen(A_ROOM_ID, 500)
+        runCurrent()
+        failWrite = false
+        service.onClearMarkerSeen(A_ROOM_ID, 500)
+        runCurrent()
+        assertThat(writes).isEqualTo(2)
+        val restarted = createService(client = client)
+        runCurrent()
+        assertThat(restarted.clearedHistory.value[A_ROOM_ID]).isEqualTo(500L)
+    }
+
     private fun TestScope.createService(
         client: FakeMatrixClient = FakeMatrixClient(),
         deleted: MutableList<RoomId> = mutableListOf(),

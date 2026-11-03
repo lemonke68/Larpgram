@@ -106,6 +106,16 @@ class DefaultUpdateInstallerTest {
         assertThat(installer.state.value).isEqualTo(UpdateInstallState.WaitingForConfirmation)
     }
 
+    @Test
+    fun `write failure abandons created install session`() = runTest {
+        val installer = installer()
+        val missing = java.io.File(context.cacheDir, "missing-update.apk").also { it.delete() }
+        val commit = DefaultUpdateInstaller::class.java.getDeclaredMethod("commitSession", java.io.File::class.java)
+        commit.isAccessible = true
+        assertThat(runCatching { commit.invoke(installer, missing) }.isFailure).isTrue()
+        assertThat(context.packageManager.packageInstaller.allSessions).isEmpty()
+    }
+
     private fun TestScope.installer() = DefaultUpdateInstaller(
         context = context,
         appCoroutineScope = backgroundScope,

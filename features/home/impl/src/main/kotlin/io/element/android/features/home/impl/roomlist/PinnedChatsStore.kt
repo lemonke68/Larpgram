@@ -13,11 +13,14 @@ import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -43,12 +46,20 @@ class PinnedChatsStore(
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
 ) {
+    private val mutationMutex = Mutex()
+    private val initialized = CompletableDeferred<Unit>()
     private val json = Json { ignoreUnknownKeys = true }
     private val _pinnedFlow = MutableStateFlow<List<RoomId>>(emptyList())
     val pinnedFlow: StateFlow<List<RoomId>> = _pinnedFlow.asStateFlow()
 
     init {
-        sessionCoroutineScope.launch { load() }
+        sessionCoroutineScope.launch {
+            try {
+                load()
+            } finally {
+                initialized.complete(Unit)
+            }
+        }
     }
 
     private suspend fun load() {
@@ -57,16 +68,19 @@ class PinnedChatsStore(
 
     fun setPinned(roomId: RoomId, isPinned: Boolean) {
         sessionCoroutineScope.launch {
-            val current = _pinnedFlow.value
-            val next = if (isPinned) {
-                if (roomId in current) current else listOf(roomId) + current
-            } else {
-                current.filterNot { it == roomId }
+            initialized.await()
+            mutationMutex.withLock {
+                val current = _pinnedFlow.value
+                val next = if (isPinned) {
+                    if (roomId in current) current else listOf(roomId) + current
+                } else {
+                    current.filterNot { it == roomId }
+                }
+                if (next == current) return@withLock
+                _pinnedFlow.value = next
+                client.setAccountData(ACCOUNT_DATA_TYPE, encode(next))
+                    .onFailure { Timber.w(it, "не удалось сохранить закреплённые чаты") }
             }
-            if (next == current) return@launch
-            _pinnedFlow.value = next
-            client.setAccountData(ACCOUNT_DATA_TYPE, encode(next))
-                .onFailure { Timber.w(it, "не удалось сохранить закреплённые чаты") }
         }
     }
 

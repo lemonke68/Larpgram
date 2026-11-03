@@ -9,6 +9,12 @@
 package io.element.android.libraries.network.interceptors
 
 import io.element.android.libraries.core.extensions.ellipsize
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONArray
 import org.json.JSONException
@@ -23,13 +29,33 @@ internal class FormattedJsonHttpLogger(
 
         // Правка форка: тела запросов в debug-логе не должны нести секреты — ключ восстановления
         // (escrow), пароли, токены, код с почты. Логи уходят в rageshake-файлы.
-        private val SECRET_JSON_FIELD = Regex("""("(?:recovery_key|password|access_token|refresh_token|code)"\s*:\s*)"[^"]*"""")
+        private val SECRET_JSON_FIELDS = setOf("recovery_key", "password", "access_token", "refresh_token", "code")
 
         private val AUTHORIZATION_HEADER = Regex("""^(Authorization:\s*).+""", RegexOption.IGNORE_CASE)
 
-        internal fun redactSecrets(message: String): String = SECRET_JSON_FIELD
-            .replace(message) { "${it.groupValues[1]}\"***\"" }
-            .replace(AUTHORIZATION_HEADER) { "${it.groupValues[1]}***" }
+        internal fun redactSecrets(message: String): String {
+            if (AUTHORIZATION_HEADER.containsMatchIn(message)) {
+                return AUTHORIZATION_HEADER.replace(message) { "${it.groupValues[1]}***" }
+            }
+            val body = message.trimStart()
+            if (!body.startsWith("{") && !body.startsWith("[")) return message
+            return try {
+                redactJson(Json.parseToJsonElement(body)).toString()
+            } catch (_: SerializationException) {
+                // Не печатаем повреждённое или обрезанное тело: оно тоже может содержать секреты.
+                "[Invalid JSON body omitted]"
+            } catch (_: IllegalArgumentException) {
+                "[Invalid JSON body omitted]"
+            }
+        }
+
+        private fun redactJson(element: JsonElement): JsonElement = when (element) {
+            is JsonObject -> JsonObject(element.mapValues { (key, value) ->
+                if (key in SECRET_JSON_FIELDS) JsonPrimitive("***") else redactJson(value)
+            })
+            is JsonArray -> JsonArray(element.map(::redactJson))
+            else -> element
+        }
     }
 
     /**

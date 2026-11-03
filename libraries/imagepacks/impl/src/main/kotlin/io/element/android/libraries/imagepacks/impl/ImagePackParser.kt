@@ -92,10 +92,11 @@ class ImagePackParser {
      *
      * Паки без slug пропускаем: без него пак нельзя ни обновить, ни удалить.
      */
-    fun parseSavedPacks(rawContent: String): List<ImagePack> {
+    fun parseSavedPacks(rawContent: String, strict: Boolean = false): List<ImagePack> {
         val content = try {
             json.decodeFromString<SavedPacksJson>(rawContent)
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            if (strict) throw error
             return emptyList()
         }
         return content.packs.mapNotNull { saved ->

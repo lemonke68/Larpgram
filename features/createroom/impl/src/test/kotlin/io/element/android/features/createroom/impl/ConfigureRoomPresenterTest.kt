@@ -632,8 +632,64 @@ class ConfigureRoomPresenterTest : RobolectricTest() {
         spaceService = spaceService,
     )
 
+    @Test
+    fun `channel setup failure is retryable and does not duplicate channel or discussion`() = runTest {
+        var creations = 0
+        var failLink = true
+        val client = createMatrixClient()
+        val channelId = A_ROOM_ID
+        val discussionId = RoomId("!discussion:example.org")
+        val channel = io.element.android.libraries.matrix.test.room.FakeJoinedRoom(
+            baseRoom = io.element.android.libraries.matrix.test.room.FakeBaseRoom(
+                powerLevelsResult = { Result.success(RoomPowerLevelsValues(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)) },
+            ),
+            updatePowerLevelsResult = { Result.success(Unit) },
+            sendRawStateEventResult = { _, _, _ ->
+                if (failLink) Result.failure(IllegalStateException("offline")) else Result.success(Unit)
+            },
+        )
+        client.givenGetRoomResult(channelId, channel)
+        client.createRoomResult = {
+            creations++
+            Result.success(if (creations == 1) channelId else discussionId)
+        }
+        val presenter = createConfigureRoomPresenter(isChannel = true, matrixClient = client)
+        presenter.test {
+            val initial = initialState()
+            initial.eventSink(ConfigureRoomEvent.CreateRoom)
+            val failed = consumeItemsUntilPredicate { it.createRoomAction is AsyncAction.Failure }.last()
+            assertThat(creations).isEqualTo(2)
+            failLink = false
+            failed.eventSink(ConfigureRoomEvent.CreateRoom)
+            val done = consumeItemsUntilPredicate { it.createRoomAction is AsyncAction.Success }.last()
+            assertThat((done.createRoomAction as AsyncAction.Success).data).isEqualTo(channelId)
+            assertThat(creations).isEqualTo(2)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `channel without joined room reports failure and retries the same room`() = runTest {
+        val client = createMatrixClient()
+        var creations = 0
+        client.createRoomResult = {
+            creations++
+            Result.success(A_ROOM_ID)
+        }
+        val presenter = createConfigureRoomPresenter(isChannel = true, matrixClient = client)
+        presenter.test {
+            initialState().eventSink(ConfigureRoomEvent.CreateRoom)
+            val failed = consumeItemsUntilPredicate { it.createRoomAction is AsyncAction.Failure }.last()
+            failed.eventSink(ConfigureRoomEvent.CreateRoom)
+            consumeItemsUntilPredicate { it.createRoomAction is AsyncAction.Failure }
+            assertThat(creations).isEqualTo(1)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun createConfigureRoomPresenter(
         isSpace: Boolean = false,
+        isChannel: Boolean = false,
         initialParenSpaceId: RoomId? = null,
         initialInvites: List<MatrixUser> = emptyList(),
         roomAliasHelper: RoomAliasHelper = FakeRoomAliasHelper(),
@@ -651,7 +707,7 @@ class ConfigureRoomPresenterTest : RobolectricTest() {
         ),
     ) = ConfigureRoomPresenter(
         isSpace = isSpace,
-        isChannel = false,
+        isChannel = isChannel,
         initialParentSpaceId = initialParenSpaceId,
         initialInvites = initialInvites,
         dataStore = dataStore,

@@ -139,12 +139,13 @@ export function createMas({
       return token;
     },
 
-    /** Удаляет все адреса пользователя (перед привязкой нового: адрес у аккаунта один). */
-    async removeEmails(userId) {
+    /** Удаляет прежние адреса, сохраняя уже привязанный новый адрес. */
+    async removeEmails(userId, keepEmail) {
       const query = new URLSearchParams({ 'filter[user]': userId, 'page[first]': '50' });
       const res = await call('GET', `/user-emails?${query}`);
       if (!res.ok) throw new MasError(res.status, await res.text());
       for (const item of (await res.json()).data || []) {
+        if (item.attributes?.email === keepEmail) continue;
         const del = await call('DELETE', `/user-emails/${item.id}`);
         if (!del.ok && del.status !== 404) throw new MasError(del.status, await del.text());
       }

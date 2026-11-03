@@ -35,6 +35,20 @@ import kotlinx.serialization.json.put
  */
 object ChannelPostMirror {
     private const val MIRROR_TIMEOUT_MS = 20_000L
+    private val claimedPosts = LinkedHashSet<String>()
+
+    @Synchronized
+    internal fun claimPost(key: String): Boolean {
+        if (!claimedPosts.add(key)) return false
+        if (claimedPosts.size > 2048) claimedPosts.remove(claimedPosts.first())
+        return true
+    }
+
+    @Synchronized
+    internal fun releasePost(key: String) {
+        claimedPosts.remove(key)
+    }
+
     const val ROOM_MESSAGE_EVENT_TYPE = "m.room.message"
     const val STICKER_EVENT_TYPE = "m.sticker"
 
@@ -139,7 +153,7 @@ object ChannelPostMirror {
     }.getOrDefault(emptySet())
 
     /**
-     * Mirror the newest of my matching posts (excluding [preIds], the ones already present before the
+     * Mirror the first unclaimed matching post (excluding [preIds], the ones already present before the
      * send) into the channel's discussion group. No-op if [room] is not a channel, has no discussion,
      * or the post doesn't get a remote event id within [MIRROR_TIMEOUT_MS].
      */
@@ -155,25 +169,35 @@ object ChannelPostMirror {
         val myId = room.sessionId.value
         // Wait for our just-sent post to appear with a remote event id (skip local echo and any
         // older matching posts captured in [preIds]).
-        val sent = withTimeoutOrNull(MIRROR_TIMEOUT_MS) {
-            room.liveTimeline.timelineItems
-                .mapNotNull { items ->
-                    items.asSequence()
-                        .filterIsInstance<MatrixTimelineItem.Event>()
-                        .lastOrNull { ev ->
-                            val id = ev.event.eventId?.value
-                            id != null && id !in preIds &&
-                                ev.event.sender.value == myId &&
-                                matches(ev.event.timelineItemDebugInfoProvider().originalJson) &&
-                                !isAlbumTail(ev.event.timelineItemDebugInfoProvider().originalJson)
-                        }
-                }
-                .first()
-        } ?: return
-        val eventId = sent.event.eventId?.value ?: return
-        val originalJson = sent.event.timelineItemDebugInfoProvider().originalJson ?: return
-        val content = buildMirrorContent(originalJson, eventId) ?: return
-        matrixClient.getJoinedRoom(discussionId)?.use { it.sendRawEvent(eventType, content) }
+        var claimKey: String? = null
+        var mirrored = false
+        try {
+            val sent = withTimeoutOrNull(MIRROR_TIMEOUT_MS) {
+                room.liveTimeline.timelineItems
+                    .mapNotNull { items ->
+                        items.asSequence()
+                            .filterIsInstance<MatrixTimelineItem.Event>()
+                            .firstOrNull { ev ->
+                                val id = ev.event.eventId?.value
+                                val key = "${room.sessionId.value}/${room.roomId.value}/$id"
+                                id != null && id !in preIds &&
+                                    ev.event.sender.value == myId &&
+                                    matches(ev.event.timelineItemDebugInfoProvider().originalJson) &&
+                                    !isAlbumTail(ev.event.timelineItemDebugInfoProvider().originalJson) &&
+                                    claimPost(key).also { claimed -> if (claimed) claimKey = key }
+                            }
+                    }
+                    .first()
+            } ?: return
+            val eventId = sent.event.eventId?.value ?: return
+            val originalJson = sent.event.timelineItemDebugInfoProvider().originalJson ?: return
+            val content = buildMirrorContent(originalJson, eventId) ?: return
+            val discussion = matrixClient.getJoinedRoom(discussionId) ?: return
+            discussion.use { it.sendRawEvent(eventType, content).getOrThrow() }
+            mirrored = true
+        } finally {
+            if (!mirrored) claimKey?.let(::releasePost)
+        }
     }
 
     internal fun buildMirrorContent(originalJson: String, commentId: String): String? = runCatchingExceptions {

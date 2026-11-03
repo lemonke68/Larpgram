@@ -17,9 +17,14 @@ android {
 
 dependencies {
     implementation(libs.coroutines.core)
+    implementation(platform(libs.network.okhttp.bom))
+    implementation(libs.network.okhttp)
     implementation(projects.libraries.core)
     implementation(projects.libraries.matrix.api)
     implementation(libs.serialization.json)
 
     testCommonDependencies(libs)
+    testImplementation(projects.libraries.matrix.test)
+    testImplementation(libs.network.mockwebserver)
+    testImplementation(libs.kotlinx.collections.immutable)
 }

@@ -88,7 +88,11 @@ class FakeEncryptionService(
     override suspend fun recover(recoveryKey: String): Result<Unit> = simulateLongTask {
         lastRecoveryKey = recoveryKey
         recoverFailure?.let { return Result.failure(it) }
-        acceptedRecoveryKey?.let { if (it != recoveryKey) return Result.failure(RecoveryException.SecretStorage("wrong key")) }
+        acceptedRecoveryKey?.let {
+            if (it != recoveryKey) {
+                return Result.failure(RecoveryException.SecretStorage("The MAC check for the secret storage key failed"))
+            }
+        }
         return Result.success(Unit)
     }
 

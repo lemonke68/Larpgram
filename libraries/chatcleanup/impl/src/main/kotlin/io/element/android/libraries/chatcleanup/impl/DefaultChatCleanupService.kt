@@ -60,12 +60,14 @@ class DefaultChatCleanupService(
     private val json = Json { ignoreUnknownKeys = true }
     private val pendingDeletes = ConcurrentHashMap<RoomId, Job>()
     private val saveMutex = Mutex()
+    private val persistedHistory = MutableStateFlow<Map<RoomId, Long>>(emptyMap())
     private val clearedHistoryFlow = MutableStateFlow<Map<RoomId, Long>>(emptyMap())
     override val clearedHistory: StateFlow<Map<RoomId, Long>> = clearedHistoryFlow.asStateFlow()
 
     init {
         sessionCoroutineScope.launch {
             val stored = decode(client.getAccountData(ACCOUNT_DATA_TYPE).getOrNull())
+            persistedHistory.value = stored
             clearedHistoryFlow.update { current -> stored.mergeMax(current) }
         }
     }
@@ -120,14 +122,22 @@ class DefaultChatCleanupService(
     }
 
     private fun remember(roomId: RoomId, ts: Long) {
-        if ((clearedHistoryFlow.value[roomId] ?: Long.MIN_VALUE) >= ts) return
+        if ((persistedHistory.value[roomId] ?: Long.MIN_VALUE) >= ts) return
         clearedHistoryFlow.update { it.mergeMax(mapOf(roomId to ts)) }
         sessionCoroutineScope.launch {
             saveMutex.withLock {
-                val stored = decode(client.getAccountData(ACCOUNT_DATA_TYPE).getOrNull())
+                val raw = client.getAccountData(ACCOUNT_DATA_TYPE).getOrElse {
+                    Timber.w(it, "не удалось прочитать отметки очистки истории")
+                    return@withLock
+                }
+                val stored = decode(raw)
                 val merged = stored.mergeMax(clearedHistoryFlow.value)
-                if (merged == stored) return@withLock
+                if (merged == stored) {
+                    persistedHistory.value = stored
+                    return@withLock
+                }
                 client.setAccountData(ACCOUNT_DATA_TYPE, encode(merged))
+                    .onSuccess { persistedHistory.value = merged }
                     .onFailure { Timber.w(it, "не удалось сохранить отметки очистки истории") }
             }
         }

@@ -16,6 +16,7 @@ import io.element.android.libraries.imagepacks.api.ImagePackImage
 import io.element.android.libraries.imagepacks.api.ImagePackUsage
 import io.element.android.libraries.matrix.test.FakeMatrixClient
 import io.element.android.tests.testutils.testCoroutineDispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -266,6 +267,39 @@ class DefaultImagePackSourceTest {
         // Пак без slug нельзя ни обновить, ни удалить, поэтому он отбрасывается.
         assertThat(source.getSavedPacks().map { (it.id as ImagePackId.Saved).slug })
             .containsExactly("ok")
+    }
+
+    @Test
+    fun `failed read never overwrites saved packs`() = runTest {
+        val source = createSource(FakeMatrixClient(
+            getAccountDataLambda = { Result.failure(IllegalStateException("offline")) },
+            setAccountDataLambda = { _, _ -> error("must not overwrite unknown collection") },
+        ))
+        assertThat(source.savePack(aPack("new", "New"))).isFalse()
+        assertThat(source.removeSavedPack("old")).isFalse()
+    }
+
+    @Test
+    fun `concurrent changes retain acknowledged packs while sync cache is stale`() = runTest {
+        val writes = mutableListOf<String>()
+        val source = createSource(FakeMatrixClient(
+            getAccountDataLambda = { Result.success(null) },
+            setAccountDataLambda = { _, content ->
+                writes += content
+                Result.success(Unit)
+            },
+        ))
+        kotlinx.coroutines.coroutineScope {
+            val first = async { source.savePack(aPack("one", "One")) }
+            val second = async { source.savePack(aPack("two", "Two")) }
+            assertThat(first.await()).isTrue()
+            assertThat(second.await()).isTrue()
+        }
+        assertThat(writes.last()).contains("one")
+        assertThat(writes.last()).contains("two")
+        assertThat(source.removeSavedPack("one")).isTrue()
+        assertThat(writes.last()).contains("two")
+        assertThat(writes.last()).doesNotContain("one")
     }
 
     @Test

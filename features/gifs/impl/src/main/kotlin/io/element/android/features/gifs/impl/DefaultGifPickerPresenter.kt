@@ -17,7 +17,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.channelcomments.ChannelPostMirror
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
+import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -31,6 +34,7 @@ class DefaultGifPickerPresenter(
     private val repository: GifRepository,
     private val sender: GifSender,
     private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     private val recentGifsStore: RecentGifsStore,
 ) : Presenter<GifPickerState> {
     @Composable
@@ -87,7 +91,13 @@ class DefaultGifPickerPresenter(
                         gifs = recentGifsStore.getRecent().toImmutableList()
                         isShowingRecent = gifs.isNotEmpty()
                     }
+                    val preIds = ChannelPostMirror.myPostIds(room, ChannelPostMirror::isMirrorableMessage)
                     sender.send(room, event.gif)
+                        .onSuccess {
+                            runCatchingExceptions {
+                                ChannelPostMirror.mirrorLastPost(room, matrixClient, preIds, matches = ChannelPostMirror::isMirrorableMessage)
+                            }.onFailure { Timber.w(it, "не удалось зеркалить GIF в обсуждение") }
+                        }
                         // Молча терять отправку нельзя: без лога такая поломка выглядит как
                         // «нажал, и ничего не произошло».
                         .onFailure { Timber.e(it, "не удалось отправить гифку") }

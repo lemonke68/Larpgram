@@ -67,7 +67,7 @@ class DefaultRecoveryKeyAutoProvisioner(
         mutex.withLock {
             val remote = keyEscrowService.remoteState()
                 ?: return@withLock Result.failure(IllegalStateException("escrow недоступен"))
-            val key = currentKey() ?: reissueKey()
+            val key = currentKey().getOrElse { return@withLock Result.failure(it) } ?: reissueKey()
                 ?: return@withLock Result.failure(IllegalStateException("нет ключа восстановления"))
             if (lockAndUpload(key, password, remote)) {
                 Result.success(Unit)
@@ -82,7 +82,7 @@ class DefaultRecoveryKeyAutoProvisioner(
             // Не вышло сейчас — пароль остаётся в памяти, следующий провижининг перезапрёт.
             passwordHandoff.put(sessionId, newPassword)
             val remote = keyEscrowService.remoteState() ?: return@withLock
-            val key = currentKey() ?: reissueKey() ?: return@withLock
+            val key = currentKey().getOrElse { return@withLock } ?: reissueKey() ?: return@withLock
             lockAndUpload(key, newPassword, remote)
             Unit
         }
@@ -109,14 +109,14 @@ class DefaultRecoveryKeyAutoProvisioner(
     }
 
     override suspend fun recoveryKeyOnDevice(): String? = withContext(dispatchers.io) {
-        mutex.withLock { currentKey() }
+        mutex.withLock { currentKey().getOrNull() }
     }
 
     override suspend fun setServerRecovery(enabled: Boolean): Boolean = withContext(dispatchers.io) {
         mutex.withLock {
             if (enabled) {
                 // Без копии ключа включить нечем: перевыпуск сломал бы блоб, а пароля тут нет.
-                val key = currentKey() ?: return@withLock false
+                val key = currentKey().getOrNull() ?: return@withLock false
                 keyEscrowService.enableServerKey(key)
             } else {
                 keyEscrowService.disableServerKey()
@@ -170,8 +170,8 @@ class DefaultRecoveryKeyAutoProvisioner(
         if (fromPairing != null) {
             Timber.d("Unlocking a new session with the recovery key from the paired device")
             val result = encryptionService.recover(fromPairing)
-            pairedKeyHandoff.clear(sessionId)
             if (result.isSuccess) {
+                pairedKeyHandoff.clear(sessionId)
                 localKeyStore.put(sessionId, fromPairing)
                 when {
                     password != null -> lockAndUpload(fromPairing, password, remote)
@@ -179,10 +179,12 @@ class DefaultRecoveryKeyAutoProvisioner(
                 }
                 return
             }
+            if (!isInvalidKey(result.exceptionOrNull() ?: return)) return
+            pairedKeyHandoff.clear(sessionId)
             // Ключ со старого устройства не подошёл — дальше как без него. Серверные источники не трогаем.
             Timber.w(result.exceptionOrNull(), "Recovery key from the paired device did not work")
         }
-        val fromBlob = if (password != null && remote.hasLockedKey) openRemoteBlob(password) else null
+        val fromBlob = if (password != null && remote.hasLockedKey) openRemoteBlob(password).getOrElse { return } else null
         val key = fromBlob ?: keyEscrowService.fetchSessionKey() ?: return
         Timber.d("Auto-unlocking a new session with the escrowed recovery key")
         encryptionService.recover(key)
@@ -199,7 +201,7 @@ class DefaultRecoveryKeyAutoProvisioner(
                 Timber.w(error, "Авто-восстановление по escrow-ключу не удалось")
                 // Ключ не подошёл: его сменили в другом клиенте. Убираем протухший источник, чтобы
                 // после ручного подтверждения ветка ENABLED положила свежий.
-                if (error is RecoveryException.SecretStorage) {
+                if (isInvalidKey(error)) {
                     Timber.w("Escrowed recovery key is stale, removing it")
                     if (fromBlob != null) keyEscrowService.deleteLockedKey() else keyEscrowService.deleteStoredKey()
                 }
@@ -216,14 +218,19 @@ class DefaultRecoveryKeyAutoProvisioner(
             return
         }
         // Блоб открывается этим паролем и ключ в нём живой — всё уже как надо.
-        val fromBlob = if (remote.hasLockedKey) openRemoteBlob(password) else null
-        if (fromBlob != null && isCurrent(fromBlob)) {
+        val fromBlob = if (remote.hasLockedKey) openRemoteBlob(password).getOrElse { return } else null
+        if (fromBlob != null && isCurrent(fromBlob).getOrElse { return }) {
             localKeyStore.put(sessionId, fromBlob)
-            if (remote.hasServerKey && !remote.serverKeyOptIn) keyEscrowService.disableServerKey()
+            if (remote.serverKeyOptIn) {
+                if (!keyEscrowService.enableServerKey(fromBlob)) return
+            } else if (remote.hasServerKey && !keyEscrowService.disableServerKey()) {
+                return
+            }
             passwordHandoff.clear(sessionId)
+            needsPasswordFlow.value = false
             return
         }
-        val key = currentKey() ?: reissueKey() ?: return
+        val key = currentKey().getOrElse { return } ?: reissueKey() ?: return
         lockAndUpload(key, password, remote)
     }
 
@@ -232,6 +239,7 @@ class DefaultRecoveryKeyAutoProvisioner(
      * больше не нужен, а с тумблером — обновляется тем же ключом.
      */
     private suspend fun lockAndUpload(key: String, password: String, remote: EscrowRemoteState): Boolean {
+        passwordHandoff.put(sessionId, password)
         val locked = withContext(dispatchers.computation) { recoveryKeyLock.lock(key, password, userId) }
         if (!keyEscrowService.storeLockedKey(locked)) {
             Timber.w("Не удалось положить запертый ключ в escrow")
@@ -239,9 +247,9 @@ class DefaultRecoveryKeyAutoProvisioner(
         }
         localKeyStore.put(sessionId, key)
         if (remote.serverKeyOptIn) {
-            keyEscrowService.enableServerKey(key)
+            if (!keyEscrowService.enableServerKey(key)) return false
         } else if (remote.hasServerKey) {
-            keyEscrowService.disableServerKey()
+            if (!keyEscrowService.disableServerKey()) return false
         }
         passwordHandoff.clear(sessionId)
         needsPasswordFlow.value = false
@@ -259,26 +267,39 @@ class DefaultRecoveryKeyAutoProvisioner(
         needsPasswordFlow.value = true
     }
 
-    private suspend fun openRemoteBlob(password: String): String? {
+    private suspend fun openRemoteBlob(password: String): Result<String?> {
         val locked = when (val fetch = keyEscrowService.fetchLockedKey()) {
             is LockedKeyFetch.Found -> fetch.locked
-            LockedKeyFetch.NotFound, LockedKeyFetch.NetworkError -> return null
+            LockedKeyFetch.NotFound -> return Result.success(null)
+            LockedKeyFetch.NetworkError -> return Result.failure(IllegalStateException("escrow недоступен"))
         }
-        return withContext(dispatchers.computation) { recoveryKeyLock.open(locked, password, userId) }
+        return Result.success(
+            withContext(dispatchers.computation) { recoveryKeyLock.open(locked, password, userId) }
             .also { if (it == null) Timber.w("Запертый ключ не открылся паролем со входа") }
+        )
     }
 
     /** Копия ключа на устройстве, если она ещё открывает хранилище секретов аккаунта. */
-    private suspend fun currentKey(): String? {
-        val local = localKeyStore.get(sessionId) ?: return null
-        if (isCurrent(local)) return local
+    private suspend fun currentKey(): Result<String?> {
+        val local = localKeyStore.get(sessionId) ?: return Result.success(null)
+        val valid = isCurrent(local).getOrElse { return Result.failure(it) }
+        if (valid) return Result.success(local)
         Timber.w("Local recovery key copy is stale, dropping it")
         localKeyStore.remove(sessionId)
-        return null
+        return Result.success(null)
     }
 
-    // recover() на подписанной сессии ничего не ломает: заново достаёт те же секреты.
-    private suspend fun isCurrent(key: String): Boolean = encryptionService.recover(key).isSuccess
+    // UniFFI flattens SecretStorage errors to a string, including network/storage errors.
+    // Only the SDK's explicit key MAC mismatch proves that the supplied key is stale.
+    private suspend fun isCurrent(key: String): Result<Boolean> {
+        val result = encryptionService.recover(key)
+        if (result.isSuccess) return Result.success(true)
+        val error = result.exceptionOrNull() ?: return Result.failure(IllegalStateException("Recovery failed"))
+        return if (isInvalidKey(error)) Result.success(false) else Result.failure(error)
+    }
+
+    private fun isInvalidKey(error: Throwable): Boolean = error is RecoveryException.SecretStorage &&
+        error.message == "The MAC check for the secret storage key failed"
 
     /** Копии ключа нет, а сессия подписана: выпустить новый (прежний блоб станет бесполезен). */
     private suspend fun reissueKey(): String? {

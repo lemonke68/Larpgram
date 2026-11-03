@@ -27,6 +27,7 @@ dependencies {
     implementation(platform(libs.network.okhttp.bom))
     implementation(libs.network.okhttp)
     implementation(projects.libraries.architecture)
+    implementation(projects.libraries.channelcomments)
     implementation(projects.libraries.core)
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.di)

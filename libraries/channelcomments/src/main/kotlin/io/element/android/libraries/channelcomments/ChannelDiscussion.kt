@@ -7,25 +7,31 @@
 
 package io.element.android.libraries.channelcomments
 
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /**
- * Shared bits of the Telegram-style channel↔comments link. A channel post is sent with a
- * [COMMENT_REF_FIELD] object in its content pointing at the discussion group; the channel→group
- * mapping is cached per-user in account data ([ACCOUNT_DATA_TYPE]). Custom room state is not
- * readable via the SDK, so the discussion is discovered from account data or, failing that,
- * backfilled from an existing post's raw content.
+ * Channel-to-discussion links live in shared room state, fetched through authenticated CS API.
+ * Account data caches the link for offline use; legacy post references remain a fallback.
  */
 object ChannelDiscussion {
+    const val DISCUSSION_STATE_TYPE = "ru.mangokokos.larpgram.discussion"
+    private val httpClient by lazy { OkHttpClient() }
+
     const val ACCOUNT_DATA_TYPE = "ru.mangokokos.larpgram.channel_discussions"
     const val COMMENT_REF_FIELD = "ru.mangokokos.larpgram.comment"
     const val COMMENT_ID_FIELD = "ru.mangokokos.larpgram.comment_id"
@@ -69,6 +75,10 @@ object ChannelDiscussion {
     suspend fun resolveDiscussionRoomId(room: JoinedRoom, matrixClient: MatrixClient): RoomId? {
         linkMap(matrixClient.getAccountData(ACCOUNT_DATA_TYPE).getOrNull())[room.roomId.value]
             ?.let { return RoomId(it) }
+        sharedDiscussionRoomId(room.roomId, matrixClient)?.let {
+            cacheDiscussion(matrixClient, room.roomId, it)
+            return it
+        }
         val items = room.liveTimeline.timelineItems.first()
         for (item in items) {
             if (item !is MatrixTimelineItem.Event) continue
@@ -80,8 +90,29 @@ object ChannelDiscussion {
         return null
     }
 
+    /** Shared room state is visible to every channel member, including before the first post. */
+    private suspend fun sharedDiscussionRoomId(channelId: RoomId, client: MatrixClient): RoomId? = withContext(Dispatchers.IO) {
+        runCatchingExceptions {
+            val token = client.getAccessToken().getOrThrow()
+            val url = client.homeserverUrl.toHttpUrl().newBuilder()
+                .addPathSegments("_matrix/client/v3/rooms")
+                .addPathSegment(channelId.value)
+                .addPathSegment("state")
+                .addPathSegment(DISCUSSION_STATE_TYPE)
+                .addPathSegment("")
+                .build()
+            val request = Request.Builder().url(url).header("Authorization", "Bearer $token").build()
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val content = json.parseToJsonElement(response.body.string()).jsonObject
+                content["room"]?.jsonPrimitive?.content?.let(::RoomId)
+            }
+        }.getOrNull()
+    }
+
     private suspend fun cacheDiscussion(matrixClient: MatrixClient, channelId: RoomId, discussionId: RoomId) {
-        val current = linkMap(matrixClient.getAccountData(ACCOUNT_DATA_TYPE).getOrNull())
+        val raw = matrixClient.getAccountData(ACCOUNT_DATA_TYPE).getOrElse { return }
+        val current = linkMap(raw)
         matrixClient.setAccountData(ACCOUNT_DATA_TYPE, encodeLinkMap(current + (channelId.value to discussionId.value)))
     }
 }

@@ -290,6 +290,43 @@ class DefaultRecoveryKeyAutoProvisionerTest {
         assertThat(localStore.keys[A_SESSION_ID]).isEqualTo(NEW_KEY)
     }
 
+    @Test
+    fun `temporary recovery failures preserve local key and never reset identity`() = runTest {
+        val encryption = FakeEncryptionService(resetRecoveryKeyLambda = { error("must not reset") })
+        encryption.recoveryStateStateFlow.value = RecoveryState.ENABLED
+        encryption.givenRecoverFailure(io.element.android.libraries.matrix.api.encryption.RecoveryException.SecretStorage("HTTP timeout"))
+        localStore.keys[A_SESSION_ID] = OLD_KEY
+        handoff.put(A_SESSION_ID, PASSWORD)
+        val provisioner = createProvisioner(encryption)
+        provisioner.ensureProvisioned()
+        assertThat(provisioner.lockWithPassword(PASSWORD).isFailure).isTrue()
+        assertThat(localStore.keys[A_SESSION_ID]).isEqualTo(OLD_KEY)
+        assertThat(handoff.peek(A_SESSION_ID)).isEqualTo(PASSWORD)
+        assertThat(escrow.lockedKeyStores).isEqualTo(0)
+        encryption.givenRecoverFailure(null)
+        provisioner.ensureProvisioned()
+        assertThat(escrow.opened(PASSWORD)).isEqualTo(OLD_KEY)
+    }
+
+    @Test
+    fun `partial server key failure retains password and retries even with current blob`() = runTest {
+        val encryption = FakeEncryptionService().apply { recoveryStateStateFlow.value = RecoveryState.ENABLED }
+        localStore.keys[A_SESSION_ID] = OLD_KEY
+        escrow.serverKey = OLD_KEY
+        escrow.serverKeyOptIn = true
+        escrow.failServerKeySync = true
+        val provisioner = createProvisioner(encryption)
+        provisioner.ensureProvisioned()
+        assertThat(provisioner.needsPassword.value).isTrue()
+        assertThat(provisioner.lockWithPassword(PASSWORD).isFailure).isTrue()
+        assertThat(handoff.peek(A_SESSION_ID)).isEqualTo(PASSWORD)
+        escrow.failServerKeySync = false
+        provisioner.ensureProvisioned()
+        assertThat(handoff.peek(A_SESSION_ID)).isNull()
+        assertThat(escrow.serverKey).isEqualTo(OLD_KEY)
+        assertThat(provisioner.needsPassword.value).isFalse()
+    }
+
     private fun TestScope.createProvisioner(encryptionService: FakeEncryptionService) = DefaultRecoveryKeyAutoProvisioner(
         matrixClient = FakeMatrixClient(sessionId = A_SESSION_ID, encryptionService = encryptionService),
         keyEscrowService = escrow,

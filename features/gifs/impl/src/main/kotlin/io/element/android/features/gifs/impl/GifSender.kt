@@ -9,8 +9,12 @@
 package io.element.android.features.gifs.impl
 
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.media.ImageInfo
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -33,10 +37,10 @@ class GifSender(
     private val cacheDir: File,
 ) {
     suspend fun send(room: JoinedRoom, gif: Gif): Result<Unit> = withContext(coroutineDispatchers.io) {
-        runCatching {
+        runCatchingExceptions {
             val file = download(gif)
             try {
-                room.liveTimeline.sendImage(
+                val upload = room.liveTimeline.sendImage(
                     file = file,
                     thumbnailFile = null,
                     imageInfo = ImageInfo(
@@ -53,11 +57,17 @@ class GifSender(
                     inReplyToEventId = null,
                 )
                     .getOrThrow()
-                    // Без await загрузка не доводится до конца: sendImage лишь ставит её в
-                    // очередь и возвращает управление. Удалить файл раньше тоже нельзя,
-                    // SDK читает его именно во время загрузки.
-                    .await()
-                    .getOrThrow()
+                supervisorScope {
+                    val completion = async { withContext(NonCancellable) { upload.await() } }
+                    try {
+                        // SDK reads the file until its upload handle completes.
+                        completion.await().getOrThrow()
+                    } catch (error: Exception) {
+                        upload.cancel()
+                        withContext(NonCancellable) { completion.join() }
+                        throw error
+                    }
+                }
                 Unit
             } finally {
                 // Файл ушёл на сервер, держать копию в кеше незачем.
@@ -71,11 +81,17 @@ class GifSender(
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) error("не удалось скачать гифку: ${response.code}")
             val body = response.body ?: error("пустой ответ при скачивании гифки")
-            val target = File(cacheDir, "larpgram-gif-${gif.id}.gif")
-            target.outputStream().use { output ->
-                body.byteStream().use { input -> input.copyTo(output) }
+            cacheDir.mkdirs()
+            val target = File.createTempFile("larpgram-gif-", ".gif", cacheDir)
+            try {
+                target.outputStream().use { output ->
+                    body.byteStream().use { input -> input.copyTo(output) }
+                }
+                target
+            } catch (error: Exception) {
+                target.delete()
+                throw error
             }
-            target
         }
     }
 

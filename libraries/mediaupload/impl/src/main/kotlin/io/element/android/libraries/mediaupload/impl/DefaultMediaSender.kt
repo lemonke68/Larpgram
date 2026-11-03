@@ -183,10 +183,13 @@ class DefaultMediaSender(
         val galleryLogId = "gallery[${mediaUploadInfos.size} items]"
         Timber.d("Sending $galleryLogId")
         // Правка форка: альбом Larpgram — отдельными медиа, а не галереей MSC4274 (LarpgramAlbumSender).
-        return withTimeline { timeline ->
-            timeline.sendLarpgramAlbum(mediaUploadInfos, caption, formattedCaption, inReplyToEventId) { ongoingUploadJobs[Job] = it }
+        return try {
+            withTimeline { timeline ->
+                timeline.sendLarpgramAlbum(mediaUploadInfos, caption, formattedCaption, inReplyToEventId) { ongoingUploadJobs[Job] = it }
+            }.handleSendResult(galleryLogId)
+        } finally {
+            ongoingUploadJobs.remove(Job)
         }
-            .handleSendResult(galleryLogId)
     }
 
     private fun Result<Unit>.handleSendResult(mediaId: String) = this

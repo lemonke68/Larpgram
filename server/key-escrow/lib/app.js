@@ -272,6 +272,10 @@ export function createApp({ db, matrix, mailer, now = Date.now, config = {} }) {
     }
     if (!members) return res.sendStatus(502);
     if (!members.includes(req.userId)) return res.sendStatus(403); // не участник — нельзя
+    if (members.length > 2) {
+      audit(req, 'delete-room-refused', { room: roomId, reason: 'not-two-people' });
+      return res.status(409).json({ error: 'not-two-people' });
+    }
 
     // Всё проверяем данными сервера, а не клиента (см. deleteForBothRefusal): раньше хватало m.direct
     // вызывающего, а его клиент пишет сам — так можно было снести группу или канал из двоих.

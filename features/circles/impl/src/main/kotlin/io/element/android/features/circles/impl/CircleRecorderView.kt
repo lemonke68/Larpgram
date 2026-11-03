@@ -386,27 +386,6 @@ private fun CameraPreview(
     )
 }
 
-/**
- * Кнопка поверх затемнения.
- *
- * Своя, а не designsystem-овская: у той нет параметра цвета, а она берёт его из темы
- * приложения. На всегда тёмном фоне записи светлая тема давала тёмный текст на тёмном.
- */
-@Composable
-private fun OverlayButton(
-    text: String,
-    onClick: () -> Unit,
-) {
-    androidx.compose.material3.TextButton(
-        onClick = onClick,
-        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-            contentColor = Color.White,
-        ),
-    ) {
-        Text(text = text)
-    }
-}
-
 /** мм:сс, как в Telegram. */
 private fun formatElapsed(millis: Long): String {
     val totalSeconds = millis / 1000

@@ -24,6 +24,7 @@ import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -55,6 +56,8 @@ class DefaultCircleRecorderPresenter(
         // Отмена доходит до колбэка записи не мгновенно, а файл дописывается в любом
         // случае. Флаг говорит обработчику результата, что этот файл никому не нужен.
         var discardResult by remember { mutableStateOf(false) }
+        var recordingGeneration by remember { mutableLongStateOf(0L) }
+        var startJob by remember { mutableStateOf<Job?>(null) }
         // Зафиксирована ли запись свайпом вверх (см. CircleRecorderState.isLocked).
         var isLocked by remember { mutableStateOf(false) }
 
@@ -73,12 +76,20 @@ class DefaultCircleRecorderPresenter(
 
         // Камеру надо отпускать, иначе она останется занятой после ухода с экрана.
         DisposableEffect(Unit) {
-            onDispose { recorder.release() }
+            onDispose {
+                discardResult = true
+                recordingGeneration++
+                startJob?.cancel()
+                recorder.release()
+            }
         }
 
-        fun handleResult(result: Result<File>) {
+        fun handleResult(result: Result<File>, generation: Long) {
+            if (generation != recordingGeneration) {
+                result.getOrNull()?.delete()
+                return
+            }
             if (discardResult) {
-                discardResult = false
                 result.getOrNull()?.delete()
                 mode = CircleRecorderMode.Hidden
                 return
@@ -114,19 +125,24 @@ class DefaultCircleRecorderPresenter(
                     mode = CircleRecorderMode.Ready
                 }
                 CircleRecorderEvents.Close -> {
+                    discardResult = true
+                    recordingGeneration++
+                    startJob?.cancel()
                     recorder.release()
                     mode = CircleRecorderMode.Hidden
                 }
                 CircleRecorderEvents.StartRecording -> {
+                    startJob?.cancel()
+                    val generation = ++recordingGeneration
                     discardResult = false
                     isLocked = false
                     // Камера привязывается не мгновенно, а запись по жесту начинается в
                     // момент касания кнопки, когда экран записи только открылся. Поэтому
                     // ждём готовности, а не отказываемся с первой попытки: иначе первое
                     // нажатие всегда уходило бы впустую.
-                    coroutineScope.launch {
+                    startJob = coroutineScope.launch {
                         val started = withTimeoutOrNull(START_TIMEOUT_MS) {
-                            while (!recorder.start(::handleResult)) {
+                            while (!recorder.start { handleResult(it, generation) }) {
                                 delay(START_RETRY_MS)
                             }
                             true
@@ -160,6 +176,8 @@ class DefaultCircleRecorderPresenter(
                 }
                 CircleRecorderEvents.CancelRecording -> {
                     discardResult = true
+                    recordingGeneration++
+                    startJob?.cancel()
                     recorder.cancel()
                     mode = CircleRecorderMode.Hidden
                 }

@@ -17,6 +17,13 @@ import io.element.android.libraries.matrix.api.media.MediaUploadHandler
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.LarpgramAlbum
 import io.element.android.libraries.mediaupload.api.MediaUploadInfo
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 
@@ -25,7 +32,7 @@ import java.io.File
  * файла ([LarpgramAlbum]). Галерею понимает только Element X с флагом, остальные клиенты показывали
  * «неподдерживаемое событие». Подпись и ответ — у первой части, как у альбома в Telegram. Все части
  * сначала ставятся в очередь отправки (порядок сохраняется, в ленте сразу появляется весь альбом),
- * потом ждём загрузку каждой. [onUploadStarted] получает последнюю загрузку, чтобы её можно было отменить.
+ * потом ждём загрузку каждой. [onUploadStarted] получает обработчик всей группы для отмены всех частей.
  */
 internal suspend fun Timeline.sendLarpgramAlbum(
     mediaUploadInfos: List<MediaUploadInfo>,
@@ -35,25 +42,78 @@ internal suspend fun Timeline.sendLarpgramAlbum(
     onUploadStarted: (MediaUploadHandler) -> Unit,
 ): Result<Unit> {
     val albumId = LarpgramAlbum.newAlbumId()
-    val parts = mediaUploadInfos.mapIndexed { index, info ->
-        val name = LarpgramAlbum.filename(albumId, index, mediaUploadInfos.size, info.file.extension)
-        info.withFile(linkOrCopy(info.file, name))
-    }
-    return runCatchingExceptions {
-        val handlers = parts.mapIndexed { index, part ->
-            enqueueMedia(
-                uploadInfo = part,
-                caption = caption.takeIf { index == 0 },
-                formattedCaption = formattedCaption.takeIf { index == 0 },
-                inReplyToEventId = inReplyToEventId.takeIf { index == 0 },
-            ).getOrThrow()
-        }
-        handlers.lastOrNull()?.let(onUploadStarted)
-        handlers.forEach { it.await().getOrThrow() }
-    }.also {
+    val parts = mutableListOf<MediaUploadInfo>()
+    val group = AlbumUploadGroup()
+    return try {
+        runCatchingExceptions {
+            supervisorScope {
+                val completions = mutableListOf<Deferred<Result<Unit>>>()
+                var completed = false
+                try {
+                    onUploadStarted(group)
+                    mediaUploadInfos.forEachIndexed { index, info ->
+                        val name = LarpgramAlbum.filename(albumId, index, mediaUploadInfos.size, info.file.extension)
+                        val part = info.withFile(linkOrCopy(info.file, name))
+                        parts += part
+                        val handler = enqueueMedia(
+                            uploadInfo = part,
+                            caption = caption.takeIf { index == 0 },
+                            formattedCaption = formattedCaption.takeIf { index == 0 },
+                            inReplyToEventId = inReplyToEventId.takeIf { index == 0 },
+                        ).getOrThrow()
+                        group.add(handler)
+                        completions += async {
+                            withContext(NonCancellable) { runCatchingExceptions { handler.await().getOrThrow() } }
+                        }
+                    }
+                    // A failed part must not cause cleanup while another part still reads its file.
+                    val results = completions.map { it.await() }
+                    results.forEach { it.getOrThrow() }
+                    group.checkNotCancelled()
+                    completed = true
+                } finally {
+                    if (!completed) group.cancel()
+                    withContext(NonCancellable) { completions.forEach { it.join() } }
+                }
+            }
+        }.also { group.complete(it) }
+    } catch (error: CancellationException) {
+        group.complete(Result.failure(error))
+        throw error
+    } finally {
         parts.zip(mediaUploadInfos)
             .filter { (part, original) -> part.file != original.file }
             .forEach { (part, _) -> part.file.delete() }
+    }
+}
+
+/** The outside cancel action owns every part, including parts registered after cancellation. */
+internal class AlbumUploadGroup : MediaUploadHandler {
+    private val handlers = mutableListOf<MediaUploadHandler>()
+    private var cancelled = false
+    private val completion = CompletableDeferred<Result<Unit>>()
+
+    @Synchronized
+    fun add(handler: MediaUploadHandler) {
+        handlers += handler
+        if (cancelled) handler.cancel()
+    }
+
+    @Synchronized
+    fun checkNotCancelled() {
+        if (cancelled) throw CancellationException("Album upload cancelled")
+    }
+
+    fun complete(result: Result<Unit>) {
+        completion.complete(result)
+    }
+
+    override suspend fun await(): Result<Unit> = completion.await()
+
+    @Synchronized
+    override fun cancel() {
+        cancelled = true
+        handlers.forEach { it.cancel() }
     }
 }
 

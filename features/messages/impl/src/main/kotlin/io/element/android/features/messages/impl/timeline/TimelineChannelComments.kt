@@ -24,12 +24,14 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.timeline.MatrixTimelineItem
+import io.element.android.libraries.matrix.api.timeline.Timeline
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 @Inject
@@ -136,18 +138,34 @@ class TimelineChannelComments(
         else -> false
     }
 
-    private suspend fun findMirrorEventId(discussionId: RoomId, commentId: String): EventId? {
+    internal suspend fun findMirrorEventId(discussionId: RoomId, commentId: String): EventId? {
         val discussion = matrixClient.getJoinedRoom(discussionId) ?: return null
-        return discussion.use { room ->
-            room.liveTimeline.timelineItems.first()
-                .asSequence()
-                .filterIsInstance<MatrixTimelineItem.Event>()
-                .firstOrNull { item ->
-                    val originalJson = item.event.timelineItemDebugInfoProvider().originalJson
-                    originalJson != null && ChannelDiscussion.commentIdFromMirror(originalJson) == commentId
+        return discussion.use { discussionRoom ->
+            withTimeoutOrNull(20_000L) {
+                val timeline = discussionRoom.liveTimeline
+                var items = timeline.timelineItems.first()
+                while (true) {
+                    findMirrorIn(items, commentId)?.let { return@withTimeoutOrNull it }
+                    val status = timeline.backwardPaginationStatus.first { !it.isPaginating }
+                    if (!status.hasMoreToLoad) return@withTimeoutOrNull null
+                    val previous = items
+                    val endReached = timeline.paginate(Timeline.PaginationDirection.BACKWARDS).getOrNull()
+                        ?: return@withTimeoutOrNull null
+                    items = if (endReached) timeline.timelineItems.first() else timeline.timelineItems.first { it != previous }
+                    if (endReached) return@withTimeoutOrNull findMirrorIn(items, commentId)
                 }
-                ?.event
-                ?.eventId
+                @Suppress("UNREACHABLE_CODE")
+                null
+            }
         }
     }
+
+    private fun findMirrorIn(items: List<MatrixTimelineItem>, commentId: String): EventId? = items
+        .asSequence()
+        .filterIsInstance<MatrixTimelineItem.Event>()
+        .firstOrNull { item ->
+            val raw = item.event.timelineItemDebugInfoProvider().originalJson
+            raw != null && ChannelDiscussion.commentIdFromMirror(raw) == commentId
+        }
+        ?.event?.eventId
 }

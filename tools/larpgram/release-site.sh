@@ -41,7 +41,8 @@ badging="$("$AAPT2" dump badging "$APK" | awk 'NR == 1')"
 version_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<<"$badging")"
 version_name="$(sed -E "s/.*versionName='([^']+)'.*/\1/" <<<"$badging")"
 sha256="$(shasum -a 256 "$APK" | cut -d' ' -f1)"
-size_mb="$(( $(stat -f%z "$APK") / 1048576 ))"
+size_bytes="$(wc -c < "$APK")"
+size_mb="$(( size_bytes / 1048576 ))"
 
 # Сравниваем с выкаченным (закоммиченным) манифестом: подготовка без --deploy уже меняет рабочую копию.
 current_code="$(git -C "$SITE" show HEAD:html/latest.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])')"
