@@ -71,6 +71,7 @@ class DefaultMusicPlayer(
     private val tagsStore: TrackTagsStore,
     private val offlineStore: MusicOfflineStore,
     private val settingsStore: MusicSettingsStore,
+    private val autoDownloadPolicy: MusicAutoDownloadPolicy,
     private val dispatchers: CoroutineDispatchers,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
 ) : MusicPlayer {
@@ -122,7 +123,8 @@ class DefaultMusicPlayer(
     init {
         appCoroutineScope.launch(dispatchers.io) {
             val stored = tagsStore.loadAll()
-            resolver.markTagsKnown(stored.keys)
+            // Треки с обложкой старого формата перечитываются, когда их файл скачается снова.
+            resolver.markTagsKnown(stored.filterValues { it.hasCurrentArtwork() }.keys)
             _tags.update { (stored + it).toImmutableMap() }
         }
         appCoroutineScope.launch(dispatchers.main) {
@@ -300,6 +302,11 @@ class DefaultMusicPlayer(
 
     override fun setSavedOnDevice(tracks: List<MusicTrack>, save: Boolean) {
         if (save) offlineStore.save(tracks) else offlineStore.remove(tracks)
+    }
+
+    override fun requestTags(track: MusicTrack) {
+        val known = _tags.value[track.mediaKey]
+        if ((known == null || !known.hasCurrentArtwork()) && autoDownloadPolicy.allows(track)) resolver.requestTags(track)
     }
 
     private fun startPlayback(player: Player) {
@@ -490,3 +497,6 @@ internal fun MusicRepeatMode.toPlayerRepeatMode(): Int = when (this) {
     MusicRepeatMode.All -> Player.REPEAT_MODE_ALL
     MusicRepeatMode.One -> Player.REPEAT_MODE_ONE
 }
+
+private fun MusicTrackTags.hasCurrentArtwork(): Boolean =
+    artworkPath?.let { MusicTagsExtractor.ARTWORK_VERSION in File(it).name } ?: true

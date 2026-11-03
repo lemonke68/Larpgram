@@ -12,9 +12,11 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.core.media.AudiblePlaybackController
 import io.element.android.libraries.matrix.test.FakeMatrixClientProvider
+import io.element.android.libraries.musicplayer.api.MusicAutoDownload
 import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
 import io.element.android.libraries.musicplayer.api.MusicTrackTags
+import io.element.android.libraries.musicplayer.test.FakeMusicAutoDownloadStore
 import io.element.android.libraries.musicplayer.test.aMusicTrack
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import io.element.android.tests.testutils.testCoroutineDispatchers
@@ -149,6 +151,8 @@ class DefaultMusicPlayerTest : RobolectricTest() {
         assertThat(player.state.value.speed).isEqualTo(2f)
         assertThat(settings.speed).isEqualTo(2f)
         player.cycleSpeed()
+        assertThat(player.state.value.speed).isEqualTo(0.5f)
+        player.cycleSpeed()
         assertThat(player.state.value.speed).isEqualTo(1f)
     }
 
@@ -271,6 +275,9 @@ class DefaultMusicPlayerTest : RobolectricTest() {
             tagsStore = tagsStore,
             offlineStore = offlineStore,
             settingsStore = settingsStore,
+            autoDownloadPolicy = MusicAutoDownloadPolicy(
+                FakeMusicAutoDownloadStore(MusicAutoDownload(MusicAutoDownload.Network.Always, maxSizeBytes = null)),
+            ) { true },
             dispatchers = dispatchers,
             appCoroutineScope = backgroundScope,
         )

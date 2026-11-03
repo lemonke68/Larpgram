@@ -13,6 +13,7 @@ import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.messages.impl.attachments.tgattach.TgAttachRestore
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
+import io.element.android.features.messages.impl.timeline.components.event.TgChatMusic
 import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.imagepacks.api.ImagePackSource
 import io.element.android.libraries.matrix.api.core.UserId
@@ -38,6 +39,8 @@ data class TgChatState(
     val chatCleanupState: ChatCleanupState?,
     /** Загрузчик медиа для кружочков в ленте; null в превью и тестах. */
     val circleMediaLoader: MatrixMediaLoader?,
+    /** Общий плеер музыки для пузырей аудио; null в превью и тестах. */
+    val chatMusic: TgChatMusic?,
     /** Источник стикер-паков: по тапу на стикер показываем его пак. */
     val imagePackSource: ImagePackSource?,
     /** Меню вложений, которое надо открыть снова после «Назад» с предпросмотра; null — не надо. */
@@ -76,6 +79,7 @@ fun aTgChatState(
     circleRecorderState = null,
     chatCleanupState = null,
     circleMediaLoader = null,
+    chatMusic = null,
     imagePackSource = null,
     attachRestore = null,
     eventSink = eventSink,

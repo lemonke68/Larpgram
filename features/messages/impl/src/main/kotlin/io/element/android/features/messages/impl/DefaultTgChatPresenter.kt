@@ -13,12 +13,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.features.circles.impl.CircleRecorderState
 import io.element.android.features.gifs.impl.GifPickerState
 import io.element.android.features.messages.impl.attachments.tgattach.TgAttachSheetMemory
 import io.element.android.features.messages.impl.chatcleanup.ChatCleanupState
+import io.element.android.features.messages.impl.timeline.components.event.TgChatMusic
 import io.element.android.features.stickers.impl.StickerPickerState
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.di.RoomScope
@@ -27,6 +29,7 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.ui.saved.SavedMessages
+import io.element.android.libraries.musicplayer.api.MusicPlayer
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
@@ -41,6 +44,7 @@ class DefaultTgChatPresenter(
     private val circleRecorderPresenter: Presenter<CircleRecorderState>,
     private val chatCleanupPresenter: Presenter<ChatCleanupState>,
     private val attachSheetMemory: TgAttachSheetMemory,
+    private val musicPlayer: MusicPlayer,
 ) : Presenter<TgChatState> {
     @Composable
     override fun present(): TgChatState {
@@ -101,6 +105,7 @@ class DefaultTgChatPresenter(
             circleRecorderState = circleRecorderPresenter.present(),
             chatCleanupState = chatCleanupPresenter.present(),
             circleMediaLoader = matrixClient.matrixMediaLoader,
+            chatMusic = remember { TgChatMusic(musicPlayer, room.sessionId, room.roomId) },
             imagePackSource = imagePackSource,
             attachRestore = attachRestore,
             eventSink = ::handleEvent,

@@ -7,19 +7,27 @@
 
 package io.element.android.libraries.musicplayer.impl.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.text.format.Formatter
+import android.view.WindowManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -46,6 +54,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,12 +68,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -75,10 +89,10 @@ import io.element.android.libraries.designsystem.theme.components.CircularProgre
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
-import io.element.android.libraries.designsystem.theme.components.Slider
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.musicplayer.api.MusicOrder
 import io.element.android.libraries.musicplayer.api.MusicRepeatMode
+import io.element.android.libraries.musicplayer.api.MusicSeekBar
 import io.element.android.libraries.musicplayer.impl.R
 import kotlinx.collections.immutable.persistentListOf
 import java.io.File
@@ -110,6 +124,7 @@ internal fun MusicSheet(
 @Composable
 internal fun ColumnScope.MusicSheetContent(state: MusicSheetState) {
     ProfileActionFeedback(state)
+    SaveActionFeedback(state)
     if (state.title != null) {
         Text(
             text = state.title,
@@ -291,6 +306,7 @@ private fun PlayerPanel(state: MusicSheetState) {
                 )
             }
             if (state.canShare) {
+                SaveToMusicButton(state)
                 IconButton(onClick = { state.eventSink(MusicSheetEvent.Share) }) {
                 Icon(
                     imageVector = CompoundIcons.ShareAndroid(),
@@ -309,11 +325,13 @@ private fun PlayerPanel(state: MusicSheetState) {
 @Composable
 private fun Cover(artworkPath: String?) {
     val shape = RoundedCornerShape(8.dp)
+    var zoomed by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .size(COVER_SIZE)
             .clip(shape)
-            .background(ElementTheme.colors.bgSubtleSecondary),
+            .background(ElementTheme.colors.bgSubtleSecondary)
+            .then(if (artworkPath != null) Modifier.clickable { zoomed = true } else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         if (artworkPath != null) {
@@ -332,6 +350,46 @@ private fun Cover(artworkPath: String?) {
             )
         }
     }
+    if (zoomed && artworkPath != null) {
+        CoverViewer(artworkPath = artworkPath, onDismiss = { zoomed = false })
+    }
+}
+
+/**
+ * Обложка на весь экран поверх размытого и затемнённого наполовину экрана; тап или «Назад»
+ * закрывает. Размытие окна за диалогом есть с Android 12 и только если система его не выключила
+ * (энергосбережение, слабое железо); иначе остаётся одно затемнение.
+ */
+@Composable
+private fun CoverViewer(artworkPath: String, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            window?.let { dialogWindow ->
+                dialogWindow.setDimAmount(COVER_DIM)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    dialogWindow.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    dialogWindow.attributes = dialogWindow.attributes.apply { blurBehindRadius = COVER_BLUR_RADIUS }
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = File(artworkPath),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+            )
+        }
+    }
 }
 
 @Composable
@@ -339,15 +397,18 @@ private fun SeekRow(state: MusicSheetState) {
     var seekingTo by remember { mutableFloatStateOf(-1f) }
     val progress = if (state.durationMs > 0) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Slider(
-            value = if (seekingTo >= 0) seekingTo else progress,
-            onValueChange = { seekingTo = it },
-            onValueChangeFinish = {
-                if (seekingTo >= 0 && state.durationMs > 0) state.eventSink(MusicSheetEvent.Seek((seekingTo * state.durationMs).toLong()))
+        MusicSeekBar(
+            progress = if (seekingTo >= 0) seekingTo else progress,
+            activeColor = ElementTheme.colors.textActionAccent,
+            inactiveColor = ElementTheme.colors.textSecondary.copy(alpha = 0.3f),
+            onSeekChange = { seekingTo = it },
+            onSeekFinish = { fraction ->
+                if (state.durationMs > 0) state.eventSink(MusicSheetEvent.Seek((fraction * state.durationMs).toLong()))
                 seekingTo = -1f
             },
             enabled = state.durationMs > 0,
-            modifier = Modifier.fillMaxWidth(),
+            thumbRadius = 7.dp,
+            modifier = Modifier.padding(vertical = 6.dp),
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             val shownPosition = if (seekingTo >= 0) (seekingTo * state.durationMs).toLong() else state.positionMs
@@ -508,6 +569,56 @@ private fun ProfileButtonView(state: MusicSheetState) {
     }
 }
 
+/** «Сохранить в Музыку»; до Android 10 сначала спрашиваем доступ к памяти. */
+@Composable
+private fun SaveToMusicButton(state: MusicSheetState) {
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            state.eventSink(MusicSheetEvent.SaveToMusic)
+        } else {
+            Toast.makeText(context, R.string.larpgram_music_save_no_permission, Toast.LENGTH_SHORT).show()
+        }
+    }
+    IconButton(
+        enabled = state.saveAction !is AsyncAction.Loading,
+        onClick = {
+            val needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+            if (needsPermission) {
+                permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            } else {
+                state.eventSink(MusicSheetEvent.SaveToMusic)
+            }
+        },
+    ) {
+        if (state.saveAction is AsyncAction.Loading) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(
+                imageVector = CompoundIcons.Download(),
+                contentDescription = stringResource(R.string.larpgram_music_save_to_music),
+                tint = ElementTheme.colors.iconPrimary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SaveActionFeedback(state: MusicSheetState) {
+    val context = LocalContext.current
+    val action = state.saveAction
+    LaunchedEffect(action) {
+        val message = when (action) {
+            is AsyncAction.Success -> R.string.larpgram_music_saved_to_music
+            is AsyncAction.Failure -> R.string.larpgram_music_save_failed
+            else -> null
+        } ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        state.eventSink(MusicSheetEvent.ClearSaveAction)
+    }
+}
+
 /** Итог «в профиль / из профиля» — короткой всплывашкой, шторка остаётся открытой. */
 @Composable
 private fun ProfileActionFeedback(state: MusicSheetState) {
@@ -550,6 +661,8 @@ private val SHEET_RADIUS = 20.dp
 private val LIST_MAX_HEIGHT = 360.dp
 private val ROW_BUTTON_SIZE = 44.dp
 private val COVER_SIZE = 48.dp
+private const val COVER_DIM = 0.5f
+private const val COVER_BLUR_RADIUS = 60
 private val PROFILE_BUTTON_HEIGHT = 48.dp
 
 @PreviewsDayNight

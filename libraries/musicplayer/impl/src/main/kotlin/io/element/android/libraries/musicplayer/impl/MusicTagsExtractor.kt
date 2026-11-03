@@ -44,32 +44,67 @@ class MusicTagsExtractor(
         }
     }
 
-    /** Обложку уменьшаем до ~512px: в списке и уведомлении больше не нужно. */
+    /**
+     * Обложка в размер экрана: на весь экран её показывают по короткой стороне, больше не нужно.
+     * Если исходник не больше, он сохраняется как есть, без пережатия.
+     */
     private fun saveArtwork(bytes: ByteArray, mediaKey: String): String? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= ARTWORK_SIZE) sample *= 2
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
-            ?: return null
+        val target = artworkTargetSize()
         val dir = File(context.filesDir, "music_artwork").apply { mkdirs() }
-        val file = File(dir, sha1(mediaKey) + ".jpg")
+        val name = sha1(mediaKey)
+        // Обложка прошлого формата (512px) больше не нужна.
+        File(dir, "$name.jpg").delete()
+        val longSide = maxOf(bounds.outWidth, bounds.outHeight)
+        val isPlainImage = bounds.outMimeType == "image/jpeg" || bounds.outMimeType == "image/png"
+        if (longSide <= target && isPlainImage) {
+            val extension = if (bounds.outMimeType == "image/png") "png" else "jpg"
+            val file = File(dir, "${name}$ARTWORK_VERSION.$extension")
+            return try {
+                file.writeBytes(bytes)
+                file.absolutePath
+            } catch (e: Exception) {
+                Timber.w(e, "Music: could not save artwork")
+                null
+            }
+        }
+        var sample = 1
+        while (longSide / (sample * 2) >= target) sample *= 2
+        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return null
+        val scale = target.toFloat() / maxOf(decoded.width, decoded.height)
+        val bitmap = if (scale < 1f) {
+            Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt(), (decoded.height * scale).toInt(), true)
+        } else {
+            decoded
+        }
+        val file = File(dir, "${name}$ARTWORK_VERSION.jpg")
         return try {
-            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+            file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
             file.absolutePath
         } catch (e: Exception) {
             Timber.w(e, "Music: could not save artwork")
             null
         } finally {
-            bitmap.recycle()
+            if (bitmap !== decoded) bitmap.recycle()
+            decoded.recycle()
         }
+    }
+
+    private fun artworkTargetSize(): Int {
+        val metrics = context.resources.displayMetrics
+        return minOf(metrics.widthPixels, metrics.heightPixels).coerceIn(ARTWORK_MIN_SIZE, ARTWORK_MAX_SIZE)
     }
 
     private fun sha1(value: String): String =
         MessageDigest.getInstance("SHA-1").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
 
-    private companion object {
-        const val ARTWORK_SIZE = 512
+    companion object {
+        /** Метка в имени файла: обложки без неё сохранены старым способом и читаются заново. */
+        const val ARTWORK_VERSION = "_v2"
+        private const val ARTWORK_MIN_SIZE = 512
+        private const val ARTWORK_MAX_SIZE = 2048
     }
 }

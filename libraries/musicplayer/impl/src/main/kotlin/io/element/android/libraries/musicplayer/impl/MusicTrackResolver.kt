@@ -11,6 +11,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.annotations.AppCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClientProvider
 import io.element.android.libraries.matrix.api.media.MediaFile
@@ -23,6 +24,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
@@ -46,6 +50,10 @@ class MusicTrackResolver(
     private val files = LinkedHashMap<String, MediaFile>(MAX_OPEN_FILES, 0.75f, true)
     private val pending = HashMap<String, Deferred<File>>()
     private val knownTagKeys = HashSet<String>()
+    private val tagRequests = HashSet<String>()
+
+    // Больше двух файлов разом ради тегов не качаем: чат с альбомом не должен забить сеть.
+    private val tagsPermits = Semaphore(2)
 
     private val _tagsResolved = MutableSharedFlow<Pair<String, MusicTrackTags>>(extraBufferCapacity = 16)
     val tagsResolved: SharedFlow<Pair<String, MusicTrackTags>> = _tagsResolved.asSharedFlow()
@@ -58,6 +66,31 @@ class MusicTrackResolver(
     }
 
     suspend fun resolve(track: MusicTrack): File = start(track).await()
+
+    /**
+     * Теги для пузыря в чате. Файл берётся отдельной ручкой и сразу закрывается, чтобы не
+     * вытеснять файлы очереди плеера; SDK всё равно оставит его в своём кэше.
+     */
+    fun requestTags(track: MusicTrack) {
+        val isNew = synchronized(lock) { track.mediaKey !in knownTagKeys && tagRequests.add(track.mediaKey) }
+        if (!isNew) return
+        appCoroutineScope.launch(dispatchers.io) {
+            runCatchingExceptions {
+                tagsPermits.withPermit {
+                    val saved = offlineStore.fileFor(track.mediaKey)
+                    if (saved != null) {
+                        readTagsIfNeeded(track, saved)
+                    } else {
+                        val client = matrixClientProvider.getOrRestore(track.sessionId).getOrThrow()
+                        client.matrixMediaLoader.downloadMediaFile(track.mediaSource, track.mimeType, track.filename).getOrThrow().use { media ->
+                            readTagsIfNeeded(track, File(media.path()))
+                        }
+                    }
+                }
+            }.onFailure { Timber.w(it, "Music: could not read tags ahead of playback") }
+            synchronized(lock) { tagRequests.remove(track.mediaKey) }
+        }
+    }
 
     /** A separate media handle keeps an export alive even when playback evicts its own file. */
     suspend fun copyForExport(track: MusicTrack, destination: File): File = kotlinx.coroutines.withContext(dispatchers.io) {

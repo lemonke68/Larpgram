@@ -10,6 +10,7 @@ package io.element.android.features.preferences.impl.category
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,8 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.media.MediaCacheUsage
+import io.element.android.libraries.musicplayer.api.MusicAutoDownload
+import io.element.android.libraries.musicplayer.api.MusicAutoDownloadStore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -59,6 +62,9 @@ data class MediaStorageState(
     val isLoading: Boolean,
     val isClearing: Boolean,
     val formatSize: (Long) -> String,
+    /** Автозагрузка треков из чатов. */
+    val musicAutoDownload: MusicAutoDownload = MusicAutoDownload.Default,
+    val onMusicAutoDownloadChange: (MusicAutoDownload) -> Unit = {},
     val clearMediaCache: () -> Unit,
 )
 
@@ -68,6 +74,7 @@ class MediaStoragePresenter(
     private val client: MatrixClient,
     private val formatter: FileSizeFormatter,
     private val snackbarDispatcher: SnackbarDispatcher,
+    private val musicAutoDownloadStore: MusicAutoDownloadStore,
 ) : Presenter<MediaStorageState> {
     @Composable
     override fun present(): MediaStorageState {
@@ -76,6 +83,7 @@ class MediaStoragePresenter(
         var usage by remember(client) { mutableStateOf<MediaCacheUsage?>(null) }
         var loading by remember(client) { mutableStateOf(true) }
         var clearing by remember(client) { mutableStateOf(false) }
+        val musicAutoDownload by musicAutoDownloadStore.settings.collectAsState()
 
         suspend fun refresh() {
             loading = true
@@ -92,7 +100,15 @@ class MediaStoragePresenter(
             loading = false
         }
         LaunchedEffect(client) { refresh() }
-        return MediaStorageState(imageCache, usage, loading, clearing, { formatter.format(it) }) {
+        return MediaStorageState(
+            imageCache = imageCache,
+            usage = usage,
+            isLoading = loading,
+            isClearing = clearing,
+            formatSize = { formatter.format(it) },
+            musicAutoDownload = musicAutoDownload,
+            onMusicAutoDownloadChange = musicAutoDownloadStore::update,
+        ) {
             if (!clearing && !loading && usage != null) {
                 clearing = true
                 scope.launch {

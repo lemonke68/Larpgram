@@ -13,6 +13,7 @@ import io.element.android.libraries.androidutils.filesize.FakeFileSizeFormatter
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
 import io.element.android.libraries.matrix.api.media.MediaCacheUsage
 import io.element.android.libraries.matrix.test.FakeMatrixClient
+import io.element.android.libraries.musicplayer.test.FakeMusicAutoDownloadStore
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.test
 import kotlinx.coroutines.CompletableDeferred
@@ -34,6 +35,7 @@ class MediaStoragePresenterTest {
             client = FakeMatrixClient(getMediaCacheUsageLambda = { Result.success(usage) }),
             formatter = FakeFileSizeFormatter(),
             snackbarDispatcher = SnackbarDispatcher(),
+            musicAutoDownloadStore = FakeMusicAutoDownloadStore(),
         )
         presenter.test {
             assertThat(awaitItem().isLoading).isTrue()
@@ -57,7 +59,7 @@ class MediaStoragePresenterTest {
                 Result.success(Unit)
             },
         )
-        MediaStoragePresenter(cache, client, FakeFileSizeFormatter(), SnackbarDispatcher()).test {
+        MediaStoragePresenter(cache, client, FakeFileSizeFormatter(), SnackbarDispatcher(), FakeMusicAutoDownloadStore()).test {
             awaitItem()
             val ready = awaitItem()
             ready.clearMediaCache()
@@ -84,7 +86,7 @@ class MediaStoragePresenterTest {
             getMediaCacheUsageLambda = { Result.success(usage) },
             clearMediaCacheLambda = { Result.failure(IllegalStateException("store busy")) },
         )
-        MediaStoragePresenter(cache, client, FakeFileSizeFormatter(), snackbar).test {
+        MediaStoragePresenter(cache, client, FakeFileSizeFormatter(), snackbar, FakeMusicAutoDownloadStore()).test {
             awaitItem()
             awaitItem().clearMediaCache()
             assertThat(awaitItem().isClearing).isTrue()
@@ -108,7 +110,7 @@ class MediaStoragePresenterTest {
                 Result.success(Unit)
             },
         )
-        MediaStoragePresenter(FakeImageCache(), client, FakeFileSizeFormatter(), SnackbarDispatcher()).test {
+        MediaStoragePresenter(FakeImageCache(), client, FakeFileSizeFormatter(), SnackbarDispatcher(), FakeMusicAutoDownloadStore()).test {
             awaitItem()
             val failed = awaitItem()
             assertThat(failed.isLoading).isFalse()
