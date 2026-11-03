@@ -77,7 +77,6 @@ import io.element.android.libraries.architecture.overlay.Overlay
 import io.element.android.libraries.architecture.overlay.operation.hide
 import io.element.android.libraries.architecture.overlay.operation.show
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
-import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeAudio
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.dateformatter.api.toHumanReadableDuration
@@ -107,6 +106,7 @@ import io.element.android.libraries.mediaviewer.api.GalleryItemData
 import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.mediaviewer.api.MediaViewerEntryPoint
 import io.element.android.libraries.mediaviewer.api.RoomMusicPlayback
+import io.element.android.libraries.musicplayer.api.MusicFiles
 import io.element.android.libraries.textcomposer.mentions.LocalMentionSpanUpdater
 import io.element.android.libraries.textcomposer.mentions.MentionSpanTheme
 import io.element.android.libraries.textcomposer.mentions.MentionSpanUpdater
@@ -858,7 +858,7 @@ class MessagesFlowNode(
         val content = event.content
         val durationMs = when (content) {
             is TimelineItemAudioContent -> content.duration.inWholeMilliseconds
-            is TimelineItemFileContent -> if (content.mimeType.isMimeTypeAudio()) null else return false
+            is TimelineItemFileContent -> if (MusicFiles.isPlayable(content.mimeType, content.filename)) null else return false
             else -> return false
         }
         content as TimelineItemEventContentWithAttachment
