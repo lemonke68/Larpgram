@@ -64,6 +64,13 @@ interface MusicPlayer {
      * хранилище, не общий кэш медиа: система его не чистит, удаляет только пользователь.
      */
     fun setSavedOnDevice(tracks: List<MusicTrack>, save: Boolean)
+
+    /**
+     * Прочитать теги трека заранее, без воспроизведения: пузырь в чате показывает название и
+     * артиста из файла, а не из имени. Файл качается один раз и только если позволяет
+     * [MusicAutoDownload]; дальше теги берутся из [tags].
+     */
+    fun requestTags(track: MusicTrack)
 }
 
 enum class MusicOfflineStatus { Saving, Saved }

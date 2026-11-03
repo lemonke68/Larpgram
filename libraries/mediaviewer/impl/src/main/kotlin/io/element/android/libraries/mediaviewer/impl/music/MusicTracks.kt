@@ -8,13 +8,13 @@
 package io.element.android.libraries.mediaviewer.impl.music
 
 import androidx.compose.runtime.Immutable
-import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeAudio
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.mediaviewer.impl.model.MediaItem
+import io.element.android.libraries.musicplayer.api.MusicFiles
 import io.element.android.libraries.musicplayer.api.MusicPlayer
 import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.musicplayer.api.MusicTrackTags
@@ -22,7 +22,7 @@ import io.element.android.libraries.musicplayer.api.displayArtist
 import io.element.android.libraries.musicplayer.api.displayTitle
 
 /** Музыка — аудио-файл (в том числе отправленный документом), но не голосовое. */
-internal fun MediaInfo.isMusic(): Boolean = mimeType.isMimeTypeAudio() && waveform == null
+internal fun MediaInfo.isMusic(): Boolean = MusicFiles.isPlayable(mimeType, filename) && waveform == null
 
 internal fun musicTrackId(eventId: EventId?, mediaSource: MediaSource): String = eventId?.value ?: mediaSource.safeUrl
 

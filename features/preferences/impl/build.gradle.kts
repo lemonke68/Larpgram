@@ -103,6 +103,7 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.libraries.musicplayer.test)
     testImplementation(projects.libraries.accountapi.test)
     testImplementation(projects.libraries.keyescrow.test)
     testImplementation(projects.libraries.emoji.test)

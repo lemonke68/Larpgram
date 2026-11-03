@@ -70,13 +70,13 @@ class MusicQueueTest {
     }
 
     @Test
-    fun `speed cycles 1x, 1_5x, 2x and snaps odd speeds up`() {
+    fun `speed cycles 1x, 1_5x, 2x, 0_5x and snaps odd speeds up`() {
         assertThat(MusicQueue.nextSpeed(1f)).isEqualTo(1.5f)
         assertThat(MusicQueue.nextSpeed(1.5f)).isEqualTo(2f)
-        assertThat(MusicQueue.nextSpeed(2f)).isEqualTo(1f)
+        assertThat(MusicQueue.nextSpeed(2f)).isEqualTo(0.5f)
+        assertThat(MusicQueue.nextSpeed(0.5f)).isEqualTo(1f)
         assertThat(MusicQueue.nextSpeed(1.2f)).isEqualTo(2f)
-        assertThat(MusicQueue.nextSpeed(0.5f)).isEqualTo(1.5f)
-        assertThat(MusicQueue.nextSpeed(3f)).isEqualTo(1f)
+        assertThat(MusicQueue.nextSpeed(3f)).isEqualTo(0.5f)
     }
 
     @Test

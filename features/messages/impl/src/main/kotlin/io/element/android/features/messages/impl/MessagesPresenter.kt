@@ -49,6 +49,7 @@ import io.element.android.features.messages.impl.timeline.components.reactionsum
 import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheetState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContentWithAttachment
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemGalleryContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
@@ -95,6 +96,8 @@ import io.element.android.libraries.matrix.ui.messages.reply.map
 import io.element.android.libraries.matrix.ui.model.dmUserStatus
 import io.element.android.libraries.matrix.ui.model.getAvatarData
 import io.element.android.libraries.matrix.ui.room.getDirectRoomMember
+import io.element.android.libraries.musicplayer.api.MusicLibraryExporter
+import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
@@ -142,6 +145,8 @@ class MessagesPresenter(
     private val markAsFullyRead: MarkAsFullyRead,
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
+    // Правка форка (Larpgram): «Сохранить в Музыку» из меню сообщения.
+    private val musicLibraryExporter: MusicLibraryExporter,
 ) : Presenter<MessagesState> {
     @AssistedFactory
     interface Factory {
@@ -441,6 +446,8 @@ class MessagesPresenter(
                 }
             }
             TimelineItemAction.ViewSource -> handleShowDebugInfoAction(targetEvent)
+            // Правка форка (Larpgram).
+            TimelineItemAction.SaveToMusic -> handleSaveToMusic(targetEvent)
             TimelineItemAction.Forward -> {
                 val eventId = targetEvent.eventId ?: return@launch
                 if (featureFlagService.isFeatureEnabled(FeatureFlags.MessageMultiSelect)) {
@@ -666,6 +673,25 @@ class MessagesPresenter(
         timelineState: TimelineState,
     ) {
         event.eventId?.let { timelineState.eventSink(TimelineEvent.EndPoll(it)) }
+    }
+
+    private suspend fun handleSaveToMusic(event: TimelineItem.Event) {
+        val content = event.content as? TimelineItemEventContentWithAttachment ?: return
+        val track = MusicTrack(
+            id = event.eventId?.value ?: content.mediaSource.safeUrl,
+            sessionId = room.sessionId,
+            roomId = room.roomId,
+            eventId = event.eventId,
+            mediaSource = content.mediaSource,
+            filename = content.filename,
+            mimeType = content.mimeType,
+            fileSize = content.fileSize,
+        )
+        val result = musicLibraryExporter.export(track)
+        result.onFailure { Timber.e(it, "Failed to save ${event.eventId} to Music") }
+        snackbarDispatcher.post(
+            SnackbarMessage(if (result.isSuccess) R.string.larpgram_saved_to_music else R.string.larpgram_save_to_music_failed)
+        )
     }
 
     private suspend fun handleCopyLink(event: TimelineItem.Event) {

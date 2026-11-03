@@ -58,6 +58,7 @@ import io.element.android.libraries.matrix.ui.media.contentvalidation.InvalidCon
 import io.element.android.libraries.matrix.ui.media.contentvalidation.NotFoundContentView
 import io.element.android.libraries.matrix.ui.media.contentvalidation.collectOverallState
 import io.element.android.libraries.matrix.ui.media.contentvalidation.rememberEventContentValidationState
+import io.element.android.libraries.musicplayer.api.MusicFiles
 import io.element.android.libraries.textcomposer.ElementRichTextEditorStyle
 import io.element.android.libraries.ui.common.layout.ContentAvoidingLayout
 import io.element.android.libraries.ui.common.layout.ContentAvoidingLayoutData
@@ -198,7 +199,20 @@ fun TimelineItemEventContentView(
                     content = content,
                     onGalleryItemClick = { index -> onGalleryItemClick(index) },
                 )
-                is TimelineItemFileContent -> {
+                // Правка форка (Larpgram): аудио и аудио-файл (flac документом) — пузырь трека с кнопкой.
+                is TimelineItemFileContent -> if (MusicFiles.isPlayable(content.mimeType, content.filename)) {
+                    TgTimelineItemAudioView(
+                        eventId = eventId,
+                        filename = content.filename,
+                        mimeType = content.mimeType,
+                        fileSize = content.fileSize,
+                        mediaSource = content.mediaSource,
+                        duration = null,
+                        fileExtensionAndSize = content.fileExtensionAndSize,
+                        onContentLayoutChange = calculatedOnContentLayoutChange,
+                        contentValidationValue = overallValidationState,
+                    )
+                } else {
                     TimelineItemFileView(
                         content = content,
                         onContentLayoutChange = calculatedOnContentLayoutChange,
@@ -206,8 +220,14 @@ fun TimelineItemEventContentView(
                     )
                 }
                 is TimelineItemAudioContent -> {
-                    TimelineItemAudioView(
-                        content = content,
+                    TgTimelineItemAudioView(
+                        eventId = eventId,
+                        filename = content.filename,
+                        mimeType = content.mimeType,
+                        fileSize = content.fileSize,
+                        mediaSource = content.mediaSource,
+                        duration = content.duration,
+                        fileExtensionAndSize = content.fileExtensionAndSize,
                         onContentLayoutChange = calculatedOnContentLayoutChange,
                         contentValidationValue = overallValidationState,
                     )

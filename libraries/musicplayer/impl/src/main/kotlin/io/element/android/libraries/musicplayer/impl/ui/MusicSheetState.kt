@@ -36,6 +36,8 @@ data class MusicSheetState(
     val eventSink: (MusicSheetEvent) -> Unit,
     val shareTrack: io.element.android.libraries.musicplayer.api.MusicTrack? = null,
     val canShare: Boolean = true,
+    /** «Сохранить в Музыку» для текущего трека. */
+    val saveAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
 )
 
 @Immutable
@@ -65,5 +67,7 @@ sealed interface MusicSheetEvent {
     data class RemoveFromProfile(val trackId: String) : MusicSheetEvent
     data object Share : MusicSheetEvent
     data object DismissShare : MusicSheetEvent
+    data object SaveToMusic : MusicSheetEvent
+    data object ClearSaveAction : MusicSheetEvent
     data object ClearProfileAction : MusicSheetEvent
 }

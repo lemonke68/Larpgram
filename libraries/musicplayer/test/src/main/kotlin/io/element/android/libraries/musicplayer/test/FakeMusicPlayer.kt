@@ -79,6 +79,12 @@ class FakeMusicPlayer(
         seeks += positionMs
     }
 
+    val tagRequests = mutableListOf<MusicTrack>()
+
+    override fun requestTags(track: MusicTrack) {
+        tagRequests += track
+    }
+
     override fun cycleOrder() {
         val next = MusicOrder.entries[(state.value.order.ordinal + 1) % MusicOrder.entries.size]
         state.value = state.value.copy(order = next)

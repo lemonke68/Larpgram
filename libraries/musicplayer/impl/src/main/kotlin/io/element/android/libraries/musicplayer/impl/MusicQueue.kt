@@ -65,8 +65,11 @@ internal object MusicQueue {
         MusicOrder.Shuffle -> MusicOrder.Default
     }
 
-    /** Скорости кнопки в полосе Telegram (`FragmentContextView.toggleSpeeds`). */
-    val speeds = listOf(1f, 1.5f, 2f)
+    /**
+     * Скорости кнопки в полосе, как у Telegram (`FragmentContextView.toggleSpeeds`), плюс 0.5.
+     * По кругу 1 → 1.5 → 2 → 0.5 → 1: медленнее нужно реже, поэтому 0.5 после 2.
+     */
+    val speeds = listOf(0.5f, 1f, 1.5f, 2f)
 
     /** Следующая скорость по кругу, как у Telegram: нестандартная — к следующей большей. */
     fun nextSpeed(speed: Float): Float {

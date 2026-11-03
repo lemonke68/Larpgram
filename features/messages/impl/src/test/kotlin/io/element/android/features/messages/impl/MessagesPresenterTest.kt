@@ -40,6 +40,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
+import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemAudioContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
@@ -109,6 +110,8 @@ import io.element.android.libraries.matrix.test.room.threads.FakeThreadsListServ
 import io.element.android.libraries.matrix.test.timeline.FakeTimeline
 import io.element.android.libraries.matrix.test.timeline.aTimelineItemDebugInfo
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
+import io.element.android.libraries.musicplayer.api.MusicLibraryExporter
+import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.libraries.textcomposer.model.aTextEditorStateMarkdown
@@ -365,6 +368,29 @@ class MessagesPresenterTest {
             initialState.eventSink(MessagesEvent.HandleAction(TimelineItemAction.CopyLink, event))
             skipItems(2)
             assertThat(clipboardHelper.clipboardContents).isEqualTo("a link")
+        }
+    }
+
+    // Правка форка (Larpgram).
+    @Test
+    fun `present - handle action save to music`() = runTest {
+        val exported = mutableListOf<MusicTrack>()
+        val event = aMessageEvent(content = aTimelineItemAudioContent(fileName = "demo.flac"))
+        val presenter = createMessagesPresenter(
+            musicLibraryExporter = MusicLibraryExporter {
+                exported += it
+                Result.success(Unit)
+            },
+        )
+        presenter.testWithLifecycleOwner {
+            val initialState = awaitItem()
+            initialState.eventSink(MessagesEvent.HandleAction(TimelineItemAction.SaveToMusic, event))
+            var state = awaitItem()
+            while (state.snackbarMessage == null) state = awaitItem()
+            assertThat(exported.single().eventId).isEqualTo(AN_EVENT_ID)
+            assertThat(exported.single().filename).isEqualTo("demo.flac")
+            assertThat(state.snackbarMessage.messageResId).isEqualTo(R.string.larpgram_saved_to_music)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -1611,6 +1637,7 @@ class MessagesPresenterTest {
         liveLocationShareManager: FakeActiveLiveLocationShareManager = FakeActiveLiveLocationShareManager(),
         // Правка форка: нужен только ради загрузчика медиа для кружочков.
         matrixClient: MatrixClient = FakeMatrixClient(),
+        musicLibraryExporter: MusicLibraryExporter = MusicLibraryExporter { lambdaError() },
     ): MessagesPresenter {
         return MessagesPresenter(
         copyProtection = io.element.android.libraries.matrix.ui.protection.RoomCopyProtection(io.element.android.libraries.matrix.test.FakeMatrixClient()),
@@ -1650,6 +1677,7 @@ class MessagesPresenterTest {
             sessionCoroutineScope = backgroundScope,
             // Правка форка: состояние экрана чата Telegram тестам не интересно.
             tgChatPresenter = { aTgChatState() },
+            musicLibraryExporter = musicLibraryExporter,
         )
     }
 }

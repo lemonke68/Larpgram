@@ -73,7 +73,8 @@ fun LocalMediaView(
             modifier = modifier,
             onClick = onClick,
         )
-        mimeType.isMimeTypeAudio() -> MediaAudioView(
+        // Правка форка (Larpgram): flac/wav, отправленный документом (octet-stream), тоже трек.
+        mimeType.isMimeTypeAudio() || musicPlayback != null -> MediaAudioView(
             isDisplayed = isDisplayed,
             localMediaViewState = localMediaViewState,
             bottomPaddingInPixels = bottomPaddingInPixels,

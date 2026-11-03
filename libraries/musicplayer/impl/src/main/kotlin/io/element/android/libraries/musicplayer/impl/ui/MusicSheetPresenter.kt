@@ -19,6 +19,7 @@ import dev.zacsweers.metro.Inject
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.matrix.api.core.SessionId
+import io.element.android.libraries.musicplayer.api.MusicLibraryExporter
 import io.element.android.libraries.musicplayer.api.MusicPlayer
 import io.element.android.libraries.musicplayer.api.MusicTrack
 import io.element.android.libraries.musicplayer.api.MusicTrackTags
@@ -35,6 +36,7 @@ class MusicSheetPresenter(
     private val musicPlayer: MusicPlayer,
     private val profileMusic: ProfileMusic,
     private val copyPolicy: io.element.android.libraries.musicplayer.impl.MusicCopyPolicy,
+    private val libraryExporter: MusicLibraryExporter,
 ) : Presenter<MusicSheetState> {
     @Composable
     override fun present(): MusicSheetState {
@@ -43,6 +45,7 @@ class MusicSheetPresenter(
         val tags by musicPlayer.tags.collectAsState()
         val ownTracks by profileMusic.ownTracks.collectAsState()
         var profileAction by remember { mutableStateOf<AsyncAction<ProfileButton>>(AsyncAction.Uninitialized) }
+        var saveAction by remember { mutableStateOf<AsyncAction<Unit>>(AsyncAction.Uninitialized) }
 
         LaunchedEffect(Unit) {
             if (profileMusic.ownTracks.value == null) profileMusic.refreshOwn()
@@ -109,6 +112,18 @@ class MusicSheetPresenter(
                 }
                 MusicSheetEvent.Share -> if (canShare) shareTrack = currentTrack
                 MusicSheetEvent.DismissShare -> shareTrack = null
+                MusicSheetEvent.SaveToMusic -> if (canShare && saveAction !is AsyncAction.Loading) {
+                    currentTrack?.let { track ->
+                        saveAction = AsyncAction.Loading
+                        scope.launch {
+                            saveAction = libraryExporter.export(track).fold(
+                                onSuccess = { AsyncAction.Success(Unit) },
+                                onFailure = { AsyncAction.Failure(it) },
+                            )
+                        }
+                    }
+                }
+                MusicSheetEvent.ClearSaveAction -> saveAction = AsyncAction.Uninitialized
                 MusicSheetEvent.ClearProfileAction -> profileAction = AsyncAction.Uninitialized
             }
         }
@@ -117,6 +132,7 @@ class MusicSheetPresenter(
             title = player.queueTitle,
             shareTrack = shareTrack,
             canShare = canShare,
+            saveAction = saveAction,
             tracks = tracks,
             current = tracks.getOrNull(player.currentIndex),
             isPlaying = player.isPlaying || player.isBuffering,

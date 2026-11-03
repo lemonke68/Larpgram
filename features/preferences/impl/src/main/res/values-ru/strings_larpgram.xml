@@ -176,4 +176,11 @@
     <string name="larpgram_forwarding_privacy_error">Не удалось обновить настройки пересылки</string>
     <string name="larpgram_forwarding_privacy_description">Если выключено, в пересылках останется только ваше имя — без аватара и перехода в профиль.</string>
     <string name="larpgram_encryption_info_limits_copy_protection">Запрет копирования и скриншотов приватного канала действует внутри Ларпграма. Сервер его не обеспечивает: другой Matrix-клиент или внешняя камера могут обойти ограничения.</string>
+    <string name="larpgram_music_autodownload_network">Загружать музыку заранее</string>
+    <string name="larpgram_music_autodownload_limit">Не больше</string>
+    <string name="larpgram_music_autodownload_never">Никогда</string>
+    <string name="larpgram_music_autodownload_wifi">Только по Wi-Fi</string>
+    <string name="larpgram_music_autodownload_always">Wi-Fi и мобильная сеть</string>
+    <string name="larpgram_music_autodownload_no_limit">Без ограничений</string>
+    <string name="larpgram_music_autodownload_description">Треки в чатах скачиваются заранее: так в сообщении сразу видны название, исполнитель и обложка, а трек включается без ожидания. Трек, который вы включили сами, скачивается всегда.</string>
 </resources>

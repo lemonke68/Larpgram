@@ -196,4 +196,11 @@
     <string name="larpgram_forwarding_privacy_error">Could not update forwarding privacy</string>
     <string name="larpgram_forwarding_privacy_description">When disabled, forwards show only your name, without your avatar or a link to your profile.</string>
     <string name="larpgram_encryption_info_limits_copy_protection">Private channel copy and screenshot restrictions apply inside Larpgram. The server does not enforce them; other Matrix clients and an external camera can bypass them.</string>
+    <string name="larpgram_music_autodownload_network">Load music ahead</string>
+    <string name="larpgram_music_autodownload_limit">Up to file size</string>
+    <string name="larpgram_music_autodownload_never">Never</string>
+    <string name="larpgram_music_autodownload_wifi">Wi-Fi only</string>
+    <string name="larpgram_music_autodownload_always">Wi-Fi and mobile data</string>
+    <string name="larpgram_music_autodownload_no_limit">No limit</string>
+    <string name="larpgram_music_autodownload_description">Tracks in chats are downloaded in advance to show the title, artist and cover and to start without waiting. A track you play is always downloaded.</string>
 </resources>

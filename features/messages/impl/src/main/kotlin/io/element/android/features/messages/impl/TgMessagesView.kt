@@ -112,6 +112,7 @@ import io.element.android.features.messages.impl.timeline.aTimelineItemEvent
 import io.element.android.features.messages.impl.timeline.aTimelineState
 import io.element.android.features.messages.impl.timeline.components.CallMenuItem
 import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionEvent
+import io.element.android.features.messages.impl.timeline.components.event.LocalChatMusic
 import io.element.android.features.messages.impl.timeline.components.event.LocalCircleMediaLoader
 import io.element.android.features.messages.impl.timeline.components.event.LocalOpenStickerPack
 import io.element.android.features.messages.impl.timeline.components.event.StickerPackSheet
@@ -775,6 +776,7 @@ private fun MessagesViewContent(
             // конфликты при каждом ребейзе.
             CompositionLocalProvider(
                 LocalCircleMediaLoader provides state.tg.circleMediaLoader,
+                LocalChatMusic provides state.tg.chatMusic,
                 LocalOpenStickerPack provides { originalJson, stickerUrl ->
                     stickerPackRequest = originalJson to stickerUrl
                 },

@@ -89,4 +89,7 @@
     <string name="larpgram_message_read_by_of">Read by %1$d of %2$d</string>
     <string name="larpgram_chat_cleanup_options">Clear or delete chat</string>
     <string name="larpgram_media_quality">Media quality</string>
+    <string name="larpgram_action_save_to_music">Save to Music</string>
+    <string name="larpgram_saved_to_music">Saved to Music/Larpgram</string>
+    <string name="larpgram_save_to_music_failed">Could not save the track</string>
 </resources>
